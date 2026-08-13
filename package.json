@@ -15,7 +15,10 @@
     "smoke:single": "node scripts/smoke.mjs --single",
     "check-css": "node scripts/check-css-parity.mjs",
     "check-filters": "node scripts/check-filters-parity.mjs",
-    "check-data": "node scripts/extract-places.mjs --check"
+    "check-data": "node scripts/extract-places.mjs --check",
+    "check-handlers": "node scripts/check-handlers.mjs",
+    "parity": "node scripts/parity.mjs",
+    "perf": "node scripts/perf.mjs"
   },
   "dependencies": {
     "leaflet": "1.9.4"
