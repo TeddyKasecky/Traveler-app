@@ -2,7 +2,18 @@
  * Panel filtrů a správa dat (CSV, záloha, obnova, návrat k vestavěným datům).
  */
 
-import { S, F, store, save, VESTAVENA_DATA, nastavData } from '../core/store.js'
+import {
+  S,
+  F,
+  store,
+  save,
+  PHOTOS,
+  savePhotos,
+  prefs,
+  savePrefs,
+  VESTAVENA_DATA,
+  nastavData,
+} from '../core/store.js'
 import { esc } from '../core/html.js'
 import { resetFiltru } from '../core/filters.js'
 import { registrujOverlay, aktivujZalozku } from '../core/router.js'
@@ -133,7 +144,7 @@ function initData() {
   }
 
   document.getElementById('expBtn').onclick = () => {
-    stahniJson(zalohaData(store), `vandrbuch-zaloha-${new Date().toISOString().slice(0, 10)}.json`)
+    stahniJson(zalohaData(store, PHOTOS, prefs), `vandrbuch-zaloha-${new Date().toISOString().slice(0, 10)}.json`)
     toast('Záloha stažena')
   }
 
@@ -143,8 +154,10 @@ function initData() {
     const rd = new FileReader()
     rd.onload = () => {
       try {
-        obnovZalohu(store, JSON.parse(rd.result))
+        obnovZalohu(store, JSON.parse(rd.result), PHOTOS, prefs)
         save()
+        savePhotos()
+        savePrefs()
         draw()
         toast('Záloha obnovena')
       } catch {

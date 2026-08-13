@@ -133,34 +133,53 @@ export function mistaZCsv(text) {
 /**
  * Data pro zálohu.
  *
- * POZOR: priority (`prio`) se schválně neexportují – tak to bylo v původní
- * aplikaci, přestože obnova je načíst umí. Je to nesymetrie, ne záměr;
- * čeká na rozhodnutí jako NAPADY.md N2.
+ * DOPLNĚNO (odsouhlaseno): původní aplikace zálohovala jen poznámky, stavy,
+ * hodnocení a plán. Priority (`prio`) chyběly, přestože obnova je načíst uměla
+ * (NAPADY.md N2), a vlastní vyfocené fotky s předvolbami taky ne. Dokud appka
+ * běžela na jednom místě, nikomu to nevadilo.
  *
- * @param {{notes:object, stav:object, rating:object, plan:string[]}} store
+ * Jenže přechod na vlastní adresu je pro prohlížeč nový web a localStorage se
+ * mezi adresami nesdílí – záloha je jediná cesta, jak si data přenést. S děravou
+ * zálohou by se **nenávratně ztratily vlastní fotky**. Proto je tu teď všechno.
+ *
+ * Starší soubory záloh zůstávají čitelné, obnova si s chybějícími klíči poradí.
+ *
+ * @param {{notes:object, stav:object, rating:object, plan:string[], prio:object}} store
+ * @param {object} [photos]  obsah `vandrbuch:photos`
+ * @param {object} [prefs]   obsah `vandrbuch:prefs`
  */
-export function zalohaData(store) {
+export function zalohaData(store, photos, prefs) {
   return {
     notes: store.notes,
     stav: store.stav,
     rating: store.rating,
     plan: store.plan,
+    prio: store.prio,
+    photos: photos || {},
+    prefs: prefs || {},
     exported: new Date().toISOString(),
   }
 }
 
 /**
- * Nalije zálohu do storu. Poznámky, stavy, hodnocení a priority se slučují,
- * plán se přepíše celý.
+ * Nalije zálohu do storu. Slučuje se všechno kromě plánu, ten se přepíše celý.
+ *
+ * Objekty `photos` a `prefs` se mutují na místě – ostatní moduly na ně drží
+ * odkaz, takže se nesmí vyměnit za nové.
+ *
  * @param {object} store
  * @param {object} d  rozparsovaný JSON ze souboru
+ * @param {object} [photos]
+ * @param {object} [prefs]
  */
-export function obnovZalohu(store, d) {
+export function obnovZalohu(store, d, photos, prefs) {
   store.notes = Object.assign(store.notes, d.notes || {})
   store.stav = Object.assign(store.stav, d.stav || {})
   store.rating = Object.assign(store.rating, d.rating || {})
   store.prio = Object.assign(store.prio, d.prio || {})
   if (Array.isArray(d.plan)) store.plan = d.plan
+  if (photos && d.photos) Object.assign(photos, d.photos)
+  if (prefs && d.prefs) Object.assign(prefs, d.prefs)
 }
 
 /** Stáhne objekt jako soubor JSON. */
