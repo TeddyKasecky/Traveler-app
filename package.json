@@ -1,0 +1,22 @@
+{
+  "name": "vandrbuch",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Vandrbuch – cestovatelská databáze a wishlist pro cesty dodávkou po Evropě",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:single": "vite build --mode single",
+    "preview": "vite preview",
+    "validate": "node scripts/validate-data.mjs",
+    "check-images": "node scripts/check-images.mjs"
+  },
+  "dependencies": {
+    "leaflet": "1.9.4"
+  },
+  "devDependencies": {
+    "vite": "^7.1.12",
+    "vite-plugin-singlefile": "^2.3.0"
+  }
+}
