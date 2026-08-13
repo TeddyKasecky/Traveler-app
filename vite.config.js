@@ -1,35 +1,106 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import crypto from 'node:crypto'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
 
 /**
  * Dva build targety z jednoho zdroje:
  *
- *   npm run build         → dist/         statický web, plnohodnotná PWA se service workerem
+ *   npm run build         → dist/         hostovaný web, plnohodnotná PWA se service workerem
  *   npm run build:single  → dist-single/  jeden self-contained index.html pro offline z disku
  *
- * Rozdíl je jen v tom, co se inlinuje. Zdrojový kód je stejný; kód se na variantu
- * ptá přes import.meta.env.SINGLE_FILE (viz define níže).
+ * Rozdíl je jen v tom, co se inlinuje a jestli vzniká service worker.
+ * Zdrojový kód je stejný; ptá se na variantu přes import.meta.env.SINGLE_FILE.
  */
+
+// fileURLToPath, ne ruční ořezávání – cesta obsahuje diakritiku („Anička“)
+// a v URL je zakódovaná jako %C4%8D.
+const ROOT = path.dirname(fileURLToPath(import.meta.url))
+
+/**
+ * Vygeneruje dist/sw.js ze šablony src/pwa/sw.js.
+ *
+ * Seznam souborů k uložení do cache se skládá až tady, protože jména obsahují
+ * otisk obsahu a předem je nikdo nezná. Verze cache je odvozená z toho seznamu:
+ * když se nic nezmění, service worker zůstane stejný a prohlížeč ho nepřeinstaluje.
+ */
+function pluginServiceWorker() {
+  return {
+    name: 'vandrbuch-sw',
+    apply: 'build',
+    generateBundle(_, bundle) {
+      // Soubory z public/ v bundle nejsou, Vite je jen kopíruje – doplnit ručně.
+      // Jen soubory, ne složky: `cache.addAll` na složce selže a s ním celá
+      // instalace service workeru, takže by offline přestalo fungovat úplně.
+      const publicDir = path.join(ROOT, 'public')
+      const zPublic = fs
+        .readdirSync(publicDir, { withFileTypes: true })
+        .filter((d) => d.isFile() && !d.name.startsWith('.'))
+        .map((d) => `./${d.name}`)
+
+      const seznam = ['./', ...Object.keys(bundle).map((f) => `./${f}`), ...zPublic]
+      const verze = `vandrbuch-${crypto.createHash('sha1').update(seznam.join('|')).digest('hex').slice(0, 10)}`
+
+      const sablona = fs.readFileSync(path.join(ROOT, 'src', 'pwa', 'sw.js'), 'utf8')
+      this.emitFile({
+        type: 'asset',
+        fileName: 'sw.js',
+        source: sablona.replace('__VERSION__', verze).replace('__PRECACHE__', JSON.stringify(seznam, null, 2)),
+      })
+    },
+  }
+}
+
+/**
+ * V single-file variantě nahradí odkazy na manifest a ikonu za data URI.
+ *
+ * Soubor otevřený z disku nemá vedle sebe public/, takže by se ikona ani
+ * manifest nenačetly a v konzoli by svítily dvě chyby. Ikony se vkládají
+ * i dovnitř manifestu, jinak by odkazovaly na neexistující soubory.
+ */
+function pluginSingleFilePwa() {
+  return {
+    name: 'vandrbuch-single-pwa',
+    apply: 'build',
+    transformIndexHtml(html) {
+      const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f))
+      const ikona192 = `data:image/png;base64,${pub('icon-192.png').toString('base64')}`
+      const ikona512 = `data:image/png;base64,${pub('icon-512.png').toString('base64')}`
+
+      const manifest = JSON.parse(pub('manifest.webmanifest').toString('utf8'))
+      manifest.icons = [
+        { src: ikona192, sizes: '192x192', type: 'image/png' },
+        { src: ikona512, sizes: '512x512', type: 'image/png' },
+      ]
+      const manifestUri = `data:application/manifest+json;base64,${Buffer.from(JSON.stringify(manifest)).toString('base64')}`
+
+      return html
+        .replace('href="./manifest.webmanifest"', `href="${manifestUri}"`)
+        .replace(/href="\.\/icon-192\.png"/g, `href="${ikona192}"`)
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const single = mode === 'single'
 
   return {
-    // Relativní cesty jsou nutné pro obě varianty: hosting v podadresáři i otevření z file://
+    // Relativní cesty jsou nutné pro obě varianty: hosting v podadresáři i file://
     base: './',
 
-    plugins: single ? [viteSingleFile()] : [],
+    plugins: single ? [viteSingleFile(), pluginSingleFilePwa()] : [pluginServiceWorker()],
 
     define: {
-      // Kód podle tohoto pozná, jestli běží v single-file variantě
-      // (přeskočí registraci service workeru, který na file:// stejně nejde).
       'import.meta.env.SINGLE_FILE': JSON.stringify(single),
     },
 
     build: {
       outDir: single ? 'dist-single' : 'dist',
       emptyOutDir: true,
-      // V single-file variantě se musí do data URI vejít i ilustrace dodávky (~30 kB)
-      // a fonty (~254 kB). V hostované variantě zůstává výchozí chování Vite.
+      // V single-file variantě se musí do data URI vejít i ilustrace dodávky
+      // (22 kB) a fonty (254 kB). V hostované zůstává výchozí chování Vite.
       assetsInlineLimit: single ? 100 * 1024 * 1024 : 4096,
       cssCodeSplit: !single,
       // Data míst jsou velká; varování u 500 kB by tu jen šumělo.

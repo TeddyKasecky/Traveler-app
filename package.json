@@ -10,12 +10,19 @@
     "build:single": "vite build --mode single",
     "preview": "vite preview",
     "validate": "node scripts/validate-data.mjs",
-    "check-images": "node scripts/check-images.mjs"
+    "check-images": "node scripts/check-images.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "smoke:single": "node scripts/smoke.mjs --single",
+    "check-css": "node scripts/check-css-parity.mjs",
+    "check-filters": "node scripts/check-filters-parity.mjs",
+    "check-data": "node scripts/extract-places.mjs --check"
   },
   "dependencies": {
     "leaflet": "1.9.4"
   },
   "devDependencies": {
+    "playwright-core": "^1.62.1",
+    "sharp": "^0.35.3",
     "vite": "^7.1.12",
     "vite-plugin-singlefile": "^2.3.0"
   }

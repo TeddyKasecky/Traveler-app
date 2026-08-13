@@ -5,14 +5,98 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#F4EFE2">
 <title>Vandrbuch · mapa naší dodávky</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
 </head>
 <body>
-<!--
-  DOČASNÁ KOSTRA – fáze 1 (skelet projektu).
-  Ve fázi 3 sem přijde skutečná kostra z reference/index-original.html
-  (header, mapa, panely, sheet, filtry, wizard, intro, toast, taby).
--->
-<div id="app"></div>
+
+<header id="top">
+  <div id="brand">
+    <img id="logo" src="/src/assets/icon-192.png" alt="Vandrbuch">
+    <div><h1>Vandrbuch</h1><div class="sub"><span id="totalN"></span> míst · <span id="visitedN">0</span> navštíveno</div></div>
+    <div id="search"><svg class="ic" style="font-size:17px"><use href="#i-pinme"/></svg><input id="q" type="search" placeholder="Hledat místo…" autocomplete="off"></div>
+  </div>
+  <div id="chips"></div>
+  <div class="road" id="topRoad"></div>
+</header>
+
+<div id="map"></div>
+<div id="count"><svg class="ic"><use href="#i-map"/></svg><span id="countN"></span></div>
+
+<button class="fab" id="fabLoc" title="Moje poloha"><svg class="ic"><use href="#i-pinme"/></svg></button>
+<button class="fab" id="fabFilter" title="Filtry"><svg class="ic"><use href="#i-sliders"/></svg><span class="badge" id="fBadge" hidden></span></button>
+
+<section class="panel" id="panelHome"><div class="inner" id="homeInner"></div></section>
+<section class="panel" id="panelDisc"><div class="inner" id="discInner"></div></section>
+<section class="panel" id="panelList"><div class="inner" id="listInner"></div></section>
+<section class="panel" id="panelPlan"><div class="inner" id="planWrap"></div></section>
+
+<div id="backdrop"></div>
+
+<aside id="filters">
+  <h2><svg class="ic"><use href="#i-sliders"/></svg>Filtry</h2>
+  <div class="fgroup"><label>Oblast</label><select id="fReg"><option value="">Všechny oblasti</option></select></div>
+  <div class="fgroup"><label>Země</label><select id="fZeme"><option value="">Všechny země</option></select></div>
+  <div class="fgroup"><label>Typ</label><select id="fTyp"><option value="">Všechny typy</option></select></div>
+  <div class="fgroup"><label>Rychlé filtry</label>
+    <div class="togglerow">
+      <button class="toggle" data-f="free"><svg class="ic" style="color:var(--moss)"><use href="#i-euro"/></svg>Zdarma</button>
+      <button class="toggle" data-f="kids"><svg class="ic" style="color:var(--sky)"><use href="#i-kid"/></svg>S dětmi</button>
+      <button class="toggle" data-f="dogs"><svg class="ic" style="color:var(--sand)"><use href="#i-paw"/></svg>Se psem</button>
+      <button class="toggle" data-f="wow"><svg class="ic" style="color:var(--sun)"><use href="#i-star"/></svg>Hodnocené 4+</button>
+      <button class="toggle" data-f="fire"><svg class="ic" style="color:var(--rust)"><use href="#i-fire"/></svg>Musíme!</button>
+    </div>
+  </div>
+  <div class="fgroup"><label>Stav</label>
+    <div class="togglerow">
+      <button class="toggle stav on" data-s="">Vše</button>
+      <button class="toggle stav" data-s="wish"><svg class="ic"><use href="#i-boot"/></svg>Chci navštívit</button>
+      <button class="toggle stav" data-s="visited"><svg class="ic" style="color:var(--moss)"><use href="#i-check"/></svg>Navštíveno</button>
+    </div>
+  </div>
+  <div class="btnrow">
+    <button class="btn primary" id="fApply"><svg class="ic"><use href="#i-check"/></svg>Ukázat výsledky</button>
+    <button class="btn" id="fReset">Zrušit vše</button>
+  </div>
+  <div class="road" style="margin:12px 0"></div>
+  <div class="fgroup"><label>Data a zálohy</label>
+    <div class="btnrow" style="margin:0">
+      <label class="btn small" style="cursor:pointer"><svg class="ic"><use href="#i-book"/></svg>Načíst CSV<input id="csvIn" type="file" accept=".csv" hidden></label>
+      <button class="btn small" id="expBtn"><svg class="ic"><use href="#i-save"/></svg>Záloha poznámek</button>
+      <label class="btn small" style="cursor:pointer">Obnovit zálohu<input id="impIn" type="file" accept=".json" hidden></label>
+    </div>
+    <div class="meta" style="margin-top:7px">CSV: sloupce z „vse-dohromady-v3". Záloha uloží poznámky, hodnocení, plán i navštívená místa.</div>
+    <div class="btnrow" style="margin-top:8px"><button class="btn small" id="dataReset">Vrátit vestavěná data</button></div>
+  </div>
+</aside>
+
+<div id="wizard" class="wizard" role="dialog" aria-modal="true">
+  <div class="wgrip"></div>
+  <h2><svg class="ic" style="color:var(--rust)"><use href="#i-wand"/></svg> Naplánovat výlet</h2>
+  <div id="wizBody"></div>
+</div>
+<section id="sheet" aria-modal="true"><div class="grip"></div><div class="body" id="sheetBody"></div></section>
+
+<div id="intro"><div id="introBox">
+  <h2>Vítej ve Vandrbuchu</h2>
+  <p>Wishlist míst po Evropě, který funguje i bez signálu.</p>
+  <div class="tip"><svg class="ic"><use href="#i-compass"/></svg><div><b>Objevuj</b><span>Prší? Chcete se koupat? Máte dvě hodiny? Kolekce ti hned nabídnou, co má smysl.</span></div></div>
+  <div class="tip"><svg class="ic"><use href="#i-route"/></svg><div><b>Plán na cestu</b><span>Přidej zastávky, appka spočítá kilometry a pošle trasu do navigace.</span></div></div>
+  <div class="tip"><svg class="ic"><use href="#i-quill"/></svg><div><b>Poznámky a deník</b><span>U každého místa je zajímavost, co je poblíž a místo pro tvoje poznámky a hvězdičky.</span></div></div>
+  <div class="btnrow" style="margin-bottom:0"><button class="btn primary" id="introGo">Jedeme</button></div>
+</div></div>
+
+<div id="toast"></div>
+
+<nav id="tabs">
+  <button data-tab="home" class="on"><svg class="ic"><use href="#i-van"/></svg><span class="lbl">Domů</span></button>
+  <button data-tab="map"><svg class="ic"><use href="#i-map"/></svg><span class="lbl">Mapa</span></button>
+  <button data-tab="disc"><svg class="ic"><use href="#i-compass"/></svg><span class="lbl">Objevuj</span></button>
+  <button data-tab="list"><svg class="ic"><use href="#i-book"/></svg><span class="lbl">Seznam</span></button>
+  <button data-tab="plan"><svg class="ic"><use href="#i-route"/></svg><span class="lbl">Plán<span class="pcount" id="planCount" hidden></span></span></button>
+</nav>
+
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>

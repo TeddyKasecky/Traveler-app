@@ -1,0 +1,23 @@
+<!-- Zdroj ikony aplikace. Rastruje se skriptem: node scripts/make-icons.mjs
+     Kresba je zvětšený symbol i-van ze sprite, barvy jsou z palety aplikace:
+     papír #F4EFE2, inkoust #292019, rez #D96B3C, obloha #8FB0BF. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#F4EFE2"/>
+
+  <!-- tečkovaná silnice, stejný motiv jako proužek pod hlavičkou -->
+  <g fill="#292019" opacity=".28">
+    <circle cx="96" cy="404" r="9"/><circle cx="160" cy="404" r="9"/><circle cx="224" cy="404" r="9"/>
+    <circle cx="288" cy="404" r="9"/><circle cx="352" cy="404" r="9"/><circle cx="416" cy="404" r="9"/>
+  </g>
+
+  <!-- dodávka: obrys jako v symbolu i-van, jen v jiném měřítku -->
+  <g transform="translate(256 244) scale(17.6) translate(-12 -13)"
+     fill="none" stroke="#292019" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 14c0-3 1.2-6 3-6h7c2.4 0 6 2.5 6 5v3H4z" fill="#D96B3C" stroke="none" opacity=".9"/>
+    <path d="M4 16v-2c0-3 1.2-6 3-6h7c2.4 0 6 2.5 6 5v3"/>
+    <rect x="6.6" y="10" width="5" height="3.4" rx="1" fill="#8FB0BF" stroke="#292019"/>
+    <path d="M2 16h20"/>
+    <circle cx="8" cy="16" r="2" fill="#FDFAF2"/>
+    <circle cx="16.5" cy="16" r="2" fill="#FDFAF2"/>
+  </g>
+</svg>

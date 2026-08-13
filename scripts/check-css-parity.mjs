@@ -29,8 +29,8 @@ const POVOLENE = [
       '@media (prefers-reduced-motion:reduce) > .roadanim,.cloudA,.cloudB,.flick,.smokep,.twinkle'],
   },
   {
-    proc: 'oprava z-indexu wizardu 60 → 1300, byl pod backdropem',
-    selektory: ['.wizard'],
+    proc: 'oprava wizardu: z-index 60 → 1300 (byl pod backdropem) + visibility, aby zavřený nekreslil stín přes lištu',
+    selektory: ['.wizard', '.wizard.show'],
   },
 ]
 

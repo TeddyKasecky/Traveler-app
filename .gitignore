@@ -5,3 +5,4 @@ dist-single/
 .vite/
 Thumbs.db
 .DS_Store
+.screenshots/

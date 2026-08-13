@@ -4,12 +4,19 @@
  * Průvodce se tím vykresloval POD ztmavením – byl zašedlý a klik do něj propadl
  * na backdrop, který ho zavřel. Hodnota 1300 ho staví na stejnou úroveň jako
  * #sheet a #filters, což jsou taky vysouvací panely nad backdropem.
- * Nic jiného se nemění.
+ *
+ * K tomu přibylo `visibility`. Zvednutím z-indexu se totiž nad lištu záložek
+ * dostal i stín zavřeného průvodce (`0 -6px 0`) a kreslil se jako slabá linka
+ * přes spodní dva pixely obrazovky – porovnání snímků to odhalilo jako 746
+ * rozdílných pixelů. Skrytý průvodce teď nekreslí nic a nedá se ani zaměřit
+ * tabulátorem. Zpoždění 0,34 s odpovídá délce animace, aby zavírání zůstalo
+ * plynulé. Nic jiného se nemění.
  */
 .wizard{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:var(--line);border-radius:26px 26px 0 0;
-  box-shadow:0 -6px 0 rgba(41,32,25,.14);transform:translateY(105%);transition:transform .34s var(--pop);z-index:1300;
+  box-shadow:0 -6px 0 rgba(41,32,25,.14);transform:translateY(105%);z-index:1300;
+  visibility:hidden;transition:transform .34s var(--pop), visibility 0s linear .34s;
   max-height:82vh;overflow:auto;padding:10px 20px calc(20px + env(safe-area-inset-bottom))}
-.wizard.show{transform:none}
+.wizard.show{transform:none;visibility:visible;transition:transform .34s var(--pop), visibility 0s}
 .wgrip{width:44px;height:5px;border-radius:999px;background:#D8CDBB;margin:4px auto 10px}
 .wizard h2{font-family:Fraunces,serif;font-size:1.2rem;margin:0 0 4px;display:flex;gap:9px;align-items:center}
 .wstep{font-size:.66rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--ink2);margin:10px 0 7px}
