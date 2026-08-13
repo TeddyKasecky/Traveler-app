@@ -32,12 +32,16 @@ function pluginServiceWorker() {
     apply: 'build',
     generateBundle(_, bundle) {
       // Soubory z public/ v bundle nejsou, Vite je jen kopíruje – doplnit ručně.
-      // Jen soubory, ne složky: `cache.addAll` na složce selže a s ním celá
-      // instalace service workeru, takže by offline přestalo fungovat úplně.
+      //
+      // Filtruje se ze tří důvodů, každý z nich by shodil celé offline:
+      //   - složky: `cache.addAll` na složce selže a s ním instalace workeru,
+      //   - tečkové soubory: nejsou k ničemu,
+      //   - podtržítko: `_headers` a `_redirects` si hostingy berou jako svoji
+      //     konfiguraci a z nasazeného webu je mažou, takže by vrátily 404.
       const publicDir = path.join(ROOT, 'public')
       const zPublic = fs
         .readdirSync(publicDir, { withFileTypes: true })
-        .filter((d) => d.isFile() && !d.name.startsWith('.'))
+        .filter((d) => d.isFile() && !d.name.startsWith('.') && !d.name.startsWith('_'))
         .map((d) => `./${d.name}`)
 
       const seznam = ['./', ...Object.keys(bundle).map((f) => `./${f}`), ...zPublic]
