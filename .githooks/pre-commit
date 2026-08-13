@@ -1,0 +1,25 @@
+#!/bin/sh
+#
+# Před každým commitem zkontroluje data míst, pokud se něco v src/data/ změnilo.
+# Varování commit nezastaví, chyby ano.
+#
+# Aby se hook spouštěl, musí být jednou nastavené:
+#   git config core.hooksPath .githooks
+# (Nastavení je lokální, do repozitáře se neukládá. Je to i v README.)
+
+if ! git diff --cached --name-only --diff-filter=ACM | grep -q '^src/data/'; then
+  exit 0
+fi
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-commit: node není v PATH, kontrolu dat přeskakuji."
+  exit 0
+fi
+
+echo "pre-commit: kontroluji data míst…"
+if ! node scripts/validate-data.mjs; then
+  echo ""
+  echo "Commit zastaven – data míst obsahují chyby."
+  echo "Oprav je, nebo kontrolu jednorázově přeskoč: git commit --no-verify"
+  exit 1
+fi

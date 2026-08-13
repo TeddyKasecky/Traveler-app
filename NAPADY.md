@@ -39,6 +39,13 @@ V Objevuj se proto nikdy nezobrazí. Přidat 12. definici = jednořádková změ
 Pole `ps` je vyplněné jen u 8 z 580 míst (5× „Ano", 3× „Ne"). Filtr tedy vrací 5 míst,
 i když psi jsou vítaní na spoustě dalších. Doplnění je ruční práce nad daty.
 
+**N6b — Pět míst má v `col` stejnou kolekci dvakrát**
+`polle-di-malbacco-…-863`, `cascata-di-giumaglio-…-500`, `cascata-cai-d-alto-…-594`
+a `jettegrytene-nissedal-norsko-358` mají dvakrát `koupacka`,
+`leiternweide-suspension-bridge-trail-274` má dvakrát `zdarma`.
+Na chování to nemá vliv (filtr používá `includes`), `npm run validate` to hlásí jako
+varování. Oprava = smazat duplicitu, ale je to zásah do dat, tak nechávám na tobě.
+
 **N7 — Hledání neprohledává krátký popis (`sh`)**
 Fulltext bere `n + z + r + t + p + f`. Pole `sh` má vyplněných všech 580 míst
 a v seznamu se zobrazuje, ale hledat se v něm nedá.
