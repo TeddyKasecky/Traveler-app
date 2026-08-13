@@ -1,0 +1,26 @@
+/* ===== parkování ===== */
+.parkbox{position:relative;border:var(--line);border-radius:17px;background:var(--card);box-shadow:0 4px 0 var(--ink);
+  padding:13px 14px;margin:14px 0 4px;overflow:hidden;display:flex;flex-direction:column;gap:8px}
+.parkbox::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--sky)}
+.parkbox.none::before{background:var(--sand)}
+.pklab{display:flex;gap:8px;align-items:center;font-size:.7rem;font-weight:800;letter-spacing:.9px;
+  text-transform:uppercase;color:var(--ink2)}
+.pklab svg.ic{font-size:16px;color:var(--sky)}
+.pkname{font-weight:800;font-size:.94rem}
+.pkmeta{display:flex;flex-wrap:wrap;gap:7px}
+.pkmeta span{display:inline-flex;gap:5px;align-items:center;border:2px solid var(--ink);border-radius:999px;
+  padding:3px 10px;font-size:.7rem;font-weight:800;background:var(--paper)}
+.pknote{font-size:.78rem;color:var(--ink2);font-weight:600}
+.pkstatus{align-self:flex-start;border:2px solid var(--ink);border-radius:999px;padding:4px 11px;
+  font-size:.7rem;font-weight:800}
+.pkstatus.s-verified{background:#DFEBD6;color:#3F5230}
+.pkstatus.s-likely{background:#F4ECD1}
+.pkstatus.s-unknown{background:#EDE7DC;color:var(--ink2)}
+.pkstatus.s-no{background:#F3D9D2;color:#7C3324}
+.pkwarn{font-size:.68rem;font-weight:700;color:var(--ink2);border-top:2px dashed #DCD2BF;padding-top:8px}
+.parkpin{width:26px;height:26px;border-radius:9px;background:var(--sky);border:2.5px solid var(--ink);
+  color:var(--ink);display:grid;place-items:center;font-weight:900;font-size:14px;font-family:Fraunces,serif;
+  box-shadow:0 2px 0 rgba(41,32,25,.4)}
+.mmfail{border:var(--line);border-radius:15px;background:var(--paper);padding:14px;margin:14px 0 0;
+  font-size:.8rem;font-weight:700;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mmfail a{color:var(--rust);font-weight:800}

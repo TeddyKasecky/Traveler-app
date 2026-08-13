@@ -1,14 +1,15 @@
 /**
  * Vstupní bod aplikace.
  *
- * DOČASNÝ OBSAH – fáze 1 (skelet projektu). Slouží jen k ověření, že build
- * projde v obou variantách. Skutečná logika se sem přesune ve fázi 3.
+ * DOČASNÝ OBSAH – probíhá fáze 3, migrace kódu po krocích.
+ * Hotové zatím: styly, fonty, sada ikon.
  */
 
-document.getElementById('app').textContent =
-  'Vandrbuch – skelet projektu. Migrace kódu probíhá ve fázi 3.'
+import './styles/index.css'
+import { vlozSprite, IC } from './icons/sprite.js'
 
-console.info(
-  'build:',
-  import.meta.env.SINGLE_FILE ? 'single-file' : 'hostovaný web'
-)
+vlozSprite()
+
+document.getElementById('app').innerHTML =
+  `<p style="padding:20px;font-weight:700">${IC('i-van', 'font-size:24px')} ` +
+  'Vandrbuch – migrace kódu probíhá (fáze 3).</p>'

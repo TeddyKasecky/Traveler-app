@@ -1,0 +1,17 @@
+/* Návrhové proměnné. Barvy, čáry, rádiusy a fonty se nikde jinde nepíšou natvrdo.
+ * Hodnoty jsou doslovný opis původního :root bloku – nesahat bez záměru. */
+:root{
+  --paper:#F4EFE2; --card:#FDFAF2; --ink:#292019; --ink2:#7A6B58; --inkfade:rgba(41,32,25,.12);
+  --rust:#D96B3C; --sun:#E3B341; --sky:#8FB0BF; --moss:#7E8F5C; --plum:#8B6B8F;
+  --clay:#B35A4E; --pine:#4E8A7E; --sand:#C8A16B; --night:#3B342C; --lake:#5B93A6;
+  --line:2.5px solid var(--ink); --r:20px;
+  --pop:cubic-bezier(.34,1.56,.5,1);
+  --f-disp:'Fraunces', Georgia, serif; --f-body:'Inter', system-ui, sans-serif;
+}
+
+/* Proměnné, které se nastavují za běhu na konkrétním prvku (nepatří do :root):
+ *   --pc    barva místa podle kategorie – karty, špendlíky, detail
+ *   --cc    barva dlaždice kolekce v Objevuj
+ *   --chipc barva chipu kategorie v hlavičce
+ *   --mc    barva dlaždice nálady na Domů
+ */

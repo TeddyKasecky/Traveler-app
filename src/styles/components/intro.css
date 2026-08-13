@@ -1,0 +1,9 @@
+/* ===== uvítání ===== */
+#intro{position:fixed;inset:0;z-index:1400;background:rgba(41,32,25,.55);backdrop-filter:blur(3px);display:none;place-items:center;padding:22px}
+#intro.show{display:grid}
+#introBox{background:var(--card);border:var(--line);border-radius:26px;box-shadow:0 6px 0 var(--ink);padding:22px;max-width:390px;width:100%}
+#introBox h2{font-family:var(--f-disp);font-weight:900;font-size:1.5rem;margin:0 0 4px}
+#introBox p{font-size:.87rem;line-height:1.5;color:var(--ink2);font-weight:600;margin:0 0 14px}
+.tip{display:flex;gap:11px;align-items:flex-start;margin-bottom:12px}
+.tip svg.ic{font-size:23px;color:var(--rust);flex:0 0 auto;margin-top:1px}
+.tip b{display:block;font-size:.88rem} .tip span{font-size:.78rem;color:var(--ink2);font-weight:600;line-height:1.4}

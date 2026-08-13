@@ -1,0 +1,16 @@
+/* ===== pohlednice / foto ===== */
+.hero{position:relative;margin:10px -20px 2px;border-top:var(--line);border-bottom:var(--line);
+  background:var(--paper);overflow:hidden;height:150px}
+.hero svg.pcard,.hero img{display:block;width:100%;height:150px;object-fit:cover}
+.herobar{position:absolute;left:12px;right:12px;bottom:10px;display:flex;gap:8px;align-items:center}
+.hchip{background:var(--card);border:2.5px solid var(--ink);border-radius:11px;padding:5px 11px;font-size:.73rem;
+  font-weight:800;display:flex;gap:7px;align-items:center;box-shadow:0 3px 0 var(--ink)}
+.hchip svg.ic{font-size:16px;color:var(--pc)}
+.hbtn{margin-left:auto;background:var(--card);border:2.5px solid var(--ink);border-radius:11px;padding:5px 11px;
+  font-size:.73rem;font-weight:800;display:flex;gap:6px;align-items:center;cursor:pointer;box-shadow:0 3px 0 var(--ink);
+  transition:transform .15s var(--pop)}
+.hbtn:active{transform:translateY(3px);box-shadow:none}
+.hbtn svg.ic{font-size:15px;color:var(--rust)}
+.hbtn+.hbtn{margin-left:0}
+.heronote{position:absolute;right:12px;top:10px;font-size:.58rem;font-weight:800;letter-spacing:.9px;
+  text-transform:uppercase;color:var(--ink2);background:rgba(253,250,242,.82);border-radius:999px;padding:3px 9px}

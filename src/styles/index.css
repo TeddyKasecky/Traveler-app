@@ -1,0 +1,42 @@
+/* Jediné místo, které určuje pořadí stylů.
+ *
+ * Pořadí je závazné. V původním souboru byla všechna pravidla v jednom <style>
+ * a u shodné specificity rozhoduje pořadí – kdyby se soubory načetly jinak,
+ * začaly by se přebíjet jinak. Odpovídá to původnímu <head>: fonty, Leaflet,
+ * potom naše styly ve stejném sledu jako v původním <style>.
+ */
+
+/* 1. fonty a knihovna (v původním souboru dva <link> v hlavičce) */
+@import './fonts.css';
+@import 'leaflet/dist/leaflet.css';
+
+/* 2. základ */
+@import './tokens.css';
+@import './base.css';
+
+/* 3. komponenty – v pořadí původních sekcí */
+@import './components/header.css';
+@import './components/map.css';
+@import './components/fab.css';
+@import './components/tabs.css';
+@import './components/panel.css';
+@import './components/discover.css';
+@import './components/sheet.css';
+@import './components/home.css';
+@import './components/bikepark.css';
+@import './components/prio.css';
+@import './components/wizard.css';
+@import './components/detail-cta.css';
+@import './components/parking.css';
+@import './components/locpill.css';
+@import './components/home-dash.css';
+@import './components/hero.css';
+@import './components/ferrata.css';
+@import './components/minimap.css';
+@import './components/list.css';
+@import './components/filters.css';
+@import './components/intro.css';
+@import './components/toast.css';
+
+/* 4. responzivní přepisy – vždy poslední */
+@import './responsive.css';

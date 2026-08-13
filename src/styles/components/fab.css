@@ -1,0 +1,13 @@
+/* ===== plovoucí ===== */
+.fab{position:fixed;right:14px;z-index:1100;width:54px;height:54px;border-radius:17px;border:var(--line);
+  background:var(--card);box-shadow:0 4px 0 var(--ink);display:grid;place-items:center;transition:transform .18s var(--pop),box-shadow .18s}
+.fab svg.ic{font-size:24px;color:var(--rust)}
+.fab:active{transform:translateY(4px);box-shadow:none}
+#fabFilter{bottom:calc(env(safe-area-inset-bottom) + 92px)}
+#fabLoc{bottom:calc(env(safe-area-inset-bottom) + 158px)} #fabLoc svg.ic{color:var(--lake)}
+.fab .badge{position:absolute;top:-7px;right:-7px;background:var(--rust);color:#fff;border:2px solid var(--ink);
+  border-radius:999px;font-size:.65rem;font-weight:800;min-width:21px;height:21px;display:grid;place-items:center}
+#count{position:fixed;left:14px;bottom:calc(env(safe-area-inset-bottom) + 92px);z-index:1100;background:var(--ink);
+  color:var(--paper);font-size:.74rem;font-weight:800;border-radius:999px;padding:7px 14px;
+  box-shadow:0 3px 0 rgba(0,0,0,.25);display:flex;gap:7px;align-items:center;transition:transform .2s var(--pop)}
+#count.bump{transform:scale(1.12)} #count svg.ic{stroke:var(--paper);font-size:14px}
