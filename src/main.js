@@ -10,6 +10,7 @@ import './styles/index.css'
 
 import { S, on } from './core/store.js'
 import { spustRouter, aktivujZalozku } from './core/router.js'
+import { zjistiPolohu } from './core/geo.js'
 import { vlozSprite } from './icons/sprite.js'
 
 import { initMapa, draw, goTo, zobrazPolohu, mapa } from './map/map.js'
@@ -43,6 +44,11 @@ initWizard()
 for (const b of document.querySelectorAll('#tabs button')) {
   b.onclick = () => aktivujZalozku(b.dataset.tab)
 }
+
+// Původně index-original.html:1240. Při rozdělení do modulů se tenhle řádek
+// ztratil a tlačítko „Moje poloha“ přestalo cokoli dělat – odhalil to až
+// scripts/check-handlers.mjs, který napojení porovnává s originálem za běhu.
+document.getElementById('fabLoc').onclick = zjistiPolohu
 
 /* ---------- kdo na co reaguje ---------- */
 
