@@ -1,5 +1,7 @@
 # Traveler-app
 
+https://traveler-app.teddykasecky.workers.dev
+
 **Vandrbuch** – cestovatelská databáze a wishlist míst po Evropě. 580 míst, mapa,
 plánovač trasy, poznámky a hodnocení. Funguje i bez signálu.
 
