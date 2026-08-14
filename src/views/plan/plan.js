@@ -9,6 +9,7 @@ import { KAT } from '../../data/categories.js'
 import { IC } from '../../icons/sprite.js'
 import { toast } from '../../components/toast.js'
 import { goTo, draw } from '../../map/map.js'
+import { dnyPlanu, pridejDen, presunDoDne, zrusDny } from './dny.js'
 
 /** Kolik zastávek unese odkaz do Google Maps. */
 const MAX_DO_NAVIGACE = 10
@@ -57,7 +58,9 @@ export function renderPlan() {
           : '<div class="meta">Poskládej zastávky, spočítám kilometry a pošlu trasu do navigace.</div>'
       }
       <div class="btnrow" style="margin-bottom:0">
-        <button class="btn small" id="planNav">${IC('i-nav')}Do navigace</button>
+        <button class="btn small" id="planNav">${IC('i-nav')}Google Maps</button>
+        <button class="btn small" id="planNavApple" title="Apple Maps – jen další zastávka">${IC('i-nav')}Apple</button>
+        <button class="btn small" id="planNavWaze" title="Waze – jen další zastávka">${IC('i-nav')}Waze</button>
         ${items.length > 2 ? `<button class="btn small" id="planOpt">${IC('i-sparkles')}Seřadit podle trasy</button>` : ''}
         <button class="btn small" id="planShare">${IC('i-copy')}Kopírovat</button>
         <button class="btn small" id="planClear">${IC('i-trash')}</button>
@@ -69,30 +72,63 @@ export function renderPlan() {
     return
   }
 
+  const dny = dnyPlanu()
+  const vicDnu = dny.length > 1
+
+  // Průběžné číslování napříč dny. parity.mjs hlídá, že „Kopírovat“ vyrobí
+  // text s „1. “, „2. “ – kdyby se čísla resetovala v každém dni, přestalo by
+  // to sedět, a hlavně by uživatel nevěděl, kolikátá zastávka to celkem je.
+  let poradi = 0
+
   wrap.innerHTML =
     head +
-    items
-      .map((p, i) => {
-        const k = KAT[p.k] || {}
-        const leg = i > 0 ? dkm(items[i - 1], p) * KLIKATOST : 0
-        return `${
-          i > 0
-            ? `<div class="meta" style="margin:-6px 0 8px 22px;display:flex;align-items:center;gap:7px">${IC('i-nav', 'font-size:13px;color:var(--rust)')}${fmtKm(leg)}</div>`
-            : ''
-        }
-      <div class="card" data-id="${p.id}" style="--pc:${k.c}"><span class="spine"></span>
-      <span class="dist">${i + 1}.</span>
-      <h3>${IC(k.i)}${esc(p.n)}</h3>
-      ${p.sh ? `<div class="short">${esc(p.sh)}</div>` : ''}
-      <div class="meta">${esc(p.r || p.z)} · ${esc(p.d)}${store.notes[p.id] ? ' · ✎ poznámka' : ''}</div>
-      <div class="btnrow" style="margin:9px 0 0">
-        <button class="btn small" data-act="open">Detail</button>
-        <button class="btn small" data-act="up">${IC('i-up')}</button>
-        <button class="btn small" data-act="down">${IC('i-down')}</button>
-        <button class="btn small" data-act="rm">${IC('i-x')}</button>
-      </div></div>`
+    dny
+      .map((den, di) => {
+        const mista = den.map((id) => S.byId[id]).filter(Boolean)
+        const sd = planStats(mista)
+        const hlavicka = vicDnu
+          ? `<div class="denhd">${IC('i-kalendar')}<b>Den ${di + 1}</b>
+              <span>${mista.length} ${mista.length === 1 ? 'zastávka' : mista.length < 5 ? 'zastávky' : 'zastávek'}${
+                mista.length > 1 ? ` · ${fmtKm(sd.road)}` : ''
+              }</span></div>`
+          : ''
+        return (
+          hlavicka +
+          mista
+            .map((p, i) => {
+              const k = KAT[p.k] || {}
+              poradi++
+              const predchozi = i > 0 ? mista[i - 1] : null
+              const leg = predchozi ? dkm(predchozi, p) * KLIKATOST : 0
+              return `${
+                predchozi
+                  ? `<div class="meta" style="margin:-6px 0 8px 22px;display:flex;align-items:center;gap:7px">${IC('i-nav', 'font-size:13px;color:var(--akcent)')}${fmtKm(leg)}</div>`
+                  : ''
+              }
+            <div class="card" data-id="${p.id}" style="--pc:${k.c}"><span class="spine"></span>
+            <span class="dist">${poradi}.</span>
+            <h3>${IC(k.i)}${esc(p.n)}</h3>
+            ${p.sh ? `<div class="short">${esc(p.sh)}</div>` : ''}
+            <div class="meta">${esc(p.r || p.z)} · ${esc(p.d)}${store.notes[p.id] ? ' · ✎ poznámka' : ''}</div>
+            <div class="btnrow" style="margin:9px 0 0">
+              <button class="btn small" data-act="open">Detail</button>
+              <button class="btn small" data-act="up">${IC('i-up')}</button>
+              <button class="btn small" data-act="down">${IC('i-down')}</button>
+              ${vicDnu ? `<button class="btn small" data-act="denzpet" title="O den zpět">${IC('i-kalendar')}${IC('i-up', 'font-size:11px')}</button>` : ''}
+              ${vicDnu ? `<button class="btn small" data-act="dendal" title="O den dál">${IC('i-kalendar')}${IC('i-down', 'font-size:11px')}</button>` : ''}
+              <button class="btn small" data-act="rm">${IC('i-x')}</button>
+            </div></div>`
+            })
+            .join('')
+        )
       })
-      .join('')
+      .join('') +
+    (items.length > 1
+      ? `<div class="btnrow" style="margin-top:4px">
+          <button class="btn small" id="planDen">${IC('i-plus')}Přidat den</button>
+          ${vicDnu ? `<button class="btn small" id="planBezDnu">Zrušit dny</button>` : ''}
+        </div>`
+      : '')
 
   for (const c of wrap.querySelectorAll('.card[data-id]')) {
     const id = c.dataset.id
@@ -100,7 +136,34 @@ export function renderPlan() {
     c.querySelector('[data-act=rm]').onclick = () => togglePlan(id)
     c.querySelector('[data-act=up]').onclick = () => posun(id, -1)
     c.querySelector('[data-act=down]').onclick = () => posun(id, 1)
+    // Tlačítka dnů jsou v kartě jen když se plán na dny dělí.
+    const zpet = c.querySelector('[data-act=denzpet]')
+    if (zpet)
+      zpet.onclick = () => {
+        presunDoDne(id, -1)
+        draw()
+      }
+    const dal = c.querySelector('[data-act=dendal]')
+    if (dal)
+      dal.onclick = () => {
+        presunDoDne(id, 1)
+        draw()
+      }
   }
+
+  const den = document.getElementById('planDen')
+  if (den)
+    den.onclick = () => {
+      pridejDen()
+      draw()
+    }
+  const bezDnu = document.getElementById('planBezDnu')
+  if (bezDnu)
+    bezDnu.onclick = () => {
+      zrusDny()
+      draw()
+      toast('Dny zrušeny, zastávky zůstaly')
+    }
   bindPlanBtns()
 }
 
@@ -118,8 +181,14 @@ function bindPlanBtns() {
   const nav = document.getElementById('planNav')
   if (!nav) return
 
+  /** Zastávky plánu jako místa, ořezané na to, co unese odkaz. */
+  const zastavky = () => store.plan.map((id) => S.byId[id]).filter(Boolean).slice(0, MAX_DO_NAVIGACE)
+
+  // Google Maps unese celou trasu. Zůstává pod #planNav a otevírá okno rovnou
+  // v obsluze kliknutí – parity.mjs na to spoléhá a prohlížeče blokují
+  // window.open, které nepřijde přímo z gesta uživatele.
   nav.onclick = () => {
-    const items = store.plan.map((id) => S.byId[id]).filter(Boolean).slice(0, MAX_DO_NAVIGACE)
+    const items = zastavky()
     if (!items.length) {
       toast('Plán je prázdný')
       return
@@ -131,6 +200,28 @@ function bindPlanBtns() {
       '_blank'
     )
   }
+
+  // Apple Maps ani Waze neumějí spolehlivě předat víc zastávek najednou.
+  // Posílá se proto první zastávka a řekne se to nahlas – jinak by si člověk
+  // na cestě myslel, že má v navigaci celou trasu, a měl by tam jeden bod.
+  const jedenCil = (adresa, jmeno) => () => {
+    const items = zastavky()
+    if (!items.length) {
+      toast('Plán je prázdný')
+      return
+    }
+    window.open(adresa(items[0]), '_blank')
+    if (items.length > 1) toast(`${jmeno}: poslala jsem první zastávku`)
+  }
+
+  document.getElementById('planNavApple').onclick = jedenCil(
+    (p) => `https://maps.apple.com/?daddr=${p.lat},${p.lon}&dirflg=d`,
+    'Apple Maps'
+  )
+  document.getElementById('planNavWaze').onclick = jedenCil(
+    (p) => `https://waze.com/ul?ll=${p.lat},${p.lon}&navigate=yes`,
+    'Waze'
+  )
 
   // Hladové řazení: začni u nejbližšího místa a pak vždy skoč na nejbližší další.
   const opt = document.getElementById('planOpt')

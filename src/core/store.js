@@ -63,6 +63,9 @@ export const store = nacti(KEY, {
   stav: {},
   rating: {},
   plan: [],
+  /** Délky dnů v plánu, např. [3,2]. Prázdné = plán se na dny nedělí.
+   *  Vedle `plan`, ne místo něj – viz views/plan/dny.js. */
+  planDny: [],
   prio: {},
   dataOverride: null,
   seen: false,

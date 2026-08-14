@@ -1,0 +1,6 @@
+/* ===== dny v plánu ===== */
+.denhd{display:flex;align-items:center;gap:8px;margin:14px 2px 9px;font-size:.7rem;font-weight:800;
+  letter-spacing:1.2px;text-transform:uppercase;color:var(--text2)}
+.denhd svg.ic{font-size:16px;color:var(--akcent)}
+.denhd b{font-family:var(--f-disp);font-weight:700;font-size:.95rem;letter-spacing:0;text-transform:none;color:var(--text)}
+.denhd span{margin-left:auto;font-weight:700;letter-spacing:.2px;text-transform:none}
