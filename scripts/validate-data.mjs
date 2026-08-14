@@ -1,7 +1,10 @@
 /**
- * Kontrola src/data/places.json.
+ * Kontrola dat míst.
  *
  *   npm run validate
+ *
+ * Kontroluje `places.json` i přihrádku `places-nova.json`, a to **dohromady** –
+ * jinak by neprošla duplicitní id přes hranici souborů ani vazby v `nb`.
  *
  * Samotná pravidla jsou v src/data/validate.js, ať je formulář na přidání místa
  * kontroluje úplně stejně. Tenhle soubor je jen obal: načti, zavolej, vypiš.
@@ -16,6 +19,7 @@ import { zkontrolujData, KLICE } from '../src/data/validate.js'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const FILE = path.join(ROOT, 'src', 'data', 'places.json')
+const FILE_NOVA = path.join(ROOT, 'src', 'data', 'places-nova.json')
 
 const barva = process.stdout.isTTY && !process.env.NO_COLOR
 const cerveny = (s) => (barva ? `\x1b[31m${s}\x1b[0m` : s)
@@ -23,27 +27,40 @@ const zluty = (s) => (barva ? `\x1b[33m${s}\x1b[0m` : s)
 const zeleny = (s) => (barva ? `\x1b[32m${s}\x1b[0m` : s)
 const seda = (s) => (barva ? `\x1b[90m${s}\x1b[0m` : s)
 
-let raw
-try {
-  raw = fs.readFileSync(FILE, 'utf8')
-} catch {
-  console.error(cerveny(`Soubor ${path.relative(ROOT, FILE)} se nepodařilo přečíst.`))
-  process.exit(1)
+/** Načte soubor s místy. Přihrádka smí chybět, hlavní soubor ne. */
+function nactiMista(soubor, nepovinny = false) {
+  let raw
+  try {
+    raw = fs.readFileSync(soubor, 'utf8')
+  } catch {
+    if (nepovinny) return []
+    console.error(cerveny(`Soubor ${path.relative(ROOT, soubor)} se nepodařilo přečíst.`))
+    process.exit(1)
+  }
+  try {
+    const data = JSON.parse(raw)
+    if (!Array.isArray(data)) throw new Error('není to pole')
+    return data
+  } catch (e) {
+    console.error(cerveny(`${path.relative(ROOT, soubor)} není platný JSON:`), e.message)
+    process.exit(1)
+  }
 }
 
-let places
-try {
-  places = JSON.parse(raw)
-} catch (e) {
-  console.error(cerveny('places.json není platný JSON:'), e.message)
-  process.exit(1)
-}
+const zaklad = nactiMista(FILE)
+const nova = nactiMista(FILE_NOVA, true)
+const places = [...zaklad, ...nova]
 
 const { nalezy, chyb, varovani } = zkontrolujData(places)
 
 /* ---------- výpis ---------- */
 
-console.log(`Kontroluji ${path.relative(ROOT, FILE)} – ${places.length} míst\n`)
+console.log(
+  `Kontroluji ${places.length} míst` +
+    ` – ${zaklad.length} v places.json` +
+    (nova.length ? ` + ${nova.length} v places-nova.json` : '') +
+    '\n'
+)
 
 if (nalezy.length) {
   // seskupit podle místa, ať se to dá číst

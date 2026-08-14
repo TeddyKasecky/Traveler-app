@@ -12,7 +12,8 @@
 import { KEY, PKEY, PREFK, nacti, uloz } from './storage.js'
 // Atribut `with { type: 'json' }` vyžaduje Node, když se modul spouští mimo Vite
 // (kontrolní skripty ve scripts/). Vite i prohlížeče mu rozumí taky.
-import VESTAVENA_DATA from '../data/places.json' with { type: 'json' }
+import ZAKLAD from '../data/places.json' with { type: 'json' }
+import NOVA from '../data/places-nova.json' with { type: 'json' }
 import { postavIndex } from './search.js'
 
 /**
@@ -85,8 +86,15 @@ export const S = {
   hiId: null,
 }
 
-/** Vestavěná data. Drží se stranou kvůli tlačítku „Vrátit vestavěná data“. */
-export { VESTAVENA_DATA }
+/**
+ * Vestavěná data. Drží se stranou kvůli tlačítku „Vrátit vestavěná data“.
+ *
+ * Skládají se ze dvou souborů. `places.json` je hlavní, `places-nova.json` je
+ * malá přihrádka na čerstvě přidaná místa – hlavní soubor má 26 tisíc řádků
+ * a vkládat do něj text na mobilu je utrpení. Kontrola i `npm run slouc`
+ * pracují s obojím dohromady, takže zdroj pravdy je pořád jeden.
+ */
+export const VESTAVENA_DATA = [...ZAKLAD, ...NOVA]
 
 /** Přepočítá rejstřík podle id a index pro hledání. */
 export function reindex() {

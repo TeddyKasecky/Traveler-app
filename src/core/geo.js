@@ -29,6 +29,30 @@ export function dkm(a, b) {
  */
 export const fmtKm = (d) => (d < 10 ? `${d.toFixed(1).replace('.', ',')} km` : `${Math.round(d)} km`)
 
+/** Do jaké dálky se ještě hledají sousedi a kolik se jich uloží. */
+export const OKOLI_KM = 45
+export const OKOLI_POCET = 6
+
+/**
+ * Spočítá pole `nb` – místa poblíž, seřazená od nejbližšího.
+ *
+ * Pravidlo pochází z původní aplikace, kde ho měl import CSV zapsané u sebe.
+ * Formulář na přidání místa i `npm run slouc` počítají totéž, takže je tady
+ * jednou pro všechny. Vzdálenost se zaokrouhluje na jedno desetinné místo,
+ * přesně jako v datech.
+ *
+ * @param {{id:string, lat:number, lon:number}} misto
+ * @param {Array<{id:string, lat:number, lon:number}>} vsechna
+ * @returns {Array<{id:string, d:number}>}
+ */
+export function spocitejOkoli(misto, vsechna) {
+  return vsechna
+    .map((q) => ({ id: q.id, d: +dkm(misto, q).toFixed(1) }))
+    .filter((x) => x.id !== misto.id && x.d <= OKOLI_KM)
+    .sort((a, b) => a.d - b.d)
+    .slice(0, OKOLI_POCET)
+}
+
 /**
  * Zeptá se prohlížeče na polohu.
  *

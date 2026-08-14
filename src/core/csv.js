@@ -12,7 +12,7 @@
  *   - výsledek se uloží do localStorage jako dataOverride (~565 kB).
  */
 
-import { dkm } from './geo.js'
+import { spocitejOkoli } from './geo.js'
 
 /** Kombinující diakritika – viz komentář ve search.js. */
 const DIAKRITIKA = new RegExp('[\\u0300-\\u036f]', 'g')
@@ -117,14 +117,8 @@ export function mistaZCsv(text) {
     }))
     .filter((p) => !isNaN(p.lat))
 
-  // dopočítej okolí
-  for (const p of data) {
-    p.nb = data
-      .map((q) => ({ id: q.id, d: +dkm(p, q).toFixed(1) }))
-      .filter((x) => x.id !== p.id && x.d <= 45)
-      .sort((a, b) => a.d - b.d)
-      .slice(0, 6)
-  }
+  // dopočítej okolí – pravidlo je sdílené s formulářem a s `npm run slouc`
+  for (const p of data) p.nb = spocitejOkoli(p, data)
   return data
 }
 
