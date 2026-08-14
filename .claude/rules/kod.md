@@ -86,6 +86,18 @@ router nesmí znát obrazovky.
 - Obsluha událostí se věší jako `prvek.onclick = …` (ne `addEventListener`), v souladu
   s originálem. `scripts/check-handlers.mjs` porovnává napojení s originálem za běhu.
 
+## Mapa
+
+- **Do stránky jdou jen špendlíky ve výřezu** (`srovnejVyrez()` v `src/map/map.js`).
+  Změřeno: 580 kusů naráz stálo při posunu mapy ~850 ms přepočtu stylů. Nešlo o skript
+  ani o rozvržení — Leaflet přepíná třídy na kontejneru a prohlížeč přepočítá styly všech
+  špendlíků pod ním. Vzhled se tím nemění, ověřeno na 0 rozdílných pixelů.
+- `draw()` staví špendlíky znovu (stavy se mohly změnit), posun mapy jen doplňuje
+  a odebírá. Špendlík přidaný posunem **nesmí nabíhat animací** — `pinIcon(p, i, true)`.
+- **Počítadlo míst ukazuje všechna filtrovaná místa**, ne jen vykreslená.
+- Zjednodušený podklad pro offline leží v samostatném pane pod dlaždicemi a nepřepíná se,
+  viz `src/map/offlineMap.js`.
+
 ## CSS
 
 - Barvy, rozměry a stíny **výhradně přes proměnné z `src/styles/tokens.css`**, nikdy natvrdo.

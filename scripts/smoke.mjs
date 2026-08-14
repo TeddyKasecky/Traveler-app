@@ -103,7 +103,10 @@ await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText()
 await kontrola('chipy kategorií', () => page.locator('#chips .chip').count(), 10)
 await kontrola('naplněné oblasti ve filtru', () => page.locator('#fReg option').count(), 118)
 await kontrola('mapa má dlaždicovou vrstvu', () => page.locator('.leaflet-tile-pane').count(), 1)
-await kontrola('špendlíky na mapě', () => page.locator('.badge-pin').count(), 580)
+// Do stránky se vkládají jen špendlíky ve výřezu – 580 kusů naráz stálo skoro
+// vteřinu přepočtu stylů při každém posunu mapy. Že se tím žádné místo neztratí,
+// ověřuje kontrola „po oddálení jsou vidět všechna místa“ níž.
+await kontrola('špendlíky ve výřezu', () => page.locator('.badge-pin').count().then((n) => n > 0 && n <= 580))
 await kontrola('uvítání se ukázalo', () => page.locator('#intro.show').count(), 1)
 
 // zavřít uvítání
@@ -135,6 +138,18 @@ await page.click('#tabs button[data-tab="disc"]')
 await page.waitForTimeout(300)
 await kontrola('kolekce v Objevuj', () => page.locator('.coll').count(), 11)
 await kontrola('oblasti v Objevuj', () => page.locator('.reg').count() )
+
+// Výřez: po oddálení na celý svět musí být vidět všechna místa. Tohle je pojistka
+// proti tomu, aby vkládání jen viditelných špendlíků některé místo tiše ztratilo.
+await page.click('#tabs button[data-tab="map"]')
+await page.waitForTimeout(400)
+await page.mouse.move(195, 480)
+for (let i = 0; i < 6; i++) {
+  await page.mouse.wheel(0, 400)
+  await page.waitForTimeout(250)
+}
+await page.waitForTimeout(1000)
+await kontrola('po oddálení jsou vidět všechna místa', () => page.locator('.badge-pin').count(), 580)
 
 // detail místa
 await page.click('#tabs button[data-tab="list"]')
@@ -235,9 +250,9 @@ if (!SINGLE) {
   await page.waitForTimeout(1500)
 
   await kontrola('offline: aplikace naběhla', () => page.locator('#totalN').innerText(), '580')
-  // Po znovunačtení jsou filtry zase prázdné – stav filtrů se nikdy neukládal,
-  // stejně jako v původní aplikaci. Proto zase všech 580 špendlíků.
-  await kontrola('offline: špendlíky na mapě', () => page.locator('.badge-pin').count(), 580)
+  await kontrola('offline: špendlíky ve výřezu', () =>
+    page.locator('.badge-pin').count().then((n) => n > 0 && n <= 580)
+  )
   await kontrola('offline: styly se načetly', () =>
     page.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(244, 239, 226)')
   )

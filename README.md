@@ -173,7 +173,7 @@ Poprvé je potřeba jednou `npm install`.
 
 | Příkaz | Co ověří |
 |---|---|
-| `npm run smoke` | proklikání v prohlížeči, 55 kontrol |
+| `npm run smoke` | proklikání v prohlížeči, 56 kontrol |
 | `npm run check-uloziste` | že se poznámky neztratí, když dojde místo |
 | `npm run smoke:single` | totéž pro variantu z disku, 45 kontrol |
 | `npm run parity` | kontrolní seznam z [`PARITA.md`](PARITA.md), 25 bodů |

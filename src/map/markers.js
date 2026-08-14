@@ -16,8 +16,11 @@ import { IC } from '../icons/sprite.js'
  *
  * @param {Record<string, any>} p
  * @param {number} idx  pořadí ve vykreslované sadě
+ * @param {boolean} [tise]  bez náběhové animace – špendlík přibyl posunem mapy,
+ *                          ne překreslením. Bez tohohle by při každém posunu
+ *                          nabíhaly na okrajích špendlíky, což dřív nedělaly.
  */
-export function pinIcon(p, idx) {
+export function pinIcon(p, idx, tise = false) {
   const k = KAT[p.k] || { c: 'var(--ink2)', i: 'i-spark' }
   const visited = store.stav[p.id] === 'visited'
   const cls =
@@ -31,7 +34,7 @@ export function pinIcon(p, idx) {
     iconSize: [34, 34],
     iconAnchor: [17, 17],
     html:
-      `<div class="${cls}" style="--pc:${k.c};animation-delay:${Math.min(idx * 5, 240)}ms">` +
+      `<div class="${cls}" style="--pc:${k.c};${tise ? 'animation:none' : `animation-delay:${Math.min(idx * 5, 240)}ms`}">` +
       `${IC(k.i)}${visited ? `<span class="tick">${IC('i-check')}</span>` : ''}</div>`,
   })
 }

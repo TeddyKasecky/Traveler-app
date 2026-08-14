@@ -21,6 +21,26 @@ let vrstva
 /** @type {L.CircleMarker|null} */
 let markerPolohy = null
 
+/**
+ * Do stránky se vkládají jen špendlíky, které jsou vidět.
+ *
+ * Měření na 4× zpomaleném procesoru: posun mapy stál 849 ms přepočtu stylů,
+ * přiblížení 270 ms. Nešlo o skript ani o rozvržení – Leaflet při tažení
+ * a přibližování přepíná třídy na kontejneru a prohlížeč musí přepočítat styly
+ * všech špendlíků pod ním. Každý má `::after`, stín a proměnnou `--pc`, takže
+ * 580 kusů je znát.
+ *
+ * Vzhled se tím nemění: co je za okrajem, stejně nikdo nevidí. Rezerva kolem
+ * výřezu je tu proto, aby špendlíky nedobíhaly až po zastavení posunu.
+ */
+const REZERVA_VYREZU = 0.4
+
+/** Místa, která prošla filtry. Drží se mezi překresleními kvůli posunu mapy. */
+let vFiltru = []
+
+/** @type {Map<string, L.Marker>} id místa → špendlík, který je právě na mapě */
+const naMape = new Map()
+
 /** Vytvoří mapu. Volá se jednou při startu. */
 export function initMapa() {
   mapa = L.map('map', { zoomControl: false }).setView([47.2, 10.5], 5)
@@ -41,6 +61,10 @@ export function initMapa() {
   })
   dlazdice.on('tileload', () => hlasStavDlazdic(false))
 
+  // Po každém posunu i přiblížení srovnat, které špendlíky jsou vidět.
+  // `moveend` přijde i po zoomu, takže stačí jedna událost.
+  mapa.on('moveend', () => srovnejVyrez(true))
+
   // Při posunu mapy se rozjede tečkovaná „silnice“ v hlavičce.
   const road = document.getElementById('topRoad')
   mapa.on('movestart', () => road.classList.add('go'))
@@ -52,17 +76,17 @@ export function initMapa() {
  * a nakonec oznámí, ať se obnoví otevřený panel.
  */
 export function draw() {
+  // Stavy špendlíků (navštíveno, v plánu, zvýrazněno) se mohly změnit, takže se
+  // zahodí všechny a postaví znovu – stejně jako dřív. Posun mapy naopak jen
+  // doplňuje a odebírá, viz `srovnejVyrez()`.
   vrstva.clearLayers()
-  const vs = visible()
-  vs.forEach((p, i) =>
-    L.marker([p.lat, p.lon], { icon: pinIcon(p, i) })
-      .on('click', () => emit('otevriDetail', { p }))
-      .addTo(vrstva)
-  )
+  naMape.clear()
+  vFiltru = visible()
+  srovnejVyrez(false)
   drawPlanLine(mapa)
 
   const c = document.getElementById('count')
-  document.getElementById('countN').textContent = `${vs.length} míst`
+  document.getElementById('countN').textContent = `${vFiltru.length} míst`
   c.classList.remove('bump')
   void c.offsetWidth // vynutí restart animace
   c.classList.add('bump')
@@ -76,6 +100,38 @@ export function draw() {
   b.textContent = n
 
   emit('prekresleno')
+}
+
+/**
+ * Doplní špendlíky, které se dostaly do výřezu, a odebere ty, co z něj vypadly.
+ *
+ * Počítadlo míst se nemění – ukazuje pořád všechna místa, která prošla filtry,
+ * ne jen ta právě vykreslená.
+ *
+ * @param {boolean} tise  true = špendlíky přibyly posunem, ať nenabíhají animací
+ */
+function srovnejVyrez(tise = true) {
+  const meze = mapa.getBounds().pad(REZERVA_VYREZU)
+  const majiByt = new Set()
+
+  let i = 0
+  for (const p of vFiltru) {
+    if (!meze.contains([p.lat, p.lon])) continue
+    majiByt.add(p.id)
+    if (!naMape.has(p.id)) {
+      const m = L.marker([p.lat, p.lon], { icon: pinIcon(p, i, tise) })
+        .on('click', () => emit('otevriDetail', { p }))
+        .addTo(vrstva)
+      naMape.set(p.id, m)
+    }
+    i++
+  }
+
+  for (const [id, m] of naMape) {
+    if (majiByt.has(id)) continue
+    vrstva.removeLayer(m)
+    naMape.delete(id)
+  }
 }
 
 /**

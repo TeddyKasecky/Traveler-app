@@ -17,7 +17,7 @@ shodná s tím, co běží dnes.
 | CSS pravidlo po pravidle | `npm run check-css` | **338 pravidel sedí**, jediné rozdíly jsou odsouhlasené |
 | Filtry, 134 kombinací | `npm run check-filters` | **všechny sedí** |
 | Napojení tlačítek | `npm run check-handlers` | **61 / 61** |
-| Proklikání, hostovaná | `npm run smoke` | **55 / 55** |
+| Proklikání, hostovaná | `npm run smoke` | **56 / 56** |
 | Proklikání, single-file | `npm run smoke:single` | **45 / 45** |
 | Kontrolní seznam níž | `npm run parity` | **25 / 25** |
 | Úložiště a plná paměť | `npm run check-uloziste` | **13 / 13** |
@@ -35,16 +35,24 @@ porovnáno po pixelech.
 | Obrazovka | Rozdílných pixelů | Podíl | Co to je |
 |---|---|---|---|
 | Domů | 2 726 | 0,21 % | logo |
-| Mapa | 2 726 | 0,21 % | logo |
 | Objevuj | 2 726 | 0,21 % | logo |
 | Seznam | 2 726 | 0,21 % | logo |
 | Plán | 2 726 | 0,21 % | logo |
-| Detail | 2 726 | 0,21 % | logo |
-| Filtry | 3 571 | 0,27 % | logo pod ztmavením |
+| Detail | 3 131 | 0,24 % | logo + mapa prosvítající zaoblenými rohy panelu |
+| Filtry | 65 672 | 4,99 % | logo + mapa prosvítající ztmavením |
+| Mapa | 705 874 | 53,61 % | **zjednodušená offline mapa** místo šedé plochy (Q11) |
 | Průvodce | 737 494 | 56,01 % | **odsouhlasená oprava** – dřív byl neviditelný |
 
-**Šest obrazovek se liší přesně o 2 726 pixelů, a je to pokaždé to samé logo.**
-Mimo něj a průvodce se nezměnil jediný pixel.
+**Čtyři obrazovky se liší přesně o 2 726 pixelů, a je to pokaždé to samé logo.**
+
+Mapa, Filtry a Detail se rozešly až se zjednodušenou offline mapou (Q11). Porovnání
+totiž **blokuje dlaždice v obou verzích**, aby výsledek nekolísal podle sítě – originál
+tedy ukazuje šeď a nová verze podklad, který na šeď právě reaguje. U Filtrů a Detailu
+je to jen to, co prosvítá ztmavením a zaoblenými rohy panelu.
+
+Vkládání jen viditelných špendlíků (Q12) na těchhle číslech **nic nezměnilo**: porovnání
+snímku mapy s všemi 580 špendlíky a jen s těmi ve výřezu dalo **0 rozdílných pixelů
+z 1 316 640**. Špendlík mimo výřez je z definice mimo obrazovku.
 
 Čísla jsou opakovatelná. Původně skákala mezi 2 700 a 300 000, aniž by se v kódu
 cokoli změnilo, a to ze tří důvodů – všechny byly na straně měření, ne aplikace:
@@ -233,6 +241,30 @@ třídě, 6× starším nebo přehřátým telefonům.
 **Závěr: rychlost řešit nepotřebujeme.** I na záměrně zmrzačeném procesoru je appka
 kompletní do 1,5 sekundy a první obraz do 0,4 s.
 
+### Doplněno: co stojí ovládání, ne start
+
+Tabulka výš měří **start**. Uživatel ale hlásil, že se na telefonu seká **posun mapy**.
+Doměřeno při 4× zpomalení, součty blokujících úloh:
+
+| Co | Před | Po (jen viditelné špendlíky) |
+|---|---|---|
+| Posun mapy, pohled na celou Evropu | 855 ms · z toho styly 608 ms | ~stejně (v tom pohledu je 544 z 580 špendlíků opravdu vidět) |
+| Posun mapy, přiblíženo jako na cestě | 855 ms | **žádná blokující úloha** |
+| Otevření seznamu s 250 kartami | 771 ms · z toho rozvržení 627 ms | beze změny, neřešeno |
+| Rolování seznamu | žádná blokující úloha | beze změny |
+
+Podstatné je, **z čeho se ten čas skládal**: ne ze skriptu a ne z rozvržení, ale
+z **přepočtu stylů**. Leaflet při tažení přepíná třídy na kontejneru mapy a prohlížeč
+musí přepočítat styly všech špendlíků pod ním; každý má `::after`, stín a proměnnou
+`--pc`. Řešením je tedy mít jich v stránce méně, ne kreslit je jinak.
+
+Rolování seznamu **neseká** – co je za sekání považované, je jednorázové zamrznutí
+při otevření seznamu, a to zůstalo.
+
+> Čísla jsou orientační. Měření na zatíženém počítači kolísá i o desítky procent, takže
+> se dá věřit poměru a řádu, ne jednotlivým milisekundám. Údaje ze startovní tabulky výš
+> pocházejí z jiného běhu a s těmihle se porovnávat nedají.
+
 Zajímavé je, kde čas opravdu je. Obava ze zadání mířila na 535 kB dat, která se
 parsují při startu – jenže **veškerý JavaScript** včetně toho parsování zabere na
 6× zpomaleném procesoru 617 ms. Dvakrát tolik spolykalo **rozvržení a styly**, tedy
@@ -302,5 +334,6 @@ Všechno ostatní je 1:1. Tohle je úplný seznam toho, co se liší.
 | Q9 | data z importu CSV mají vlastní klíč | ~565 kB v záznamu s poznámkami se přepisovalo při každé změně | `src/core/storage.js: DATAK` |
 | Q10 | psaní poznámky se ukládá až po dopsání | dřív zápis celého store při každé klávese, na mobilu to sekalo | `src/core/store.js: saveOdlozene` |
 | Q11 | bez signálu se pod dlaždicemi ukáže zjednodušená mapa | originál i naše první verze měly offline šedou plochu | `src/map/offlineMap.js`, `src/data/basemap.json` |
+| Q12 | do stránky jdou jen špendlíky ve výřezu | 580 kusů naráz stálo skoro vteřinu přepočtu stylů při každém posunu mapy | `src/map/map.js: srovnejVyrez` |
 
 Nálezy mimo rozsah přestavby, které jsme se rozhodli **nechat být**, jsou v `NAPADY.md`.

@@ -66,11 +66,21 @@ const srv = http.createServer((req, res) => {
 })
 await new Promise((r) => srv.listen(PORT, r))
 
-/** Zaznamená okamžik, kdy je na mapě všech 580 špendlíků. */
+/**
+ * Zaznamená okamžik, kdy jsou špendlíky dokreslené.
+ *
+ * Nečeká se na 580 kusů: do stránky se vkládají jen ty ve výřezu, takže by se
+ * jich tolik nikdy nesešlo. Čeká se, až se jejich počet přestane měnit.
+ */
 const SLEDUJ = () => {
   window.__tPiny = null
+  window.__pinu = 0
+  let stejne = 0
   const tik = () => {
-    if (document.querySelectorAll('.badge-pin').length >= 580) {
+    const n = document.querySelectorAll('.badge-pin').length
+    stejne = n > 0 && n === window.__pinu ? stejne + 1 : 0
+    window.__pinu = n
+    if (stejne >= 3) {
       window.__tPiny = performance.now()
       return
     }
@@ -105,6 +115,7 @@ async function zmer(zpomaleni) {
       load: n.loadEventEnd,
       fcp: fcp ? fcp.startTime : null,
       piny: window.__tPiny,
+      pinu: window.__pinu,
     }
   })
 
@@ -133,7 +144,7 @@ async function zmer(zpomaleni) {
 }
 
 console.log('Start aplikace\n')
-console.log('  procesor   první obraz   DOM hotový   580 špendlíků   seznam 250 karet')
+console.log('  procesor   první obraz   DOM hotový   špendlíky hotové   seznam 250 karet')
 console.log('  ' + '─'.repeat(74))
 
 const vysledky = []
@@ -158,6 +169,7 @@ for (const v of vysledky) {
 }
 
 console.log(`\n  Karet v seznamu: ${vysledky[0].karet} (strop je 250, viz NAPADY.md N10)`)
+console.log(`  Špendlíků ve výřezu: ${vysledky[0].pinu} z 580 – do stránky jdou jen viditelné`)
 
 await prohlizec.close()
 srv.close()

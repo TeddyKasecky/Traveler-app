@@ -56,7 +56,7 @@ npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
 
-npm run smoke            # proklikání v prohlížeči, 55 kontrol
+npm run smoke            # proklikání v prohlížeči, 56 kontrol
 npm run smoke:single     # totéž pro single-file variantu, 45 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 25 bodů
 npm run check-data       # data 1:1 s původní aplikací
