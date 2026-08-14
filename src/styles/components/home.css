@@ -1,6 +1,6 @@
 /* ===== Domů ===== */
 #panelHome .inner{padding:0 0 90px}
-.homehero{position:relative;height:158px;border-bottom:var(--line);background:linear-gradient(180deg,#EAF0EA 0%,var(--paper) 78%);overflow:hidden}
+.homehero{position:relative;height:158px;border-bottom:var(--line);background:linear-gradient(180deg,var(--plocha-zelena) 0%,var(--bg) 78%);overflow:hidden}
 .homehero svg{display:block;width:100%;height:100%}
 .homehero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:2}
 .htitle{padding:12px 20px 0}
@@ -17,7 +17,7 @@
   box-shadow:0 4px 0 var(--ink);font-weight:800;font-size:.95rem;background:var(--card);cursor:pointer;text-align:left;
   transition:transform .15s var(--pop),box-shadow .15s}
 .hact:active{transform:translateY(4px);box-shadow:none}
-.hact.big{background:linear-gradient(180deg,#F6D9C4,#EFC1A2)}
+.hact.big{background:var(--plocha-tepla)}
 .hact .aico{width:40px;height:40px;border-radius:13px;border:2.5px solid var(--ink);background:var(--paper);display:grid;place-items:center;flex:0 0 auto}
 .hact .aico svg.ic{font-size:21px;color:var(--rust)}
 .hact small{display:block;font-size:.68rem;font-weight:700;color:var(--ink2)}

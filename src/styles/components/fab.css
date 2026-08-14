@@ -5,7 +5,7 @@
 .fab:active{transform:translateY(4px);box-shadow:none}
 #fabFilter{bottom:calc(env(safe-area-inset-bottom) + 92px)}
 #fabLoc{bottom:calc(env(safe-area-inset-bottom) + 158px)} #fabLoc svg.ic{color:var(--lake)}
-.fab .badge{position:absolute;top:-7px;right:-7px;background:var(--rust);color:#fff;border:2px solid var(--ink);
+.fab .badge{position:absolute;top:-7px;right:-7px;background:var(--upozorneni);color:var(--na-upozorneni);border:2px solid var(--ink);
   border-radius:999px;font-size:.65rem;font-weight:800;min-width:21px;height:21px;display:grid;place-items:center}
 #count{position:fixed;left:14px;bottom:calc(env(safe-area-inset-bottom) + 92px);z-index:1100;background:var(--ink);
   color:var(--paper);font-size:.74rem;font-weight:800;border-radius:999px;padding:7px 14px;

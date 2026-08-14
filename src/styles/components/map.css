@@ -4,15 +4,15 @@
 #map{position:fixed;inset:0;z-index:1;background:var(--bg2)}
 .leaflet-container{font:inherit;background:var(--bg2)}
 .leaflet-control-zoom a{border:2px solid var(--ink)!important;color:var(--ink)!important;background:var(--card)!important;font-weight:800}
-.leaflet-control-attribution{background:rgba(253,250,242,.8)!important;font-size:.6rem!important}
+.leaflet-control-attribution{background:var(--plocha)!important;font-size:.6rem!important}
 .badge-pin{position:relative;width:34px;height:34px;border-radius:50%;background:var(--card);border:2.5px solid var(--ink);
   display:grid;place-items:center;box-shadow:0 3px 0 rgba(41,32,25,.45);transform-origin:50% 100%;
   animation:pop .35s var(--pop) backwards;transition:transform .18s var(--pop)}
 .badge-pin::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--pc);opacity:.16}
 .badge-pin svg.ic{font-size:19px;color:var(--pc);position:relative;z-index:2}
-.badge-pin .tick{position:absolute;right:-5px;top:-5px;width:16px;height:16px;border-radius:50%;background:var(--moss);
+.badge-pin .tick{position:absolute;right:-5px;top:-5px;width:16px;height:16px;border-radius:50%;background:var(--akcent);
   border:2px solid var(--ink);display:grid;place-items:center;z-index:3}
-.badge-pin .tick svg.ic{font-size:9px;stroke:#fff}
+.badge-pin .tick svg.ic{font-size:9px;stroke:var(--na-akcentu)}
 .badge-pin.inplan{outline:3px solid var(--rust);outline-offset:2px}
 .badge-pin.visited{opacity:.5;filter:saturate(.3)}
 .badge-pin.hi{transform:scale(1.35);z-index:999}

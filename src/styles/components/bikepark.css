@@ -11,9 +11,9 @@
 .bpc h3{margin:0;font-size:.95rem;font-weight:800;flex:1;line-height:1.25}
 .bpc .meta{margin:1px 0 0}
 .pricechip{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--ink);border-radius:999px;
-  padding:3px 10px;font-size:.74rem;font-weight:800;background:#EDF3E7;white-space:nowrap}
-.pricechip.est{background:#F4ECDB}
-.pricechip.link{background:#EAE7F0}
+  padding:3px 10px;font-size:.74rem;font-weight:800;background:var(--plocha-zelena);white-space:nowrap}
+.pricechip.est{background:var(--plocha-zluta)}
+.pricechip.link{background:var(--plocha-fialova)}
 .pricechip svg.ic{font-size:12px}
 .bpc .note{font-size:.72rem;color:var(--ink2);font-weight:600;margin-top:5px}
 .bpc .r2{display:flex;gap:8px;margin-top:9px;align-items:center}

@@ -18,7 +18,7 @@
 .fact span{font-size:.79rem;font-weight:700;line-height:1.2}
 #sheet .desc{font-size:.9rem;line-height:1.5;margin:8px 0 4px}
 /* karta se zajímavostí – podpisový prvek */
-.lore{position:relative;background:linear-gradient(180deg,#FFFCF4,#F7F1E2);border:var(--line);border-radius:17px;
+.lore{position:relative;background:var(--plocha2);border:var(--line);border-radius:17px;
   padding:15px 16px 14px 17px;margin:14px 0 4px;box-shadow:0 4px 0 var(--ink)}
 .lore::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:5px;border-radius:0 4px 4px 0;background:var(--sun)}
 .lore .lab{display:flex;align-items:center;gap:7px;font-size:.6rem;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:var(--ink2);margin-bottom:7px}
@@ -42,9 +42,10 @@
   color:var(--ink);text-decoration:none;transition:transform .15s var(--pop),box-shadow .15s}
 .btn svg.ic{font-size:18px}
 .btn:active{transform:translateY(4px);box-shadow:none}
-.btn.primary{background:var(--rust);color:#fff} .btn.primary svg.ic{stroke:#fff}
-.btn.sun{background:var(--sun)} .btn.sky{background:var(--sky)} .btn.moss{background:var(--moss);color:#fff}
-.btn.moss svg.ic{stroke:#fff}
+.btn.primary{background:var(--akcent);color:var(--na-akcentu)} .btn.primary svg.ic{stroke:var(--na-akcentu)}
+.btn.sun{background:var(--zvyrazneni);color:var(--na-zvyrazneni)} .btn.sky{background:var(--plocha-modra)}
+.btn.moss{background:var(--akcent);color:var(--na-akcentu)}
+.btn.moss svg.ic{stroke:var(--na-akcentu)}
 .btn.small{flex:0 1 auto;min-width:0;padding:9px 13px;font-size:.78rem}
 .stars{display:flex;gap:6px;user-select:none;margin:2px 0 4px}
 .stars button{background:none;border:0;padding:2px}

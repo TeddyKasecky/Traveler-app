@@ -3,6 +3,6 @@
   border-radius:999px;background:var(--card);box-shadow:0 3px 0 var(--ink);padding:8px 15px;
   font-weight:800;font-size:.76rem;cursor:pointer}
 .locpill svg.ic{font-size:15px;color:var(--rust)}
-.locpill.ok{background:#DFEBD6}
+.locpill.ok{background:var(--plocha-zelena)}
 .locpill.ok svg.ic{color:var(--moss)}
 .locpill:active{transform:translateY(3px);box-shadow:none}

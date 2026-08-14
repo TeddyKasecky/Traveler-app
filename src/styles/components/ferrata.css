@@ -4,9 +4,9 @@
   box-shadow:0 4px 0 var(--ink);text-decoration:none;color:var(--ink);position:relative;overflow:hidden;
   transition:transform .15s var(--pop),box-shadow .15s}
 .fbtn:active{transform:translateY(4px);box-shadow:none}
-.fbtn.av{background:linear-gradient(180deg,#FBE7D8,#F6D7C2)}
-.fbtn.bs{background:linear-gradient(180deg,#FBEFCF,#F5E2AE)}
-.fbtn.pdf{background:linear-gradient(180deg,#E4EDE0,#CFDDC6)}
+.fbtn.av{background:var(--plocha-tepla)}
+.fbtn.bs{background:var(--plocha-zluta)}
+.fbtn.pdf{background:var(--plocha-zelena)}
 .fbtn.pdf .fico svg.ic{font-size:19px;color:var(--moss)}
 .fbtn.small{padding:9px 13px;opacity:.92}
 .fbtn.small .fico{width:30px;height:30px;border-radius:9px}

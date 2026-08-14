@@ -43,6 +43,7 @@
   --zvyrazneni:#E1B152;     /* Ochre – aktivní záložka, „+“. NIKDY jako text: 1,8:1. */
   --na-zvyrazneni:#2F3D2C;
   --upozorneni:#C86A43;     /* Sienna */
+  --na-upozorneni:#FFFCF6;
 
   /* tónované plochy – nahrazují gradienty a dvojroli barev kategorií */
   --plocha-tepla:#F8ECE0; --plocha-zelena:#EEF2E8; --plocha-modra:#E7EFF3;
@@ -114,6 +115,7 @@
     --zvyrazneni:#E1B152;
     --na-zvyrazneni:#2F3D2C;
     --upozorneni:#E38A5C;   /* Muted Orange – Sienna je na tmavém málo čitelná */
+    --na-upozorneni:#2B1810;
 
     --plocha-tepla:#33291F; --plocha-zelena:#212B1F; --plocha-modra:#1E2A2E;
     --plocha-zluta:#322B1C; --plocha-fialova:#2A2430; --plocha-cervena:#33231D;
@@ -146,6 +148,7 @@
   --zvyrazneni:#E1B152;
   --na-zvyrazneni:#2F3D2C;
   --upozorneni:#E38A5C;
+  --na-upozorneni:#2B1810;
 
   --plocha-tepla:#33291F; --plocha-zelena:#212B1F; --plocha-modra:#1E2A2E;
   --plocha-zluta:#322B1C; --plocha-fialova:#2A2430; --plocha-cervena:#33231D;

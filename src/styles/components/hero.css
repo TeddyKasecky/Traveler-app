@@ -13,4 +13,4 @@
 .hbtn svg.ic{font-size:15px;color:var(--rust)}
 .hbtn+.hbtn{margin-left:0}
 .heronote{position:absolute;right:12px;top:10px;font-size:.58rem;font-weight:800;letter-spacing:.9px;
-  text-transform:uppercase;color:var(--ink2);background:rgba(253,250,242,.82);border-radius:999px;padding:3px 9px}
+  text-transform:uppercase;color:var(--ink2);background:var(--plocha);border-radius:999px;padding:3px 9px}

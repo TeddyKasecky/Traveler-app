@@ -38,16 +38,16 @@
 
 /* chyba u konkrétního políčka – ze stejné kontroly jako npm run validate */
 .afchyba{font-size:.72rem;font-weight:700;color:var(--rust);margin-top:6px;display:flex;gap:6px;align-items:flex-start}
-.afchyba::before{content:"!";flex:0 0 auto;width:15px;height:15px;border-radius:50%;background:var(--rust);color:#fff;
+.afchyba::before{content:"!";flex:0 0 auto;width:15px;height:15px;border-radius:50%;background:var(--upozorneni);color:var(--na-upozorneni);
   font-size:.62rem;display:grid;place-items:center;margin-top:1px}
 
-.afsouhrn{border:var(--line);border-radius:16px;background:linear-gradient(180deg,#FFF6E8,#FBEBD3);
+.afsouhrn{border:var(--line);border-radius:16px;background:var(--plocha-zluta);
   padding:13px 15px;margin:14px 0 4px;box-shadow:0 4px 0 var(--ink)}
-.afsouhrn.spatne{background:linear-gradient(180deg,#FDEBE3,#F8D8C9)}
+.afsouhrn.spatne{background:var(--plocha-cervena)}
 .afsouhrn b{font-size:.82rem}
 .afsouhrn ul{margin:7px 0 0;padding-left:19px;font-size:.76rem;line-height:1.5}
 
-.afok{border:var(--line);border-radius:16px;background:linear-gradient(180deg,#EDF6E4,#DDEDCC);padding:13px 15px;
+.afok{border:var(--line);border-radius:16px;background:var(--plocha-zelena);padding:13px 15px;
   margin:14px 0 4px;box-shadow:0 4px 0 var(--ink);font-size:.84rem;font-weight:800;display:flex;gap:9px;align-items:center}
 .afok svg.ic{font-size:19px;color:var(--moss)}
 

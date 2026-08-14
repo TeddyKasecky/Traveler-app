@@ -6,5 +6,5 @@
 #tabs button svg.ic{font-size:22px;color:var(--ink2);transition:transform .2s var(--pop),color .15s}
 #tabs button.on{color:var(--ink)} #tabs button.on svg.ic{color:var(--rust);transform:translateY(-2px) scale(1.08)}
 #tabs .lbl{position:relative}
-#tabs .pcount{position:absolute;top:-8px;right:-15px;background:var(--rust);color:#fff;border:2px solid var(--ink);
+#tabs .pcount{position:absolute;top:-8px;right:-15px;background:var(--upozorneni);color:var(--na-upozorneni);border:2px solid var(--ink);
   border-radius:999px;font-size:.58rem;min-width:17px;height:17px;display:grid;place-items:center}

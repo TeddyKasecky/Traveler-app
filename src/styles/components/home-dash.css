@@ -18,7 +18,7 @@
 .wip b{font-size:.79rem;color:var(--ink);font-weight:800;line-height:1.2}
 .wip svg.ic{font-size:15px}
 .wip:active{transform:translateY(2px);box-shadow:none}
-.wip.plan{background:linear-gradient(180deg,#F6D9C4,#EFC1A2)}
+.wip.plan{background:var(--plocha-tepla)}
 .wip.plan svg.ic{color:var(--rust)}
 .wip em{font-style:normal;font-size:.66rem;font-weight:800;color:var(--ink);background:var(--paper);
   border:2px solid var(--ink);border-radius:999px;padding:2px 9px;margin-top:3px}
