@@ -120,6 +120,22 @@ async function nafot(adresa, pripona) {
       locale: 'cs-CZ',
     })
     const page = await ctx.newPage()
+
+    // Obrázky z ciziny se blokují v obou verzích stejně.
+    //
+    // Dlaždice mapy a fotky z Wikimedia doletí pokaždé jinak rychle a snímek
+    // pak vyjde pokaždé jinak – rozdíl skákal mezi 2 700 a 150 000 pixely,
+    // aniž by se v kódu cokoli změnilo. Bez nich porovnává obrázek jen to,
+    // co opravdu vykresluje aplikace, a výsledek je opakovatelný.
+    //
+    // Fonty a Leaflet z CDN se blokovat NESMÍ: stará verze je odtamtud bere,
+    // nová je má zabalené u sebe. Bez nich by stará spadla na systémové písmo
+    // a lišila by se každá řádka textu.
+    await page.route('**/*', (route) => {
+      const u = route.request().url()
+      return /tile\.openstreetmap\.org|wikimedia\.org/.test(u) ? route.abort() : route.continue()
+    })
+
     // Uvítání odklikané, ať se verze liší jen tím, co nás zajímá.
     await page.addInitScript(() => {
       localStorage.setItem('vandrbuch:v1', JSON.stringify({ notes: {}, stav: {}, rating: {}, plan: [], prio: {}, dataOverride: null, seen: true }))
@@ -131,6 +147,25 @@ async function nafot(adresa, pripona) {
     } catch (e) {
       console.log(`   ${o.nazev} (${pripona}): ${e.message.split('\n')[0]}`)
     }
+    // Stará verze si písma tahá z CDN. Bez tohohle čekání se občas vyfotila
+    // ještě se systémovým písmem a rozdíl vyskočil na statisíce pixelů.
+    await page.evaluate(() => document.fonts.ready)
+
+    // A počkat, až se stránka přestane měnit. Seznam kreslí 250 karet naráz
+    // a stará verze k tomu ještě parsuje 565 kB dat přímo ve stránce – když
+    // se vyfotila v půlce, rozdíl vyskočil na 219 000 pixelů.
+    await page.waitForFunction(
+      () => {
+        const n = document.querySelectorAll('*').length
+        const stejne = n === window.__poslednipocet
+        window.__poslednipocet = n
+        return stejne
+      },
+      null,
+      { polling: 250, timeout: 15000 }
+    )
+    await page.waitForTimeout(250)
+
     await page.screenshot({ path: path.join(OUT, `${o.nazev}-${pripona}.png`) })
     await ctx.close()
   }

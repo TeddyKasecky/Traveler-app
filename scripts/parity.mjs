@@ -80,13 +80,17 @@ await zkus('viewport-fit=cover v hlavičce', async () => {
 await zkus('stejný počet použití env(safe-area-inset-*)', async () => {
   const spocti = (s) => (s.match(/env\(safe-area-inset-/g) || []).length
   const puvodni = spocti(original.slice(original.indexOf('<style>'), original.indexOf('</style>')))
+  // addform.css je nová obrazovka, v originále protějšek nemá – svůj bezpečný
+  // okraj má správně, ale do porovnání s originálem nepatří.
   const soubory = fs
     .readdirSync(path.join(ROOT, 'src', 'styles'), { recursive: true })
-    .filter((f) => String(f).endsWith('.css'))
-    .map((f) => fs.readFileSync(path.join(ROOT, 'src', 'styles', String(f)), 'utf8'))
+    .map(String)
+    .filter((f) => f.endsWith('.css') && !f.endsWith('addform.css'))
+    .map((f) => fs.readFileSync(path.join(ROOT, 'src', 'styles', f), 'utf8'))
     .join('')
   const nase = spocti(soubory)
-  return { ok: nase === puvodni, dukaz: `originál ${puvodni}× · naše ${nase}×` }
+  const novy = spocti(fs.readFileSync(path.join(ROOT, 'src', 'styles', 'components', 'addform.css'), 'utf8'))
+  return { ok: nase === puvodni, dukaz: `originál ${puvodni}× · naše ${nase}× (+ ${novy}× v novém formuláři)` }
 })
 
 nadpis('2. Klíče v localStorage se nezměnily')
