@@ -37,8 +37,10 @@ const jeBaseline = process.argv.includes('--baseline')
 const jeOriginal = process.argv.includes('--vs-original')
 const jeTmavy = process.argv.includes('--tmavy')
 
-/** Kam se fotí. V režimu --vs-original je to rovnou `.screenshots/`. */
-const OUT = jeOriginal ? SNIMKY : path.join(SNIMKY, jeBaseline ? 'baseline' : 'aktualni')
+/** Kam se fotí. Režim je v názvu složky, aby si světlé a tmavé kolo nepřepisovaly snímky. */
+const OUT = jeOriginal
+  ? SNIMKY
+  : path.join(SNIMKY, (jeBaseline ? 'baseline' : 'aktualni') + (jeTmavy ? '-tmavy' : ''))
 
 const TYPY = {
   '.html': 'text/html; charset=utf-8',

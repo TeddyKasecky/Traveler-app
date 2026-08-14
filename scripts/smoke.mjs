@@ -48,7 +48,10 @@ const chyby = []
 const problemySite = []
 
 const b = await chromium.launch({ executablePath: EDGE, headless: true })
-const page = await b.newPage({ viewport: { width: 390, height: 844 } })
+// colorScheme schválně napevno: od zavedení tmavého režimu by kontrola barvy
+// pozadí jinak dopadla podle toho, jak má vzhled nastavený počítač, na kterém
+// se pouští. Tmavý režim si měří vlastní průchod níž.
+const page = await b.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'light' })
 
 /**
  * Cizí zdroje, které v testu stejně nejsou dostupné: dlaždice mapy a fotky.
@@ -254,7 +257,7 @@ if (!SINGLE) {
     page.locator('.badge-pin').count().then((n) => n > 0 && n <= 580)
   )
   await kontrola('offline: styly se načetly', () =>
-    page.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(244, 239, 226)')
+    page.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(250, 245, 236)')
   )
   await kontrola('offline: font Fraunces k dispozici', () =>
     page.evaluate(() => document.fonts.check("900 1.5rem Fraunces"))

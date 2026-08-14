@@ -13,7 +13,10 @@
 .meta{font-size:.74rem;color:var(--ink2);font-weight:600}
 .tagrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
 .tag{font-size:.66rem;font-weight:800;border:2px solid var(--ink);border-radius:9px;padding:3px 8px;background:var(--paper)}
-.tag.free{background:var(--moss);color:#fff} .tag.paid{background:var(--sun)} .tag.kid{background:var(--sky)}
+/* Štítky mají tónovanou plochu, ne barvu kategorie. Barvy kategorií jsou
+ * laděné na roli grafiky (ikona, pruh, špendlík) a jako pozadí pod drobný
+ * text .66rem nedávaly kontrast ani ve světlém režimu, natož v tmavém. */
+.tag.free{background:var(--plocha-zelena)} .tag.paid{background:var(--plocha-zluta)} .tag.kid{background:var(--plocha-modra)}
 .dist{float:right;font-weight:900;color:var(--rust);font-size:.8rem;font-family:var(--f-disp)}
 .empty{text-align:center;color:var(--ink2);padding:44px 24px;font-weight:600;line-height:1.6}
 .empty svg.ic{font-size:60px;color:var(--sand);display:block;margin:0 auto 12px}

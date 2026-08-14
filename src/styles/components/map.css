@@ -1,6 +1,8 @@
 /* ===== mapa ===== */
-#map{position:fixed;inset:0;z-index:1;background:#E9E2CF}
-.leaflet-container{font:inherit;background:#E9E2CF}
+/* Plocha pod dlaždicemi. Musí se řídit režimem: kdyby zůstala světlá natvrdo,
+ * v tmavém režimu by při načítání dlaždic blikl světlý obdélník. */
+#map{position:fixed;inset:0;z-index:1;background:var(--bg2)}
+.leaflet-container{font:inherit;background:var(--bg2)}
 .leaflet-control-zoom a{border:2px solid var(--ink)!important;color:var(--ink)!important;background:var(--card)!important;font-weight:800}
 .leaflet-control-attribution{background:rgba(253,250,242,.8)!important;font-size:.6rem!important}
 .badge-pin{position:relative;width:34px;height:34px;border-radius:50%;background:var(--card);border:2.5px solid var(--ink);

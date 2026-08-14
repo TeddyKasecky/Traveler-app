@@ -1,12 +1,166 @@
 /* Návrhové proměnné. Barvy, čáry, rádiusy a fonty se nikde jinde nepíšou natvrdo.
- * Hodnoty jsou doslovný opis původního :root bloku – nesahat bez záměru. */
+ *
+ * Vychází z grafického manuálu značky VANDRBUCH („Golden Moss“) – podklady jsou
+ * ve složce `grafika/`, výklad ve `VZHLED.md`. Do léta 2026 tu byl doslovný opis
+ * původního `:root` bloku; ten se vědomě opustil, viz PARITA.md §10 Q14.
+ *
+ * TŘI VRSTVY, A ZÁLEŽÍ NA POŘADÍ:
+ *
+ *   1. paleta značky (`--zn-*`)  – sedm barev z manuálu, v komponentách se
+ *      NEPOUŽÍVAJÍ. Jsou tu proto, aby bylo vidět, odkud se hodnoty vzaly.
+ *   2. sémantická vrstva         – tohle používají komponenty. Tmavý režim
+ *      přepisuje jen tuhle vrstvu, nic jiného.
+ *   3. aliasy staré vrstvy       – `--paper`, `--card`, `--ink`, `--ink2`
+ *      ukazují na sémantickou vrstvu.
+ *
+ * PROČ ALIASY A NE PŘEJMENOVÁNÍ: stará jména jsou ve třiceti CSS souborech
+ * a navíc uvnitř SVG v `src/components/postcard.js` (`fill="var(--paper)"`,
+ * `stroke="var(--ink)"`). Přejmenovat je znamená ruční průchod repozitářem
+ * s jistotou, že se něco přehlédne – a přehlédnutá barva se tiše nevykreslí.
+ * `var()` v proměnné se vyhodnocuje až při použití, takže alias sleduje
+ * i přepnutí režimu. Sáhne se na ně, až bude čas, ne pod tlakem.
+ */
+
 :root{
-  --paper:#F4EFE2; --card:#FDFAF2; --ink:#292019; --ink2:#7A6B58; --inkfade:rgba(41,32,25,.12);
-  --rust:#D96B3C; --sun:#E3B341; --sky:#8FB0BF; --moss:#7E8F5C; --plum:#8B6B8F;
-  --clay:#B35A4E; --pine:#4E8A7E; --sand:#C8A16B; --night:#3B342C; --lake:#5B93A6;
+  /* ---- 1. paleta značky ---- */
+  --zn-moss:#5E6E4D; --zn-fern:#7E9A6E; --zn-ochre:#E1B152;
+  --zn-orange:#E38A5C; --zn-sienna:#C86A43; --zn-ivory:#FAF5EC; --zn-forest:#2F3D2C;
+
+  /* ---- 2. sémantická vrstva – SVĚTLÝ ---- */
+  --bg:#FAF5EC;             /* Ivory, papír stránky */
+  --bg2:#F3ECDD;            /* prohlubně: plocha pod dlaždicemi mapy */
+  --plocha:#FFFCF6;         /* karta */
+  --plocha2:#F6F0E3;        /* vnořená plocha: fakt, štítek, políčko */
+  --plocha-nav:#3B4A36;     /* tmavě zelená pilulka spodní navigace */
+
+  --text:#2F3D2C;           /* 10,6:1 na --bg */
+  --text2:#5A6850;          /* tlumený, 5,5:1 na --bg (#6B7A5F by dal jen 4,2) */
+  --text3:#767F6B;          /* nejtlumenější, 3,9:1 – jen na velký text a grafiku */
+  --text-inv:#FAF5EC;       /* text na tmavé ploše */
+
+  --akcent:#5E6E4D;         /* Moss – primární akce. 5,1:1 na --bg i jako text. */
+  --na-akcentu:#FAF5EC;
+  --zvyrazneni:#E1B152;     /* Ochre – aktivní záložka, „+“. NIKDY jako text: 1,8:1. */
+  --na-zvyrazneni:#2F3D2C;
+  --upozorneni:#C86A43;     /* Sienna */
+
+  /* tónované plochy – nahrazují gradienty a dvojroli barev kategorií */
+  --plocha-tepla:#F8ECE0; --plocha-zelena:#EEF2E8; --plocha-modra:#E7EFF3;
+  --plocha-zluta:#FAF1DC; --plocha-fialova:#F1ECF3; --plocha-cervena:#F9E8E0;
+
+  --obrys:rgba(47,61,44,.10); --obrys-silny:rgba(47,61,44,.20);
+  --stin-1:0 1px 2px rgba(47,61,44,.06);
+  --stin-2:0 4px 14px rgba(47,61,44,.10);
+  --stin-3:0 12px 32px rgba(47,61,44,.16);
+  --stin-panel:0 -10px 34px rgba(47,61,44,.18);
+  --stisk:scale(.985);      /* náhrada za translateY(Npx) v :active */
+
+  --plamen-zhasly:#D8D2C4;  /* zhasnutý plamínek priority */
+
+  /* ---- barvy kategorií ----
+   * Jména jsou závazná: odkazuje na ně `data/categories.js`, `collections.js`,
+   * `moods.js` a pět inline stylů v `index.html`. Mění se jen hodnoty.
+   * Používají se jako grafika (ikona, pruh karty, špendlík), ne jako text –
+   * proto stačí 3:1 proti ploše, ne 4,5:1.
+   *
+   * `--rust` má dvojí roli: kategorie Ferraty a zároveň teplý akcent na
+   * čtyřiceti místech (aktivní záložka, FAB, plamínky). Proto Sienna, která
+   * je z palety rezavé nejblíž. Kde slouží jako drobný text (`.dist`,
+   * `.links a`), přejde na `--akcent` – to je práce pro etapu tvarosloví.  */
+  --rust:#C86A43;   /* Ferraty            3,7:1 */
+  --moss:#5E7A4C;   /* Bikeparky, úspěch  4,7:1 */
+  --pine:#4F7A6B;   /* Soutěsky           4,7:1 */
+  --sky:#6E93A8;    /* Vodopády           3,0:1 */
+  --clay:#A6714B;   /* Hory a túry        4,0:1 */
+  --lake:#4E7F94;   /* Jezera             4,3:1 */
+  --plum:#7E6F92;   /* Jeskyně a podzemí  4,5:1 */
+  --sun:#A87C24;    /* Města a památky    3,7:1 */
+  --night:#2F3D2C;  /* Spaní             11,2:1 */
+  --sand:#A8863F;   /* Ostatní            3,3:1 */
+
   --line:2.5px solid var(--ink); --r:20px;
   --pop:cubic-bezier(.34,1.56,.5,1);
   --f-disp:'Fraunces', Georgia, serif; --f-body:'Inter', system-ui, sans-serif;
+
+  /* ---- 3. aliasy staré vrstvy ---- */
+  --paper:var(--bg); --card:var(--plocha);
+  --ink:var(--text); --ink2:var(--text2); --inkfade:var(--obrys);
+}
+
+/* ---- TMAVÝ REŽIM (dozelena) ----
+ *
+ * Blok je schválně dvakrát. Kdyby existoval jen `[data-motiv="tmavy"]`, na
+ * telefonu s tmavým systémem by při startu bliklo světlé téma, než doběhne
+ * modul, který atribut nastaví. A kdyby existoval jen `@media`, nešel by
+ * režim přepnout ručně.
+ *
+ * Že se ty dva bloky nikdy nerozejdou, hlídá `npm run check-tokeny` – je to
+ * přesně ta chyba, kterou oko nenajde.
+ *
+ * Přepisuje se JEN sémantická vrstva. Aliasy i komponenty ji sledují samy. */
+
+@media (prefers-color-scheme:dark){
+  :root:not([data-motiv="svetly"]){
+    --bg:#1B241A; --bg2:#141C13; --plocha:#243021; --plocha2:#2C3A28;
+    --plocha-nav:#2C3A28;
+
+    --text:#EDE7D8;         /* 11,2:1 na --plocha */
+    --text2:#9FAE96;        /*  5,4:1 na --plocha */
+    --text3:#818E79;
+    --text-inv:#1B241A;
+
+    --akcent:#7E9A6E;       /* Fern. Moss má na tmavém jen 2,9:1 – nestačí. */
+    --na-akcentu:#16200F;
+    --zvyrazneni:#E1B152;
+    --na-zvyrazneni:#2F3D2C;
+    --upozorneni:#E38A5C;   /* Muted Orange – Sienna je na tmavém málo čitelná */
+
+    --plocha-tepla:#33291F; --plocha-zelena:#212B1F; --plocha-modra:#1E2A2E;
+    --plocha-zluta:#322B1C; --plocha-fialova:#2A2430; --plocha-cervena:#33231D;
+
+    --obrys:rgba(237,231,216,.12); --obrys-silny:rgba(237,231,216,.22);
+    --stin-1:0 1px 2px rgba(0,0,0,.40);
+    --stin-2:0 4px 14px rgba(0,0,0,.45);
+    --stin-3:0 12px 32px rgba(0,0,0,.55);
+    --stin-panel:0 -10px 34px rgba(0,0,0,.55);
+
+    --plamen-zhasly:#4A5445;
+
+    --rust:#E09068; --moss:#9DBC8A; --pine:#79AD9B; --sky:#8FB8C9;
+    --clay:#D0A075; --lake:#7FAFC4; --plum:#B0A0C2; --sun:#E1B152;
+    --night:#A9BBA1; --sand:#D4B978;
+  }
+}
+
+:root[data-motiv="tmavy"]{
+  --bg:#1B241A; --bg2:#141C13; --plocha:#243021; --plocha2:#2C3A28;
+  --plocha-nav:#2C3A28;
+
+  --text:#EDE7D8;
+  --text2:#9FAE96;
+  --text3:#818E79;
+  --text-inv:#1B241A;
+
+  --akcent:#7E9A6E;
+  --na-akcentu:#16200F;
+  --zvyrazneni:#E1B152;
+  --na-zvyrazneni:#2F3D2C;
+  --upozorneni:#E38A5C;
+
+  --plocha-tepla:#33291F; --plocha-zelena:#212B1F; --plocha-modra:#1E2A2E;
+  --plocha-zluta:#322B1C; --plocha-fialova:#2A2430; --plocha-cervena:#33231D;
+
+  --obrys:rgba(237,231,216,.12); --obrys-silny:rgba(237,231,216,.22);
+  --stin-1:0 1px 2px rgba(0,0,0,.40);
+  --stin-2:0 4px 14px rgba(0,0,0,.45);
+  --stin-3:0 12px 32px rgba(0,0,0,.55);
+  --stin-panel:0 -10px 34px rgba(0,0,0,.55);
+
+  --plamen-zhasly:#4A5445;
+
+  --rust:#E09068; --moss:#9DBC8A; --pine:#79AD9B; --sky:#8FB8C9;
+  --clay:#D0A075; --lake:#7FAFC4; --plum:#B0A0C2; --sun:#E1B152;
+  --night:#A9BBA1; --sand:#D4B978;
 }
 
 /* Proměnné, které se nastavují za běhu na konkrétním prvku (nepatří do :root):
