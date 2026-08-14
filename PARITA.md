@@ -17,9 +17,10 @@ shodná s tím, co běží dnes.
 | CSS pravidlo po pravidle | `npm run check-css` | **338 pravidel sedí**, jediné rozdíly jsou odsouhlasené |
 | Filtry, 134 kombinací | `npm run check-filters` | **všechny sedí** |
 | Napojení tlačítek | `npm run check-handlers` | **61 / 61** |
-| Proklikání, hostovaná | `npm run smoke` | **39 / 39** |
-| Proklikání, single-file | `npm run smoke:single` | **34 / 34** |
+| Proklikání, hostovaná | `npm run smoke` | **50 / 50** |
+| Proklikání, single-file | `npm run smoke:single` | **45 / 45** |
 | Kontrolní seznam níž | `npm run parity` | **25 / 25** |
+| Formulář vyrábí platná místa | `npm run check-form` | **18 / 18** |
 | Odkazy na fotky | `npm run check-images` | **262 / 262 existuje** |
 | Vzhled po pixelech | `node scripts/screenshots.mjs && node scripts/compare-screens.mjs` | viz níž |
 
@@ -33,15 +34,30 @@ porovnáno po pixelech.
 | Obrazovka | Rozdílných pixelů | Podíl | Co to je |
 |---|---|---|---|
 | Domů | 2 726 | 0,21 % | logo |
+| Mapa | 2 726 | 0,21 % | logo |
 | Objevuj | 2 726 | 0,21 % | logo |
 | Seznam | 2 726 | 0,21 % | logo |
 | Plán | 2 726 | 0,21 % | logo |
 | Detail | 2 726 | 0,21 % | logo |
-| Mapa | 2 849 | 0,22 % | logo + dlaždice, které se pokaždé načtou jinak |
 | Filtry | 3 571 | 0,27 % | logo pod ztmavením |
-| Průvodce | 737 501 | 56,01 % | **odsouhlasená oprava** – dřív byl neviditelný |
+| Průvodce | 737 494 | 56,01 % | **odsouhlasená oprava** – dřív byl neviditelný |
 
-Mimo logo a průvodce se nezměnil jediný pixel. Obojí je odsouhlasená změna, viz níž.
+**Šest obrazovek se liší přesně o 2 726 pixelů, a je to pokaždé to samé logo.**
+Mimo něj a průvodce se nezměnil jediný pixel.
+
+Čísla jsou opakovatelná. Původně skákala mezi 2 700 a 300 000, aniž by se v kódu
+cokoli změnilo, a to ze tří důvodů – všechny byly na straně měření, ne aplikace:
+
+- **dlaždice mapy a fotky z Wikimedia** doletí pokaždé jinak rychle. Blokují se
+  teď v obou verzích stejně.
+- **stará verze si písma tahá z CDN.** Občas se vyfotila ještě se systémovým
+  písmem, čímž se lišila každá řádka textu. Čeká se na `document.fonts.ready`.
+- **Seznam kreslí 250 karet naráz** a stará verze k tomu parsuje 565 kB dat přímo
+  ve stránce. Když se vyfotila v půlce, rozdíl byl 219 000 pixelů. Čeká se, až se
+  přestane měnit počet prvků na stránce.
+
+Fonty a Leaflet z CDN se blokovat nesmí – stará verze je odtamtud bere, nová je má
+zabalené u sebe.
 
 ---
 
@@ -176,7 +192,43 @@ Ke stažení je jednorázově **485 kB** (zabaleno). Po instalaci už appka nest
 
 ---
 
-## 9. Odsouhlasené odchylky od originálu
+## 9. Nová obrazovka: formulář „Přidat místo"
+
+Jediná funkce, kterou původní aplikace neměla. Schovaná v panelu Filtry ve skupině
+„Data a zálohy", mezi ostatními správcovskými tlačítky.
+
+**Nezapisuje nikam do dat.** Vyrobí kus textu, který se vloží do
+`src/data/places-nova.json`. Tím je vyloučené, že by rozbil 580 ověřených míst.
+
+| Bod | Důkaz |
+|---|---|
+| kontroluje se stejným kódem jako `npm run validate` | `zkontrolujMisto()` z `src/data/validate.js` |
+| chyby se ukazují u konkrétního políčka | nálezy nesou název pole, prázdný formulář hlásí 11 chyb |
+| výstup má přesně 29 polí ve správném pořadí | `npm run check-form` |
+| `id` odpovídá konvenci a je volné | `vodopad-u-tri-smrku-921` |
+| `nb` se dopočítá | 6 sousedů, seřazených od nejbližšího |
+| souřadnice: mapa, poloha, ruční zápis | ověřeno klikem do mapy i přetažením špendlíku |
+| koncept přežije zavření | nový klíč `vandrbuch:draft`, tři původní se nedotýká |
+| tlačítko zpět formulář zavře | přes `registrujOverlay()` |
+| nové CSS nepřepisuje nic z originálu | 26 nových pravidel, žádná kolize (`npm run check-css`) |
+
+**`nb` se dopočítává** – zadání se na to ptalo. Pravidlo v kódu už existovalo
+(import CSV): všechna místa do **45 km**, seřazená podle vzdálenosti, **nejvýš 6**,
+vzdálenost na jedno desetinné místo. Je teď ve sdílené funkci `spocitejOkoli()`.
+
+Formulář spočítá okolí **novému místu**. Sousedi ho ve svém `nb` mít nebudou, dokud
+se nepřepočítá všechno – to udělá `npm run slouc`. Je to nesymetrie, ale v praxi
+nevadí: nové místo své sousedy ukáže.
+
+**Ke konvenci `id`:** prověřil jsem ji v datech. Trojčíslí na konci **není pořadové**
+– 580 míst má jen 374 různých čísel. U 311 míst se shoduje s posledními třemi
+číslicemi zeměpisné šířky, což je přesně to, co dělá import CSV (`core/csv.js:91`).
+Zbytek pochází ze starších zdrojů a přepsat ho nejde, protože `id` se nikdy nemění.
+Formulář se drží toho, co dělá kód aplikace; při kolizi losuje.
+
+---
+
+## 10. Odsouhlasené odchylky od originálu
 
 Všechno ostatní je 1:1. Tohle je úplný seznam toho, co se liší.
 
