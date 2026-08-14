@@ -83,7 +83,7 @@
   --line:1px solid var(--obrys); --r:20px;
   --r-s:12px; --r-l:26px; --r-pill:999px;
   --pop:cubic-bezier(.34,1.56,.5,1);
-  --f-disp:'Fraunces', Georgia, serif; --f-body:'Inter', system-ui, sans-serif;
+  --f-disp:'Playfair Display', Georgia, serif; --f-body:'Inter', system-ui, sans-serif;
 
   /* ---- 3. aliasy staré vrstvy ---- */
   --paper:var(--bg); --card:var(--plocha);

@@ -18,7 +18,7 @@
   max-height:82vh;overflow:auto;padding:10px 20px calc(20px + env(safe-area-inset-bottom))}
 .wizard.show{transform:none;visibility:visible;transition:transform .34s var(--pop), visibility 0s}
 .wgrip{width:44px;height:5px;border-radius:999px;background:var(--obrys-silny);margin:4px auto 10px}
-.wizard h2{font-family:Fraunces,serif;font-size:1.2rem;margin:0 0 4px;display:flex;gap:9px;align-items:center}
+.wizard h2{font-family:var(--f-disp);font-size:1.2rem;margin:0 0 4px;display:flex;gap:9px;align-items:center}
 .wstep{font-size:.66rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--ink2);margin:10px 0 7px}
 .wopts{display:flex;flex-wrap:wrap;gap:8px}
 .wopt{border:1px solid var(--obrys);border-radius:999px;background:var(--paper);padding:8px 14px;font-size:.8rem;font-weight:800;

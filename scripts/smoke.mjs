@@ -259,8 +259,8 @@ if (!SINGLE) {
   await kontrola('offline: styly se načetly', () =>
     page.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(250, 245, 236)')
   )
-  await kontrola('offline: font Fraunces k dispozici', () =>
-    page.evaluate(() => document.fonts.check("900 1.5rem Fraunces"))
+  await kontrola('offline: nadpisové písmo k dispozici', () =>
+    page.evaluate(() => document.fonts.check('700 1.5rem "Playfair Display"'))
   )
 
   // Zjednodušená mapa. Dlaždice jsou z cizí domény, service worker je neukládá

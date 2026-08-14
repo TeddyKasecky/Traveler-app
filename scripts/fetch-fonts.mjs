@@ -7,9 +7,9 @@
  *
  * PROČ TO NENÍ JEN "VEZMI VARIABILNÍ FONT Z NPM":
  * Google posílá variabilní soubory, ale v CSS je přiřazuje jen ke konkrétním
- * vahám – Fraunces k 600 a 900, Inter k 400, 600 a 800. Prohlížeč pak jinou váhu
- * dopočítá na nejbližší dostupnou. Proto se `font-weight:700` (v CSS je 18x)
- * vykresluje jako 800 a nadpis v Fraunces jako 900.
+ * vahám – Playfair Display k 600 a 700, Inter k 400, 600 a 800. Prohlížeč pak
+ * jinou váhu dopočítá na nejbližší dostupnou. Proto se `font-weight:700`
+ * (v CSS je 18x) vykresluje jako 800 a nadpis se 900 jako Playfair 700.
  *
  * Kdybychom si připojili plný variabilní font s rozsahem 100–900, vykreslilo by
  * se 700 jako skutečných 700 a celé písmo by zhublo. Proto se @font-face pravidla
@@ -27,9 +27,17 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const OUT_DIR = path.join(ROOT, 'src', 'styles', 'fonts')
 const OUT_CSS = path.join(ROOT, 'src', 'styles', 'fonts.css')
 
-/** Přesně ten dotaz, který má původní index.html v <head>. */
+/**
+ * Písma podle grafického manuálu: Playfair Display na nadpisy, Inter na text.
+ * Do léta 2026 tu byl Fraunces – dotaz opsaný z původního index.html.
+ *
+ * Playfair jen 600 a 700. V CSS je osmnáct míst s font-weight:700 a několik
+ * s 900; při výběru písma prohlížeč pro 900 sestoupí na nejbližší nižší
+ * dostupnou váhu, tedy 700. Díky tomu se nemusí přepisovat ani jedna
+ * deklarace váhy a přitom nikde nevznikne uměle ztučnělý text.
+ */
 const GOOGLE_CSS =
-  'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,900;1,9..144,600&family=Inter:wght@400;600;800&display=swap'
+  'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;600;800&display=swap'
 
 /** Bez prohlížečového User-Agenta pošle Google starší formát než woff2. */
 const UA =
@@ -78,7 +86,9 @@ if (!vybrane.length) {
 const soubory = new Map() // vzdálená adresa → místní název
 for (const b of vybrane) {
   if (soubory.has(b.url)) continue
-  const nazev = `${b.rodina.toLowerCase()}-${b.subset}.woff2`
+  // Mezera v názvu rodiny („Playfair Display“) by udělala mezeru v názvu souboru
+  // a ta se v url() v CSS musí kódovat. Jednodušší je ji tady rovnou nahradit.
+  const nazev = `${b.rodina.toLowerCase().replace(/\s+/g, '-')}-${b.subset}.woff2`
   soubory.set(b.url, nazev)
 }
 
@@ -96,10 +106,11 @@ console.log(`  celkem ${celkem} B (${Math.round(celkem / 1024)} kB)`)
 const hlavicka = `/* Vygenerováno: node scripts/fetch-fonts.mjs – needituj ručně.
  *
  * Pravidla jsou doslovný opis toho, co posílá Google, jen s místními adresami.
- * Váhy jsou schválně jednotlivé hodnoty, ne rozsah: díky tomu se font-weight:700
- * vykreslí jako 800 a bold Fraunces jako 900, přesně jako v původní aplikaci.
+ * Váhy jsou schválně jednotlivé hodnoty, ne rozsah: s plným variabilním fontem
+ * 100–900 by se font-weight:700 (v CSS osmnáctkrát) vykreslilo jako skutečných
+ * 700 a celé písmo by zhublo.
  *
- * Kurzíva Fraunces vynechána – v CSS není ani jedno font-style:italic.
+ * Kurzíva vynechána – v CSS není ani jedno font-style:italic.
  */
 `
 

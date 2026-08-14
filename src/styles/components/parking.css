@@ -19,7 +19,7 @@
 .pkstatus.s-no{background:var(--plocha-cervena);color:var(--upozorneni)}
 .pkwarn{font-size:.68rem;font-weight:700;color:var(--ink2);border-top:2px dashed var(--obrys-silny);padding-top:8px}
 .parkpin{width:26px;height:26px;border-radius:9px;background:var(--sky);border:1px solid var(--obrys);
-  color:var(--ink);display:grid;place-items:center;font-weight:900;font-size:14px;font-family:Fraunces,serif;
+  color:var(--ink);display:grid;place-items:center;font-weight:900;font-size:14px;font-family:var(--f-disp);
   box-shadow:var(--stin-1)}
 .mmfail{border:var(--line);border-radius:15px;background:var(--paper);padding:14px;margin:14px 0 0;
   font-size:.8rem;font-weight:700;display:flex;gap:8px;align-items:center;flex-wrap:wrap}

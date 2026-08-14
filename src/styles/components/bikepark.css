@@ -1,6 +1,6 @@
 /* ===== bikepark dashboard ===== */
 .bphead{display:flex;align-items:baseline;gap:9px;padding:18px 20px 2px}
-.bphead h2{font-family:Fraunces,serif;font-size:1.25rem;margin:0;display:flex;gap:9px;align-items:center}
+.bphead h2{font-family:var(--f-disp);font-size:1.25rem;margin:0;display:flex;gap:9px;align-items:center}
 .bphead h2 svg.ic{font-size:21px;color:var(--pine)}
 .bpnote{padding:0 20px 10px;color:var(--ink2);font-size:.74rem;font-weight:600}
 .bpcards{display:flex;flex-direction:column;gap:11px;padding:0 20px}
