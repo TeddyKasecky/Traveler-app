@@ -1,0 +1,86 @@
+---
+paths:
+  - src/**
+  - index.html
+---
+
+# Kód a architektura
+
+_Zjištěno auditem: `src/main.js`, `src/core/store.js`, `src/views/index.js`,
+`src/components/placeCard.js`, `src/core/html.js`. Žádný linter ani formatter v repu není —
+všechno níž vynucuje jen review._
+
+## Styl
+
+- **Bez středníků na konci řádků** (ověřeno: 0 výskytů `;$` napříč `src/`).
+- Jednoduché uvozovky, odsazení 2 mezerami, řádky do ~110 znaků, LF (`.gitattributes`).
+- **Česky se píše všechno** — identifikátory (`kartaSeznam`, `zjistiPolohu`, `nactiMista`,
+  `prekresleno`), komentáře, JSDoc i uživatelské texty. Anglicky zůstávají jen datové zkratky
+  z `places.json` (`p`, `k`, `S`, `F`), názvy z DOM a API Leafletu. Nepřejmenovávej.
+- Typování přes JSDoc anotace (`@param {Record<string, any>} p`), ne TypeScript.
+- Uživatelské texty jdou přímo do kódu — žádný `strings.ts` ani i18n vrstva tu není a nezaváděj ji.
+
+## Komentáře
+
+Každý soubor začíná JSDoc blokem s **účelem a důvodem**, ne popisem toho, co kód dělá.
+Netriviální rozhodnutí má u sebe odůvodnění, často i s odkazem na řádek v originálu
+(`src/main.js:51-53`, `src/core/html.js:8-14`). Když píšeš nový soubor, drž tenhle vzor —
+je to nejvýraznější konvence celého repozitáře.
+
+## Architektura
+
+**Jeden soubor = jedna zodpovědnost.** Žádný framework, žádná knihovna na vzhled.
+
+```
+src/main.js       jen poskládá díly a zaregistruje odběry událostí – žádná logika
+src/core/         čistá logika, nesahá na DOM (výjimka: router.js přepíná panely)
+src/data/         data + číselníky + kontrola  → viz database.md
+src/views/        obrazovky, jedna složka na obrazovku
+src/components/   díly použité na víc obrazovkách
+src/map/          všechno kolem Leafletu
+src/styles/       CSS po dílech, pořadí určuje index.css
+src/icons/        sprite.svg (45 symbolů) + vkládání
+src/pwa/          šablona service workeru + registrace  → viz nasazeni.md
+```
+
+**Moduly se nevolají napřímo.** Oznamují si změny přes `on()`/`emit()` ze `src/core/store.js`.
+Mapa nesmí importovat views a naopak — jinak by přidání obrazovky znamenalo sáhnout do mapy.
+Události: `prekresleno`, `otevriDetail`, `skoc`, `poloha`. Pořadí volání = pořadí přihlášení.
+
+**Stav je jen v `src/core/store.js`**, nikde jinde nejsou globální proměnné:
+
+| Export | Co drží | Uloženo |
+|---|---|---|
+| `store` | poznámky, stav, hodnocení, plán, priority, `dataOverride` | `vandrbuch:v1` |
+| `PHOTOS` | vyfocené fotky `{ [id]: dataURL }` | `vandrbuch:photos` |
+| `prefs` | předvolby dashboardu | `vandrbuch:prefs` |
+| `F` | nastavení filtrů — **mění se na místě, nikdy se nenahrazuje** | jen v paměti |
+| `S` | běhový stav: `places`, `byId`, `userPos`, `activeTab`, `hiId` | jen v paměti |
+
+Po změně `store`/`PHOTOS`/`prefs` volej příslušné `save()`/`savePhotos()`/`savePrefs()`.
+
+**Přidání obrazovky:** složka v `src/views/`, záznam v `src/views/index.js`, tlačítko
+`<button data-tab="…">` v `index.html`. Registr je schválně ve `views/`, ne v routeru —
+router nesmí znát obrazovky.
+
+## HTML a vykreslování
+
+- HTML se skládá jako řetězce v template literals a přiřazuje přes `innerHTML`,
+  ne přes `document.createElement`. Drž to; míchání přístupů ztíží porovnání s originálem.
+- **Text z dat vždy přes `esc()`** z `src/core/html.js`.
+- `esc()` ošetřuje **jen `&` a `<`** — ne `>` ani uvozovky, přestože se používá i uvnitř
+  atributů. Je to doslovný přepis původní funkce a „oprava" by změnila výstup na obrazovce.
+  Neopravuj bez vyžádání.
+- Obsluha událostí se věší jako `prvek.onclick = …` (ne `addEventListener`), v souladu
+  s originálem. `scripts/check-handlers.mjs` porovnává napojení s originálem za běhu.
+
+## CSS
+
+- Barvy, rozměry a stíny **výhradně přes proměnné z `src/styles/tokens.css`**, nikdy natvrdo.
+- Jeden soubor na komponentu v `src/styles/components/`, zapojení a **pořadí** v `index.css`.
+- `npm run check-css` porovnává 338 pravidel s originálem — po zásahu do CSS ho pusť.
+
+## Ikony
+
+Symboly v `src/icons/sprite.svg`, 45 kusů, jména `i-neco`. Vkládají se `IC('i-van')`
+nebo `<svg class="ic"><use href="#i-van"/></svg>`. Nová ikona = symbol do sprite.svg.
