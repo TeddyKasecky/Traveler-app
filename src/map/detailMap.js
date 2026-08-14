@@ -12,6 +12,7 @@ import { S, emit } from '../core/store.js'
 import { esc } from '../core/html.js'
 import { IC } from '../icons/sprite.js'
 import { pinIcon, miniPinIcon, parkPinIcon } from './markers.js'
+import { token } from '../core/barvy.js'
 
 /** @type {L.Map|null} */
 let mini = null
@@ -66,7 +67,7 @@ export function vytvorMiniMapu({ elId, p, pk, gmView, pkNav }) {
           [pk.lat, pk.lon],
           [p.lat, p.lon],
         ],
-        { color: '#292019', weight: 3, dashArray: '4 8', opacity: 0.7 }
+        { color: token('--text', '#2F3D2C'), weight: 3, dashArray: '4 8', opacity: 0.7 }
       ).addTo(mini)
       mini.fitBounds(
         L.latLngBounds([

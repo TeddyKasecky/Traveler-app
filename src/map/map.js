@@ -11,6 +11,7 @@ import { S, store, emit } from '../core/store.js'
 import { visible, pocetAktivnich } from '../core/filters.js'
 import { aktivujZalozku } from '../core/router.js'
 import { pinIcon } from './markers.js'
+import { token } from '../core/barvy.js'
 import { drawPlanLine } from './planLine.js'
 import { zajistiPodklad, hlasStavDlazdic } from './offlineMap.js'
 
@@ -159,9 +160,9 @@ export function zobrazPolohu() {
   if (markerPolohy) markerPolohy.remove()
   markerPolohy = L.circleMarker([S.userPos.lat, S.userPos.lon], {
     radius: 9,
-    color: '#292019',
+    color: token('--text', '#2F3D2C'),
     weight: 3,
-    fillColor: '#D96B3C',
+    fillColor: token('--akcent', '#5E6E4D'),
     fillOpacity: 1,
   }).addTo(mapa)
 }

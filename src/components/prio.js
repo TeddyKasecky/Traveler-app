@@ -18,7 +18,7 @@ export const PRIO_LBL = { 1: 'Někdy', 2: 'Chceme brzy', 3: 'MUSÍME!' }
 export function flames(n, max = 3, size = 15) {
   const kusy = Array.from(
     { length: max },
-    (_, i) => `<svg class="ic" style="font-size:${size}px;${i < n ? '' : 'color:#D9CDBC'}"><use href="#i-fire"/></svg>`
+    (_, i) => `<svg class="ic" style="font-size:${size}px;${i < n ? '' : 'color:var(--plamen-zhasly)'}"><use href="#i-fire"/></svg>`
   ).join('')
   return `<span class="flames" aria-label="priorita ${n}/3">${kusy}</span>`
 }

@@ -279,11 +279,17 @@ await zkus('„Moje poloha“ najde souřadnice', async () => {
   await page.waitForTimeout(300)
   await page.click('#fabLoc')
   await page.waitForTimeout(2000)
-  // circleMarker z map.js:93 se kreslí jako <path> s výplní --rust
-  const znacka = await page.locator('#map path[fill="#D96B3C"]').count()
+  // circleMarker se kreslí jako <path> s výplní --akcent. Barva se nehledá
+  // podle zapsaného hexu, ale zjistí se ze stránky: jinak by kontrola padala
+  // při každé změně palety a v tmavém režimu by nesedla nikdy. Navíc takhle
+  // ověří i to, že se JavaScript a CSS na barvě shodly.
+  const barva = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--akcent').trim()
+  )
+  const znacka = await page.locator(`#map path[fill="${barva}"]`).count()
   const h = await page.evaluate(() => window.__hlasky || [])
   const nalezena = h.some((x) => /poloha nalezena/i.test(x))
-  return { ok: znacka > 0 && nalezena, dukaz: `${znacka}× puntík · hlášky: ${h.length ? h.join(' | ') : 'žádné'}` }
+  return { ok: znacka > 0 && nalezena, dukaz: `${znacka}× puntík (${barva}) · hlášky: ${h.length ? h.join(' | ') : 'žádné'}` }
 })
 
 await zkus('„Něco blízko“ přepne na Objevuj', async () => {

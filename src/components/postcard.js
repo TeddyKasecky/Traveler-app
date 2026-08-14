@@ -61,7 +61,7 @@ export function scene(p) {
       art =
         hill(96, 'var(--clay)', 0.3) +
         peak(120, H - 14, 86, 'var(--card)') +
-        peak(215, H - 14, 108, '#EDE4D2') +
+        peak(215, H - 14, 108, 'var(--plocha2)') +
         peak(300, H - 14, 72, 'var(--card)') +
         trees(6, H - 26)
       if (p.k === 'Ferraty')
@@ -69,7 +69,7 @@ export function scene(p) {
         <circle cx="209" cy="${H - 96}" r="4.5" fill="var(--card)" stroke="var(--ink)" stroke-width="2.2"/>`
       break
     case 'Jezera':
-      art = peak(110, 88, 74, 'var(--card)') + peak(290, 88, 60, '#EDE4D2') + water(88) + trees(4, 80)
+      art = peak(110, 88, 74, 'var(--card)') + peak(290, 88, 60, 'var(--plocha2)') + water(88) + trees(4, 80)
       break
     case 'Vodopády':
       art =
