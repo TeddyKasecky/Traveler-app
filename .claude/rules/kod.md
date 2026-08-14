@@ -89,8 +89,14 @@ router nesmí znát obrazovky.
 ## CSS
 
 - Barvy, rozměry a stíny **výhradně přes proměnné z `src/styles/tokens.css`**, nikdy natvrdo.
+  Do `tokens.css` se nepřidává — `:root` se porovnává s originálem řádek po řádku. Barvy
+  pro nový prvek definuj jako lokální proměnné na jeho vlastním selektoru.
 - Jeden soubor na komponentu v `src/styles/components/`, zapojení a **pořadí** v `index.css`.
+- **Nový soubor, který v originále protějšek nemá, zapiš do `scripts/nove-styly.mjs`** —
+  jinak ho `check-css` i `parity` počítají jako nečekaný rozdíl.
 - `npm run check-css` porovnává 338 pravidel s originálem — po zásahu do CSS ho pusť.
+- Když kreslení potřebuje barvu v JavaScriptu (plátno), přečti si ji z CSS přes
+  `getComputedStyle`, ne natvrdo — vzor je v `src/map/offlineMap.js`.
 
 ## Ikony
 

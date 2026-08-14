@@ -17,6 +17,7 @@ import path from 'node:path'
 import http from 'node:http'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
+import { NOVE_STYLY } from './nove-styly.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
@@ -80,11 +81,10 @@ await zkus('viewport-fit=cover v hlavičce', async () => {
 await zkus('stejný počet použití env(safe-area-inset-*)', async () => {
   const spocti = (s) => (s.match(/env\(safe-area-inset-/g) || []).length
   const puvodni = spocti(original.slice(original.indexOf('<style>'), original.indexOf('</style>')))
-  // Prvky, které v originále protějšek nemají: formulář „Přidat místo" a varovný
-  // pruh. Svůj bezpečný okraj mají správně (pruh je pod výřezem nahoře), ale do
-  // porovnání s originálem nepatří – jinak by jejich přidání vypadalo jako chyba.
-  const NOVE = ['addform.css', 'pruh.css']
-  const jeNovy = (f) => NOVE.some((n) => f.endsWith(n))
+  // Prvky, které v originále protějšek nemají. Svůj bezpečný okraj mají správně,
+  // ale do porovnání s originálem nepatří – jinak by jejich přidání vypadalo
+  // jako chyba. Seznam je sdílený s check-css-parity.mjs, viz nove-styly.mjs.
+  const jeNovy = (f) => NOVE_STYLY.some((n) => f.endsWith(n))
   const vsechny = fs
     .readdirSync(path.join(ROOT, 'src', 'styles'), { recursive: true })
     .map(String)

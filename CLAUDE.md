@@ -56,7 +56,7 @@ npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
 
-npm run smoke            # proklikání v prohlížeči, 50 kontrol
+npm run smoke            # proklikání v prohlížeči, 55 kontrol
 npm run smoke:single     # totéž pro single-file variantu, 45 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 25 bodů
 npm run check-data       # data 1:1 s původní aplikací
@@ -68,6 +68,7 @@ npm run check-images     # existence odkazů na fotky (síť)
 npm run perf             # rychlost startu při zpomaleném procesoru
 
 node scripts/screenshots.mjs && node scripts/compare-screens.mjs   # porovnání po pixelech
+node scripts/make-basemap.mjs   # přegeneruje podklad offline mapy (ručně, zřídka)
 ```
 
 Pre-commit hook (`.githooks/pre-commit`) pustí `validate-data.mjs`, ale jen když se změnilo
@@ -82,13 +83,13 @@ Jediná runtime závislost je Leaflet 1.9.4 (přišpendlená přesná verze, bez
 |---|---|
 | `src/main.js` | vstupní bod — jen poskládá díly a zaregistruje odběry událostí, žádná logika |
 | `src/core/` | čistá logika bez DOM: `store.js` (stav + pub/sub), `router.js`, `filters.js`, `search.js`, `geo.js`, `csv.js`, `storage.js` (localStorage), `fotoDb.js` (IndexedDB), `html.js` |
-| `src/data/` | `places.json` (580 míst), `places-nova.json` (přihrádka), číselníky `categories.js`/`collections.js`/`moods.js`, `validate.js`, `schema.md` |
+| `src/data/` | `places.json` (580 míst), `places-nova.json` (přihrádka), číselníky `categories.js`/`collections.js`/`moods.js`, `validate.js`, `schema.md`, `basemap.json` (podklad offline mapy) |
 | `src/views/` | obrazovky Domů, Objevuj, Seznam, Plán, Detail + registr `index.js` |
 | `src/components/` | díly použité na víc obrazovkách (karta, filtry, sheet, wizard, formulář, toast) |
-| `src/map/` | Leaflet: `map.js`, `markers.js`, `planLine.js`, `detailMap.js` |
+| `src/map/` | Leaflet: `map.js`, `markers.js`, `planLine.js`, `detailMap.js`, `offlineMap.js` (podklad bez signálu) |
 | `src/styles/` | CSS po dílech, pořadí určuje `index.css`; barvy a rozměry jen z `tokens.css` |
 | `src/pwa/` | `sw.js` (šablona service workeru) a `register.js` |
-| `scripts/` | 16 ověřovacích skriptů, viz [.claude/rules/kontroly.md](.claude/rules/kontroly.md) |
+| `scripts/` | 17 ověřovacích skriptů, viz [.claude/rules/kontroly.md](.claude/rules/kontroly.md) |
 | `reference/` | bajtově shodná kopie původní aplikace — jen ke čtení |
 
 **Moduly se nevolají napřímo — oznamují si změny událostmi** přes `on()`/`emit()` ze

@@ -45,6 +45,11 @@ Ze seznamu k uložení se filtrují tři věci a **každá z nich by shodila cel
 Nové soubory v `public/` se do cache přidají samy, protože je Vite jen kopíruje a plugin je
 dočítá z disku. Pojmenování s podtržítkem na začátku se ale vyfiltruje.
 
+**Podklad offline mapy** (`src/data/basemap.json`) je samostatný kus, který se dotahuje až
+při prvním selhání dlaždice. Do předukládaného seznamu se dostane sám, protože ten se skládá
+ze všech souborů balíčku — a musí tam být, jinak by se bez signálu nedal stáhnout a celá
+offline mapa by nebyla k ničemu.
+
 ## Cloudflare
 
 Projekt `traveler-app` (Worker, ne Pages) napojený na `github.com/TeddyKasecky/Traveler-app`.

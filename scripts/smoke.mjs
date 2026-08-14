@@ -50,15 +50,22 @@ const problemySite = []
 const b = await chromium.launch({ executablePath: EDGE, headless: true })
 const page = await b.newPage({ viewport: { width: 390, height: 844 } })
 
+/**
+ * Cizí zdroje, které v testu stejně nejsou dostupné: dlaždice mapy a fotky.
+ * V offline části navíc selhávají schválně – právě jejich selhání zapíná
+ * zjednodušenou mapu, takže je nesmíme počítat jako chybu aplikace.
+ */
+const CIZI = (u) => u.includes('tile.openstreetmap.org') || u.includes('wikimedia.org')
+
 page.on('console', (m) => {
-  if (m.type() === 'error') chyby.push(`konzole: ${m.text()}`)
+  if (m.type() !== 'error') return
+  if (CIZI(m.location()?.url || '')) return
+  chyby.push(`konzole: ${m.text()}`)
 })
 page.on('pageerror', (e) => chyby.push(`výjimka: ${e.message}`))
 page.on('requestfailed', (r) => {
-  const u = r.url()
-  // Dlaždice a fotky z ciziny nás nezajímají – v testu stejně nejsou dostupné.
-  if (u.includes('tile.openstreetmap.org') || u.includes('wikimedia.org')) return
-  problemySite.push(`${r.failure()?.errorText} ${u}`)
+  if (CIZI(r.url())) return
+  problemySite.push(`${r.failure()?.errorText} ${r.url()}`)
 })
 
 let srv
@@ -237,6 +244,47 @@ if (!SINGLE) {
   await kontrola('offline: font Fraunces k dispozici', () =>
     page.evaluate(() => document.fonts.check("900 1.5rem Fraunces"))
   )
+
+  // Zjednodušená mapa. Dlaždice jsou z cizí domény, service worker je neukládá
+  // a hromadně stahovat se nesmějí – bez tohohle by mapa byla prostě šedá.
+  //
+  // Samotné vypnutí sítě nestačí: prohlížeč si dlaždice z prvního načtení nechal
+  // ve své cache a beze změny výřezu je servíruje dál, takže by nic neselhalo.
+  // Dvojí přiblížení vyžádá dlaždice, které v cache nejsou.
+  //
+  // Napřed na záložku Mapa – po znovunačtení je navrchu panel Domů.
+  //
+  // Přibližuje se kolečkem, ne tlačítkem: ovládání přiblížení sedí vlevo dole
+  // a částečně ho překrývá lišta záložek, takže kliknutí na něj občas skončí
+  // jinde a zkouška je pak nespolehlivá.
+  await page.click('#tabs button[data-tab="map"]')
+  await page.waitForTimeout(400)
+  await page.mouse.move(195, 480)
+  for (let i = 0; i < 3; i++) {
+    await page.mouse.wheel(0, -400)
+    await page.waitForTimeout(500)
+  }
+  await page.waitForTimeout(3000) // ať stihnou selhat dlaždice a načíst se podklad
+
+  await kontrola('offline: štítek zjednodušené mapy', () => page.locator('#offlineStitek').isVisible(), true)
+  await kontrola('offline: podklad má vlastní vrstvu', () =>
+    page.locator('.leaflet-podklad-pane canvas').count().then((n) => n >= 1)
+  )
+  await kontrola('offline: podklad je opravdu nakreslený', () =>
+    page.evaluate(() => {
+      const cv = document.querySelector('.leaflet-podklad-pane canvas')
+      if (!cv) return false
+      const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data
+      // Stačí najít jediný neprůhledný bod – prázdné plátno je průhledné celé.
+      for (let i = 3; i < d.length; i += 4) if (d[i] > 0) return true
+      return false
+    })
+  )
+  await kontrola('offline: názvy měst', () => page.locator('.mesto-popisek').count().then((n) => n > 0))
+  await kontrola('offline: mapa má barvu moře, ne šeď', () =>
+    page.evaluate(() => document.getElementById('map').classList.contains('offline'))
+  )
+
   await page.context().setOffline(false)
 }
 

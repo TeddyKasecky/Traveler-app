@@ -17,7 +17,7 @@ shodná s tím, co běží dnes.
 | CSS pravidlo po pravidle | `npm run check-css` | **338 pravidel sedí**, jediné rozdíly jsou odsouhlasené |
 | Filtry, 134 kombinací | `npm run check-filters` | **všechny sedí** |
 | Napojení tlačítek | `npm run check-handlers` | **61 / 61** |
-| Proklikání, hostovaná | `npm run smoke` | **50 / 50** |
+| Proklikání, hostovaná | `npm run smoke` | **55 / 55** |
 | Proklikání, single-file | `npm run smoke:single` | **45 / 45** |
 | Kontrolní seznam níž | `npm run parity` | **25 / 25** |
 | Úložiště a plná paměť | `npm run check-uloziste` | **13 / 13** |
@@ -76,6 +76,32 @@ zabalené u sebe.
 manifest i ikonu v hlavičce **odkazoval, ale soubory nikdy neexistovaly**
 (`index-original.html:8-10`) – proto dnes chybí logo a proto se appka nedá pořádně
 nainstalovat. Odsouhlaseno jako Q1.
+
+---
+
+## 2b. Mapa bez signálu
+
+Dlaždice z OpenStreetMap se do cache neukládají a hromadně stahovat se
+[nesmějí](https://operations.osmfoundation.org/policies/tiles/), takže offline zbývala
+šedá plocha. Nově se pod dlaždice vloží zjednodušený podklad z Natural Earth.
+
+| Bod | Důkaz |
+|---|---|
+| podklad má vlastní vrstvu | `.leaflet-podklad-pane canvas` |
+| opravdu se kreslí, ne prázdné plátno | v obrázku je aspoň jeden neprůhledný bod |
+| názvy měst | `.mesto-popisek` |
+| mapa má barvu moře, ne šeď | `#map.offline` |
+| štítek to hlásí | „Offline · zjednodušená mapa" |
+
+Ověřuje `npm run smoke`, oddíl „offline zkouška".
+
+**Podklad se nepřepíná, jen leží pod dlaždicemi.** První verze se přepínala podle toho,
+jestli dlaždice jdou – jenže prohlížeč offline servíruje nedávno prohlédnuté dlaždice
+ze své cache, takže část jich dorazí a část ne, a přepínání pod rukama blikalo. Takhle
+se díra v mapě vyplní i uprostřed jinak funkční mapy.
+
+Zkouška proto přibližuje kolečkem do míst, kam se předtím nikdo nedíval – bez toho by
+prohlížeč posloužil z cache a nic by neselhalo, takže by kontrola nic neověřila.
 
 ---
 
@@ -275,5 +301,6 @@ Všechno ostatní je 1:1. Tohle je úplný seznam toho, co se liší.
 | Q8 | fotky přesunuty do IndexedDB | localStorage má 5MB strop a fotky v něm dusily poznámky | `src/core/fotoDb.js` |
 | Q9 | data z importu CSV mají vlastní klíč | ~565 kB v záznamu s poznámkami se přepisovalo při každé změně | `src/core/storage.js: DATAK` |
 | Q10 | psaní poznámky se ukládá až po dopsání | dřív zápis celého store při každé klávese, na mobilu to sekalo | `src/core/store.js: saveOdlozene` |
+| Q11 | bez signálu se pod dlaždicemi ukáže zjednodušená mapa | originál i naše první verze měly offline šedou plochu | `src/map/offlineMap.js`, `src/data/basemap.json` |
 
 Nálezy mimo rozsah přestavby, které jsme se rozhodli **nechat být**, jsou v `NAPADY.md`.

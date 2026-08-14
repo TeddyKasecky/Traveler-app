@@ -11,7 +11,7 @@ _Zjištěno auditem: 13 souborů v `scripts/`, `package.json:7-24`, `PARITA.md`,
 `.githooks/pre-commit`._
 
 **Není tu žádný test framework** — chybí Jest, Vitest, `tests/` i `npm test`. Nezaváděj je
-bez vyžádání. Místo nich je 16 samostatných spustitelných `.mjs` skriptů; každý vypíše
+bez vyžádání. Místo nich je 17 samostatných spustitelných `.mjs` skriptů; každý vypíše
 `X / Y` a skončí kódem 1 při chybě.
 
 ## Co který skript ověřuje
@@ -26,12 +26,18 @@ bez vyžádání. Místo nich je 16 samostatných spustitelných `.mjs` skriptů
 | `check-handlers.mjs` | `npm run check-handlers` | napojení tlačítek za běhu, 61/61 |
 | `check-form.mjs` | `npm run check-form` | že formulář vyrábí platná místa, 18/18 |
 | `check-images.mjs` | `npm run check-images` | existenci odkazů na fotky — **chodí na síť** |
-| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 50 / 45 kontrol |
+| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 55 / 45 kontrol |
 | `parity.mjs` | `npm run parity` | kontrolní seznam z `PARITA.md`, 25 bodů |
 | `perf.mjs` | `npm run perf` | rychlost startu při zpomaleném procesoru |
 | `screenshots.mjs` + `compare-screens.mjs` | ručně | 8 obrazovek porovnaných po pixelech |
 | `slouc.mjs` | `npm run slouc` | přesune přihrádku do hlavního souboru |
 | `make-icons.mjs`, `fetch-fonts.mjs` | ručně | jednorázoví pomocníci (ikony PWA, stažení fontů) |
+| `make-basemap.mjs` | ručně | přegeneruje `src/data/basemap.json` z Natural Earth — **chodí na síť** |
+
+`nove-styly.mjs` není kontrola, ale sdílený seznam CSS prvků, které v originále protějšek
+nemají. Používá ho `check-css-parity.mjs` i `parity.mjs` — když měl každý svůj, přidání
+nového prvku tiše shodilo kontrolu bezpečných okrajů. **Nový CSS soubor mimo originál
+přidej tam**, ne do jednotlivých skriptů.
 
 `smoke.mjs`, `check-handlers.mjs`, `screenshots.mjs` a `perf.mjs` řídí **skutečný prohlížeč**:
 `playwright-core` + Edge z `C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe`.
@@ -55,6 +61,7 @@ Chromium se schválně nestahuje. Skripty proti `dist/` potřebují napřed `npm
 |---|---|
 | `src/data/**` | `npm run validate` (hook to udělá sám) |
 | `src/core/storage.js`, `store.js`, `fotoDb.js` | `npm run check-uloziste` |
+| `src/map/**`, nový CSS soubor | `npm run smoke`, `npm run check-css`, `npm run parity` |
 | CSS | `npm run check-css` |
 | filtry, hledání | `npm run check-filters` |
 | obsluha tlačítek, nová obrazovka | `npm run check-handlers`, `npm run smoke` |

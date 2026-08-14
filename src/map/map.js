@@ -12,6 +12,7 @@ import { visible, pocetAktivnich } from '../core/filters.js'
 import { aktivujZalozku } from '../core/router.js'
 import { pinIcon } from './markers.js'
 import { drawPlanLine } from './planLine.js'
+import { zajistiPodklad, hlasStavDlazdic } from './offlineMap.js'
 
 /** @type {L.Map} */
 export let mapa
@@ -23,12 +24,22 @@ let markerPolohy = null
 /** Vytvoří mapu. Volá se jednou při startu. */
 export function initMapa() {
   mapa = L.map('map', { zoomControl: false }).setView([47.2, 10.5], 5)
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  const dlazdice = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 18,
     attribution: '© OpenStreetMap',
   }).addTo(mapa)
   L.control.zoom({ position: 'bottomleft' }).addTo(mapa)
   vrstva = L.layerGroup().addTo(mapa)
+
+  // Zjednodušený podklad se dotáhne, jakmile poprvé selže dlaždice, a pak už
+  // zůstane – leží pod dlaždicemi, takže tam, kde dlaždice jsou, není vidět.
+  // Nekouká se na `navigator.onLine`: ten hlásí jen zapojenou wifi, ne to,
+  // jestli se dá někam dovolat.
+  dlazdice.on('tileerror', () => {
+    zajistiPodklad(mapa)
+    hlasStavDlazdic(true)
+  })
+  dlazdice.on('tileload', () => hlasStavDlazdic(false))
 
   // Při posunu mapy se rozjede tečkovaná „silnice“ v hlavičce.
   const road = document.getElementById('topRoad')

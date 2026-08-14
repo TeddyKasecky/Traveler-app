@@ -77,9 +77,11 @@ tlačítko Sdílet → *Přidat na plochu*.
 Po instalaci se aplikace chová jako každá jiná: vlastní ikona, žádný prohlížeč
 kolem, funguje bez signálu.
 
-> **Mapové dlaždice se offline neukládají.** Aplikace i všech 580 míst fungují,
-> ale mapa zůstane šedá – stejně jako dosud. Ukládat dlaždice by znamenalo zabrat
-> v telefonu stovky megabajtů.
+> **Bez signálu se mapa přepne na zjednodušenou.** Místo šedi uvidíte pobřeží,
+> hranice států, jezera, řeky a města – na „kde zhruba jsme" to stačí. Podrobné
+> dlaždice se neukládají: zabraly by v telefonu stovky megabajtů a hromadně
+> stahovat je z OpenStreetMap se navíc nesmí. Co jste si nedávno prohlédli, vám
+> ale prohlížeč sám podrží ve své paměti, takže tam bývá vidět i normální mapa.
 
 ---
 
@@ -171,7 +173,7 @@ Poprvé je potřeba jednou `npm install`.
 
 | Příkaz | Co ověří |
 |---|---|
-| `npm run smoke` | proklikání v prohlížeči, 50 kontrol |
+| `npm run smoke` | proklikání v prohlížeči, 55 kontrol |
 | `npm run check-uloziste` | že se poznámky neztratí, když dojde místo |
 | `npm run smoke:single` | totéž pro variantu z disku, 45 kontrol |
 | `npm run parity` | kontrolní seznam z [`PARITA.md`](PARITA.md), 25 bodů |
@@ -200,7 +202,7 @@ src/
   main.js          spojení všeho dohromady, nic víc
   data/            místa, číselníky, kontrola dat, schema.md
   core/            čistá logika: stav, hledání, filtry, směrování, geo, CSV, úložiště
-  map/             Leaflet: mapa, špendlíky, čára plánu, mini-mapa
+  map/             Leaflet: mapa, špendlíky, čára plánu, mini-mapa, offline podklad
   components/      díly použité na víc obrazovkách
   views/           obrazovky – Domů, Objevuj, Seznam, Plán, Detail
   styles/          CSS rozdělené po dílech; pořadí určuje index.css
@@ -227,6 +229,18 @@ obsahu. Nikdy se needituje `dist/sw.js`, vždycky ta šablona.
 
 Verze cache se počítá ze seznamu souborů. Když se nic nezmění, service worker
 zůstane stejný a prohlížeč ho zbytečně nepřeinstaluje.
+
+### Mapa bez signálu
+
+`src/map/offlineMap.js` kreslí zjednodušený podklad – pobřeží, hranice, jezera, řeky
+a města. Leží **pod** dlaždicemi, takže se nic nepřepíná: kde dlaždice jsou, překryjí
+ho; kde chybí, prosvítá. Díra uprostřed jinak funkční mapy se tím vyplní taky.
+
+Data jsou v `src/data/basemap.json` (~390 kB, po kompresi ~90 kB) a v repozitáři.
+Přegenerovat je jde příkazem `node scripts/make-basemap.mjs`, který si stáhne podklady
+z Natural Earth (public domain) a zjednoduší je. Běžně to není potřeba.
+
+Do aplikace se podklad dotahuje až při prvním selhání dlaždice, takže start nezdržuje.
 
 ### Dvě varianty jednoho zdroje
 

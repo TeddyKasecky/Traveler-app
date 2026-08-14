@@ -14,6 +14,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { NOVE_STYLY_CESTY } from './nove-styly.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const STYLES = path.join(ROOT, 'src', 'styles')
@@ -47,14 +48,11 @@ const vsechny = [...indexCss.matchAll(/@import\s+'([^']+)'/g)]
   .filter((p) => p.startsWith('.') && !p.endsWith('fonts.css')) // fonty a Leaflet v originále nebyly v <style>
 
 /**
- * Styly obrazovek, které v originále vůbec nebyly. Nemají s čím se porovnávat,
- * tak se z porovnání vyjmou – jinak by se do seznamu odsouhlasených výjimek
- * musel vypsat každý jejich selektor a kontrola by ztratila smysl.
- *
- * Nejsou ale bez dozoru: níž se ověřuje, že nepřepisují žádný selektor
- * z originálu. To je jediné, čím by mohly ublížit.
+ * Styly prvků, které v originále vůbec nebyly – seznam je sdílený, viz
+ * `nove-styly.mjs`. Nejsou bez dozoru: níž se ověřuje, že nepřepisují žádný
+ * selektor z originálu. To je jediné, čím by mohly ublížit.
  */
-const NOVE_OBRAZOVKY = ['./components/addform.css', './components/pruh.css']
+const NOVE_OBRAZOVKY = NOVE_STYLY_CESTY
 
 const poradi = vsechny.filter((p) => !NOVE_OBRAZOVKY.includes(p))
 const nase = poradi.map((p) => fs.readFileSync(path.join(STYLES, p), 'utf8')).join('\n')
