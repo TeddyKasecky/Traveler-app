@@ -1,7 +1,11 @@
 # Nápady a odložené nálezy
 
-Sem patří všechno, co **není** součástí přestavby. Nic z toho neimplementuju,
-dokud to výslovně neodsouhlasíš. Cílem přestavby je parita, ne vylepšování.
+Odložené nálezy a nápady. **Nic z toho neimplementuju, dokud to výslovně
+neodsouhlasíš** — každý bod mění chování nebo data.
+
+N1–N10 vznikly během přestavby, kdy byla cílem parita. Ta je hotová (`PARITA.md`),
+takže se dnes smějí implementovat; pořád ale až po dohodě. N11 a dál jsou nápady
+k věcem, které v původní aplikaci vůbec nebyly.
 
 ---
 
@@ -64,6 +68,21 @@ jako alternativa k `VAN_IMG`, dá se vytáhnout odtamtud.
 `prefs.moodUse` počítá, kolikrát jsi kterou náladu použila. Nikdy se to nečte.
 Data se sbírají už teď, takže by šlo nálady řadit podle oblíbenosti — ale změnilo by to
 pořadí dlaždic, tedy vzhled.
+
+---
+
+## Offline mapa
+
+**N11 — Tlačítko „přepnout na zjednodušenou mapu"**
+Podklad leží pod dlaždicemi a nepřepíná se, takže nic neproblikává. Při slabém signálu
+ale vzniká jiná nepříjemnost: prohlížeč část dlaždic vytáhne ze své cache a část ne, takže
+kus mapy je podrobný a kus zjednodušený — a při posunu se to střídá. Mapa pak vypadá
+roztrhaně.
+
+Řešení by bylo tlačítko, kterým se dlaždice úplně vypnou a jede se jen na zjednodušené
+mapě, dokud ho uživatel nevypne zpět. Mapa by byla jednotná a nic by se nedotahovalo.
+Vyžaduje rozmyslet, kam tlačítko patří (dnes je vlevo dole jen štítek, který nic nedělá)
+a jestli se stav má pamatovat mezi spuštěními.
 
 ---
 
