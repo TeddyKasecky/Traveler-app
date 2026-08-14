@@ -176,7 +176,7 @@ Poprvé je potřeba jednou `npm install`.
 | `npm run smoke` | proklikání v prohlížeči, 56 kontrol |
 | `npm run check-uloziste` | že se poznámky neztratí, když dojde místo |
 | `npm run smoke:single` | totéž pro variantu z disku, 45 kontrol |
-| `npm run parity` | kontrolní seznam z [`PARITA.md`](PARITA.md), 25 bodů |
+| `npm run parity` | kontrolní seznam z [`PARITA.md`](PARITA.md), 26 bodů |
 | `npm run check-form` | že formulář vyrábí platná místa |
 | `npm run check-handlers` | že žádnému tlačítku nechybí napojení |
 | `npm run check-css` | že se CSS neliší od originálu |

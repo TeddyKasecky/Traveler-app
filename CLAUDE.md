@@ -58,7 +58,7 @@ npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 ko
 
 npm run smoke            # proklikání v prohlížeči, 56 kontrol
 npm run smoke:single     # totéž pro single-file variantu, 45 kontrol
-npm run parity           # kontrolní seznam z PARITA.md, 25 bodů
+npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-css        # 338 CSS pravidel proti originálu
 npm run check-filters    # 134 kombinací filtrů

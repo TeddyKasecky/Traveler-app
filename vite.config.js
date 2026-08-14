@@ -44,7 +44,11 @@ function pluginServiceWorker() {
         .filter((d) => d.isFile() && !d.name.startsWith('.') && !d.name.startsWith('_'))
         .map((d) => `./${d.name}`)
 
-      const seznam = ['./', ...Object.keys(bundle).map((f) => `./${f}`), ...zPublic]
+      // Seřazeno schválně. `Object.keys(bundle)` nevrací pokaždé stejné pořadí –
+      // stačilo, aby si dva fonty prohodily místo, a verze cache vyšla jiná, i když
+      // se v aplikaci nezměnil jediný bajt. Telefon si pak celou aplikaci stáhl
+      // znovu pro nic za nic. Řazení dělá verzi závislou na obsahu, ne na náhodě.
+      const seznam = ['./', ...Object.keys(bundle).map((f) => `./${f}`), ...zPublic].sort()
       const verze = `vandrbuch-${crypto.createHash('sha1').update(seznam.join('|')).digest('hex').slice(0, 10)}`
 
       const sablona = fs.readFileSync(path.join(ROOT, 'src', 'pwa', 'sw.js'), 'utf8')

@@ -27,7 +27,7 @@ bez vyžádání. Místo nich je 17 samostatných spustitelných `.mjs` skriptů
 | `check-form.mjs` | `npm run check-form` | že formulář vyrábí platná místa, 18/18 |
 | `check-images.mjs` | `npm run check-images` | existenci odkazů na fotky — **chodí na síť** |
 | `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 56 / 45 kontrol |
-| `parity.mjs` | `npm run parity` | kontrolní seznam z `PARITA.md`, 25 bodů |
+| `parity.mjs` | `npm run parity` | kontrolní seznam z `PARITA.md`, 26 bodů |
 | `perf.mjs` | `npm run perf` | rychlost startu při zpomaleném procesoru |
 | `screenshots.mjs` + `compare-screens.mjs` | ručně | 8 obrazovek porovnaných po pixelech |
 | `slouc.mjs` | `npm run slouc` | přesune přihrádku do hlavního souboru |

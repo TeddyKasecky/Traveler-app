@@ -105,6 +105,24 @@ await zkus('všechny tři klíče doslova jako v originále', async () => {
   return { ok: !chybi.length, dukaz: chybi.length ? `chybí ${chybi}` : 'vandrbuch:v1 · :photos · :prefs' }
 })
 
+nadpis('2c. Service worker se nepřeinstaluje pro nic za nic')
+
+await zkus('předukládaný seznam je seřazený', async () => {
+  // Verze cache je otisk toho seznamu. `Object.keys(bundle)` ale nevrací pokaždé
+  // stejné pořadí – stačilo, aby si dva fonty prohodily místo, a verze vyšla jiná,
+  // i když se nezměnil jediný bajt. Telefon si pak stáhl celou aplikaci znovu.
+  const sw = fs.readFileSync(path.join(ROOT, 'dist', 'sw.js'), 'utf8')
+  const seznam = [...sw.matchAll(/"(\.\/[^"]*)"/g)].map((m) => m[1])
+  const serazeny = [...seznam].sort()
+  const ok = seznam.length > 0 && seznam.every((x, i) => x === serazeny[i])
+  return {
+    ok,
+    dukaz: ok
+      ? `${seznam.length} souborů, seřazeno – verze závisí jen na obsahu`
+      : 'pořadí není stabilní, verze cache se bude měnit i beze změny obsahu',
+  }
+})
+
 /* ================= prohlížeč ================= */
 
 const srv = http.createServer((req, res) => {

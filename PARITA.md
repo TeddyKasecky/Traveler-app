@@ -19,7 +19,7 @@ shodná s tím, co běží dnes.
 | Napojení tlačítek | `npm run check-handlers` | **61 / 61** |
 | Proklikání, hostovaná | `npm run smoke` | **56 / 56** |
 | Proklikání, single-file | `npm run smoke:single` | **45 / 45** |
-| Kontrolní seznam níž | `npm run parity` | **25 / 25** |
+| Kontrolní seznam níž | `npm run parity` | **26 / 26** |
 | Úložiště a plná paměť | `npm run check-uloziste` | **13 / 13** |
 | Formulář vyrábí platná místa | `npm run check-form` | **18 / 18** |
 | Odkazy na fotky | `npm run check-images` | **262 / 262 existuje** |
@@ -110,6 +110,27 @@ se díra v mapě vyplní i uprostřed jinak funkční mapy.
 
 Zkouška proto přibližuje kolečkem do míst, kam se předtím nikdo nedíval – bez toho by
 prohlížeč posloužil z cache a nic by neselhalo, takže by kontrola nic neověřila.
+
+---
+
+## 2c. Nainstalovaná aplikace se nepřeinstaluje pro nic za nic
+
+Verze cache je otisk seznamu předukládaných souborů. Záměr byl, aby se při nezměněném
+obsahu nezměnila ani verze a telefon si nic nestahoval znovu.
+
+**Nefungovalo to.** `Object.keys(bundle)` nevrací pokaždé stejné pořadí — stačilo, aby si
+dva soubory fontů prohodily místo, a verze vyšla jiná, přestože se v aplikaci nezměnil
+jediný bajt. Zachyceno porovnáním nasazeného `sw.js` s lokálním buildem: stejných
+11 souborů, jiné pořadí, jiná verze (`b138017f42` vs `f02112b00a`).
+
+Seznam se proto před spočítáním otisku **řadí**. Tři buildy po sobě teď dají tutéž verzi.
+
+| Bod | Důkaz |
+|---|---|
+| předukládaný seznam je seřazený | `npm run parity`, oddíl 2c |
+| verze je stabilní mezi buildy | tři buildy po sobě → `vandrbuch-3a840e25bb` |
+
+Dopad na telefon: aktualizace se stáhne jen tehdy, když se opravdu něco změnilo.
 
 ---
 
@@ -365,5 +386,6 @@ Všechno ostatní je 1:1. Tohle je úplný seznam toho, co se liší.
 | Q10 | psaní poznámky se ukládá až po dopsání | dřív zápis celého store při každé klávese, na mobilu to sekalo | `src/core/store.js: saveOdlozene` |
 | Q11 | bez signálu se pod dlaždicemi ukáže zjednodušená mapa | originál i naše první verze měly offline šedou plochu | `src/map/offlineMap.js`, `src/data/basemap.json` |
 | Q12 | do stránky jdou jen špendlíky ve výřezu | 580 kusů naráz stálo skoro vteřinu přepočtu stylů při každém posunu mapy | `src/map/map.js: srovnejVyrez` |
+| Q13 | předukládaný seznam se před otiskem řadí | bez toho se verze cache měnila i beze změny obsahu a telefon stahoval aplikaci znovu | `vite.config.js: pluginServiceWorker` |
 
 Nálezy mimo rozsah přestavby, které jsme se rozhodli **nechat být**, jsou v `NAPADY.md`.
