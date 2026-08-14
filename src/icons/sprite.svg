@@ -49,4 +49,14 @@
 <symbol id="i-sparkles" viewBox="0 0 24 24"><path class="f" d="M9 3l1.6 4.4L15 9l-4.4 1.6L9 15l-1.6-4.4L3 9l4.4-1.6z"/><path class="f" d="M17.5 13l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/></symbol>
 <symbol id="i-flag" viewBox="0 0 24 24"><path class="f" opacity=".25" d="M6 4h12l-2.5 4L18 12H6z"/><path d="M6 21V4h12l-2.5 4L18 12H6"/></symbol>
 <symbol id="i-moon" viewBox="0 0 24 24"><path class="f" opacity=".25" d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z"/><path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z"/></symbol>
+<symbol id="i-hledat" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M15.8 15.8L21 21"/></symbol>
+<symbol id="i-profil" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.9" class="f"/><path d="M4.6 20.5a7.6 7.6 0 0 1 14.8 0"/></symbol>
+<symbol id="i-batoh" viewBox="0 0 24 24"><path d="M6 9.4A4.4 4.4 0 0 1 10.4 5h3.2A4.4 4.4 0 0 1 18 9.4V19a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z"/><path d="M9.4 5V4a2.6 2.6 0 0 1 5.2 0v1"/><path class="f" opacity=".25" d="M9 12.5h6v4H9z"/><path d="M9 12.5h6v4H9z"/></symbol>
+<symbol id="i-srdce" viewBox="0 0 24 24"><path d="M12 20.4S3.6 15.6 3.6 9.8A4.6 4.6 0 0 1 12 7.2a4.6 4.6 0 0 1 8.4 2.6c0 5.8-8.4 10.6-8.4 10.6z"/></symbol>
+<symbol id="i-zalozka" viewBox="0 0 24 24"><path class="f" opacity=".25" d="M6.6 3.6h10.8v17l-5.4-4-5.4 4z"/><path d="M6.6 3.6h10.8v17l-5.4-4-5.4 4z"/></symbol>
+<symbol id="i-sdilet" viewBox="0 0 24 24"><circle cx="18" cy="5.6" r="2.8"/><circle cx="6" cy="12" r="2.8"/><circle cx="18" cy="18.4" r="2.8"/><path d="M8.5 10.7l7-3.7M8.5 13.3l7 3.7"/></symbol>
+<symbol id="i-vice" viewBox="0 0 24 24"><circle cx="5.2" cy="12" r="1.7" class="f"/><circle cx="12" cy="12" r="1.7" class="f"/><circle cx="18.8" cy="12" r="1.7" class="f"/></symbol>
+<symbol id="i-kalendar" viewBox="0 0 24 24"><rect x="3.4" y="5.4" width="17.2" height="15.2" rx="3"/><path d="M3.4 10.2h17.2M8 3.4v4M16 3.4v4"/><circle cx="8.6" cy="14.6" r="1.2" class="f"/><circle cx="12" cy="14.6" r="1.2" class="f"/></symbol>
+<symbol id="i-stan" viewBox="0 0 24 24"><path class="f" opacity=".25" d="M12 4.4L21 20H3z"/><path d="M12 4.4L21 20H3zM12 4.4V20M12 20l-3.6-6M12 20l3.6-6"/></symbol>
+<symbol id="i-strom" viewBox="0 0 24 24"><path class="f" opacity=".25" d="M12 3l4.4 6.4h-2.6L18 15H6l4.2-5.6H7.6z"/><path d="M12 3l4.4 6.4h-2.6L18 15H6l4.2-5.6H7.6zM12 15v6"/></symbol>
 </defs></svg>

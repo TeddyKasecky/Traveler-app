@@ -1,10 +1,26 @@
-/* ===== taby ===== */
-#tabs{position:fixed;inset:auto 0 0 0;z-index:1200;background:var(--paper);display:flex;padding:8px 6px calc(env(safe-area-inset-bottom) + 8px)}
-#tabs::before{content:"";position:absolute;top:0;left:0;right:0;border-top:var(--line)}
-#tabs button{flex:1;background:none;border:0;font-weight:800;font-size:.65rem;letter-spacing:.3px;color:var(--ink2);
-  display:flex;flex-direction:column;gap:3px;align-items:center;padding:5px 2px;border-radius:14px}
-#tabs button svg.ic{font-size:22px;color:var(--ink2);transition:transform .2s var(--pop),color .15s}
-#tabs button.on{color:var(--ink)} #tabs button.on svg.ic{color:var(--rust);transform:translateY(-2px) scale(1.08)}
+/* ===== taby =====
+ *
+ * Podle grafického manuálu: tmavě zelená plovoucí pilulka, aktivní položka
+ * v okrovém kolečku. Do léta 2026 to byl plochý pás v barvě papíru
+ * s tečkovanou čárou nahoře.
+ *
+ * `--plocha-nav` je tmavá v obou režimech, takže ikony a popisky na ní jsou
+ * vždycky světlé. Proto `--na-nav`, a ne `--text` – ten se s režimem převrací
+ * a v tmavém by lišta zůstala prázdná.
+ *
+ * Jedno `env(safe-area-inset-bottom)` schválně zůstává, jen se přesunulo
+ * z padding-bottom do margin-bottom: pilulka plave nad okrajem, ale pořád se
+ * musí vyhnout gestové čáře. Počet použití hlídá `npm run parity`.
+ */
+#tabs{position:fixed;inset:auto 0 0 0;z-index:1200;display:flex;padding:6px;
+  margin:0 12px calc(env(safe-area-inset-bottom) + 10px);
+  background:var(--plocha-nav);border-radius:var(--r-pill);box-shadow:var(--stin-3)}
+#tabs button{flex:1;background:none;border:0;font-weight:700;font-size:.62rem;letter-spacing:.2px;color:var(--na-nav);
+  display:flex;flex-direction:column;gap:4px;align-items:center;padding:6px 2px;border-radius:var(--r-pill);opacity:.72}
+#tabs button svg.ic{font-size:20px;color:var(--na-nav);width:34px;height:34px;padding:7px;border-radius:50%;
+  transition:background .18s,color .18s,transform .2s var(--pop)}
+#tabs button.on{opacity:1}
+#tabs button.on svg.ic{background:var(--zvyrazneni);color:var(--na-zvyrazneni);transform:translateY(-1px)}
 #tabs .lbl{position:relative}
-#tabs .pcount{position:absolute;top:-8px;right:-15px;background:var(--upozorneni);color:var(--na-upozorneni);border:1px solid var(--obrys);
-  border-radius:999px;font-size:.58rem;min-width:17px;height:17px;display:grid;place-items:center}
+#tabs .pcount{position:absolute;top:-30px;right:-15px;background:var(--upozorneni);color:var(--na-upozorneni);
+  border-radius:999px;font-size:.58rem;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center}

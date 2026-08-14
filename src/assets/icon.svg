@@ -1,23 +1,33 @@
 <!-- Zdroj ikony aplikace. Rastruje se skriptem: node scripts/make-icons.mjs
-     Kresba je zvětšený symbol i-van ze sprite, barvy jsou z palety aplikace:
-     papír #F4EFE2, inkoust #292019, rez #D96B3C, obloha #8FB0BF. -->
+     Kresba je značka z grafického manuálu (grafika/, list „Grafický manuál“):
+     dva štíty, tři stromky a jiskřičky, linkově, jedním tahem.
+     Barvy jsou z palety Golden Moss: Ivory #FAF5EC, Forest Ink #2F3D2C,
+     Moss #5E6E4D, Ochre #E1B152. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" fill="#F4EFE2"/>
+  <rect width="512" height="512" fill="#FAF5EC"/>
 
-  <!-- tečkovaná silnice, stejný motiv jako proužek pod hlavičkou -->
-  <g fill="#292019" opacity=".28">
-    <circle cx="96" cy="404" r="9"/><circle cx="160" cy="404" r="9"/><circle cx="224" cy="404" r="9"/>
-    <circle cx="288" cy="404" r="9"/><circle cx="352" cy="404" r="9"/><circle cx="416" cy="404" r="9"/>
+  <!-- slunce nízko za hřebenem, jediná plná plocha -->
+  <circle cx="340" cy="196" r="34" fill="#E1B152" opacity=".9"/>
+
+  <g fill="none" stroke="#2F3D2C" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">
+    <!-- hřeben: dva štíty, ten vyšší vpravo -->
+    <path d="M92 330 L164 232 L214 296"/>
+    <path d="M196 330 L286 208 L392 330"/>
+
+    <!-- tři smrky před hřebenem -->
+    <g stroke-width="11">
+      <path d="M136 330 V300 M136 264 l24 34 h-48z M136 286 l19 26 h-38z"/>
+      <path d="M256 336 V304 M256 262 l27 38 h-54z M256 288 l21 29 h-42z"/>
+      <path d="M366 330 V302 M366 268 l22 32 h-44z M366 290 l17 24 h-34z"/>
+    </g>
+
+    <!-- země -->
+    <path d="M84 348 H428" stroke="#5E6E4D"/>
   </g>
 
-  <!-- dodávka: obrys jako v symbolu i-van, jen v jiném měřítku -->
-  <g transform="translate(256 244) scale(17.6) translate(-12 -13)"
-     fill="none" stroke="#292019" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M4 14c0-3 1.2-6 3-6h7c2.4 0 6 2.5 6 5v3H4z" fill="#D96B3C" stroke="none" opacity=".9"/>
-    <path d="M4 16v-2c0-3 1.2-6 3-6h7c2.4 0 6 2.5 6 5v3"/>
-    <rect x="6.6" y="10" width="5" height="3.4" rx="1" fill="#8FB0BF" stroke="#292019"/>
-    <path d="M2 16h20"/>
-    <circle cx="8" cy="16" r="2" fill="#FDFAF2"/>
-    <circle cx="16.5" cy="16" r="2" fill="#FDFAF2"/>
+  <!-- jiskřičky nad hřebenem, jako v manuálu -->
+  <g fill="#5E6E4D">
+    <path d="M404 214 l6 15 15 6 -15 6 -6 15 -6-15 -15-6 15-6z"/>
+    <path d="M150 196 l4 11 11 4 -11 4 -4 11 -4-11 -11-4 11-4z"/>
   </g>
 </svg>

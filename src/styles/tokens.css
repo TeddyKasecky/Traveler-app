@@ -32,6 +32,7 @@
   --plocha:#FFFCF6;         /* karta */
   --plocha2:#F6F0E3;        /* vnořená plocha: fakt, štítek, políčko */
   --plocha-nav:#3B4A36;     /* tmavě zelená pilulka spodní navigace */
+  --na-nav:#EDE7D8;         /* na pilulce – ta je tmavá v obou režimech */
 
   --text:#2F3D2C;           /* 10,6:1 na --bg */
   --text2:#5A6850;          /* tlumený, 5,5:1 na --bg (#6B7A5F by dal jen 4,2) */
@@ -106,6 +107,7 @@
   :root:not([data-motiv="svetly"]){
     --bg:#1B241A; --bg2:#141C13; --plocha:#243021; --plocha2:#2C3A28;
     --plocha-nav:#2C3A28;
+    --na-nav:#EDE7D8;
 
     --text:#EDE7D8;         /* 11,2:1 na --plocha */
     --text2:#9FAE96;        /*  5,4:1 na --plocha */
@@ -140,6 +142,7 @@
 :root[data-motiv="tmavy"]{
   --bg:#1B241A; --bg2:#141C13; --plocha:#243021; --plocha2:#2C3A28;
   --plocha-nav:#2C3A28;
+  --na-nav:#EDE7D8;
 
   --text:#EDE7D8;
   --text2:#9FAE96;

@@ -100,7 +100,7 @@ const kontrola = async (popis, fn, ocekavano) => {
   console.log(`  ${ok ? 'ok   ' : 'CHYBA'} ${popis.padEnd(42)} ${hodnota}`)
 }
 
-await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 46)
+await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 56)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
 await kontrola('chipy kategorií', () => page.locator('#chips .chip').count(), 10)

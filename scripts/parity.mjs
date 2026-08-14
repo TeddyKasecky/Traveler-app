@@ -79,7 +79,11 @@ await zkus('viewport-fit=cover v hlavičce', async () => {
 })
 
 await zkus('stejný počet použití env(safe-area-inset-*)', async () => {
-  const spocti = (s) => (s.match(/env\(safe-area-inset-/g) || []).length
+  // Komentáře se odstraňují: kontrola má měřit skutečná použití v CSS, ne to,
+  // kolikrát se `env(safe-area-inset-…)` zmíní ve vysvětlivce nad pravidlem.
+  // Stejně to dělá check-css-parity.mjs, než začne CSS rozebírat.
+  const bezKomentaru = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '')
+  const spocti = (s) => (bezKomentaru(s).match(/env\(safe-area-inset-/g) || []).length
   const puvodni = spocti(original.slice(original.indexOf('<style>'), original.indexOf('</style>')))
   // Prvky, které v originále protějšek nemají. Svůj bezpečný okraj mají správně,
   // ale do porovnání s originálem nepatří – jinak by jejich přidání vypadalo
