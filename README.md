@@ -172,6 +172,7 @@ Poprvé je potřeba jednou `npm install`.
 | Příkaz | Co ověří |
 |---|---|
 | `npm run smoke` | proklikání v prohlížeči, 50 kontrol |
+| `npm run check-uloziste` | že se poznámky neztratí, když dojde místo |
 | `npm run smoke:single` | totéž pro variantu z disku, 45 kontrol |
 | `npm run parity` | kontrolní seznam z [`PARITA.md`](PARITA.md), 25 bodů |
 | `npm run check-form` | že formulář vyrábí platná místa |
@@ -198,7 +199,7 @@ Jeden soubor = jedna zodpovědnost. Žádný framework, žádná knihovna na vzh
 src/
   main.js          spojení všeho dohromady, nic víc
   data/            místa, číselníky, kontrola dat, schema.md
-  core/            čistá logika: stav, hledání, filtry, směrování, geo, CSV
+  core/            čistá logika: stav, hledání, filtry, směrování, geo, CSV, úložiště
   map/             Leaflet: mapa, špendlíky, čára plánu, mini-mapa
   components/      díly použité na víc obrazovkách
   views/           obrazovky – Domů, Objevuj, Seznam, Plán, Detail
@@ -238,8 +239,10 @@ stejný a na variantu se ptá přes `import.meta.env.SINGLE_FILE`.
 
 ## 9. Na co si dát pozor
 
-- **Neměnit klíče v localStorage** (`vandrbuch:v1`, `vandrbuch:photos`,
-  `vandrbuch:prefs`). Jsou v nich všechny poznámky, hodnocení a fotky.
+- **Neměnit klíče v úložišti** (`vandrbuch:v1`, `vandrbuch:prefs`, `vandrbuch:data`).
+  Jsou v nich všechny poznámky a hodnocení. Fotky se přestěhovaly do IndexedDB,
+  protože localStorage má strop 5 MB a fotky v něm dusily poznámky; starý klíč
+  `vandrbuch:photos` se při prvním otevření sám vyprázdní.
 - **Nepřepisovat odkazy na fotky.** Kódování diakritiky v adresách z Wikimedia
   Commons je citlivé a chyba se pozná až tím, že se obrázek tiše nenačte.
 - **Nesahat na `reference/index-original.html`.** Je to měřítko, proti kterému se

@@ -8,15 +8,16 @@
 
 import './styles/index.css'
 
-import { S, on } from './core/store.js'
+import { S, on, save, pripravFotky } from './core/store.js'
 import { spustRouter, aktivujZalozku } from './core/router.js'
 import { zjistiPolohu } from './core/geo.js'
 import { vlozSprite } from './icons/sprite.js'
 
 import { initMapa, draw, goTo, zobrazPolohu, mapa } from './map/map.js'
 import { initChipy } from './components/chip.js'
-import { initFilterPanel, fillSelects } from './components/filterPanel.js'
-import { initSheet } from './components/sheet.js'
+import { initFilterPanel, fillSelects, stahniZalohu } from './components/filterPanel.js'
+import { ukazPruh } from './components/pruh.js'
+import { initSheet, jeOtevreny as jeOtevrenyDetail } from './components/sheet.js'
 import { initWizard } from './components/wizard.js'
 import { initIntro } from './components/intro.js'
 import { initAddForm } from './components/addForm.js'
@@ -72,6 +73,33 @@ on('otevriDetail', ({ p, focus }) => openDetail(p, focus))
 /** Klik na souseda na mini-mapě. */
 on('skoc', (p) => goTo(p))
 
+/**
+ * Fotky se dočetly z IndexedDB.
+ *
+ * Trvá to jednotky milisekund, takže se skoro nikdy nestane, že by mezitím byl
+ * otevřený detail. Kdyby ano, překreslí se – jinak by u místa chyběla fotka,
+ * kterou uživatel má.
+ */
+on('fotkyNacteny', () => {
+  if (jeOtevrenyDetail() && S.hiId && S.byId[S.hiId]) openDetail(S.byId[S.hiId], false)
+})
+
+/**
+ * Zápis do úložiště selhal.
+ *
+ * Trvalý pruh, ne toast: kdo si toho nevšimne, přijde o poznámky. Jediná
+ * záchrana je stáhnout zálohu, tak je tlačítko rovnou v něm.
+ */
+on('ulozeniSelhalo', ({ plno }) => {
+  ukazPruh({
+    text: plno
+      ? 'Paměť je plná – změny se neukládají. Stáhni zálohu a smaž pár fotek.'
+      : 'Změny se nedaří uložit. Stáhni zálohu, ať o nic nepřijdeš.',
+    tlacitko: 'Záloha',
+    akce: stahniZalohu,
+  })
+})
+
 /** Po nalezení polohy: puntík, posun mapy, překreslení otevřené obrazovky. */
 on('poloha', () => {
   zobrazPolohu()
@@ -79,6 +107,17 @@ on('poloha', () => {
   if (S.activeTab === 'list') renderList()
   if (S.activeTab === 'disc') renderDisc()
   if (S.activeTab === 'home') renderHome()
+})
+
+/* ---------- rozepsaná poznámka se nesmí ztratit ---------- */
+
+// Psaní poznámky ukládá až se přestane psát (store.saveOdlozene). Když se mezitím
+// aplikace zavře nebo přepne na pozadí, musí se to dopsat hned – `save()` čekající
+// zápis zruší a provede ho okamžitě. `pagehide` je jediná událost, na kterou se dá
+// na mobilu spolehnout; `visibilitychange` chytí přepnutí do jiné aplikace.
+window.addEventListener('pagehide', () => save())
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') save()
 })
 
 /* ---------- start ---------- */
@@ -89,3 +128,7 @@ fillSelects()
 draw()
 spustRouter()
 registrujServiceWorker()
+
+// Až za vykreslením: fotky se čtou z IndexedDB asynchronně a první obraz na ně
+// nemá čekat. Součástí je i stěhování ze starého localStorage.
+pripravFotky()

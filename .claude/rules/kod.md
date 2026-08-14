@@ -51,13 +51,25 @@ Události: `prekresleno`, `otevriDetail`, `skoc`, `poloha`. Pořadí volání = 
 
 | Export | Co drží | Uloženo |
 |---|---|---|
-| `store` | poznámky, stav, hodnocení, plán, priority, `dataOverride` | `vandrbuch:v1` |
-| `PHOTOS` | vyfocené fotky `{ [id]: dataURL }` | `vandrbuch:photos` |
+| `store` | poznámky, stav, hodnocení, plán, priority | `vandrbuch:v1` |
+| `PHOTOS` | vyfocené fotky `{ [id]: dataURL }` | **IndexedDB** `vandrbuch/fotky` |
 | `prefs` | předvolby dashboardu | `vandrbuch:prefs` |
+| — | data z importu CSV | `vandrbuch:data` |
 | `F` | nastavení filtrů — **mění se na místě, nikdy se nenahrazuje** | jen v paměti |
 | `S` | běhový stav: `places`, `byId`, `userPos`, `activeTab`, `hiId` | jen v paměti |
 
-Po změně `store`/`PHOTOS`/`prefs` volej příslušné `save()`/`savePhotos()`/`savePrefs()`.
+Po změně volej `save()` / `savePrefs()` / `ulozFotku(id)` / `zahodFotku(id)`.
+**Nikdy nezahazuj jejich návratovou hodnotu** — vrací `false`, když se nepovedlo
+uložit, a `store.js` z toho posílá `ulozeniSelhalo`, na které visí varovný pruh.
+Přesně tenhle zahozený výsledek dřív způsoboval tiché mizení poznámek.
+
+Psaní do textového pole ukládej přes **`saveOdlozene()`**, ne `save()` — každý
+`save()` převede na text celý store a při psaní by to na mobilu sekalo. Doplach
+při odchodu ze stránky je zařízený v `main.js`.
+
+Fotky bydlí v IndexedDB (`src/core/fotoDb.js`), takže **zápis je asynchronní**.
+V paměti jsou pořád v obyčejném objektu, aby je detail místa mohl číst rovnou při
+vykreslování; načtou se při startu (`pripravFotky()` v `main.js`).
 
 **Přidání obrazovky:** složka v `src/views/`, záznam v `src/views/index.js`, tlačítko
 `<button data-tab="…">` v `index.html`. Registr je schválně ve `views/`, ne v routeru —

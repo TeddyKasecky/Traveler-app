@@ -5,7 +5,7 @@
  * Je to hloupé, ale je to tak od začátku a při jednom místě to nic nestojí.
  */
 
-import { S, store, save, PHOTOS } from '../../core/store.js'
+import { S, store, save, saveOdlozene, PHOTOS } from '../../core/store.js'
 import { esc } from '../../core/html.js'
 import { dkm, fmtKm } from '../../core/geo.js'
 import { KAT } from '../../data/categories.js'
@@ -242,9 +242,10 @@ export function openDetail(p, focus) {
     openDetail(p, false)
     if (S.activeTab === 'home') renderHome()
   }
+  // Odložené uložení: každý stisk klávesy by jinak převedl na text celý store.
   document.getElementById('noteBox').oninput = (e) => {
     store.notes[p.id] = e.target.value
-    save()
+    saveOdlozene()
   }
   for (const b of telo.querySelectorAll('[data-nb]')) {
     b.onclick = () => {

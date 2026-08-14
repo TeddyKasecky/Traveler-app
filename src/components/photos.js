@@ -1,11 +1,15 @@
 /**
  * Vlastní vyfocené fotky míst.
  *
- * Ukládají se do localStorage jako JPEG v data URI, delší strana nejvýš 760 px
- * a kvalita 0,72. Bez zmenšení by se do úložiště vešlo jen pár fotek.
+ * Ukládají se jako JPEG v data URI, delší strana nejvýš 760 px a kvalita 0,72.
+ * Zmenšení zůstává, i když je fotek nově kam ukládat: menší fotka se rychleji
+ * vykreslí v detailu a rychleji projde zálohou.
+ *
+ * Trvalé úložiště je IndexedDB (`core/fotoDb.js`), ne localStorage – zápis je
+ * proto asynchronní a hláška se ukazuje až po něm.
  */
 
-import { PHOTOS, savePhotos } from '../core/store.js'
+import { PHOTOS, ulozFotku, zahodFotku } from '../core/store.js'
 import { toast } from './toast.js'
 
 const MAX_STRANA = 760
@@ -28,9 +32,10 @@ export function addPhoto(id, file, hotovo) {
       cv.height = img.height * s
       cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height)
       PHOTOS[id] = cv.toDataURL('image/jpeg', KVALITA)
-      if (savePhotos()) toast('Fotka uložena')
-      else toast('Paměť je plná – smaž pár fotek')
+      // Na obrazovku se fotka dostane hned, uložení doběhne na pozadí.
+      // Kdyby selhalo, ohlásí to varovný pruh přes `ulozeniSelhalo`.
       hotovo && hotovo()
+      ulozFotku(id).then((ok) => toast(ok ? 'Fotka uložena' : 'Fotku se nepodařilo uložit'))
     }
     img.onerror = () => toast('Obrázek se nepodařilo načíst')
     img.src = rd.result
@@ -41,5 +46,5 @@ export function addPhoto(id, file, hotovo) {
 /** Smaže vlastní fotku místa. */
 export function smazFotku(id) {
   delete PHOTOS[id]
-  savePhotos()
+  zahodFotku(id)
 }

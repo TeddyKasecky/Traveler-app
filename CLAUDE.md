@@ -17,9 +17,14 @@ zůstávají jen datové zkratky (`p`, `k`, `S`, `F`), názvy z DOM a API Leafle
 - **`id` místa se nikdy nemění.** Jsou na něj navázané poznámky, hodnocení, priority, plán,
   vyfocené fotky, vazby `nb` z jiných míst i generovaná pohlednice. Překlep v názvu se opravuje
   v poli `n`, `id` zůstává. Viz [.claude/rules/database.md](.claude/rules/database.md).
-- **Klíče v localStorage se nemění**: `vandrbuch:v1`, `vandrbuch:photos`, `vandrbuch:prefs`
-  (`src/core/storage.js`). Jsou v nich všechna uživatelská data a nikde jinde neexistují —
-  změna klíče je tichá ztráta dat.
+- **Klíče v úložišti se nemění**: `vandrbuch:v1` (poznámky, hodnocení, plán, priority),
+  `vandrbuch:prefs`, `vandrbuch:data` (import CSV) a sklad `fotky` v IndexedDB
+  (`src/core/storage.js`, `src/core/fotoDb.js`). Jsou v nich všechna uživatelská data
+  a nikde jinde neexistují — změna klíče je tichá ztráta dat. Starý `vandrbuch:photos`
+  se při prvním otevření sám přestěhuje do IndexedDB a vyprázdní.
+- **Nikdy nezahazuj výsledek ukládání.** `save()`, `savePrefs()`, `ulozFotku()` vracejí
+  `false`, když se nepovedlo zapsat, a `store.js` z toho posílá `ulozeniSelhalo`. Právě
+  zahozený výsledek dřív způsoboval, že poznámky při plné paměti mizely beze slova.
 - **`reference/index-original.html` se needituje.** Je to bajtově shodná kopie původní aplikace
   a měřítko pro `npm run check-css`, `check-data`, `check-handlers` a porovnání snímků.
   V `.gitattributes` má `-text`, aby ji Git nepřepsal na CRLF.
@@ -49,6 +54,7 @@ npm run preview          # prohlédnutí sestaveného webu
 
 npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
+npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
 
 npm run smoke            # proklikání v prohlížeči, 50 kontrol
 npm run smoke:single     # totéž pro single-file variantu, 45 kontrol
@@ -75,14 +81,14 @@ Jediná runtime závislost je Leaflet 1.9.4 (přišpendlená přesná verze, bez
 | Kde | Co |
 |---|---|
 | `src/main.js` | vstupní bod — jen poskládá díly a zaregistruje odběry událostí, žádná logika |
-| `src/core/` | čistá logika bez DOM: `store.js` (stav + pub/sub), `router.js`, `filters.js`, `search.js`, `geo.js`, `csv.js`, `storage.js`, `html.js` |
+| `src/core/` | čistá logika bez DOM: `store.js` (stav + pub/sub), `router.js`, `filters.js`, `search.js`, `geo.js`, `csv.js`, `storage.js` (localStorage), `fotoDb.js` (IndexedDB), `html.js` |
 | `src/data/` | `places.json` (580 míst), `places-nova.json` (přihrádka), číselníky `categories.js`/`collections.js`/`moods.js`, `validate.js`, `schema.md` |
 | `src/views/` | obrazovky Domů, Objevuj, Seznam, Plán, Detail + registr `index.js` |
 | `src/components/` | díly použité na víc obrazovkách (karta, filtry, sheet, wizard, formulář, toast) |
 | `src/map/` | Leaflet: `map.js`, `markers.js`, `planLine.js`, `detailMap.js` |
 | `src/styles/` | CSS po dílech, pořadí určuje `index.css`; barvy a rozměry jen z `tokens.css` |
 | `src/pwa/` | `sw.js` (šablona service workeru) a `register.js` |
-| `scripts/` | 13 ověřovacích skriptů, viz [.claude/rules/kontroly.md](.claude/rules/kontroly.md) |
+| `scripts/` | 16 ověřovacích skriptů, viz [.claude/rules/kontroly.md](.claude/rules/kontroly.md) |
 | `reference/` | bajtově shodná kopie původní aplikace — jen ke čtení |
 
 **Moduly se nevolají napřímo — oznamují si změny událostmi** přes `on()`/`emit()` ze

@@ -54,7 +54,7 @@ const vsechny = [...indexCss.matchAll(/@import\s+'([^']+)'/g)]
  * Nejsou ale bez dozoru: níž se ověřuje, že nepřepisují žádný selektor
  * z originálu. To je jediné, čím by mohly ublížit.
  */
-const NOVE_OBRAZOVKY = ['./components/addform.css']
+const NOVE_OBRAZOVKY = ['./components/addform.css', './components/pruh.css']
 
 const poradi = vsechny.filter((p) => !NOVE_OBRAZOVKY.includes(p))
 const nase = poradi.map((p) => fs.readFileSync(path.join(STYLES, p), 'utf8')).join('\n')

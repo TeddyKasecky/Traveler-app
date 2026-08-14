@@ -10,6 +10,7 @@
     "build:single": "vite build --mode single",
     "preview": "vite preview",
     "validate": "node scripts/validate-data.mjs",
+    "check-uloziste": "node scripts/check-uloziste.mjs",
     "check-images": "node scripts/check-images.mjs",
     "smoke": "node scripts/smoke.mjs",
     "smoke:single": "node scripts/smoke.mjs --single",

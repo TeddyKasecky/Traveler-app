@@ -11,7 +11,7 @@ _Zjištěno auditem: 13 souborů v `scripts/`, `package.json:7-24`, `PARITA.md`,
 `.githooks/pre-commit`._
 
 **Není tu žádný test framework** — chybí Jest, Vitest, `tests/` i `npm test`. Nezaváděj je
-bez vyžádání. Místo nich je 13 samostatných spustitelných `.mjs` skriptů; každý vypíše
+bez vyžádání. Místo nich je 16 samostatných spustitelných `.mjs` skriptů; každý vypíše
 `X / Y` a skončí kódem 1 při chybě.
 
 ## Co který skript ověřuje
@@ -19,6 +19,7 @@ bez vyžádání. Místo nich je 13 samostatných spustitelných `.mjs` skriptů
 | Skript | Příkaz | Co dělá |
 |---|---|---|
 | `validate-data.mjs` | `npm run validate` | schéma dat; obal nad `src/data/validate.js` |
+| `check-uloziste.mjs` | `npm run check-uloziste` | stěhování dat mezi úložišti, chování při plné paměti, odložený zápis poznámky |
 | `extract-places.mjs` | `npm run check-data` | že `places.json` je 1:1 s originálem |
 | `check-css-parity.mjs` | `npm run check-css` | 338 CSS pravidel proti originálu |
 | `check-filters-parity.mjs` | `npm run check-filters` | 134 kombinací filtrů |
@@ -53,6 +54,7 @@ Chromium se schválně nestahuje. Skripty proti `dist/` potřebují napřed `npm
 | Sáhl jsi do | Pusť |
 |---|---|
 | `src/data/**` | `npm run validate` (hook to udělá sám) |
+| `src/core/storage.js`, `store.js`, `fotoDb.js` | `npm run check-uloziste` |
 | CSS | `npm run check-css` |
 | filtry, hledání | `npm run check-filters` |
 | obsluha tlačítek, nová obrazovka | `npm run check-handlers`, `npm run smoke` |

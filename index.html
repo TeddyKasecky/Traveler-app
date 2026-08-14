@@ -11,6 +11,9 @@
 </head>
 <body>
 
+<!-- Varovný pruh přes hlavičku. Obsah do něj plní components/pruh.js. -->
+<div id="pruh" hidden></div>
+
 <header id="top">
   <div id="brand">
     <img id="logo" src="/src/assets/icon-192.png" alt="Vandrbuch">
@@ -66,6 +69,7 @@
       <button class="btn small" id="expBtn"><svg class="ic"><use href="#i-save"/></svg>Záloha poznámek</button>
       <label class="btn small" style="cursor:pointer">Obnovit zálohu<input id="impIn" type="file" accept=".json" hidden></label>
     </div>
+    <div class="meta" id="zalohaInfo" style="margin-top:7px"></div>
     <div class="meta" style="margin-top:7px">CSV: sloupce z „vse-dohromady-v3". Záloha uloží poznámky, hodnocení, plán i navštívená místa.</div>
     <div class="btnrow" style="margin-top:8px"><button class="btn small" id="dataReset">Vrátit vestavěná data</button></div>
     <div class="btnrow" style="margin-top:8px"><button class="btn small" id="addOpen"><svg class="ic"><use href="#i-plus"/></svg>Přidat místo</button></div>

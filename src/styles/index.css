@@ -40,6 +40,7 @@
 
 /* 4. obrazovky, které v originále nebyly – až za vším, ať nic nepřebíjejí */
 @import './components/addform.css';
+@import './components/pruh.css';
 
 /* 5. responzivní přepisy – vždy poslední */
 @import './responsive.css';

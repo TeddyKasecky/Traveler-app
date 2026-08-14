@@ -20,6 +20,7 @@ shodná s tím, co běží dnes.
 | Proklikání, hostovaná | `npm run smoke` | **50 / 50** |
 | Proklikání, single-file | `npm run smoke:single` | **45 / 45** |
 | Kontrolní seznam níž | `npm run parity` | **25 / 25** |
+| Úložiště a plná paměť | `npm run check-uloziste` | **13 / 13** |
 | Formulář vyrábí platná místa | `npm run check-form` | **18 / 18** |
 | Odkazy na fotky | `npm run check-images` | **262 / 262 existuje** |
 | Vzhled po pixelech | `node scripts/screenshots.mjs && node scripts/compare-screens.mjs` | viz níž |
@@ -87,6 +88,32 @@ nainstalovat. Odsouhlaseno jako Q1.
 
 Service worker sahá jen na `caches`, nikdy na `localStorage`. Aktualizace aplikace
 tedy o poznámky připravit nemůže.
+
+### Co se změnilo po přestavbě: úložiště se přeskládalo
+
+Původní rozvržení mělo tichou chybu. `uloz()` vracel `false`, když byl localStorage
+plný, ale `save()` tu hodnotu **zahazoval** – u fotek se kontrolovala, u poznámek,
+hodnocení, plánu a priorit ne. Poznámky tedy mizely beze slova. A protože se fotky
+ukládaly jako base64 do téhož 5MB úložiště, stačilo k tomu zhruba čtyřicet fotek.
+
+| Co | Kde bylo | Kde je | Proč |
+|---|---|---|---|
+| Fotky míst | `vandrbuch:photos` (localStorage) | IndexedDB `vandrbuch/fotky` | 5MB strop; fotky dusily poznámky. Pořád jen v telefonu, nikam se neposílají. |
+| Data z importu CSV | `vandrbuch:v1` → `dataOverride` | `vandrbuch:data` | po importu ~565 kB v témž záznamu jako poznámky, přepisovalo se to při každé změně |
+| Poznámky, hodnocení, plán, priority | `vandrbuch:v1` | **beze změny** | klíč se nesmí přejmenovat |
+| Předvolby | `vandrbuch:prefs` | **beze změny** | tamtéž |
+
+Stěhování proběhne samo při prvním otevření a **starý klíč se maže až po úspěšném
+zápisu na nové místo** – kdyby se smazal dřív a zápis selhal, data by zmizela úplně.
+Ověřeno v `npm run check-uloziste`, body 1 a 2.
+
+Neúspěšný zápis se nově ohlásí **trvalým pruhem** přes hlavičku, ne toastem: toast
+by po dvou vteřinách zmizel a uživatel by zavřel aplikaci v přesvědčení, že je vše
+v pořádku. V pruhu je rovnou tlačítko na zálohu, protože to je jediná záchrana.
+
+Psaní poznámky navíc volalo `save()` **při každém stisku klávesy** a ten pokaždé
+převedl na text celý store. Nově se zapisuje 400 ms po dopsání a při odchodu ze
+stránky se doplachne (`pagehide`, `visibilitychange`). Ověřeno body 4 a 5.
 
 ---
 
@@ -244,5 +271,9 @@ Všechno ostatní je 1:1. Tohle je úplný seznam toho, co se liší.
 | — | záloha ukládá i `prio`, `photos`, `prefs` | jinak by se při přechodu na novou adresu ztratily vlastní fotky | `src/core/csv.js` |
 | — | nová verze se projeví hned při prvním otevření | jinak by se po nasazení ukázala až napodruhé | `src/pwa/register.js` |
 | — | ve vývojovém režimu se neregistruje service worker | `sw.js` vzniká až při buildu, jinak by v konzoli svítila chyba | tamtéž |
+| Q7 | neúspěšný zápis se ohlásí varovným pruhem | dřív se návratová hodnota `uloz()` zahazovala a poznámky mizely tiše | `src/core/store.js`, `src/components/pruh.js` |
+| Q8 | fotky přesunuty do IndexedDB | localStorage má 5MB strop a fotky v něm dusily poznámky | `src/core/fotoDb.js` |
+| Q9 | data z importu CSV mají vlastní klíč | ~565 kB v záznamu s poznámkami se přepisovalo při každé změně | `src/core/storage.js: DATAK` |
+| Q10 | psaní poznámky se ukládá až po dopsání | dřív zápis celého store při každé klávese, na mobilu to sekalo | `src/core/store.js: saveOdlozene` |
 
 Nálezy mimo rozsah přestavby, které jsme se rozhodli **nechat být**, jsou v `NAPADY.md`.

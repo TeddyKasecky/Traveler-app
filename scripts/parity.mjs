@@ -80,17 +80,19 @@ await zkus('viewport-fit=cover v hlavičce', async () => {
 await zkus('stejný počet použití env(safe-area-inset-*)', async () => {
   const spocti = (s) => (s.match(/env\(safe-area-inset-/g) || []).length
   const puvodni = spocti(original.slice(original.indexOf('<style>'), original.indexOf('</style>')))
-  // addform.css je nová obrazovka, v originále protějšek nemá – svůj bezpečný
-  // okraj má správně, ale do porovnání s originálem nepatří.
-  const soubory = fs
+  // Prvky, které v originále protějšek nemají: formulář „Přidat místo" a varovný
+  // pruh. Svůj bezpečný okraj mají správně (pruh je pod výřezem nahoře), ale do
+  // porovnání s originálem nepatří – jinak by jejich přidání vypadalo jako chyba.
+  const NOVE = ['addform.css', 'pruh.css']
+  const jeNovy = (f) => NOVE.some((n) => f.endsWith(n))
+  const vsechny = fs
     .readdirSync(path.join(ROOT, 'src', 'styles'), { recursive: true })
     .map(String)
-    .filter((f) => f.endsWith('.css') && !f.endsWith('addform.css'))
-    .map((f) => fs.readFileSync(path.join(ROOT, 'src', 'styles', f), 'utf8'))
-    .join('')
-  const nase = spocti(soubory)
-  const novy = spocti(fs.readFileSync(path.join(ROOT, 'src', 'styles', 'components', 'addform.css'), 'utf8'))
-  return { ok: nase === puvodni, dukaz: `originál ${puvodni}× · naše ${nase}× (+ ${novy}× v novém formuláři)` }
+    .filter((f) => f.endsWith('.css'))
+  const cti = (f) => fs.readFileSync(path.join(ROOT, 'src', 'styles', f), 'utf8')
+  const nase = spocti(vsechny.filter((f) => !jeNovy(f)).map(cti).join(''))
+  const novy = spocti(vsechny.filter(jeNovy).map(cti).join(''))
+  return { ok: nase === puvodni, dukaz: `originál ${puvodni}× · naše ${nase}× (+ ${novy}× v nových prvcích)` }
 })
 
 nadpis('2. Klíče v localStorage se nezměnily')
@@ -296,6 +298,35 @@ const PNG = Buffer.from(
 /** Panel detailu roluje a Playwright do něj nedosáhne – klikáme přes DOM. */
 const klikVDetailu = (sel) => page.evaluate((s) => document.querySelector(s).click(), sel)
 
+/**
+ * Sáhne do skladu fotek v IndexedDB.
+ *
+ * Fotky nově nebydlí v localStorage: ten má strop kolem 5 MB, fotky se do něj
+ * ukládaly jako base64 a po pár desítkách kusů v něm nezbylo místo na poznámky.
+ * Ověřuje se proto tam, kde data opravdu jsou.
+ *
+ * @param {'klice'|'smazat'} co
+ */
+const skladFotek = (co) =>
+  page.evaluate(
+    (akce) =>
+      new Promise((hotovo) => {
+        const r = indexedDB.open('vandrbuch', 1)
+        r.onsuccess = () => {
+          const db = r.result
+          if (!db.objectStoreNames.contains('fotky')) return hotovo([])
+          const tr = db.transaction('fotky', 'readwrite')
+          const s = tr.objectStore('fotky')
+          if (akce === 'smazat') s.clear()
+          const g = s.getAllKeys()
+          tr.oncomplete = () => hotovo(g.result.map(String))
+          tr.onerror = () => hotovo([])
+        }
+        r.onerror = () => hotovo([])
+      }),
+    co
+  )
+
 await zkus('fotka se uloží pod id místa', async () => {
   // Zavřít případný otevřený detail, jinak mini-mapa odchytává kliknutí.
   await page.evaluate(() => document.getElementById('sheet').classList.remove('show'))
@@ -306,8 +337,8 @@ await zkus('fotka se uloží pod id místa', async () => {
   await page.waitForTimeout(1100)
   await page.setInputFiles('#photoIn', { name: 't.png', mimeType: 'image/png', buffer: PNG })
   await page.waitForTimeout(1400)
-  const p = await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('vandrbuch:photos') || '{}')))
-  return { ok: p.length === 1, dukaz: `vandrbuch:photos má ${p.length} záznam (${p[0] || '—'})` }
+  const p = await skladFotek('klice')
+  return { ok: p.length === 1, dukaz: `IndexedDB má ${p.length} záznam (${p[0] || '—'})` }
 })
 
 await zkus('poznámka, hvězdičky a plamínky se uloží', async () => {
@@ -405,10 +436,14 @@ await zkus('obnova vrátí všechno zpátky', async () => {
     return o.text()
   })
 
+  // Vyčistit i sklad fotek v IndexedDB. Bez toho by tam zůstala fotka z dřívější
+  // kontroly a „obnova vrátila fotku" by prošla, i kdyby ji záloha vůbec nenesla.
+  await skladFotek('smazat')
   await page.evaluate(() => {
     localStorage.removeItem('vandrbuch:v1')
     localStorage.removeItem('vandrbuch:photos')
     localStorage.removeItem('vandrbuch:prefs')
+    localStorage.removeItem('vandrbuch:data')
   })
   await page.reload({ waitUntil: 'load' })
   await page.waitForTimeout(1200)
@@ -424,15 +459,14 @@ await zkus('obnova vrátí všechno zpátky', async () => {
 
   const v = await page.evaluate(() => {
     const s = JSON.parse(localStorage.getItem('vandrbuch:v1'))
-    const f = JSON.parse(localStorage.getItem('vandrbuch:photos') || '{}')
     return {
       pozn: Object.values(s.notes)[0] || '',
       hvezd: Object.values(s.rating)[0] || 0,
       plam: Object.values(s.prio)[0] || 0,
       plan: s.plan.length,
-      fotek: Object.keys(f).length,
     }
   })
+  v.fotek = (await skladFotek('klice')).length
   const ok = v.pozn.includes('ěščřžýáíé') && v.hvezd === 4 && v.plam === 3 && v.plan === 1 && v.fotek === 1
   return { ok, dukaz: `poznámka ✓ · ${v.hvezd} hvězdy · ${v.plam} plamínky · ${v.plan} zastávka · ${v.fotek} fotka` }
 })
@@ -447,7 +481,9 @@ await zkus('CSV se naimportuje a vymění data', async () => {
   await page.setInputFiles('#csvIn', { name: 'test.csv', mimeType: 'text/csv', buffer: Buffer.from(CSV, 'utf8') })
   await page.waitForTimeout(1200)
   const n = await page.locator('#totalN').innerText()
-  const id = await page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).dataOverride?.[0]?.id)
+  // Data z importu mají vlastní klíč `vandrbuch:data`. Dřív ležela ve
+  // `vandrbuch:v1` u poznámek, takže se půl megabajtu přepisovalo při každé změně.
+  const id = await page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:data') || '{}').mista?.[0]?.id)
   return { ok: n === '1' && id === 'zkusebni-vodopad-234', dukaz: `${n} místo · id ${id}` }
 })
 
@@ -456,8 +492,8 @@ await zkus('„Vrátit vestavěná data“ obnoví 580 míst', async () => {
   await page.click('#dataReset')
   await page.waitForTimeout(1500)
   const n = await page.locator('#totalN').innerText()
-  const ov = await page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).dataOverride)
-  return { ok: n === '580' && !ov, dukaz: `${n} míst · dataOverride ${ov === null ? 'null' : ov}` }
+  const ov = await page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:data') || '{}').mista)
+  return { ok: n === '580' && !ov, dukaz: `${n} míst · vlastní data ${ov === null ? 'null' : ov}` }
 })
 
 nadpis('10. Uložená data přežijí aktualizaci aplikace')
