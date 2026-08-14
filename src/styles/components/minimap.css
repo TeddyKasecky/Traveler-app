@@ -1,10 +1,10 @@
 /* ===== mini mapa ===== */
-.minimap{height:180px;margin:14px 0 0;border:var(--line);border-radius:17px;overflow:hidden;box-shadow:0 4px 0 var(--ink);background:var(--bg2)}
+.minimap{height:180px;margin:14px 0 0;border:var(--line);border-radius:17px;overflow:hidden;box-shadow:var(--stin-2);background:var(--bg2)}
 .minimap .leaflet-container{border-radius:15px}
-.minipin{width:22px;height:22px;border-radius:50%;background:var(--card);border:2px solid var(--ink);
-  display:grid;place-items:center;box-shadow:0 2px 0 rgba(41,32,25,.4)}
+.minipin{width:22px;height:22px;border-radius:50%;background:var(--card);border:1px solid var(--obrys);
+  display:grid;place-items:center;box-shadow:var(--stin-1)}
 .minipin svg.ic{font-size:13px;color:var(--pc)}
 .mmbar{display:flex;align-items:center;gap:8px;margin:8px 2px 0;font-size:.74rem;font-weight:700;color:var(--ink2)}
-.mmcopy{margin-left:auto;background:var(--paper);border:2px solid var(--ink);border-radius:10px;padding:5px 10px;
-  font-size:.7rem;font-weight:800;display:flex;gap:6px;align-items:center;box-shadow:0 3px 0 var(--ink)}
-.mmcopy:active{transform:translateY(3px);box-shadow:none}
+.mmcopy{margin-left:auto;background:var(--paper);border:1px solid var(--obrys);border-radius:10px;padding:5px 10px;
+  font-size:.7rem;font-weight:800;display:flex;gap:6px;align-items:center;box-shadow:var(--stin-1)}
+.mmcopy:active{transform:var(--stisk)}

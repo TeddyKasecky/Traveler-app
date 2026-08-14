@@ -57,6 +57,7 @@
   --stisk:scale(.985);      /* náhrada za translateY(Npx) v :active */
 
   --plamen-zhasly:#D8D2C4;  /* zhasnutý plamínek priority */
+  --zaves:rgba(27,36,26,.45);   /* ztmavení pod vysunutým panelem */
 
   /* ---- barvy kategorií ----
    * Jména jsou závazná: odkazuje na ně `data/categories.js`, `collections.js`,
@@ -79,7 +80,8 @@
   --night:#2F3D2C;  /* Spaní             11,2:1 */
   --sand:#A8863F;   /* Ostatní            3,3:1 */
 
-  --line:2.5px solid var(--ink); --r:20px;
+  --line:1px solid var(--obrys); --r:20px;
+  --r-s:12px; --r-l:26px; --r-pill:999px;
   --pop:cubic-bezier(.34,1.56,.5,1);
   --f-disp:'Fraunces', Georgia, serif; --f-body:'Inter', system-ui, sans-serif;
 
@@ -127,6 +129,7 @@
     --stin-panel:0 -10px 34px rgba(0,0,0,.55);
 
     --plamen-zhasly:#4A5445;
+    --zaves:rgba(0,0,0,.62);
 
     --rust:#E09068; --moss:#9DBC8A; --pine:#79AD9B; --sky:#8FB8C9;
     --clay:#D0A075; --lake:#7FAFC4; --plum:#B0A0C2; --sun:#E1B152;
@@ -160,6 +163,7 @@
   --stin-panel:0 -10px 34px rgba(0,0,0,.55);
 
   --plamen-zhasly:#4A5445;
+  --zaves:rgba(0,0,0,.62);
 
   --rust:#E09068; --moss:#9DBC8A; --pine:#79AD9B; --sky:#8FB8C9;
   --clay:#D0A075; --lake:#7FAFC4; --plum:#B0A0C2; --sun:#E1B152;

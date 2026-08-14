@@ -1,6 +1,6 @@
 /* ===== filtry / dialog ===== */
 #filters{position:fixed;inset:auto 0 0 0;z-index:1300;background:var(--card);border-radius:28px 28px 0 0;
-  box-shadow:0 -4px 0 var(--ink),0 -12px 40px rgba(41,32,25,.25);transform:translateY(106%);transition:transform .34s var(--pop);
+  box-shadow:var(--stin-panel);transform:translateY(106%);transition:transform .34s var(--pop);
   max-height:80vh;overflow-y:auto;padding:16px 20px calc(env(safe-area-inset-bottom) + 20px)}
 #filters.show{transform:translateY(0)}
 #filters h2{font-family:var(--f-disp);font-weight:900;margin:4px 0 12px;display:flex;gap:9px;align-items:center}
@@ -11,10 +11,10 @@ select{width:100%;border:var(--line);border-radius:14px;background:var(--paper);
   background-image:linear-gradient(45deg,transparent 49%,var(--ink) 50%),linear-gradient(-45deg,transparent 49%,var(--ink) 50%);
   background-position:calc(100% - 20px) 55%,calc(100% - 14px) 55%;background-size:6px 6px;background-repeat:no-repeat}
 .togglerow{display:flex;gap:8px;flex-wrap:wrap}
-.toggle{border:2px solid var(--ink);border-radius:12px;background:var(--paper);padding:9px 13px;font-weight:800;font-size:.79rem;
-  display:flex;gap:7px;align-items:center;box-shadow:0 3px 0 var(--ink);transition:all .15s var(--pop)}
+.toggle{border:1px solid var(--obrys);border-radius:12px;background:var(--paper);padding:9px 13px;font-weight:800;font-size:.79rem;
+  display:flex;gap:7px;align-items:center;box-shadow:var(--stin-1);transition:all .15s var(--pop)}
 .toggle svg.ic{font-size:17px}
-.toggle.on{background:var(--ink);color:var(--paper);transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.toggle.on{background:var(--akcent);color:var(--na-akcentu);box-shadow:var(--stin-1)}
 .toggle.on svg.ic{stroke:var(--paper);color:var(--paper)}
-#backdrop{position:fixed;inset:0;z-index:1250;background:rgba(41,32,25,.4);display:none;backdrop-filter:blur(2px)}
+#backdrop{position:fixed;inset:0;z-index:1250;background:var(--zaves);display:none;backdrop-filter:blur(2px)}
 #backdrop.show{display:block;animation:fadein .2s}

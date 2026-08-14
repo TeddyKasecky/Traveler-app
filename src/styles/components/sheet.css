@@ -1,6 +1,6 @@
 /* ===== detail ===== */
 #sheet{position:fixed;inset:auto 0 0 0;z-index:1300;background:var(--card);border-radius:28px 28px 0 0;
-  box-shadow:0 -4px 0 var(--ink),0 -12px 40px rgba(41,32,25,.25);max-height:86vh;display:flex;flex-direction:column;
+  box-shadow:var(--stin-panel);max-height:86vh;display:flex;flex-direction:column;
   transform:translateY(106%);transition:transform .34s var(--pop)}
 #sheet.show{transform:translateY(0)}
 #sheet .grip{width:58px;height:6px;border-radius:99px;background:var(--ink);opacity:.3;margin:12px auto 0;flex:0 0 auto}
@@ -12,36 +12,36 @@
 #sheet .kat{font-size:.66rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--pc)}
 #sheet h2{font-family:var(--f-disp);font-weight:900;font-size:1.38rem;margin:2px 0;line-height:1.12}
 .facts{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0 6px}
-.fact{border:2px solid var(--ink);border-radius:14px;padding:8px 11px;background:var(--paper);display:flex;gap:9px;align-items:center}
+.fact{border:1px solid var(--obrys);border-radius:14px;padding:8px 11px;background:var(--paper);display:flex;gap:9px;align-items:center}
 .fact svg.ic{font-size:19px;color:var(--rust);flex:0 0 auto}
 .fact b{display:block;font-size:.57rem;letter-spacing:.6px;text-transform:uppercase;color:var(--ink2)}
 .fact span{font-size:.79rem;font-weight:700;line-height:1.2}
 #sheet .desc{font-size:.9rem;line-height:1.5;margin:8px 0 4px}
 /* karta se zajímavostí – podpisový prvek */
 .lore{position:relative;background:var(--plocha2);border:var(--line);border-radius:17px;
-  padding:15px 16px 14px 17px;margin:14px 0 4px;box-shadow:0 4px 0 var(--ink)}
+  padding:15px 16px 14px 17px;margin:14px 0 4px;box-shadow:var(--stin-2)}
 .lore::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:5px;border-radius:0 4px 4px 0;background:var(--sun)}
 .lore .lab{display:flex;align-items:center;gap:7px;font-size:.6rem;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:var(--ink2);margin-bottom:7px}
 .lore .lab svg.ic{font-size:15px;color:var(--sun)}
 .lore p{margin:0;font-family:var(--f-disp);font-size:.94rem;line-height:1.5;font-weight:600}
 .gearrow{display:flex;flex-wrap:wrap;gap:7px}
-.gear{font-size:.72rem;font-weight:700;border:2px solid var(--ink);border-radius:10px;padding:5px 10px;background:var(--paper);
+.gear{font-size:.72rem;font-weight:700;border:1px solid var(--obrys);border-radius:10px;padding:5px 10px;background:var(--paper);
   display:flex;gap:6px;align-items:center}
 .gear svg.ic{font-size:14px;color:var(--moss)}
 .nbrow{display:flex;gap:10px;overflow-x:auto;padding:2px 0 6px;margin:0 -20px;padding-left:20px;padding-right:20px}
-.nbcard{flex:0 0 auto;width:150px;border:2px solid var(--ink);border-radius:15px;background:var(--paper);padding:10px 11px;
-  box-shadow:0 3px 0 var(--ink);text-align:left;transition:transform .15s var(--pop)}
-.nbcard:active{transform:translateY(3px);box-shadow:none}
+.nbcard{flex:0 0 auto;width:150px;border:1px solid var(--obrys);border-radius:15px;background:var(--paper);padding:10px 11px;
+  box-shadow:var(--stin-1);text-align:left;transition:transform .15s var(--pop)}
+.nbcard:active{transform:var(--stisk)}
 .nbcard svg.ic{font-size:20px;color:var(--pc)}
 .nbcard b{display:block;font-size:.78rem;font-weight:800;line-height:1.2;margin:5px 0 3px;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .nbcard span{font-size:.66rem;color:var(--ink2);font-weight:700}
 .btnrow{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}
-.btn{flex:1;min-width:120px;border:var(--line);border-radius:15px;background:var(--paper);box-shadow:0 4px 0 var(--ink);
+.btn{flex:1;min-width:120px;border:var(--line);border-radius:15px;background:var(--paper);box-shadow:var(--stin-2);
   padding:12px 10px;font-weight:800;font-size:.85rem;display:flex;align-items:center;justify-content:center;gap:8px;
   color:var(--ink);text-decoration:none;transition:transform .15s var(--pop),box-shadow .15s}
 .btn svg.ic{font-size:18px}
-.btn:active{transform:translateY(4px);box-shadow:none}
+.btn:active{transform:var(--stisk)}
 .btn.primary{background:var(--akcent);color:var(--na-akcentu)} .btn.primary svg.ic{stroke:var(--na-akcentu)}
 .btn.sun{background:var(--zvyrazneni);color:var(--na-zvyrazneni)} .btn.sky{background:var(--plocha-modra)}
 .btn.moss{background:var(--akcent);color:var(--na-akcentu)}

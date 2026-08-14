@@ -1,9 +1,9 @@
 /* ===== tlačítka ferratových zdrojů ===== */
 .ferbtns{display:flex;flex-direction:column;gap:10px;margin:2px 0 6px}
 .fbtn{display:flex;align-items:center;gap:12px;border:var(--line);border-radius:16px;padding:11px 14px;
-  box-shadow:0 4px 0 var(--ink);text-decoration:none;color:var(--ink);position:relative;overflow:hidden;
+  box-shadow:var(--stin-2);text-decoration:none;color:var(--ink);position:relative;overflow:hidden;
   transition:transform .15s var(--pop),box-shadow .15s}
-.fbtn:active{transform:translateY(4px);box-shadow:none}
+.fbtn:active{transform:var(--stisk)}
 .fbtn.av{background:var(--plocha-tepla)}
 .fbtn.bs{background:var(--plocha-zluta)}
 .fbtn.pdf{background:var(--plocha-zelena)}
@@ -13,7 +13,7 @@
 .fbtn.small .ftxt b{font-size:.82rem}
 .fbtn::after{content:"";position:absolute;right:-26px;top:-26px;width:74px;height:74px;border-radius:50%;
   background:var(--ink);opacity:.05}
-.fbtn .fico{width:36px;height:36px;border-radius:11px;border:2.5px solid var(--ink);background:var(--card);
+.fbtn .fico{width:36px;height:36px;border-radius:11px;border:1px solid var(--obrys);background:var(--card);
   display:grid;place-items:center;flex:0 0 auto}
 .fbtn.av .fico svg.ic{font-size:19px;color:var(--rust)}
 .fbtn.bs .fico svg.ic{font-size:19px;color:var(--clay)}

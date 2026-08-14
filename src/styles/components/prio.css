@@ -2,11 +2,11 @@
 .flames{display:inline-flex;gap:1px;align-items:center}
 .flames svg.ic{font-size:15px;color:var(--rust)}
 .flames.dim svg.ic{color:var(--plamen-zhasly)}
-.fl-badge{display:inline-flex;gap:0;align-items:center;background:var(--plocha-tepla);border:2px solid var(--ink);border-radius:999px;padding:1px 7px}
+.fl-badge{display:inline-flex;gap:0;align-items:center;background:var(--plocha-tepla);border:1px solid var(--obrys);border-radius:999px;padding:1px 7px}
 .fl-badge svg.ic{font-size:11px;color:var(--rust)}
 .priorow{display:flex;gap:8px;margin:8px 0 2px}
-.priobtn{flex:1;border:2.5px solid var(--ink);border-radius:13px;background:var(--paper);padding:9px 4px;font-size:.72rem;
-  font-weight:800;box-shadow:0 3px 0 var(--ink);display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.priobtn{flex:1;border:1px solid var(--obrys);border-radius:13px;background:var(--paper);padding:9px 4px;font-size:.72rem;
+  font-weight:800;box-shadow:var(--stin-1);display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
 .priobtn .flames svg.ic{font-size:14px}
 .priobtn.on{background:var(--plocha-tepla)}
-.priobtn:active{transform:translateY(3px);box-shadow:none}
+.priobtn:active{transform:var(--stisk)}

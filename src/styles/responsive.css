@@ -3,7 +3,7 @@
   #sheet,#filters{left:auto;right:18px;width:450px;border-radius:28px;bottom:18px;border:var(--line)}
   .facts{grid-template-columns:1fr 1fr 1fr}
   .collgrid{grid-template-columns:repeat(4,1fr)}
-  .card:hover{transform:translateY(-3px);box-shadow:0 7px 0 var(--ink)}
+  .card:hover{transform:translateY(-2px);box-shadow:var(--stin-3)}
   .chip:hover{transform:translateY(-2px)}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

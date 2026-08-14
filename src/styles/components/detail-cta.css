@@ -1,9 +1,9 @@
 /* ===== hlavní CTA v detailu ===== */
 .maincta{display:flex;flex-direction:column;gap:9px;margin:12px 0 4px}
 .gbtn{display:flex;align-items:center;gap:11px;border:var(--line);border-radius:15px;padding:12px 14px;
-  box-shadow:0 4px 0 var(--ink);text-decoration:none;color:var(--ink);font-weight:800;font-size:.85rem;
+  box-shadow:var(--stin-2);text-decoration:none;color:var(--ink);font-weight:800;font-size:.85rem;
   background:var(--paper);transition:transform .15s var(--pop),box-shadow .15s}
-.gbtn:active{transform:translateY(4px);box-shadow:none}
+.gbtn:active{transform:var(--stisk)}
 .gbtn svg.ic{font-size:18px;color:var(--rust);flex:0 0 auto}
 .gbtn.park{background:var(--plocha-modra)}
 .gbtn.park span{display:flex;flex-direction:column;line-height:1.25;flex:1;min-width:0}
@@ -11,12 +11,12 @@
 .gbtn.park small{font-size:.68rem;font-weight:700;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gbtnrow{display:flex;gap:9px}
 .gbtn.half{flex:1;justify-content:center;padding:11px 8px;font-size:.78rem}
-.gbtn.ghost{background:var(--card);box-shadow:0 3px 0 var(--ink)}
+.gbtn.ghost{background:var(--card);box-shadow:var(--stin-1)}
 .fotocard{display:flex;align-items:center;gap:11px;border:var(--line);border-radius:15px;padding:11px 14px;
-  background:var(--plocha-fialova);box-shadow:0 4px 0 var(--ink);
+  background:var(--plocha-fialova);box-shadow:var(--stin-2);
   text-decoration:none;color:var(--ink)}
-.fotocard:active{transform:translateY(4px);box-shadow:none}
-.fotocard .fico{width:34px;height:34px;border-radius:11px;border:2.5px solid var(--ink);background:var(--card);
+.fotocard:active{transform:var(--stisk)}
+.fotocard .fico{width:34px;height:34px;border-radius:11px;border:1px solid var(--obrys);background:var(--card);
   display:grid;place-items:center;flex:0 0 auto}
 .fotocard .fico svg.ic{font-size:18px;color:var(--plum)}
 .fotocard .ftxt{display:flex;flex-direction:column;line-height:1.25;flex:1}

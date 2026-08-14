@@ -10,15 +10,15 @@
  */
 
 #addPlace{position:fixed;inset:auto 0 0 0;z-index:1350;background:var(--card);border-radius:28px 28px 0 0;
-  box-shadow:0 -4px 0 var(--ink),0 -12px 40px rgba(41,32,25,.25);max-height:92vh;display:flex;flex-direction:column;
+  box-shadow:var(--stin-panel);max-height:92vh;display:flex;flex-direction:column;
   transform:translateY(106%);visibility:hidden;transition:transform .34s var(--pop), visibility 0s linear .34s}
 #addPlace.show{transform:translateY(0);visibility:visible;transition:transform .34s var(--pop), visibility 0s}
 #addPlace .grip{width:58px;height:6px;border-radius:99px;background:var(--ink);opacity:.3;margin:12px auto 0;flex:0 0 auto}
 #addPlace .body{overflow-y:auto;padding:6px 20px calc(env(safe-area-inset-bottom) + 20px)}
 
-#addClose{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:50%;border:2.5px solid var(--ink);
-  background:var(--paper);display:grid;place-items:center;box-shadow:0 3px 0 var(--ink);cursor:pointer;z-index:2}
-#addClose:active{transform:translateY(3px);box-shadow:none}
+#addClose{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:50%;border:1px solid var(--obrys);
+  background:var(--paper);display:grid;place-items:center;box-shadow:var(--stin-1);cursor:pointer;z-index:2}
+#addClose:active{transform:var(--stisk)}
 #addClose svg.ic{font-size:17px}
 
 .afhead{margin:6px 0 4px;padding-right:44px}
@@ -33,7 +33,7 @@
 .afarea:focus{box-shadow:0 0 0 3px var(--sun)}
 
 .afgps{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.afmapwrap{margin-top:10px;border:var(--line);border-radius:16px;overflow:hidden;box-shadow:0 4px 0 var(--ink)}
+.afmapwrap{margin-top:10px;border:var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--stin-2)}
 .afmap{height:210px;background:var(--paper)}
 
 /* chyba u konkrétního políčka – ze stejné kontroly jako npm run validate */
@@ -42,13 +42,13 @@
   font-size:.62rem;display:grid;place-items:center;margin-top:1px}
 
 .afsouhrn{border:var(--line);border-radius:16px;background:var(--plocha-zluta);
-  padding:13px 15px;margin:14px 0 4px;box-shadow:0 4px 0 var(--ink)}
+  padding:13px 15px;margin:14px 0 4px;box-shadow:var(--stin-2)}
 .afsouhrn.spatne{background:var(--plocha-cervena)}
 .afsouhrn b{font-size:.82rem}
 .afsouhrn ul{margin:7px 0 0;padding-left:19px;font-size:.76rem;line-height:1.5}
 
 .afok{border:var(--line);border-radius:16px;background:var(--plocha-zelena);padding:13px 15px;
-  margin:14px 0 4px;box-shadow:0 4px 0 var(--ink);font-size:.84rem;font-weight:800;display:flex;gap:9px;align-items:center}
+  margin:14px 0 4px;box-shadow:var(--stin-2);font-size:.84rem;font-weight:800;display:flex;gap:9px;align-items:center}
 .afok svg.ic{font-size:19px;color:var(--moss)}
 
 .afout textarea{width:100%;border:var(--line);border-radius:14px;background:var(--paper);padding:11px;
