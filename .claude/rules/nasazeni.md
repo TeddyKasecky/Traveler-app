@@ -73,6 +73,20 @@ nikdy neptají.
 
 Suchý běh bez nasazení: `npx --yes wrangler@4 deploy --dry-run`.
 
+## Jak ověřit, že nasazení opravdu proběhlo
+
+Push jen spustí build; ten trvá desítky vteřin až minuty a **může selhat**. Ověřuje se
+porovnáním otisku v názvu balíku — ne tím, že stránka nějak vypadá:
+
+```bash
+ocekavany=$(grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' dist/index.html | head -1)
+curl -s https://traveler-app.teddykasecky.workers.dev/ | grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' | head -1
+```
+
+Když se shodují, je venku přesně ten build, který jsi testoval. Stojí za to ověřit i to,
+že jde stáhnout **podklad offline mapy** (`assets/basemap-*.js`) a že ho `sw.js` má
+v předukládaném seznamu — bez něj by offline mapa tiše nefungovala.
+
 ## Push = produkce
 
 **Každý `git push` na `main` web sám přestaví a nasadí.** Commituj volně, ale
