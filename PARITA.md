@@ -265,6 +265,36 @@ při otevření seznamu, a to zůstalo.
 > se dá věřit poměru a řádu, ne jednotlivým milisekundám. Údaje ze startovní tabulky výš
 > pocházejí z jiného běhu a s těmihle se porovnávat nedají.
 
+### Data míst nejsou to, co start zdržuje
+
+Nabízelo se rozdělit `places.json` na lehkou část a zbytek dotahovat až v detailu.
+Doměřeno, že to nemá smysl:
+
+| Co | 1× | 4× | 6× |
+|---|---|---|---|
+| `JSON.parse` všech 745 kB | 5 ms | 21 ms | 36 ms |
+| rejstřík podle id + index hledání | 5 ms | 26 ms | 50 ms |
+
+Proti celkovému startu (na 4× kolem tří vteřin) jsou to **jednotky procent**. Vite navíc
+data do balíku vkládá jako `JSON.parse('…')`, ne jako objektový literál v JavaScriptu –
+tedy už tou rychlejší cestou. Čas žere **vykreslování**, ne data: rozvržení a styly stojí
+podle tabulky výš třikrát tolik co veškerý JavaScript.
+
+**Dělení dat se proto nedělá.** Byl by to největší zásah do jádra ze všech uvažovaných
+a ušetřil by nejvýš pár desítek milisekund.
+
+### Co po instalaci ještě chodí na síť
+
+Proklikání celé aplikace po instalaci service workeru, počty požadavků ven:
+
+| Kam | Kolik | Kdy |
+|---|---|---|
+| `*.tile.openstreetmap.org` | 94 | dlaždice mapy; bez nich naskočí zjednodušený podklad |
+| `commons.wikimedia.org` | 0–1 na místo | fotka v detailu, jen u míst, která ji mají |
+
+Nic jiného. Žádná analytika, žádné fonty z CDN, žádná knihovna zvenčí – všechno ostatní
+je v balíku a v cache service workeru.
+
 Zajímavé je, kde čas opravdu je. Obava ze zadání mířila na 535 kB dat, která se
 parsují při startu – jenže **veškerý JavaScript** včetně toho parsování zabere na
 6× zpomaleném procesoru 617 ms. Dvakrát tolik spolykalo **rozvržení a styly**, tedy
