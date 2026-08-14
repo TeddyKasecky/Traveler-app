@@ -59,6 +59,9 @@ for (const b of document.querySelectorAll('#tabs button')) {
 // scripts/check-handlers.mjs, který napojení porovnává s originálem za běhu.
 document.getElementById('fabLoc').onclick = zjistiPolohu
 
+// Profil nemá tlačítko ve spodní liště, otevírá se z hlavičky.
+document.getElementById('profilOpen').onclick = () => aktivujZalozku('profil')
+
 /* ---------- kdo na co reaguje ---------- */
 
 /**

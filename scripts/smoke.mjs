@@ -143,6 +143,15 @@ await kontrola('hledání "soutesky" bez diakritiky', () => page.locator('#listI
 await page.fill('#q', '')
 await page.waitForTimeout(300)
 
+// Profil – nemá tlačítko v liště, otevírá se kolečkem v hlavičce
+await page.click('#profilOpen')
+await page.waitForTimeout(300)
+await kontrola('Profil se otevřel', () => page.locator('#panelProfil.show').count(), 1)
+await kontrola('Profil má adresu', () => page.evaluate(() => location.hash), '#profil')
+await kontrola('Profil má čísla', () => page.locator('#profilInner .pstat').count(), 6)
+await page.goBack()
+await page.waitForTimeout(400)
+
 // Objevuj
 await page.click('#tabs button[data-tab="disc"]')
 await page.waitForTimeout(300)

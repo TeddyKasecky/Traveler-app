@@ -1,0 +1,22 @@
+/* ===== profil ===== */
+.phead{display:flex;gap:14px;align-items:center;margin:4px 2px 14px}
+.pavatar{flex:0 0 auto;width:56px;height:56px;border-radius:50%;background:var(--plocha2);border:var(--line);
+  display:grid;place-items:center}
+.pavatar svg.ic{font-size:28px;color:var(--akcent)}
+.phead h2{margin:0;font-family:var(--f-disp);font-weight:700;font-size:1.4rem;line-height:1.1}
+.phead .meta{margin-top:3px}
+
+/* Pruh navštívených míst. Schválně bez čísla v procentech: u 580 míst by
+   tam pořád stálo „0 %“ a působilo by to nemile. */
+.ppruh{height:8px;border-radius:var(--r-pill);background:var(--plocha2);overflow:hidden;margin:0 2px 6px}
+.ppruh span{display:block;height:100%;background:var(--akcent);border-radius:var(--r-pill);transition:width .4s var(--pop)}
+
+.pstats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.pstat{background:var(--plocha);border:var(--line);border-radius:var(--r-s);box-shadow:var(--stin-1);
+  padding:11px 8px;text-align:center}
+.pstat b{display:block;font-family:var(--f-disp);font-weight:700;font-size:1.35rem;line-height:1.1}
+.pstat span{font-size:.66rem;font-weight:700;color:var(--text2);letter-spacing:.2px}
+
+.pradek input{width:100%;border:var(--line);border-radius:var(--r-s);background:var(--plocha);
+  padding:11px 13px;font:inherit;font-size:.92rem;color:var(--text);box-shadow:var(--stin-1)}
+.pradek input:focus{outline:0;box-shadow:0 0 0 2px var(--akcent)}

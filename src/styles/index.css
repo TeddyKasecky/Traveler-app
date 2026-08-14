@@ -43,6 +43,7 @@
 @import './components/pruh.css';
 @import './components/offlinemap.css';
 @import './components/motiv.css';
+@import './components/profil.css';
 
 /* 5. responzivní přepisy – vždy poslední */
 @import './responsive.css';
