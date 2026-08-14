@@ -1,7 +1,7 @@
-# Vandrbuch
+# Traveler-app
 
-Cestovatelská databáze a wishlist míst po Evropě. 580 míst, mapa, plánovač trasy,
-poznámky a hodnocení. Funguje i bez signálu.
+**Vandrbuch** – cestovatelská databáze a wishlist míst po Evropě. 580 míst, mapa,
+plánovač trasy, poznámky a hodnocení. Funguje i bez signálu.
 
 Nepotřebuje žádný server ani databázi. Je to jeden web, který se v telefonu chová
 jako aplikace.
@@ -31,29 +31,33 @@ Safari. Obnovu proto dělejte **až v nainstalované aplikaci**, ne v Safari.
 
 Jednorázové nastavení, potom už se o nic starat nemusíte.
 
+Kód je na <https://github.com/TeddyKasecky/Traveler-app>.
+
 ### Jednou
 
-1. Založit na GitHubu prázdný **soukromý** repozitář `vandrbuch`, nic nezaškrtávat
-2. Nahrát projekt:
-   ```
-   git remote add origin https://github.com/UZIVATEL/vandrbuch.git
-   git push -u origin main
-   ```
-3. Na [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** →
-   Create → Pages → **Connect to Git** → vybrat `vandrbuch`
-4. Nastavit:
+1. Na [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** →
+   Create → Pages → **Connect to Git** → povolit přístup k `Traveler-app`
+2. Nastavit:
 
    | Položka | Hodnota |
    |---|---|
    | Framework preset | **None** |
    | Build command | `npm run build` |
    | Build output directory | `dist` |
+   | Root directory | *(nechat prázdné)* |
 
-5. **Save and Deploy.** Za dvě minuty je web na `https://vandrbuch.pages.dev`
+3. **Save and Deploy.** Za dvě minuty je web na `https://traveler-app.pages.dev`
+
+Node se nenastavuje, verzi si Cloudflare přečte ze souboru `.node-version`.
 
 ### Potom
 
 Každý `git push` web sám přestaví a nasadí. Nic dalšího se nedělá.
+
+> **Repozitář je veřejný.** Kód i seznam míst si může přečíst kdokoli. Poznámky,
+> hodnocení a vlastní fotky v něm nejsou – ty zůstávají jen v telefonu. Kdyby měl
+> být neveřejný, dá se přepnout v *Settings → General → Change visibility*;
+> Cloudflare umí nasazovat i ze soukromého repozitáře a web zůstane veřejný.
 
 ---
 
@@ -142,7 +146,8 @@ se `i-neco`. Používá se jméno symbolu bez mřížky, třeba `i-van`.
 
 ## 7. Příkazy
 
-Všechny se pouštějí ze složky `vandrbuch`.
+Všechny se pouštějí ze složky s projektem – tam, kde leží `package.json`.
+Poprvé je potřeba jednou `npm install`.
 
 ### Běžná práce
 
@@ -164,9 +169,10 @@ Všechny se pouštějí ze složky `vandrbuch`.
 
 | Příkaz | Co ověří |
 |---|---|
-| `npm run smoke` | proklikání v prohlížeči, 39 kontrol |
-| `npm run smoke:single` | totéž pro variantu z disku, 34 kontrol |
+| `npm run smoke` | proklikání v prohlížeči, 50 kontrol |
+| `npm run smoke:single` | totéž pro variantu z disku, 45 kontrol |
 | `npm run parity` | kontrolní seznam z [`PARITA.md`](PARITA.md), 25 bodů |
+| `npm run check-form` | že formulář vyrábí platná místa |
 | `npm run check-handlers` | že žádnému tlačítku nechybí napojení |
 | `npm run check-css` | že se CSS neliší od originálu |
 | `npm run check-filters` | 134 kombinací filtrů |
