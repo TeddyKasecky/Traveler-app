@@ -111,6 +111,17 @@ await kontrola('mapa má dlaždicovou vrstvu', () => page.locator('.leaflet-tile
 // ověřuje kontrola „po oddálení jsou vidět všechna místa“ níž.
 await kontrola('špendlíky ve výřezu', () => page.locator('.badge-pin').count().then((n) => n > 0 && n <= 580))
 await kontrola('uvítání se ukázalo', () => page.locator('#intro.show').count(), 1)
+// #introGo musí být dosažitelné hned na prvním kroku – visí na něm čtyři
+// kontroly, které klikají hned po načtení. Kdyby bylo až na posledním kroku,
+// vytuhly by naráz a vypadalo by to jako zaseknutý prohlížeč.
+await kontrola('uvítání má tři kroky', () => page.locator('#intro .introtecky span').count(), 3)
+await kontrola('na prvním kroku je Přeskočit', () => page.locator('#introGo').innerText(), 'Přeskočit')
+await page.click('#introDal')
+await page.waitForTimeout(200)
+await page.click('#introDal')
+await page.waitForTimeout(200)
+await kontrola('na posledním kroku je Jedeme', () => page.locator('#introGo').innerText(), 'Jedeme')
+await kontrola('poslední krok nemá Dál', () => page.locator('#introDal').count(), 0)
 
 // zavřít uvítání
 await page.click('#introGo')

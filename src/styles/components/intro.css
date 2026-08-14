@@ -1,9 +1,23 @@
 /* ===== uvítání ===== */
 #intro{position:fixed;inset:0;z-index:1400;background:var(--zaves);backdrop-filter:blur(3px);display:none;place-items:center;padding:22px}
 #intro.show{display:grid}
-#introBox{background:var(--card);border:var(--line);border-radius:26px;box-shadow:var(--stin-3);padding:22px;max-width:390px;width:100%}
-#introBox h2{font-family:var(--f-disp);font-weight:900;font-size:1.5rem;margin:0 0 4px}
-#introBox p{font-size:.87rem;line-height:1.5;color:var(--ink2);font-weight:600;margin:0 0 14px}
-.tip{display:flex;gap:11px;align-items:flex-start;margin-bottom:12px}
-.tip svg.ic{font-size:23px;color:var(--rust);flex:0 0 auto;margin-top:1px}
-.tip b{display:block;font-size:.88rem} .tip span{font-size:.78rem;color:var(--ink2);font-weight:600;line-height:1.4}
+#introBox{background:var(--plocha);border-radius:var(--r-l);box-shadow:var(--stin-3);max-width:390px;width:100%;overflow:hidden}
+
+/* Ilustrace přechází do plochy pod sebou, jak předepisuje list „Obrázky
+   na pozadí“: obsah na ni nikdy nesedá natvrdo hranou. */
+.introobr{position:relative;height:150px}
+.introobr img{display:block;width:100%;height:100%;object-fit:cover;object-position:bottom}
+.introobr::after{content:"";position:absolute;inset:auto 0 0 0;height:56px;
+  background:linear-gradient(180deg,transparent,var(--plocha))}
+
+.introtelo{padding:4px 22px 20px}
+.introikona{width:42px;height:42px;border-radius:50%;background:var(--plocha2);display:grid;place-items:center;margin-bottom:10px}
+.introikona svg.ic{font-size:21px;color:var(--akcent)}
+#introBox h2{font-family:var(--f-disp);font-weight:700;font-size:1.45rem;margin:0 0 5px;line-height:1.15}
+#introBox p{font-size:.87rem;line-height:1.5;color:var(--text2);font-weight:500;margin:0 0 16px}
+
+.introspod{display:flex;gap:9px;align-items:center}
+.introspod .btn{flex:0 0 auto;min-width:0;padding:9px 16px}
+.introtecky{display:flex;gap:6px;margin-right:auto}
+.introtecky span{width:7px;height:7px;border-radius:50%;background:var(--obrys-silny);transition:background .2s,width .2s}
+.introtecky span.on{width:18px;border-radius:99px;background:var(--akcent)}
