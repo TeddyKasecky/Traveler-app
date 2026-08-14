@@ -1,12 +1,25 @@
 /**
- * Vyfotí stejné obrazovky ve staré a nové verzi, aby šly porovnat vedle sebe.
+ * Vyfotí obrazovky, aby šly porovnat po pixelech.
  *
- *   node scripts/screenshots.mjs
+ *   node scripts/screenshots.mjs --baseline    → .screenshots/baseline/
+ *   node scripts/screenshots.mjs               → .screenshots/aktualni/
+ *   node scripts/screenshots.mjs --tmavy       → totéž v tmavém režimu
+ *   node scripts/screenshots.mjs --vs-original → původní režim stará vs. nová
  *
- * Výsledek je v .screenshots/ (do gitu nejde). Pro každou obrazovku vznikne
- * dvojice `<obrazovka>-stara.png` a `<obrazovka>-nova.png`.
+ * PROČ TŘI REŽIMY: do léta 2026 tenhle skript dokládal, že přestavba do modulů
+ * nezměnila ani pixel proti `reference/index-original.html`. Vizuální redesign
+ * (viz VZHLED.md) tenhle vztah vědomě zrušil – porovnávat se starou aplikací už
+ * neříká nic, protože se má lišit všechno.
  *
- * Obě verze dostanou stejný stav: uvítání odklikané, žádné poznámky, žádná
+ * Užitečné je porovnání s **posledním odsouhlaseným stavem**: před etapou se
+ * nafotí `--baseline`, po etapě běžný režim, a `compare-screens.mjs` ukáže,
+ * co se změnilo. U přepisu 44 stínů a 68 obrysů je to jediná realistická obrana
+ * proti „na jedné obrazovce jsem zapomněl :active“.
+ *
+ * Režim `--vs-original` zůstává pro historické spuštění. Fotí do
+ * `<obrazovka>-stara.png` a `-nova.png` jako dřív.
+ *
+ * Všechny verze dostanou stejný stav: uvítání odklikané, žádné poznámky, žádná
  * poloha. Bez toho by se lišily jen proto, že jedna ukazuje uvítání.
  */
 
@@ -17,8 +30,15 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const OUT = path.join(ROOT, '.screenshots')
+const SNIMKY = path.join(ROOT, '.screenshots')
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
+
+const jeBaseline = process.argv.includes('--baseline')
+const jeOriginal = process.argv.includes('--vs-original')
+const jeTmavy = process.argv.includes('--tmavy')
+
+/** Kam se fotí. V režimu --vs-original je to rovnou `.screenshots/`. */
+const OUT = jeOriginal ? SNIMKY : path.join(SNIMKY, jeBaseline ? 'baseline' : 'aktualni')
 
 const TYPY = {
   '.html': 'text/html; charset=utf-8',
@@ -118,6 +138,9 @@ async function nafot(adresa, pripona) {
       viewport: { width: 390, height: 844 },
       deviceScaleFactor: 2,
       locale: 'cs-CZ',
+      // Schválně napevno, ne podle stroje: od zavedení tmavého režimu by se
+      // snímky lišily podle toho, jak má počítač nastavený vzhled.
+      colorScheme: jeTmavy ? 'dark' : 'light',
     })
     const page = await ctx.newPage()
 
@@ -171,17 +194,23 @@ async function nafot(adresa, pripona) {
   }
 }
 
-const srvStara = await server(path.join(ROOT, 'reference'), 4191)
 const srvNova = await server(path.join(ROOT, 'dist'), 4192)
+const srvStara = jeOriginal ? await server(path.join(ROOT, 'reference'), 4191) : null
 
-console.log('Fotím starou verzi…')
-await nafot('http://localhost:4191/index-original.html', 'stara')
-console.log('Fotím novou verzi…')
-await nafot('http://localhost:4192/', 'nova')
+if (jeOriginal) {
+  console.log('Fotím starou verzi…')
+  await nafot('http://localhost:4191/index-original.html', 'stara')
+  console.log('Fotím novou verzi…')
+  await nafot('http://localhost:4192/', 'nova')
+} else {
+  const kam = jeBaseline ? 'základnu' : 'aktuální stav'
+  console.log(`Fotím ${kam}${jeTmavy ? ' (tmavý režim)' : ''}…`)
+  await nafot('http://localhost:4192/', jeTmavy ? 'tmavy' : 'svetly')
+}
 
 await b.close()
-srvStara.close()
 srvNova.close()
+srvStara?.close()
 
 console.log(`\nHotovo: ${path.relative(ROOT, OUT)}`)
 for (const f of fs.readdirSync(OUT).sort()) {

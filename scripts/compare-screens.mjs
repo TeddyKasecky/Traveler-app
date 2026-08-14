@@ -1,11 +1,20 @@
 /**
- * Porovná snímky staré a nové verze pixel po pixelu.
+ * Porovná snímky pixel po pixelu.
  *
- *   node scripts/screenshots.mjs && node scripts/compare-screens.mjs
+ *   node scripts/screenshots.mjs --baseline     (jednou, před zásahem)
+ *   node scripts/screenshots.mjs                (po zásahu)
+ *   node scripts/compare-screens.mjs            → základna vs. aktuální stav
+ *
+ *   node scripts/compare-screens.mjs --vs-original   → historický režim
  *
  * Pro každou dvojici vypíše, kolik pixelů se liší a kde. Do .screenshots/diff/
  * uloží masku – červeně to, co nesedí. Tolerance na kanál je kvůli vyhlazování
  * písma, které se mezi během a během může lišit o jednotku.
+ *
+ * PROČ ZÁKLADNA A NE ORIGINÁL: viz hlavička `screenshots.mjs`. Po vizuálním
+ * redesignu se od původní aplikace liší úmyslně všechno, takže to číslo nic
+ * neříká. Proti základně naopak řekne přesně to, co potřebujeme slyšet:
+ * „změnilo se tohle a nic víc“.
  */
 
 import fs from 'node:fs'
@@ -20,26 +29,35 @@ const OUT = path.join(DIR, 'diff')
 /** Rozdíl na kanál, který ještě považujeme za shodu. */
 const PRAH = 12
 
-if (!fs.existsSync(DIR)) {
-  console.error('Chybí .screenshots/ – spusť nejdřív node scripts/screenshots.mjs')
+const jeOriginal = process.argv.includes('--vs-original')
+
+/** Odkud se berou obě strany porovnání a jak se jmenuje sloupec. */
+const A = jeOriginal ? { dir: DIR, pripona: 'stara' } : { dir: path.join(DIR, 'baseline'), pripona: null }
+const B = jeOriginal ? { dir: DIR, pripona: 'nova' } : { dir: path.join(DIR, 'aktualni'), pripona: null }
+
+for (const s of [A, B]) {
+  if (fs.existsSync(s.dir)) continue
+  console.error(`Chybí ${path.relative(ROOT, s.dir)}/ – spusť nejdřív node scripts/screenshots.mjs${s === A && !jeOriginal ? ' --baseline' : ''}`)
   process.exit(1)
 }
 fs.mkdirSync(OUT, { recursive: true })
 
+/** Jména snímků bez přípony verze. V režimu základny mají obě strany stejný název. */
 const pary = [
   ...new Set(
     fs
-      .readdirSync(DIR)
+      .readdirSync(A.dir)
       .filter((f) => f.endsWith('.png'))
-      .map((f) => f.replace(/-(stara|nova)\.png$/, ''))
+      .map((f) => (A.pripona ? f.replace(/-(stara|nova)\.png$/, '') : f.replace(/\.png$/, '')))
   ),
 ].sort()
 
-console.log('obrazovka        rozdílných px      podíl   svislý rozsah\n')
+console.log(jeOriginal ? 'stará vs. nová\n' : 'základna vs. aktuální stav\n')
+console.log('obrazovka             rozdílných px      podíl   svislý rozsah\n')
 
 for (const p of pary) {
-  const a = path.join(DIR, `${p}-stara.png`)
-  const b = path.join(DIR, `${p}-nova.png`)
+  const a = path.join(A.dir, A.pripona ? `${p}-${A.pripona}.png` : `${p}.png`)
+  const b = path.join(B.dir, B.pripona ? `${p}-${B.pripona}.png` : `${p}.png`)
   if (!fs.existsSync(a) || !fs.existsSync(b)) continue
 
   const [ra, rb] = await Promise.all([
@@ -75,7 +93,7 @@ for (const p of pary) {
 
   const pct = ((rozdilnych / (width * height)) * 100).toFixed(3)
   const rozsah = rozdilnych ? `y ${minY}–${maxY} z ${height}` : 'shodné'
-  console.log(`${p.padEnd(14)} ${String(rozdilnych).padStart(10)} px  ${pct.padStart(8)} %   ${rozsah}`)
+  console.log(`${p.padEnd(20)} ${String(rozdilnych).padStart(10)} px  ${pct.padStart(8)} %   ${rozsah}`)
 
   if (rozdilnych) {
     await sharp(maska, { raw: { width, height, channels: 3 } })
