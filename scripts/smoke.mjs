@@ -188,6 +188,37 @@ await page.goBack()
 await page.waitForTimeout(500)
 await kontrola('zpět zavřelo detail', () => page.locator('#sheet.show').count(), 0)
 
+// Porovnání dvou míst. První kliknutí jen naplní košík, druhé otevře.
+//
+// Na Seznam se kliká výslovně: goBack() zavře detail, ale zároveň se vrátí
+// na předchozí záložku, takže spoléhat na to, kde skončíme, by bylo křehké.
+await page.click('#tabs button[data-tab="list"]')
+await page.waitForTimeout(400)
+await page.locator('#listInner .card').first().click()
+await page.waitForTimeout(700)
+await page.evaluate(() => document.getElementById('dPorovnat').click())
+await page.waitForTimeout(200)
+await kontrola('jedno místo porovnání neotevře', () => page.locator('#porovnani.show').count(), 0)
+// Detail leží nad spodní lištou (z-index 1300 vs 1200), takže se musí zavřít,
+// než se dá kliknout na záložku.
+await page.goBack()
+await page.waitForTimeout(400)
+await page.click('#tabs button[data-tab="list"]')
+await page.waitForTimeout(400)
+await page.locator('#listInner .card').nth(1).click()
+await page.waitForTimeout(700)
+await page.evaluate(() => document.getElementById('dPorovnat').click())
+await page.waitForTimeout(400)
+await kontrola('druhé místo otevře porovnání', () => page.locator('#porovnani.show').count(), 1)
+await kontrola('porovnání má obě hlavičky', () => page.locator('#porovnaniBody .pvhead').count(), 2)
+await kontrola('porovnání má řádky', () => page.locator('#porovnaniBody .pvradek').count().then((n) => n >= 9))
+await page.goBack()
+await page.waitForTimeout(400)
+await kontrola('zpět zavřelo porovnání', () => page.locator('#porovnani.show').count(), 0)
+await kontrola('detail pod porovnáním zůstal', () => page.locator('#sheet.show').count(), 1)
+await page.goBack()
+await page.waitForTimeout(400)
+
 // plán
 await page.click('#tabs button[data-tab="plan"]')
 await page.waitForTimeout(300)

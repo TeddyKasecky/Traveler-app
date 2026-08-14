@@ -23,6 +23,7 @@ import { initSheet, jeOtevreny as jeOtevrenyDetail } from './components/sheet.js
 import { initWizard } from './components/wizard.js'
 import { initIntro } from './components/intro.js'
 import { initAddForm } from './components/addForm.js'
+import { initPorovnani } from './views/porovnani/porovnani.js'
 
 import { registrujZalozky } from './views/index.js'
 import { openDetail } from './views/detail/detail.js'
@@ -49,6 +50,8 @@ initFilterPanel()
 initWizard()
 // Až za panely: registrace overlaye určuje, co zavře tlačítko zpět jako první.
 initAddForm()
+// Porovnání se otevírá z detailu, takže musí být nad ním.
+initPorovnani()
 
 for (const b of document.querySelectorAll('#tabs button')) {
   b.onclick = () => aktivujZalozku(b.dataset.tab)

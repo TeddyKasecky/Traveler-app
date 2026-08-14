@@ -29,6 +29,10 @@ export const teloSheetu = () => document.getElementById('sheetBody')
  * Výjimky jsou stejné jako dřív: klik na špendlík, kartu, dlaždici kolekce
  * nebo štítek oblasti panel nezavírá – tyhle prvky ho totiž samy otevírají
  * a bez výjimky by se hned zase zavřel.
+ *
+ * Přibylo porovnání: vysouvá se nad detailem, takže každý klik v něm je
+ * technicky „mimo“ detail. Bez výjimky by se detail pod ním zavřel a po
+ * zavření porovnání by člověk skončil na prázdné obrazovce.
  */
 export function initSheet() {
   document.addEventListener('click', (e) => {
@@ -38,7 +42,8 @@ export function initSheet() {
       e.target.closest('.leaflet-marker-icon') ||
       e.target.closest('.card') ||
       e.target.closest('.coll') ||
-      e.target.closest('.reg')
+      e.target.closest('.reg') ||
+      e.target.closest('#porovnani')
     )
       return
     zavriSheet()

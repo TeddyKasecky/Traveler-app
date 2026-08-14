@@ -221,6 +221,9 @@ export const S = {
   activeTab: 'home',
   /** @type {string|null} zvýrazněný špendlík na mapě */
   hiId: null,
+  /** @type {string[]} id míst vybraných k porovnání. Jen v paměti – není to
+   *  uživatelské datum, je to výběr na pár vteřin. */
+  porovnani: [],
 }
 
 /**

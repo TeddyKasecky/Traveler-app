@@ -10,7 +10,7 @@
  * nového prvku tiše shodilo kontrolu bezpečných okrajů v `parity.mjs`, protože
  * se aktualizoval jen ten druhý.
  */
-export const NOVE_STYLY = ['addform.css', 'pruh.css', 'offlinemap.css', 'motiv.css', 'profil.css', 'plan-dny.css']
+export const NOVE_STYLY = ['addform.css', 'pruh.css', 'offlinemap.css', 'motiv.css', 'profil.css', 'plan-dny.css', 'porovnani.css']
 
 /** Cesty tak, jak se píšou v `src/styles/index.css`. */
 export const NOVE_STYLY_CESTY = NOVE_STYLY.map((f) => `./components/${f}`)

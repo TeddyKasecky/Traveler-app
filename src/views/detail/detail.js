@@ -14,6 +14,7 @@ import { otevriSheet, teloSheetu } from '../../components/sheet.js'
 import { flames, setPrio, PRIO_LBL } from '../../components/prio.js'
 import { scene } from '../../components/postcard.js'
 import { fotoKategorie, vyrez } from '../../data/kategorieFoto.js'
+import { pridejDoPorovnani } from '../porovnani/porovnani.js'
 import { addPhoto, smazFotku } from '../../components/photos.js'
 import { toast } from '../../components/toast.js'
 import { vytvorMiniMapu, zavriMiniMapu } from '../../map/detailMap.js'
@@ -153,6 +154,7 @@ export function openDetail(p, focus) {
       <button class="btn ${visited ? 'moss' : ''}" id="dVisit">${IC('i-check')}${visited ? 'Navštíveno' : 'Byli jsme tu'}</button>
       <a class="btn small" href="${wx}" target="_blank" rel="noopener noreferrer">${IC('i-rain')}Počasí</a>
       <a class="btn small" href="${mc}" target="_blank" rel="noopener noreferrer">${IC('i-boot')}Mapy.com</a>
+      <button class="btn small" id="dPorovnat" title="Porovnat s jiným místem">${IC('i-sdilet')}Porovnat</button>
     </div>
     ${
       p.av || p.bs
@@ -222,6 +224,8 @@ export function openDetail(p, focus) {
   /* ---- obsluha ---- */
 
   const telo = teloSheetu()
+
+  document.getElementById('dPorovnat').onclick = () => pridejDoPorovnani(p)
 
   document.getElementById('dPlan').onclick = () => {
     togglePlan(p.id)
