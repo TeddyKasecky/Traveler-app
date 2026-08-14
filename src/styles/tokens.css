@@ -43,7 +43,9 @@
   --na-akcentu:#FAF5EC;
   --zvyrazneni:#E1B152;     /* Ochre – aktivní záložka, „+“. NIKDY jako text: 1,8:1. */
   --na-zvyrazneni:#2F3D2C;
-  --upozorneni:#C86A43;     /* Sienna */
+  /* Tmavší Sienna, ne ta z palety: na odznaku je drobný tučný text a světlá
+   * Sienna #C86A43 pod ním dávala jen 3,66:1. Tahle dá 5,24:1. */
+  --upozorneni:#A8522F;
   --na-upozorneni:#FFFCF6;
 
   /* tónované plochy – nahrazují gradienty a dvojroli barev kategorií */
