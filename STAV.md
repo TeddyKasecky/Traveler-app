@@ -109,12 +109,49 @@ nesmysly.
 ### d) Zbytek plánu
 
 Fáze 6 (plánování: víc výletů, dny, co je po cestě, GPX), fáze 7 (deník, datum
-návštěvy, víc fotek na místo), fáze 8 (doplnit pole „psi"). Plný plán je
-v `~/.claude/plans/jak-dal-v-ci-p-idat-ancient-hopper.md`.
+návštěvy, víc fotek na místo), fáze 8 (doplnit pole „psi").
+
+> Tahle stručná verze je teď jediný zápis fází 6–8 — podrobný plán bydlel
+> v `~/.claude/plans/jak-dal-v-ci-p-idat-ancient-hopper.md`, ale ten soubor je
+> pracovní a přepisuje se pokaždé, když se plánuje něco jiného (naposled 14. 8. 2026
+> nastavení spolupráce s kolegyní, viz níž). Než se do fází 6–8 pustíte, tenhle
+> odstavec bude potřeba rozepsat znovu.
 
 ---
 
-## 5. Dvě věci o prostředí, které stojí za zapamatování
+## 5. Spolupráce s kolegyní (14. 8. 2026)
+
+Na projektu bude nově pracovat i kolegyně, ve VS Code s Claude Code, na stejném
+repozitáři. Rozhodnuto:
+
+- **Přístup:** GitHub Collaborator (přímý zápis), ne fork+PR.
+- **Kdo pushuje do `main`:** oba, ale vždy po vzájemné domluvě mimo git —
+  push je okamžité nasazení bez staging kroku.
+
+Pravidla pro dva lidi (větve, řešení konfliktů, `places.json`) jsou zapsaná přímo
+v `CLAUDE.md`, sekce „Spolupráce ve dvou" — kolegyně je dostane automaticky
+klonováním repozitáře, není potřeba nic dalšího sdílet.
+
+Mezitím se našla a opravila mezera: `.claude/settings.local.json` nebylo pokryté
+vzorem `*.local` v `.gitignore` (ten chytá jména končící na `.local`, ne `.json`).
+U tohohle stroje to kryl jen osobní globální gitignore, který kolegyně mít nebude —
+bez opravy by se jí mohlo osobní nastavení oprávnění omylem commitnout do
+veřejného repa. Opraveno explicitním řádkem v `.gitignore`.
+
+**Zbývá udělat (mimo dosah tohodle nástroje):**
+
+1. GitHub → repozitář `Traveler-app` → **Settings → Collaborators → Add people**
+   → pozvat kolegyni. Ona pozvání musí přijmout.
+2. Poslat jí odkaz na repo + že potřebuje Git, Node 22 (`.node-version`), VS Code
+   s Claude Code a vlastní přihlášení k Anthropicu.
+3. Ona: `git clone https://github.com/TeddyKasecky/Traveler-app.git`, `npm install`,
+   otevřít složku ve VS Code — `CLAUDE.md` a pravidla načte Claude Code sám.
+   Kořenová složka `Traveler/` na tomhle stroji (s druhým `CLAUDE.md`) se jí netýká,
+   není v gitu.
+
+---
+
+## 6. Dvě věci o prostředí, které stojí za zapamatování
 
 - **`git` přes PowerShell na tomhle stroji nefunguje** („Přístup byl odepřen"), jde jen
   přes Bash. Binárka existuje, blokuje to nejspíš antivirus.

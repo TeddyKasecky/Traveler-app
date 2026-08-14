@@ -33,6 +33,7 @@ zůstávají jen datové zkratky (`p`, `k`, `S`, `F`), názvy z DOM a API Leafle
   `dist/sw.js` je generovaný — nikdy ho needituj.
 - **`git push` na `main` = nasazení do produkce.** Cloudflare projekt `traveler-app` staví
   a nasazuje každý push automaticky. Commituj volně, **před pushem se vždy zeptej.**
+  Na projektu pracují dva lidé — viz „Spolupráce ve dvou" níž, než pushneš do `main`.
 - **Žádný linter ani formatter není nastavený** — `.eslintrc`, `.prettierrc`, `.editorconfig`
   ani tsconfig v repu nejsou. Styl níž vynucuje jen review. Nevymýšlej `npm run lint`,
   `npm run format` ani `npm test`, neexistují.
@@ -121,6 +122,25 @@ Podrobná pravidla podle oblasti (auto-scoped podle cesty):
 [.claude/rules/nasazeni.md](.claude/rules/nasazeni.md).
 
 Návody pro člověka: [README.md](README.md), schéma dat [src/data/schema.md](src/data/schema.md).
+
+## Spolupráce ve dvou
+
+Na repozitáři pracují dva lidé, každý ve vlastní session Claude Code — pravidla platí
+pro oba stejně.
+
+- **Netriviální práci vždy na vlastní větvi**, ne rovnou do `main`. Před začátkem
+  `git pull`/`fetch`, ať se nepracuje na zastaralém stavu.
+- **Před pushem do `main` se domluvit s tou druhou osobou** mimo git (zpráva, hovor) —
+  push je okamžité nasazení, dva push za sebou bez domluvy jsou zbytečné riziko.
+- **Když push selže, protože mezitím pushnul někdo jiný: nikdy force-push.**
+  `git pull --rebase origin main`, vyřešit konflikty, znovu spustit `npm run validate`
+  a `npm run smoke`, teprve pak push.
+- **`src/data/places.json` je nejpravděpodobnější místo konfliktu** — jeden 780kB soubor.
+  Při souběžné práci přidávej nová místa přednostně do `src/data/places-nova.json`
+  (přihrádka, viz [.claude/rules/database.md](.claude/rules/database.md)) a slučuj
+  (`npm run slouc`) až když je jistota, že s daty zrovna nikdo jiný nepracuje.
+- V konfliktu v JSON nikdy „vzít moje"/„vzít jeho" naslepo — ověřit, že se nesmazalo
+  cizí místo nebo poznámka.
 
 ## Známé vlastnosti (neopravovat bez vyžádání)
 

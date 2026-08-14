@@ -2,6 +2,9 @@ node_modules/
 dist/
 dist-single/
 *.local
+# *.local výše nepokrývá tohle jméno (končí na .json, ne na .local) — osobní
+# oprávnění Claude Code se nesmí dostat do veřejného repa.
+.claude/settings.local.json
 .vite/
 Thumbs.db
 .DS_Store
