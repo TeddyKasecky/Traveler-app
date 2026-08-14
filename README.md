@@ -265,4 +265,5 @@ stejný a na variantu se ptá přes `import.meta.env.SINGLE_FILE`.
 
 Odložené nápady a známé drobnosti mimo rozsah přestavby jsou v
 [`NAPADY.md`](NAPADY.md). Doklad o shodě s původní aplikací je v
-[`PARITA.md`](PARITA.md).
+[`PARITA.md`](PARITA.md). Kde se skončilo a co je na řadě, shrnuje
+[`STAV.md`](STAV.md).
