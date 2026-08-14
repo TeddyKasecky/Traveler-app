@@ -23,6 +23,7 @@ import { draw } from '../map/map.js'
 import { toast } from './toast.js'
 import { syncFiltersUI } from './chip.js'
 import { otevriFormular } from './addForm.js'
+import { nastavMotiv, zvolenyMotiv } from '../core/motiv.js'
 
 const panel = () => document.getElementById('filters')
 const backdrop = () => document.getElementById('backdrop')
@@ -89,10 +90,25 @@ export function fillSelects() {
   document.getElementById('fTyp').onchange = (e) => (F.typ = e.target.value)
 }
 
+/** Zvýrazní tlačítko, které odpovídá uložené volbě vzhledu. */
+function srovnejMotivUI() {
+  for (const b of document.querySelectorAll('.motivbtn')) {
+    b.classList.toggle('on', b.dataset.motiv === zvolenyMotiv())
+  }
+}
+
 /** Naváže ovládání panelu. Volá se jednou při startu. */
 export function initFilterPanel() {
   document.getElementById('fabFilter').onclick = otevriFiltry
   backdrop().onclick = () => zavriVse()
+
+  for (const b of document.querySelectorAll('.motivbtn')) {
+    b.onclick = () => {
+      nastavMotiv(b.dataset.motiv)
+      srovnejMotivUI()
+    }
+  }
+  srovnejMotivUI()
 
   document.getElementById('fApply').onclick = () => {
     zavriVse()

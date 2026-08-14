@@ -42,6 +42,7 @@
 @import './components/addform.css';
 @import './components/pruh.css';
 @import './components/offlinemap.css';
+@import './components/motiv.css';
 
 /* 5. responzivní přepisy – vždy poslední */
 @import './responsive.css';

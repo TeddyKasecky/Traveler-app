@@ -100,7 +100,7 @@ const kontrola = async (popis, fn, ocekavano) => {
   console.log(`  ${ok ? 'ok   ' : 'CHYBA'} ${popis.padEnd(42)} ${hodnota}`)
 }
 
-await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 45)
+await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 46)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
 await kontrola('chipy kategorií', () => page.locator('#chips .chip').count(), 10)
@@ -304,6 +304,48 @@ if (!SINGLE) {
   )
 
   await page.context().setOffline(false)
+}
+
+/* ---------- vzhled: tmavý režim ---------- */
+
+// Vlastní stránka s tmavým systémovým nastavením. Hlavní průchod má
+// colorScheme napevno 'light', aby na něm nezáleželo, jak má vzhled
+// nastavený počítač – tady se naopak testuje právě to.
+console.log('\n  vzhled:')
+{
+  const tmavaStranka = await b.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' })
+  await tmavaStranka.goto(adresa, { waitUntil: 'load' })
+  await tmavaStranka.waitForTimeout(1200)
+
+  await kontrola('tmavý režim podle systému', () =>
+    tmavaStranka.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(27, 36, 26)')
+  )
+  await kontrola('tmavý režim: text je světlý', () =>
+    tmavaStranka.evaluate(() => getComputedStyle(document.body).color === 'rgb(237, 231, 216)')
+  )
+
+  // Ruční volba musí systém přebít a přežít znovunačtení – jinak by uživatel
+  // ve tmavém telefonu nemohl vynutit světlý režim.
+  // Panel se otevírá přes evaluate: klik přes hit-testing tu kolidoval
+  // s dlaždicí mapy. Že je tlačítko opravdu napojené, hlídá check-handlers.
+  await tmavaStranka.evaluate(() => document.getElementById('introGo').click())
+  await tmavaStranka.evaluate(() => document.getElementById('fabFilter').click())
+  await tmavaStranka.waitForTimeout(400)
+  await tmavaStranka.evaluate(() => document.querySelector('.motivbtn[data-motiv="svetly"]').click())
+  await tmavaStranka.waitForTimeout(300)
+  await kontrola('ruční volba přebije systém', () =>
+    tmavaStranka.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(250, 245, 236)')
+  )
+  await kontrola('volba vzhledu se uložila', () =>
+    tmavaStranka.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs') || '{}').motiv),
+    'svetly'
+  )
+  await tmavaStranka.reload({ waitUntil: 'load' })
+  await tmavaStranka.waitForTimeout(1200)
+  await kontrola('volba vzhledu přežije restart', () =>
+    tmavaStranka.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(250, 245, 236)')
+  )
+  await tmavaStranka.close()
 }
 
 /* ---------- shrnutí ---------- */

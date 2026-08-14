@@ -182,6 +182,8 @@ export const prefs = nacti(PREFK, {
   moodUse: {},
   /** Kdy se naposled stáhla záloha (ms). 0 = nikdy. */
   posledniZaloha: 0,
+  /** Vzhled: 'system' (podle telefonu), 'svetly', 'tmavy'. Viz core/motiv.js. */
+  motiv: 'system',
 })
 export const savePrefs = () => zapis(PREFK, prefs)
 

@@ -41,6 +41,10 @@ let popisky = null
 /** @type {L.Map|null} */
 let mapaRef = null
 
+/** Nakreslený podklad. Drží se kvůli přebarvení při změně vzhledu. */
+/** @type {L.LayerGroup|null} */
+let podklad = null
+
 /** Barvy se čtou z CSS, ať zůstávají na jednom místě jako všechny ostatní. */
 function barvy(el) {
   const s = getComputedStyle(el)
@@ -124,7 +128,8 @@ export function zajistiPodklad(mapa) {
     const data = (await import('../data/basemap.json')).default
 
     mapa.getContainer().classList.add('offline')
-    const vrstva = postav(mapa, data).addTo(mapa)
+    podklad = postav(mapa, data).addTo(mapa)
+    const vrstva = podklad
     popisky = postavPopisky(data)
     srovnejPopisky()
     mapa.on('zoomend', srovnejPopisky)
@@ -137,6 +142,27 @@ export function zajistiPodklad(mapa) {
   })
 
   return priprava.then(() => undefined)
+}
+
+/**
+ * Přebarví podklad podle aktuálního vzhledu.
+ *
+ * Barvy se čtou z CSS, ale Leaflet si je při stavbě zapekl do plátna, takže
+ * se změnou proměnné nepřepočítají. Bez tohohle by pod tmavou aplikací
+ * zůstala svítit béžová pevnina – a všimla by si toho až ta nejhorší možná
+ * chvíle, tedy v noci bez signálu.
+ */
+export function prebarviPodklad() {
+  if (!podklad || !mapaRef) return
+  const c = barvy(mapaRef.getContainer())
+  for (const kus of podklad.getLayers()) {
+    const o = kus.options
+    // Voda se pozná podle toho, že měla obrys i výplň ve stejné barvě.
+    const jeVoda = o.fillOpacity === 0.65 || o.opacity === 0.75
+    if (jeVoda) kus.setStyle({ color: c.voda, fillColor: c.voda })
+    else if (o.radius) kus.setStyle({ color: c.hranice, fillColor: c.hranice })
+    else kus.setStyle({ color: c.hranice, fillColor: c.sous })
+  }
 }
 
 /* ================= štítek ================= */

@@ -11,9 +11,11 @@ import './styles/index.css'
 import { S, on, save, pripravFotky } from './core/store.js'
 import { spustRouter, aktivujZalozku } from './core/router.js'
 import { zjistiPolohu } from './core/geo.js'
+import { initMotiv } from './core/motiv.js'
 import { vlozSprite } from './icons/sprite.js'
 
 import { initMapa, draw, goTo, zobrazPolohu, mapa } from './map/map.js'
+import { prebarviPodklad } from './map/offlineMap.js'
 import { initChipy } from './components/chip.js'
 import { initFilterPanel, fillSelects, stahniZalohu } from './components/filterPanel.js'
 import { ukazPruh } from './components/pruh.js'
@@ -34,6 +36,9 @@ import { registrujServiceWorker } from './pwa/register.js'
 /* ---------- statické části stránky ---------- */
 
 vlozSprite()
+
+// Před postavením mapy: Leaflet si barvy čte z CSS při stavbě vrstev.
+initMotiv()
 
 /* ---------- mapa a ovládání ---------- */
 
@@ -65,6 +70,20 @@ on('prekresleno', () => {
   if (S.activeTab === 'list') renderList()
   if (S.activeTab === 'disc') renderDisc()
   renderPlan()
+})
+
+/**
+ * Přepnul se vzhled.
+ *
+ * CSS se přebarví samo, ale Leaflet zapisuje barvy do atributů SVG a do
+ * plátna – ty se změnou proměnné nepřepočítají. Překreslit se proto musí
+ * ručně: podklad zjednodušené mapy, puntík polohy a čára plánu (tu obnoví
+ * draw()).
+ */
+on('motivZmenen', () => {
+  prebarviPodklad()
+  zobrazPolohu()
+  draw()
 })
 
 /** Klik na špendlík nebo skok z jiné obrazovky otevře detail. */
