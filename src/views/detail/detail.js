@@ -13,6 +13,7 @@ import { IC } from '../../icons/sprite.js'
 import { otevriSheet, teloSheetu } from '../../components/sheet.js'
 import { flames, setPrio, PRIO_LBL } from '../../components/prio.js'
 import { scene } from '../../components/postcard.js'
+import { fotoKategorie, vyrez } from '../../data/kategorieFoto.js'
 import { addPhoto, smazFotku } from '../../components/photos.js'
 import { toast } from '../../components/toast.js'
 import { vytvorMiniMapu, zavriMiniMapu } from '../../map/detailMap.js'
@@ -79,12 +80,18 @@ export function openDetail(p, focus) {
   // Sousedi, kteří v datech opravdu jsou. Vzdálenost se bere z dat, nepočítá se.
   const nb = (p.nb || []).map((x) => ({ q: S.byId[x.id], d: x.d })).filter((x) => x.q)
   const photo = PHOTOS[p.id] || p.img || ''
+  // Bez vlastní fotky nastoupí akvarel podle kategorie; kreslená pohlednice
+  // zůstává jako záchrana, když se obrázek nenačte (a v single-file variantě,
+  // kam se velká sada schválně nebalí).
+  const ilustrace = photo ? '' : fotoKategorie(p, 'velke')
 
   zavriMiniMapu()
 
   teloSheetu().innerHTML = `
     <div class="hero" style="--pc:${k.c}">
-      ${photo ? `<img src="${photo}" alt="">` : scene(p)}
+      ${photo ? `<img src="${photo}" alt="">` : ilustrace
+        ? `${scene(p)}<img class="heroilu" src="${ilustrace}" alt="" style="object-position:${vyrez(p)}">`
+        : scene(p)}
       <div class="herobar">
         <span class="hchip">${IC(k.i)}${esc(p.t)}</span>
         <label class="hbtn" title="Přidat fotku">${IC(photo ? 'i-cam' : 'i-plus')}${photo ? 'Změnit' : 'Fotka'}<input type="file" accept="image/*" id="photoIn" hidden></label>

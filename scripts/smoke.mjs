@@ -129,6 +129,13 @@ await page.waitForTimeout(300)
 await kontrola('seznam vykreslen', () => page.locator('#listInner .card').count(), 250)
 await kontrola('adresa se změnila', () => page.evaluate(() => location.hash), '#list')
 
+// Zástupná ilustrace kategorie. Nestačí, že je v HTML <img> – musí se opravdu
+// načíst, jinak by 318 míst bez vlastní fotky ukazovalo prázdný rámeček.
+await kontrola('náhledy v kartách', () => page.locator('#listInner .cthumb').count().then((n) => n > 0))
+await kontrola('zástupná ilustrace se načetla', () =>
+  page.locator('#listInner .cthumb').first().evaluate((i) => i.complete && i.naturalWidth > 0)
+)
+
 // hledání bez diakritiky
 await page.fill('#q', 'soutesky')
 await page.waitForTimeout(300)

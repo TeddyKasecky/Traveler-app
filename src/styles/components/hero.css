@@ -2,6 +2,10 @@
 .hero{position:relative;margin:10px -20px 2px;border-top:var(--line);border-bottom:var(--line);
   background:var(--paper);overflow:hidden;height:150px}
 .hero svg.pcard,.hero img{display:block;width:100%;height:150px;object-fit:cover}
+/* Akvarel kategorie leží PŘES kreslenou pohlednici, ne místo ní. Když se
+ * obrázek nenačte, pohlednice prosvitne – bez onerror a bez vkládání SVG
+ * do atributu, kde by ho esc() stejně neošetřil (řeší jen & a <). */
+.hero .heroilu{position:absolute;inset:0}
 .herobar{position:absolute;left:12px;right:12px;bottom:10px;display:flex;gap:8px;align-items:center}
 .hchip{background:var(--card);border:1px solid var(--obrys);border-radius:11px;padding:5px 11px;font-size:.73rem;
   font-weight:800;display:flex;gap:7px;align-items:center;box-shadow:var(--stin-1)}

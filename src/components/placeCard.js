@@ -9,12 +9,30 @@
  * k obrazovce plánu, ne mezi obecné komponenty.
  */
 
-import { store } from '../core/store.js'
+import { store, PHOTOS } from '../core/store.js'
 import { esc } from '../core/html.js'
 import { fmtKm } from '../core/geo.js'
 import { KAT } from '../data/categories.js'
 import { IC } from '../icons/sprite.js'
 import { flames } from './prio.js'
+import { fotoKategorie, vyrez } from '../data/kategorieFoto.js'
+
+/**
+ * Náhled vlevo v kartě.
+ *
+ * Vlastní vyfocená fotka, pak `img` z Wikimedie, pak zástupná ilustrace podle
+ * kategorie. `loading="lazy"` je tu podstatné: seznam kreslí až 250 karet
+ * naráz a bez něj by prohlížeč sáhl po všech obrázcích hned.
+ *
+ * @param {Record<string, any>} p
+ * @returns {string}
+ */
+function nahled(p) {
+  const src = PHOTOS[p.id] || p.img || fotoKategorie(p)
+  if (!src) return ''
+  return `<img class="cthumb" src="${src}" alt="" loading="lazy" decoding="async"
+    width="72" height="72" style="object-position:${vyrez(p)}">`
+}
 
 /**
  * Karta pro záložku Seznam.
@@ -27,7 +45,8 @@ export function kartaSeznam(p, vzdalenost = null) {
   const navstiveno = store.stav[p.id] === 'visited'
   const prio = store.prio[p.id]
 
-  return `<div class="card" data-id="${p.id}" style="--pc:${k.c}"><span class="spine"></span>
+  return `<div class="card sfoto" data-id="${p.id}" style="--pc:${k.c}"><span class="spine"></span>
+      ${nahled(p)}<div class="ctext">
       ${vzdalenost != null ? `<span class="dist">${fmtKm(vzdalenost)}</span>` : ''}
       <h3>${IC(k.i)}${esc(p.n)} ${navstiveno ? IC('i-check', 'color:var(--moss);font-size:15px') : ''}</h3>
       ${p.sh ? `<div class="short">${esc(p.sh)}</div>` : ''}
@@ -39,7 +58,7 @@ export function kartaSeznam(p, vzdalenost = null) {
         ${p.ps === 'Ano' ? `<span class="tag">${IC('i-paw', 'font-size:11px')}</span>` : ''}
         ${p.f ? `<span class="tag">${IC('i-quill', 'font-size:11px')} zajímavost</span>` : ''}
         <span class="tag">${esc((p.s || '').replace(' *', ''))}</span>
-      </div></div>`
+      </div></div></div>`
 }
 
 /**
@@ -49,9 +68,10 @@ export function kartaSeznam(p, vzdalenost = null) {
  */
 export function kartaBlizko(p, d) {
   const k = KAT[p.k] || {}
-  return `<div class="card" data-id="${p.id}" style="--pc:${k.c}"><span class="spine"></span>
+  return `<div class="card sfoto" data-id="${p.id}" style="--pc:${k.c}"><span class="spine"></span>
+        ${nahled(p)}<div class="ctext">
         <span class="dist">${fmtKm(d)}</span>
         <h3>${IC(k.i)}${esc(p.n)}</h3>
         ${p.sh ? `<div class="short">${esc(p.sh)}</div>` : ''}
-        <div class="meta">${esc(p.t)} · ${esc(p.d)} · ${esc(p.c.split(' (')[0])}</div></div>`
+        <div class="meta">${esc(p.t)} · ${esc(p.d)} · ${esc(p.c.split(' (')[0])}</div></div></div>`
 }
