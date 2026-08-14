@@ -68,6 +68,7 @@
     </div>
     <div class="meta" style="margin-top:7px">CSV: sloupce z „vse-dohromady-v3". Záloha uloží poznámky, hodnocení, plán i navštívená místa.</div>
     <div class="btnrow" style="margin-top:8px"><button class="btn small" id="dataReset">Vrátit vestavěná data</button></div>
+    <div class="btnrow" style="margin-top:8px"><button class="btn small" id="addOpen"><svg class="ic"><use href="#i-plus"/></svg>Přidat místo</button></div>
   </div>
 </aside>
 
@@ -77,6 +78,13 @@
   <div id="wizBody"></div>
 </div>
 <section id="sheet" aria-modal="true"><div class="grip"></div><div class="body" id="sheetBody"></div></section>
+
+<!-- Formulář na přidání místa. Jediná obrazovka, kterou původní aplikace neměla. -->
+<section id="addPlace" aria-modal="true" role="dialog">
+  <div class="grip"></div>
+  <button id="addClose" title="Zavřít"><svg class="ic"><use href="#i-x"/></svg></button>
+  <div class="body" id="addBody"></div>
+</section>
 
 <div id="intro"><div id="introBox">
   <h2>Vítej ve Vandrbuchu</h2>

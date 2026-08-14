@@ -38,5 +38,8 @@
 @import './components/intro.css';
 @import './components/toast.css';
 
-/* 4. responzivní přepisy – vždy poslední */
+/* 4. obrazovky, které v originále nebyly – až za vším, ať nic nepřebíjejí */
+@import './components/addform.css';
+
+/* 5. responzivní přepisy – vždy poslední */
 @import './responsive.css';

@@ -173,6 +173,48 @@ await kontrola('uvítání zapsané do storu', () =>
   page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).seen === true)
 )
 
+/* ---------- formulář na přidání místa ---------- */
+
+console.log('\n  formulář „Přidat místo":')
+
+await page.click('#fabFilter')
+await page.waitForTimeout(400)
+await page.evaluate(() => document.getElementById('addOpen').click())
+await page.waitForTimeout(1300)
+
+await kontrola('formulář se otevřel', () => page.locator('#addPlace.show').count(), 1)
+await kontrola('dlaždice kategorií', () => page.locator('#addBody [data-kat]').count(), 10)
+await kontrola('dlaždice kolekcí', () => page.locator('#addBody [data-coll]').count(), 11)
+await kontrola('mapka na výběr souřadnic', () => page.locator('#afMap.leaflet-container').count(), 1)
+await kontrola('prázdný formulář hlásí, co chybí', () =>
+  page.locator('.afsouhrn b').innerText().then((t) => /je potřeba doplnit/.test(t))
+)
+
+// vyplnit a ověřit, že výstup je platné místo
+await page.fill('#addBody [data-pole="n"]', 'Zkušební vodopád')
+await page.evaluate(() => document.querySelector('#addBody [data-pole="n"]').blur())
+await page.waitForTimeout(400)
+await page.evaluate(() => document.querySelector('#addBody [data-kat="Vodopády"]').click())
+await page.waitForTimeout(400)
+
+await kontrola('výběr kategorie se propíše', () => page.locator('#addBody [data-kat="Vodopády"].on').count(), 1)
+await kontrola('výstup má 29 polí', () =>
+  page.locator('#afText').inputValue().then((t) => Object.keys(JSON.parse(t)).length)
+, 29)
+await kontrola('id se vyrobí z názvu', () =>
+  page.locator('#afText').inputValue().then((t) => JSON.parse(t).id.startsWith('zkusebni-vodopad-'))
+)
+await kontrola('koncept se uloží', () => page.evaluate(() => !!localStorage.getItem('vandrbuch:draft')))
+await kontrola('původní klíče zůstaly nedotčené', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).seen === true)
+)
+
+// zavřít a uklidit po sobě
+await page.evaluate(() => document.getElementById('addClose').click())
+await page.waitForTimeout(500)
+await kontrola('formulář se zavřel', () => page.locator('#addPlace.show').count(), 0)
+await page.evaluate(() => localStorage.removeItem('vandrbuch:draft'))
+
 /* ---------- offline (jen hostovaná varianta, service worker chce localhost) ---------- */
 
 if (!SINGLE) {

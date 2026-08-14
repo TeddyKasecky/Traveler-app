@@ -19,6 +19,7 @@ import { initFilterPanel, fillSelects } from './components/filterPanel.js'
 import { initSheet } from './components/sheet.js'
 import { initWizard } from './components/wizard.js'
 import { initIntro } from './components/intro.js'
+import { initAddForm } from './components/addForm.js'
 
 import { registrujZalozky } from './views/index.js'
 import { openDetail } from './views/detail/detail.js'
@@ -40,6 +41,8 @@ initChipy()
 initSheet()
 initFilterPanel()
 initWizard()
+// Až za panely: registrace overlaye určuje, co zavře tlačítko zpět jako první.
+initAddForm()
 
 for (const b of document.querySelectorAll('#tabs button')) {
   b.onclick = () => aktivujZalozku(b.dataset.tab)

@@ -18,7 +18,9 @@
     "check-data": "node scripts/extract-places.mjs --check",
     "check-handlers": "node scripts/check-handlers.mjs",
     "parity": "node scripts/parity.mjs",
-    "perf": "node scripts/perf.mjs"
+    "perf": "node scripts/perf.mjs",
+    "check-form": "node scripts/check-form.mjs",
+    "slouc": "node scripts/slouc.mjs"
   },
   "dependencies": {
     "leaflet": "1.9.4"

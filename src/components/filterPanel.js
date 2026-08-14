@@ -21,6 +21,7 @@ import { mistaZCsv, zalohaData, obnovZalohu, stahniJson } from '../core/csv.js'
 import { draw } from '../map/map.js'
 import { toast } from './toast.js'
 import { syncFiltersUI } from './chip.js'
+import { otevriFormular } from './addForm.js'
 
 const panel = () => document.getElementById('filters')
 const backdrop = () => document.getElementById('backdrop')
@@ -131,6 +132,13 @@ function initData() {
       }
     }
     rd.readAsText(f, 'utf-8')
+  }
+
+  // Formulář na přidání místa. Schválně tady mezi správcovskými tlačítky,
+  // ne na hlavní obrazovce – přidávání míst není každodenní činnost.
+  document.getElementById('addOpen').onclick = () => {
+    zavriFiltry()
+    otevriFormular()
   }
 
   document.getElementById('dataReset').onclick = () => {

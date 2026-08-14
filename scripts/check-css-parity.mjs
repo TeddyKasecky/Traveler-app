@@ -42,10 +42,21 @@ const puvodni = html.slice(html.indexOf('<style>') + 7, html.indexOf('</style>')
 /* ---------- naše soubory v pořadí z index.css ---------- */
 
 const indexCss = fs.readFileSync(path.join(STYLES, 'index.css'), 'utf8')
-const poradi = [...indexCss.matchAll(/@import\s+'([^']+)'/g)]
+const vsechny = [...indexCss.matchAll(/@import\s+'([^']+)'/g)]
   .map((m) => m[1])
   .filter((p) => p.startsWith('.') && !p.endsWith('fonts.css')) // fonty a Leaflet v originále nebyly v <style>
 
+/**
+ * Styly obrazovek, které v originále vůbec nebyly. Nemají s čím se porovnávat,
+ * tak se z porovnání vyjmou – jinak by se do seznamu odsouhlasených výjimek
+ * musel vypsat každý jejich selektor a kontrola by ztratila smysl.
+ *
+ * Nejsou ale bez dozoru: níž se ověřuje, že nepřepisují žádný selektor
+ * z originálu. To je jediné, čím by mohly ublížit.
+ */
+const NOVE_OBRAZOVKY = ['./components/addform.css']
+
+const poradi = vsechny.filter((p) => !NOVE_OBRAZOVKY.includes(p))
 const nase = poradi.map((p) => fs.readFileSync(path.join(STYLES, p), 'utf8')).join('\n')
 console.log(`Skládám ${poradi.length} souborů:\n  ${poradi.join('\n  ')}\n`)
 
@@ -122,6 +133,22 @@ vypis('ZMĚNĚNÉ tělo', zmenene, (s) => {
   console.log(`      originál: ${a.get(s)}`)
   console.log(`      naše:     ${b.get(s)}`)
 })
+
+/* ---------- nové obrazovky nesmí přepisovat originál ---------- */
+
+for (const soubor of NOVE_OBRAZOVKY) {
+  const cesta = path.join(STYLES, soubor)
+  if (!fs.existsSync(cesta)) continue
+  const jejich = pravidla(fs.readFileSync(cesta, 'utf8'))
+  const koliduje = [...jejich.keys()].filter((s) => a.has(s))
+  console.log(`${soubor}: ${jejich.size} nových pravidel, mimo porovnání`)
+  if (koliduje.length) {
+    problemu += koliduje.length
+    console.log(`    PŘEPISUJE ${koliduje.length} pravidel z originálu:`)
+    for (const s of koliduje) console.log(`      ${s}`)
+  }
+  console.log()
+}
 
 /* ---------- pořadí ---------- */
 

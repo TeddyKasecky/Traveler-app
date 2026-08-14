@@ -1,0 +1,55 @@
+/* ===== formulář „Přidat místo" =====
+ *
+ * Nová obrazovka, v původní aplikaci nebyla – proto je to jediný soubor stylů,
+ * který nemá protějšek v originále. Kontrola parity o něm ví (POVOLENE
+ * v scripts/check-css-parity.mjs).
+ *
+ * Záměrně nic nevymýšlí: panel se chová stejně jako #sheet a vnitřek si bere
+ * hotové .fgroup, .wsel, .wopt, .toggle, .gear, .btn a .sec. Přibývá jen to,
+ * co jinde není – hlavička, mapka na výběr souřadnic a hlášení chyb u polí.
+ */
+
+#addPlace{position:fixed;inset:auto 0 0 0;z-index:1350;background:var(--card);border-radius:28px 28px 0 0;
+  box-shadow:0 -4px 0 var(--ink),0 -12px 40px rgba(41,32,25,.25);max-height:92vh;display:flex;flex-direction:column;
+  transform:translateY(106%);visibility:hidden;transition:transform .34s var(--pop), visibility 0s linear .34s}
+#addPlace.show{transform:translateY(0);visibility:visible;transition:transform .34s var(--pop), visibility 0s}
+#addPlace .grip{width:58px;height:6px;border-radius:99px;background:var(--ink);opacity:.3;margin:12px auto 0;flex:0 0 auto}
+#addPlace .body{overflow-y:auto;padding:6px 20px calc(env(safe-area-inset-bottom) + 20px)}
+
+#addClose{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:50%;border:2.5px solid var(--ink);
+  background:var(--paper);display:grid;place-items:center;box-shadow:0 3px 0 var(--ink);cursor:pointer;z-index:2}
+#addClose:active{transform:translateY(3px);box-shadow:none}
+#addClose svg.ic{font-size:17px}
+
+.afhead{margin:6px 0 4px;padding-right:44px}
+.afhead h2{font-family:var(--f-disp);font-weight:900;font-size:1.32rem;margin:0;display:flex;gap:9px;align-items:center}
+.afsub{font-size:.76rem;color:var(--ink2);line-height:1.45;margin-top:5px}
+.afsub code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;background:var(--paper);
+  border:2px solid var(--inkfade);border-radius:7px;padding:1px 5px}
+
+.afnote{font-size:.7rem;color:var(--ink2);line-height:1.4;margin-top:5px}
+.afarea{width:100%;border:var(--line);border-radius:14px;background:var(--paper);padding:11px;font:inherit;
+  font-size:.86rem;resize:vertical;outline:none}
+.afarea:focus{box-shadow:0 0 0 3px var(--sun)}
+
+.afgps{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.afmapwrap{margin-top:10px;border:var(--line);border-radius:16px;overflow:hidden;box-shadow:0 4px 0 var(--ink)}
+.afmap{height:210px;background:var(--paper)}
+
+/* chyba u konkrétního políčka – ze stejné kontroly jako npm run validate */
+.afchyba{font-size:.72rem;font-weight:700;color:var(--rust);margin-top:6px;display:flex;gap:6px;align-items:flex-start}
+.afchyba::before{content:"!";flex:0 0 auto;width:15px;height:15px;border-radius:50%;background:var(--rust);color:#fff;
+  font-size:.62rem;display:grid;place-items:center;margin-top:1px}
+
+.afsouhrn{border:var(--line);border-radius:16px;background:linear-gradient(180deg,#FFF6E8,#FBEBD3);
+  padding:13px 15px;margin:14px 0 4px;box-shadow:0 4px 0 var(--ink)}
+.afsouhrn.spatne{background:linear-gradient(180deg,#FDEBE3,#F8D8C9)}
+.afsouhrn b{font-size:.82rem}
+.afsouhrn ul{margin:7px 0 0;padding-left:19px;font-size:.76rem;line-height:1.5}
+
+.afok{border:var(--line);border-radius:16px;background:linear-gradient(180deg,#EDF6E4,#DDEDCC);padding:13px 15px;
+  margin:14px 0 4px;box-shadow:0 4px 0 var(--ink);font-size:.84rem;font-weight:800;display:flex;gap:9px;align-items:center}
+.afok svg.ic{font-size:19px;color:var(--moss)}
+
+.afout textarea{width:100%;border:var(--line);border-radius:14px;background:var(--paper);padding:11px;
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.68rem;line-height:1.45;resize:vertical;outline:none}

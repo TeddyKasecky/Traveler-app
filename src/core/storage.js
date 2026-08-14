@@ -13,6 +13,14 @@ export const PKEY = 'vandrbuch:photos'
 export const PREFK = 'vandrbuch:prefs'
 
 /**
+ * Rozepsaný koncept ve formuláři na přidání místa.
+ *
+ * Nový klíč, přibyl s formulářem. Na tři klíče výš schválně nesahá – kdyby se
+ * koncept ukládal k nim, mohl by při chybě ohrozit poznámky a fotky.
+ */
+export const DRAFTK = 'vandrbuch:draft'
+
+/**
  * Načte hodnotu a doplní ji do výchozího objektu.
  * Poškozený nebo chybějící záznam tiše vrátí výchozí stav – přesně jako dřív.
  *
