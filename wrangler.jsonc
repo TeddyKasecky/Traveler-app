@@ -1,0 +1,26 @@
+{
+  // Konfigurace pro nasazení na Cloudflare.
+  //
+  // Projekt je založený jako Worker, ne jako Pages – nová Cloudflare tak zakládá
+  // všechno. Worker tady ale žádný kód nemá: jen rozdává hotové soubory z dist/,
+  // což je přesně to, co statická aplikace potřebuje. Proto tu není `main`.
+  //
+  // Bez tohohle souboru `npx wrangler deploy` neví, co má nasadit, začne hledat
+  // konfiguraci sám a zakopne o vite.config.js.
+  "name": "traveler-app",
+  "compatibility_date": "2026-06-01",
+
+  "assets": {
+    "directory": "./dist",
+
+    // Neexistující adresa má vrátit 404, ne náhradní stránku.
+    //
+    // Nabízí se „single-page-application", ale bylo by to nebezpečné: aplikace
+    // si při instalaci ukládá do cache soubory s otiskem obsahu v názvu. Kdyby
+    // některý chyběl, dostal by service worker místo něj HTML stránku, uložil
+    // by ji jako JavaScript a offline režim by se tiše rozbil. Takhle se chyba
+    // pozná hned. Záložky jsou stejně v adrese za mřížkou (#mapa, #seznam),
+    // takže se na server nikdy neptají.
+    "not_found_handling": "none"
+  }
+}

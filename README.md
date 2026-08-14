@@ -33,22 +33,22 @@ Jednorázové nastavení, potom už se o nic starat nemusíte.
 
 Kód je na <https://github.com/TeddyKasecky/Traveler-app>.
 
-### Jednou
+### Jak je to nastavené
 
-1. Na [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** →
-   Create → Pages → **Connect to Git** → povolit přístup k `Traveler-app`
-2. Nastavit:
+Na Cloudflare běží projekt `traveler-app` napojený na tenhle repozitář:
 
-   | Položka | Hodnota |
-   |---|---|
-   | Framework preset | **None** |
-   | Build command | `npm run build` |
-   | Build output directory | `dist` |
-   | Root directory | *(nechat prázdné)* |
-
-3. **Save and Deploy.** Za dvě minuty je web na `https://traveler-app.pages.dev`
+| Položka | Hodnota |
+|---|---|
+| Build command | `npm run build` |
+| Deploy command | `npx wrangler deploy` |
+| Root directory | `/` |
 
 Node se nenastavuje, verzi si Cloudflare přečte ze souboru `.node-version`.
+
+Co se nasadí, říká [`wrangler.jsonc`](wrangler.jsonc): žádný kód, jen rozdávání
+hotových souborů ze složky `dist`. Cloudflare dnes zakládá všechno jako Worker,
+i když jde o obyčejnou statickou stránku – bez toho souboru `wrangler deploy`
+neví, co má nahrát, a spadne.
 
 ### Potom
 
