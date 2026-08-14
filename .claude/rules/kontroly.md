@@ -11,7 +11,7 @@ _Zjištěno auditem: 13 souborů v `scripts/`, `package.json:7-24`, `PARITA.md`,
 `.githooks/pre-commit`._
 
 **Není tu žádný test framework** — chybí Jest, Vitest, `tests/` i `npm test`. Nezaváděj je
-bez vyžádání. Místo nich je 17 samostatných spustitelných `.mjs` skriptů; každý vypíše
+bez vyžádání. Místo nich je 20 samostatných spustitelných `.mjs` skriptů; každý vypíše
 `X / Y` a skončí kódem 1 při chybě.
 
 ## Co který skript ověřuje
@@ -21,15 +21,17 @@ bez vyžádání. Místo nich je 17 samostatných spustitelných `.mjs` skriptů
 | `validate-data.mjs` | `npm run validate` | schéma dat; obal nad `src/data/validate.js` |
 | `check-uloziste.mjs` | `npm run check-uloziste` | stěhování dat mezi úložišti, chování při plné paměti, odložený zápis poznámky |
 | `extract-places.mjs` | `npm run check-data` | že `places.json` je 1:1 s originálem |
-| `check-css-parity.mjs` | `npm run check-css` | 338 CSS pravidel proti originálu |
+| `check-css-parity.mjs` | `npm run check-css:original` | 338 CSS pravidel proti originálu — **odstaveno redesignem** |
+| `check-tokeny.mjs` | `npm run check-tokeny` | barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů |
+| `check-dny.mjs` | `npm run check-dny` | že se dělení plánu na dny neztratí, 14 bodů |
 | `check-filters-parity.mjs` | `npm run check-filters` | 134 kombinací filtrů |
 | `check-handlers.mjs` | `npm run check-handlers` | napojení tlačítek za běhu, 61/61 |
 | `check-form.mjs` | `npm run check-form` | že formulář vyrábí platná místa, 18/18 |
 | `check-images.mjs` | `npm run check-images` | existenci odkazů na fotky — **chodí na síť** |
-| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 56 / 45 kontrol |
+| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 76 / 66 kontrol |
 | `parity.mjs` | `npm run parity` | kontrolní seznam z `PARITA.md`, 26 bodů |
 | `perf.mjs` | `npm run perf` | rychlost startu při zpomaleném procesoru |
-| `screenshots.mjs` + `compare-screens.mjs` | ručně | 8 obrazovek porovnaných po pixelech |
+| `screenshots.mjs` + `compare-screens.mjs` | ručně | 8 obrazovek proti základně, i v tmavém režimu |
 | `slouc.mjs` | `npm run slouc` | přesune přihrádku do hlavního souboru |
 | `make-icons.mjs`, `fetch-fonts.mjs` | ručně | jednorázoví pomocníci (ikony PWA, stažení fontů) |
 | `make-basemap.mjs` | ručně | přegeneruje `src/data/basemap.json` z Natural Earth — **chodí na síť** |
@@ -61,8 +63,9 @@ Chromium se schválně nestahuje. Skripty proti `dist/` potřebují napřed `npm
 |---|---|
 | `src/data/**` | `npm run validate` (hook to udělá sám) |
 | `src/core/storage.js`, `store.js`, `fotoDb.js` | `npm run check-uloziste` |
-| `src/map/**`, nový CSS soubor | `npm run smoke`, `npm run check-css`, `npm run parity` |
-| CSS | `npm run check-css` |
+| `src/map/**`, nový CSS soubor | `npm run smoke`, `npm run check-tokeny`, `npm run parity` |
+| CSS, `tokens.css` | `npm run check-tokeny` |
+| `store.plan`, dny v plánu, záloha | `npm run check-dny` |
 | filtry, hledání | `npm run check-filters` |
 | obsluha tlačítek, nová obrazovka | `npm run check-handlers`, `npm run smoke` |
 | formulář „Přidat místo" | `npm run check-form` |
@@ -73,11 +76,21 @@ Před `git push` (= nasazení do produkce) projeď aspoň `npm run validate` a `
 ## Parita
 
 `reference/index-original.html` je bajtově shodná kopie původní aplikace a **needituje se**.
-Je to vstup pro `check-data`, `check-css`, `check-handlers` a porovnání snímků.
+Je to vstup pro `check-data`, `check-handlers` a `check-css:original`.
 
 Přestavba je hotová, takže parita už není zákon — je to **regresní síť**. Když vědomě měníš
 vzhled nebo chování, je v pořádku, že se číslo v `PARITA.md` změní: přepiš ho a napiš do
 commitu proč. Neměň skript tak, aby kontrola prošla.
+
+**Vzhled se od originálu rozešel** vizuálním redesignem (srpen 2026, `PARITA.md` §10 Q14,
+výklad ve `VZHLED.md`). `check-css` proto vypadlo z povinné sady a nahradilo ho
+`check-tokeny`; porovnání snímků se dělá proti **poslední základně**, ne proti originálu:
+
+```bash
+node scripts/screenshots.mjs --baseline   # před zásahem
+node scripts/screenshots.mjs              # po zásahu
+node scripts/compare-screens.mjs
+```
 
 Měření snímků kolísá, pokud se nepočká na síť a fonty; `screenshots.mjs` proto blokuje
 dlaždice mapy a fotky z Wikimedia v obou verzích a čeká na `document.fonts.ready`.

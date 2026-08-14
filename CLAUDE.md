@@ -12,12 +12,17 @@ jako regresní síť.
 zůstávají jen datové zkratky (`p`, `k`, `S`, `F`), názvy z DOM a API Leafletu. Nepřejmenovávej
 české identifikátory na anglické.
 
+**Vzhled se řídí grafickým manuálem „Golden Moss"** — paleta, Playfair Display, měkké
+karty, světlý i tmavý režim. Výklad je ve [VZHLED.md](VZHLED.md), podklady ve složce
+`grafika/` (není v repozitáři). Od srpna 2026 se vzhled od původní aplikace **rozchází
+záměrně**; `check-css` je proto odstavené a nahradilo ho `check-tokeny`.
+
 ## Kritická pravidla
 
 - **`id` místa se nikdy nemění.** Jsou na něj navázané poznámky, hodnocení, priority, plán,
   vyfocené fotky, vazby `nb` z jiných míst i generovaná pohlednice. Překlep v názvu se opravuje
   v poli `n`, `id` zůstává. Viz [.claude/rules/database.md](.claude/rules/database.md).
-- **Klíče v úložišti se nemění**: `vandrbuch:v1` (poznámky, hodnocení, plán, priority),
+- **Klíče v úložišti se nemění**: `vandrbuch:v1` (poznámky, hodnocení, plán, dny plánu, priority),
   `vandrbuch:prefs`, `vandrbuch:data` (import CSV) a sklad `fotky` v IndexedDB
   (`src/core/storage.js`, `src/core/fotoDb.js`). Jsou v nich všechna uživatelská data
   a nikde jinde neexistují — změna klíče je tichá ztráta dat. Starý `vandrbuch:photos`
@@ -26,7 +31,7 @@ zůstávají jen datové zkratky (`p`, `k`, `S`, `F`), názvy z DOM a API Leafle
   `false`, když se nepovedlo zapsat, a `store.js` z toho posílá `ulozeniSelhalo`. Právě
   zahozený výsledek dřív způsoboval, že poznámky při plné paměti mizely beze slova.
 - **`reference/index-original.html` se needituje.** Je to bajtově shodná kopie původní aplikace
-  a měřítko pro `npm run check-css`, `check-data`, `check-handlers` a porovnání snímků.
+  a měřítko pro `npm run check-data` a `check-handlers`.
   V `.gitattributes` má `-text`, aby ji Git nepřepsal na CRLF.
 - **`src/pwa/sw.js` je šablona, ne hotový soubor.** Seznam souborů k uložení do cache a číslo
   verze do ní doplní až `vite.config.js` při buildu (`__PRECACHE__`, `__VERSION__`).
@@ -57,18 +62,21 @@ npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
 
-npm run smoke            # proklikání v prohlížeči, 56 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 45 kontrol
+npm run smoke            # proklikání v prohlížeči, 76 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 66 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
-npm run check-css        # 338 CSS pravidel proti originálu
+npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
+npm run check-dny        # že se dělení plánu na dny neztratí, 14 bodů
 npm run check-filters    # 134 kombinací filtrů
 npm run check-handlers   # napojení tlačítek, 61/61
 npm run check-form       # že formulář vyrábí platná místa, 18/18
 npm run check-images     # existence odkazů na fotky (síť)
 npm run perf             # rychlost startu při zpomaleném procesoru
 
-node scripts/screenshots.mjs && node scripts/compare-screens.mjs   # porovnání po pixelech
+node scripts/screenshots.mjs --baseline   # základna před zásahem
+node scripts/screenshots.mjs && node scripts/compare-screens.mjs   # co se změnilo
+node scripts/make-kat-fota.mjs     # zástupné ilustrace kategorií z grafika/
 node scripts/make-basemap.mjs   # přegeneruje podklad offline mapy (ručně, zřídka)
 ```
 
@@ -83,19 +91,20 @@ Jediná runtime závislost je Leaflet 1.9.4 (přišpendlená přesná verze, bez
 | Kde | Co |
 |---|---|
 | `src/main.js` | vstupní bod — jen poskládá díly a zaregistruje odběry událostí, žádná logika |
-| `src/core/` | čistá logika bez DOM: `store.js` (stav + pub/sub), `router.js`, `filters.js`, `search.js`, `geo.js`, `csv.js`, `storage.js` (localStorage), `fotoDb.js` (IndexedDB), `html.js` |
+| `src/core/` | čistá logika bez DOM: `store.js` (stav + pub/sub), `router.js`, `filters.js`, `search.js`, `geo.js`, `csv.js`, `storage.js` (localStorage), `fotoDb.js` (IndexedDB), `html.js`, `motiv.js` (světlý/tmavý), `barvy.js` (čtení tokenů do JS) |
 | `src/data/` | `places.json` (580 míst), `places-nova.json` (přihrádka), číselníky `categories.js`/`collections.js`/`moods.js`, `validate.js`, `schema.md`, `basemap.json` (podklad offline mapy) |
-| `src/views/` | obrazovky Domů, Objevuj, Seznam, Plán, Detail + registr `index.js` |
+| `src/views/` | obrazovky Domů, Objevuj, Seznam, Plán, Detail, Profil, Porovnání + registr `index.js` |
 | `src/components/` | díly použité na víc obrazovkách (karta, filtry, sheet, wizard, formulář, toast) |
 | `src/map/` | Leaflet: `map.js`, `markers.js`, `planLine.js`, `detailMap.js`, `offlineMap.js` (podklad bez signálu) |
 | `src/styles/` | CSS po dílech, pořadí určuje `index.css`; barvy a rozměry jen z `tokens.css` |
 | `src/pwa/` | `sw.js` (šablona service workeru) a `register.js` |
-| `scripts/` | 17 ověřovacích skriptů, viz [.claude/rules/kontroly.md](.claude/rules/kontroly.md) |
+| `scripts/` | 20 ověřovacích skriptů, viz [.claude/rules/kontroly.md](.claude/rules/kontroly.md) |
 | `reference/` | bajtově shodná kopie původní aplikace — jen ke čtení |
 
 **Moduly se nevolají napřímo — oznamují si změny událostmi** přes `on()`/`emit()` ze
 `src/core/store.js`. Mapa nesmí volat views a naopak; bez toho by přidání obrazovky znamenalo
-sahat do mapy. Události dnes: `prekresleno`, `otevriDetail`, `skoc`, `poloha`.
+sahat do mapy. Události dnes: `prekresleno`, `otevriDetail`, `skoc`, `poloha`, `fotkyNacteny`,
+`ulozeniSelhalo`, `motivZmenen`.
 
 **Žádné globální proměnné mimo `src/core/store.js`** (`S`, `F`, `store`, `prefs`, `PHOTOS`).
 
@@ -112,8 +121,9 @@ _Odvozeno ze skutečného kódu — žádný linter to nevynucuje._
 - HTML se skládá jako řetězce v template literals, ne přes `document.createElement`.
   Text uživatele vždy přes `esc()` z `src/core/html.js`.
 - Parametry typované JSDoc anotacemi (`@param {Record<string, any>} p`), ne TypeScriptem.
-- CSS: barvy a rozměry výhradně přes proměnné z `tokens.css`, nikdy natvrdo.
-- Ikony jsou symboly v `src/icons/sprite.svg`, jmenují se `i-neco`, vkládají se `IC('i-van')`.
+- CSS: barvy a rozměry výhradně přes proměnné z `tokens.css`, nikdy natvrdo. Nová barva
+  patří do sémantické vrstvy **a do obou tmavých bloků** — viz [VZHLED.md](VZHLED.md).
+- Ikony jsou symboly v `src/icons/sprite.svg` (56 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
 
 Podrobná pravidla podle oblasti (auto-scoped podle cesty):
 [.claude/rules/database.md](.claude/rules/database.md) ·
@@ -121,7 +131,8 @@ Podrobná pravidla podle oblasti (auto-scoped podle cesty):
 [.claude/rules/kontroly.md](.claude/rules/kontroly.md) ·
 [.claude/rules/nasazeni.md](.claude/rules/nasazeni.md).
 
-Návody pro člověka: [README.md](README.md), schéma dat [src/data/schema.md](src/data/schema.md).
+Návody pro člověka: [README.md](README.md), schéma dat [src/data/schema.md](src/data/schema.md),
+výklad vzhledu [VZHLED.md](VZHLED.md).
 
 ## Spolupráce ve dvou
 
@@ -151,8 +162,9 @@ pro oba stejně.
   `collections.js` má jen 11 definic (N5).
 - **Osm `id` má před číslicemi dvě pomlčky** (`…-to-je--057`). Slug se uřízl na pomlčce,
   kontrola to připouští, není to chyba.
-- **318 míst nemá `img`** a zobrazuje se u nich kreslená pohlednice generovaná z `id`.
-  Je to záměr, ne nedodělek — fotky nedoplňuj náhodně.
+- **318 míst nemá `img`** a zobrazuje se u nich akvarel podle kategorie
+  (`src/assets/kategorie/`); kreslená pohlednice z `postcard.js` zůstává pod ním jako
+  záchrana, když se obrázek nenačte. Je to záměr, ne nedodělek — fotky nedoplňuj náhodně.
 - **Záloha poznámek neukládá priority**, ale obnova je umí načíst (N2). Plamínky se zálohou
   ztratí.
 - **Badge u filtrů nepočítá filtr `fire`** („Musíme!") (N1).

@@ -14,11 +14,13 @@ shodná s tím, co běží dnes.
 |---|---|---|
 | Data 1:1 | `npm run check-data` | **DATA SEDÍ** |
 | Schéma dat | `npm run validate` | **0 chyb**, 5 varování |
-| CSS pravidlo po pravidle | `npm run check-css` | **338 pravidel sedí**, jediné rozdíly jsou odsouhlasené |
+| ~~CSS pravidlo po pravidle~~ | ~~`npm run check-css`~~ | **odstaveno redesignem**, viz §10 Q14 |
+| Návrhové tokeny a kontrast | `npm run check-tokeny` | **7 / 7** |
+| Dělení plánu na dny | `npm run check-dny` | **14 / 14** |
 | Filtry, 134 kombinací | `npm run check-filters` | **všechny sedí** |
 | Napojení tlačítek | `npm run check-handlers` | **61 / 61** |
-| Proklikání, hostovaná | `npm run smoke` | **56 / 56** |
-| Proklikání, single-file | `npm run smoke:single` | **45 / 45** |
+| Proklikání, hostovaná | `npm run smoke` | **76 / 76** |
+| Proklikání, single-file | `npm run smoke:single` | **66 / 66** |
 | Kontrolní seznam níž | `npm run parity` | **26 / 26** |
 | Úložiště a plná paměť | `npm run check-uloziste` | **13 / 13** |
 | Formulář vyrábí platná místa | `npm run check-form` | **18 / 18** |
@@ -29,46 +31,31 @@ shodná s tím, co běží dnes.
 
 ## 1. Vzhled
 
-Osm obrazovek vyfocených ve staré i nové verzi, 390 × 844 při dvojnásobné hustotě,
-porovnáno po pixelech.
+> **Tahle sekce od srpna 2026 neplatí.** Aplikace prošla vizuálním redesignem podle
+> grafického manuálu (viz [VZHLED.md](VZHLED.md)) a s původní aplikací se vzhledem
+> **rozchází záměrně a ve všem**. Čísla rozdílných pixelů proti originálu tím ztratila
+> smysl: dřív dokládala, že se přestavba do modulů obešla beze změny vzhledu, což je
+> otázka, kterou už nikdo neklade.
+>
+> Co tu stálo dřív: čtyři obrazovky se lišily přesně o 2 726 pixelů (logo), Detail
+> o 3 131, Filtry o 65 672 a Mapa s Průvodcem o víc než polovinu plochy kvůli
+> zjednodušené offline mapě (Q11) a opravené viditelnosti průvodce (Q6).
 
-| Obrazovka | Rozdílných pixelů | Podíl | Co to je |
-|---|---|---|---|
-| Domů | 2 726 | 0,21 % | logo |
-| Objevuj | 2 726 | 0,21 % | logo |
-| Seznam | 2 726 | 0,21 % | logo |
-| Plán | 2 726 | 0,21 % | logo |
-| Detail | 3 131 | 0,24 % | logo + mapa prosvítající zaoblenými rohy panelu |
-| Filtry | 65 672 | 4,99 % | logo + mapa prosvítající ztmavením |
-| Mapa | 705 874 | 53,61 % | **zjednodušená offline mapa** místo šedé plochy (Q11) |
-| Průvodce | 737 494 | 56,01 % | **odsouhlasená oprava** – dřív byl neviditelný |
+Porovnání snímků **zůstává jako regresní síť**, jen se změnila reference: neporovnává se
+s původní aplikací, ale s posledním odsouhlaseným stavem.
 
-**Čtyři obrazovky se liší přesně o 2 726 pixelů, a je to pokaždé to samé logo.**
+```bash
+node scripts/screenshots.mjs --baseline    # jednou, před zásahem
+node scripts/screenshots.mjs               # po zásahu
+node scripts/compare-screens.mjs           # co se změnilo
+node scripts/screenshots.mjs --tmavy       # totéž v tmavém režimu
+```
 
-Mapa, Filtry a Detail se rozešly až se zjednodušenou offline mapou (Q11). Porovnání
-totiž **blokuje dlaždice v obou verzích**, aby výsledek nekolísal podle sítě – originál
-tedy ukazuje šeď a nová verze podklad, který na šeď právě reaguje. U Filtrů a Detailu
-je to jen to, co prosvítá ztmavením a zaoblenými rohy panelu.
+Původní režim je pod `--vs-original` a `compare-screens.mjs --vs-original`.
 
-Vkládání jen viditelných špendlíků (Q12) na těchhle číslech **nic nezměnilo**: porovnání
-snímku mapy s všemi 580 špendlíky a jen s těmi ve výřezu dalo **0 rozdílných pixelů
-z 1 316 640**. Špendlík mimo výřez je z definice mimo obrazovku.
-
-Čísla jsou opakovatelná. Původně skákala mezi 2 700 a 300 000, aniž by se v kódu
-cokoli změnilo, a to ze tří důvodů – všechny byly na straně měření, ne aplikace:
-
-- **dlaždice mapy a fotky z Wikimedia** doletí pokaždé jinak rychle. Blokují se
-  teď v obou verzích stejně.
-- **stará verze si písma tahá z CDN.** Občas se vyfotila ještě se systémovým
-  písmem, čímž se lišila každá řádka textu. Čeká se na `document.fonts.ready`.
-- **Seznam kreslí 250 karet naráz** a stará verze k tomu parsuje 565 kB dat přímo
-  ve stránce. Když se vyfotila v půlce, rozdíl byl 219 000 pixelů. Čeká se, až se
-  přestane měnit počet prvků na stránce.
-
-Fonty a Leaflet z CDN se blokovat nesmí – stará verze je odtamtud bere, nová je má
-zabalené u sebe.
-
----
+U plošných zásahů do CSS je to jediná realistická obrana proti „na jedné obrazovce jsem
+zapomněl `:active`". Ověřeno: proti sobě samému dává 0 px na šesti obrazovkách a 4 px
+na dvou (animovaná tečkovaná silnice).
 
 ## 2. Instalace jako aplikace (PWA)
 
@@ -346,7 +333,7 @@ Jediná funkce, kterou původní aplikace neměla. Schovaná v panelu Filtry ve 
 | souřadnice: mapa, poloha, ruční zápis | ověřeno klikem do mapy i přetažením špendlíku |
 | koncept přežije zavření | nový klíč `vandrbuch:draft`, tři původní se nedotýká |
 | tlačítko zpět formulář zavře | přes `registrujOverlay()` |
-| nové CSS nepřepisuje nic z originálu | 26 nových pravidel, žádná kolize (`npm run check-css`) |
+| ~~nové CSS nepřepisuje nic z originálu~~ | platilo do redesignu, viz §10 Q14 |
 
 **`nb` se dopočítává** – zadání se na to ptalo. Pravidlo v kódu už existovalo
 (import CSV): všechna místa do **45 km**, seřazená podle vzdálenosti, **nejvýš 6**,
@@ -387,5 +374,6 @@ Všechno ostatní je 1:1. Tohle je úplný seznam toho, co se liší.
 | Q11 | bez signálu se pod dlaždicemi ukáže zjednodušená mapa | originál i naše první verze měly offline šedou plochu | `src/map/offlineMap.js`, `src/data/basemap.json` |
 | Q12 | do stránky jdou jen špendlíky ve výřezu | 580 kusů naráz stálo skoro vteřinu přepočtu stylů při každém posunu mapy | `src/map/map.js: srovnejVyrez` |
 | Q13 | předukládaný seznam se před otiskem řadí | bez toho se verze cache měnila i beze změny obsahu a telefon stahoval aplikaci znovu | `vite.config.js: pluginServiceWorker` |
+| **Q14** | **vizuální redesign podle grafického manuálu** | **vzhled se od originálu rozchází ve všem — nová paleta, Playfair Display, měkké karty, tmavý režim, zástupné ilustrace, Profil, dny v plánu, porovnání míst, uvítání o třech krocích. Podrobně v [VZHLED.md](VZHLED.md).** | `src/styles/tokens.css` a dál |
 
 Nálezy mimo rozsah přestavby, které jsme se rozhodli **nechat být**, jsou v `NAPADY.md`.

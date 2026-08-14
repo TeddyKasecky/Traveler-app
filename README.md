@@ -179,7 +179,8 @@ Poprvé je potřeba jednou `npm install`.
 | `npm run parity` | kontrolní seznam z [`PARITA.md`](PARITA.md), 26 bodů |
 | `npm run check-form` | že formulář vyrábí platná místa |
 | `npm run check-handlers` | že žádnému tlačítku nechybí napojení |
-| `npm run check-css` | že se CSS neliší od originálu |
+| `npm run check-tokeny` | barvy natvrdo, párování světlý/tmavý, kontrast |
+| `npm run check-dny` | že se dělení plánu na dny neztratí |
 | `npm run check-filters` | 134 kombinací filtrů |
 | `npm run check-data` | že data sedí s původním souborem |
 | `npm run check-images` | že odkazy na fotky na Wikimedia Commons existují |

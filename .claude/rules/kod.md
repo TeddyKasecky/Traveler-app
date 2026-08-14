@@ -101,16 +101,19 @@ router nesmí znát obrazovky.
 ## CSS
 
 - Barvy, rozměry a stíny **výhradně přes proměnné z `src/styles/tokens.css`**, nikdy natvrdo.
-  Do `tokens.css` se nepřidává — `:root` se porovnává s originálem řádek po řádku. Barvy
-  pro nový prvek definuj jako lokální proměnné na jeho vlastním selektoru.
+  **Do `tokens.css` se přidávat smí a má** — je to jediný zdroj palety. (Do léta 2026 tu
+  stálo, že se do něj nepřidává, protože se `:root` porovnával s originálem. Vizuální
+  redesign to zrušil, viz [VZHLED.md](../../VZHLED.md).) Nová barva patří do sémantické
+  vrstvy **a do obou tmavých bloků**; že se nerozejdou, hlídá `npm run check-tokeny`.
 - Jeden soubor na komponentu v `src/styles/components/`, zapojení a **pořadí** v `index.css`.
-- **Nový soubor, který v originále protějšek nemá, zapiš do `scripts/nove-styly.mjs`** —
-  jinak ho `check-css` i `parity` počítají jako nečekaný rozdíl.
-- `npm run check-css` porovnává 338 pravidel s originálem — po zásahu do CSS ho pusť.
+- **Nový CSS soubor zapiš do `scripts/nove-styly.mjs`** — jinak `parity` započítá jeho
+  `env(safe-area-inset-*)` jako nečekaný rozdíl.
+- `npm run check-tokeny` hlídá barvy natvrdo, párování světlý/tmavý a kontrast —
+  po zásahu do CSS ho pusť. `check-css` je odstavené, viz `PARITA.md` §10 Q14.
 - Když kreslení potřebuje barvu v JavaScriptu (plátno), přečti si ji z CSS přes
   `getComputedStyle`, ne natvrdo — vzor je v `src/map/offlineMap.js`.
 
 ## Ikony
 
-Symboly v `src/icons/sprite.svg`, 45 kusů, jména `i-neco`. Vkládají se `IC('i-van')`
+Symboly v `src/icons/sprite.svg`, 56 kusů, jména `i-neco`. Vkládají se `IC('i-van')`
 nebo `<svg class="ic"><use href="#i-van"/></svg>`. Nová ikona = symbol do sprite.svg.

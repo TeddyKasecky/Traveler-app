@@ -40,8 +40,8 @@ Tohle byla poslední aktualizace, která stáhne celou aplikaci znovu (měnil se
 | **Špendlíky jen ve výřezu** | 580 kusů v stránce stálo ~850 ms přepočtu stylů při každém posunu mapy |
 | **Stabilní verze cache** | telefon si při každém nasazení stahoval celou aplikaci znovu, i když se nic nezměnilo |
 
-Kontroly: `validate` · `check-uloziste` 13/13 · `smoke` 56/56 · `smoke:single` 45/45 ·
-`check-css` · `check-handlers` 61/61 · `parity` 26/26 · `check-form`.
+Kontroly: `validate` · `check-uloziste` 13/13 · `smoke` 76/76 · `smoke:single` 66/66 ·
+`check-tokeny` 7/7 · `check-dny` 14/14 · `check-handlers` 61/61 · `parity` 26/26 · `check-form`.
 
 ---
 
@@ -54,7 +54,7 @@ Kontroly: `validate` · `check-uloziste` 13/13 · `smoke` 56/56 · `smoke:single
 | **Dělení dat míst kvůli rychlejšímu startu** | změřeno: `JSON.parse` všech 745 kB stojí 21 ms na 4× zpomaleném procesoru. Jednotky procent startu. Čas žere vykreslování, ne data. Podrobně v `PARITA.md` §8. |
 | **Špendlíky do plátna** | zamítnuto, vzhled mapy zůstává |
 | **Doplňování chybějících fotek u 318 míst** | kreslená pohlednice zůstává |
-| **Tmavý režim, průchod přístupnosti** | mimo rozsah |
+| ~~Tmavý režim~~ | **hotovo** (srpen 2026, viz `VZHLED.md`) — přepínač Světlý / Tmavý / Podle systému |
 | **Fáze 2: parkoviště z OSM a výška vozu** | vynecháno na vaše přání |
 
 ---
