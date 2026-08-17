@@ -1,0 +1,187 @@
+/* ===== stavební díly rozvržení podle předloh =====
+ *
+ * Devět dílů, ze kterých jsou složené všechny obrazovky. Protějšek
+ * `src/components/vzory.js`, tam je i vysvětlení, proč existují.
+ *
+ * Vědomě se nesahá na `.card`, `.hdr`, `.meta` a `.tag` z `panel.css` —
+ * ty používají čtyři obrazovky a změna by je přestavěla naráz.
+ */
+
+/* ---------- hero pás ---------- */
+/* Nadpis leží vlevo dole v bezpečné zóně, jak předepisuje list „Obrázky
+ * na pozadí". Přechod dolů zajišťuje, že text nikdy nesedí na hranu. */
+.heropas{position:relative;margin:0 -14px;height:196px;overflow:hidden;background:var(--bg2)}
+/* `object-position:top` schválně: nadpis leží nahoře a pod ním musí být obloha
+ * nebo mlha, ne koruny stromů. Na akvarelech je světlo vždycky nahoře. */
+.heropas-obr{display:block;width:100%;height:100%;object-fit:cover;object-position:top}
+/* Dva přechody: shora zesvětluje pod nadpisem, zdola váže obrázek na plochu. */
+.heropas::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(250,245,236,.92) 0%,rgba(250,245,236,.62) 30%,rgba(250,245,236,.12) 52%,var(--bg) 100%)}
+.heropas-text{position:absolute;inset:20px 20px auto 20px;z-index:2}
+.heropas-text h2{margin:0;font-family:var(--f-disp);font-weight:700;font-size:1.72rem;line-height:1.12;color:var(--zn-forest)}
+.heropas-text p{margin:6px 0 0;font-size:.86rem;font-weight:500;line-height:1.4;color:var(--zn-forest);opacity:.82;max-width:19rem}
+.heropas-vpravo{position:absolute;top:14px;right:16px;z-index:2;display:flex;gap:8px}
+
+/* Akvarel je světlý v obou režimech, takže v tmavém musí ztmavit přechod
+ * a text se překlopit na světlý – jinak by tmavě zelený nadpis na světlé mlze
+ * v tmavé aplikaci působil jako díra.
+ *
+ * Blok je dvakrát a s `@media`, stejně jako v `tokens.css`. Poprvé jsem ho
+ * napsal jen jako `:root:not([data-motiv="svetly"])` bez `@media` – to má vyšší
+ * specificitu než `.heropas::after` a uplatňovalo se to i ve světlém režimu,
+ * kde žádný atribut nastavený není. Vypadalo to skoro stejně, takže si toho
+ * nikdo nevšiml. Tohle `check-tokeny` nepozná, hlídá jen proměnné. */
+@media (prefers-color-scheme:dark){
+  :root:not([data-motiv="svetly"]) .heropas::after{
+    background:linear-gradient(180deg,rgba(27,36,26,.72) 0%,rgba(27,36,26,.5) 30%,rgba(27,36,26,.2) 52%,var(--bg) 100%)}
+  :root:not([data-motiv="svetly"]) .heropas-text h2,
+  :root:not([data-motiv="svetly"]) .heropas-text p{color:var(--text)}
+}
+:root[data-motiv="tmavy"] .heropas::after{
+  background:linear-gradient(180deg,rgba(27,36,26,.72) 0%,rgba(27,36,26,.5) 30%,rgba(27,36,26,.2) 52%,var(--bg) 100%)}
+:root[data-motiv="tmavy"] .heropas-text h2,
+:root[data-motiv="tmavy"] .heropas-text p{color:var(--text)}
+
+/* List obsahu, který na hero pás mírně přesahuje. */
+.list{position:relative;z-index:3;margin:-20px -14px 0;padding:18px 14px 0;
+  background:var(--bg);border-radius:var(--r-l) var(--r-l) 0 0}
+
+/* ---------- popisek sekce ---------- */
+.sekce{display:flex;align-items:center;gap:10px;margin:20px 2px 11px;
+  font-size:.66rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--text2)}
+.sekce:first-child{margin-top:4px}
+.sekce-akce{margin-left:auto;background:none;border:0;padding:0;display:flex;gap:4px;align-items:center;
+  font:inherit;font-size:.66rem;letter-spacing:.6px;text-transform:none;font-weight:700;color:var(--akcent)}
+.sekce-pozn{margin-left:auto;font-weight:600;letter-spacing:.2px;text-transform:none;color:var(--text3)}
+
+/* ---------- řádek ---------- */
+.radek{display:flex;gap:12px;align-items:center;background:var(--plocha);border:var(--line);
+  border-radius:var(--r);box-shadow:var(--stin-1);padding:10px 12px;margin-bottom:10px;
+  content-visibility:auto;contain-intrinsic-size:auto 96px;transition:transform .16s var(--pop)}
+.radek:active{transform:var(--stisk)}
+.radek-obr{flex:0 0 auto;width:76px;height:76px;border-radius:var(--r-s);object-fit:cover;background:var(--plocha2)}
+.radek-text{flex:1;min-width:0}
+.radek-text h3{margin:0;font-family:var(--f-disp);font-weight:700;font-size:1.02rem;line-height:1.22;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* Lokalita se nezalamuje: v předloze je vždycky jeden řádek a bez toho
+ * dlouhé názvy oblastí („Bádensko-Württembersko") roztáhnou řádek na tři. */
+.radek-pod{font-size:.76rem;font-weight:600;color:var(--text2);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.radek-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px;
+  font-size:.74rem;font-weight:700;color:var(--text2)}
+.radek-meta svg.ic{font-size:14px;color:var(--pc,var(--akcent))}
+.radek-vpravo{flex:0 0 auto;display:flex;flex-direction:column;gap:8px;align-items:flex-end;justify-content:center}
+.radek-vpravo .ikonbtn{width:34px;height:34px}
+.radek-vpravo .stavpill{font-size:.64rem;padding:4px 9px}
+
+/* ---------- karusel fotokaret ---------- */
+.karusel{display:flex;gap:11px;overflow-x:auto;scroll-snap-type:x mandatory;
+  margin:0 -14px;padding:2px 14px 6px;scrollbar-width:none}
+.karusel::-webkit-scrollbar{display:none}
+.fotokarta{position:relative;flex:0 0 auto;width:152px;height:186px;scroll-snap-align:start;
+  border-radius:var(--r);overflow:hidden;background:var(--plocha2);box-shadow:var(--stin-1);
+  transition:transform .16s var(--pop)}
+.fotokarta:active{transform:var(--stisk)}
+.fotokarta img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+/* Přechod, aby byl název čitelný i na světlém akvarelu. */
+.fotokarta-text{position:absolute;inset:auto 0 0 0;padding:26px 11px 10px;
+  background:linear-gradient(180deg,transparent,rgba(27,36,26,.82));color:var(--zn-ivory)}
+.fotokarta-text h3{margin:0;font-family:var(--f-disp);font-weight:700;font-size:.98rem;line-height:1.15}
+.fotokarta-text span{font-size:.72rem;font-weight:600;opacity:.86}
+.fotokarta-meta{margin-top:4px;font-size:.72rem;font-weight:700;color:var(--zvyrazneni);display:flex;gap:5px;align-items:center}
+
+/* ---------- dlaždice ---------- */
+.dlazdice{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+@media (max-width:430px){.dlazdice{grid-template-columns:repeat(2,1fr)}}
+.dlazdice-kus{background:var(--plocha);border:var(--line);border-radius:var(--r-s);box-shadow:var(--stin-1);
+  padding:12px 8px 11px;display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;
+  transition:transform .16s var(--pop)}
+.dlazdice-kus:active{transform:var(--stisk)}
+.dlazdice-kus b{font-family:var(--f-disp);font-weight:700;font-size:.9rem;line-height:1.15}
+.dlazdice-kus svg.ic{font-size:26px;color:var(--dc,var(--akcent))}
+.dlazdice-kus span{font-size:.66rem;font-weight:600;color:var(--text2);line-height:1.3}
+
+/* ---------- pilulky ---------- */
+.pilulky{display:flex;gap:8px;overflow-x:auto;margin:0 -14px;padding:2px 14px 4px;scrollbar-width:none}
+.pilulky::-webkit-scrollbar{display:none}
+.pilulka{flex:0 0 auto;background:var(--plocha);border:var(--line);border-radius:var(--r-s);
+  box-shadow:var(--stin-1);padding:9px 13px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  min-width:74px;transition:transform .16s var(--pop),background .18s,color .18s}
+.pilulka svg.ic{font-size:19px;color:var(--text2)}
+.pilulka span{font-size:.68rem;font-weight:700}
+.pilulka:active{transform:var(--stisk)}
+.pilulka.on{background:var(--akcent);color:var(--na-akcentu)}
+.pilulka.on svg.ic{color:var(--na-akcentu)}
+/* Vodorovná varianta – ikona vedle textu, na rychlé filtry nad mapou. */
+.pilulky.vodorovne .pilulka{flex-direction:row;gap:7px;min-width:0;border-radius:var(--r-pill);padding:8px 14px}
+
+/* ---------- segment ---------- */
+.segment{display:flex;gap:4px;background:var(--plocha2);border-radius:var(--r-pill);padding:4px;margin:0 2px}
+.segment button{flex:1;background:none;border:0;border-radius:var(--r-pill);padding:9px 6px;
+  font:inherit;font-size:.82rem;font-weight:700;color:var(--text2);transition:background .18s,color .18s}
+.segment button.on{background:var(--zvyrazneni);color:var(--na-zvyrazneni)}
+
+/* ---------- panel statistik ---------- */
+.statpanel{display:flex;flex-direction:column;gap:12px}
+.statradek{display:flex;gap:10px;align-items:center}
+.statradek svg.ic{font-size:19px;color:var(--text2);flex:0 0 auto}
+.statradek span{display:block;font-size:.66rem;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text3)}
+.statradek b{font-family:var(--f-disp);font-weight:700;font-size:1.08rem;line-height:1.2}
+
+/* ---------- řada čísel ---------- */
+.cisla{display:flex;gap:4px}
+.cislo{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;text-align:center}
+.cislo svg.ic{font-size:15px;color:var(--text3);margin-bottom:2px}
+.cislo b{font-family:var(--f-disp);font-weight:700;font-size:1.18rem;line-height:1.1}
+.cislo span{font-size:.62rem;font-weight:700;color:var(--text2)}
+
+/* ---------- stavová pilulka ---------- */
+.stavpill{display:inline-flex;gap:5px;align-items:center;border-radius:var(--r-pill);
+  padding:5px 11px;font-size:.7rem;font-weight:700;white-space:nowrap;
+  background:var(--plocha2);color:var(--text2)}
+.stavpill svg.ic{font-size:13px}
+.stavpill.chci{background:var(--plocha-zluta);color:var(--text)}
+.stavpill.je{background:var(--akcent);color:var(--na-akcentu)}
+
+/* ---------- ikonové tlačítko ---------- */
+.ikonbtn{width:38px;height:38px;border-radius:var(--r-s);border:var(--line);background:var(--plocha);
+  display:grid;place-items:center;box-shadow:var(--stin-1);transition:transform .15s var(--pop),background .18s}
+.ikonbtn svg.ic{font-size:18px;color:var(--text2)}
+.ikonbtn:active{transform:var(--stisk)}
+.ikonbtn.on{background:var(--akcent)}
+.ikonbtn.on svg.ic{color:var(--na-akcentu)}
+
+/* ---------- lišta hledání a filtrů na obrazovce ---------- */
+/* Předloha má hledání až na obrazovce, ne v hlavičce: na Domů a Objevuj
+ * se nehledá, tam se objevuje. */
+.hledani{display:flex;gap:9px;margin:0 0 11px}
+#qWrap{flex:1;display:flex;align-items:center;gap:10px;background:var(--plocha);border:var(--line);
+  border-radius:var(--r-pill);padding:12px 18px;box-shadow:var(--stin-1)}
+#qWrap svg.ic{font-size:18px;color:var(--text3);flex:0 0 auto}
+#qWrap input{border:0;outline:0;background:none;width:100%;font:inherit;font-size:.92rem;color:var(--text)}
+.hledani .ikonbtn{width:48px;height:48px;border-radius:var(--r-pill)}
+
+/* Rozbalovací pilulky. `appearance:none` kvůli šipce, kterou kreslíme sami —
+ * systémová se nedá obarvit a v tmavém režimu byla černá. */
+.filtrpilulky{display:flex;gap:8px;overflow-x:auto;margin:0 -14px 10px;padding:0 14px 2px;scrollbar-width:none}
+.filtrpilulky::-webkit-scrollbar{display:none}
+.filtrpilulky select{flex:0 0 auto;appearance:none;-webkit-appearance:none;font:inherit;font-size:.75rem;font-weight:700;
+  color:var(--text);background:var(--plocha);border:var(--line);border-radius:var(--r-pill);
+  padding:8px 26px 8px 13px;box-shadow:var(--stin-1);max-width:8.5rem;text-overflow:ellipsis;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 15px) 51%,calc(100% - 11px) 51%;background-size:4px 4px,4px 4px;background-repeat:no-repeat}
+
+.aktivni{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline;margin:0 2px 10px;
+  font-size:.76rem;font-weight:700;color:var(--text2)}
+.aktivni button{margin-left:auto;background:none;border:0;padding:0;font:inherit;font-size:.76rem;
+  font-weight:700;color:var(--akcent)}
+
+.vysledky{display:flex;align-items:center;gap:10px;margin:0 2px 12px;font-size:.78rem;font-weight:700;color:var(--text2)}
+.razeni{margin-left:auto;display:flex;gap:5px;align-items:center;color:var(--text3);font-weight:600}
+.razeni select{appearance:none;-webkit-appearance:none;font:inherit;font-size:.78rem;font-weight:700;
+  color:var(--text);background:none;border:0;padding:0 14px 0 0;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 4px) 55%,calc(100% - 0px) 55%;background-size:4px 4px,4px 4px;background-repeat:no-repeat}
+
+.tecka{color:var(--text3);margin:0 1px}
+.hvezdy{color:var(--zvyrazneni);letter-spacing:1px}

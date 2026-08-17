@@ -1,46 +1,167 @@
 /**
- * Záložka Seznam.
+ * Záložka Seznam – „vím, co chci".
+ *
+ * Skladba podle mockupu `grafika/…11_09_49 (3).png`: hero pás, vyhledávací
+ * pilulka s tlačítkem filtrů, čtyři rozbalovací pilulky, řádek aktivních
+ * filtrů, počet nalezených se řazením a pak řádky míst.
+ *
+ * PROČ JE OVLÁDÁNÍ V `index.html` A NE TADY: `#q`, `#fReg`, `#fZeme` a `#fTyp`
+ * mají obsluhu navěšenou při startu (`filterPanel.js`) a hlídá ji
+ * `check-handlers`. Kdyby je `renderList()` tvořil znovu při každém překreslení,
+ * obsluha by se ztratila. Vykresluje se proto jen obsah, ne lišta.
  */
 
-import { S, F } from '../../core/store.js'
+import { S, F, store, save } from '../../core/store.js'
 import { visible } from '../../core/filters.js'
-import { dkm } from '../../core/geo.js'
+import { dkm, fmtKm } from '../../core/geo.js'
+import { esc } from '../../core/html.js'
 import { COLL } from '../../data/collections.js'
+import { KAT } from '../../data/categories.js'
+import { obrazekMista } from '../../data/kategorieFoto.js'
 import { IC } from '../../icons/sprite.js'
-import { kartaSeznam } from '../../components/placeCard.js'
-import { goTo } from '../../map/map.js'
+import { radek, heroPas, stavPill, ikonBtn } from '../../components/vzory.js'
+import { goTo, draw } from '../../map/map.js'
+import { PHOTOS } from '../../core/store.js'
+import heroObr from '../../assets/hero/seznam.webp'
 
-/** Kolik karet se nejvýš vykreslí. Zbytek se schová za hlášku. */
+/** Kolik řádků se nejvýš vykreslí. Zbytek se schová za hlášku. */
 const STROP = 250
 
+/**
+ * Seřadí místa podle volby v `#fRazeni`.
+ *
+ * „Doporučené" je schválně dnešní chování — se známou polohou podle
+ * vzdálenosti, jinak česky abecedně. Kdo řazení nesáhne, nic se mu nezmění.
+ *
+ * @param {Record<string, any>[]} mista
+ * @returns {{p: Record<string, any>, d: number|null}[]}
+ */
+function serad(mista) {
+  const jak = document.getElementById('fRazeni')?.value || 'dopor'
+  const sD = mista.map((p) => ({ p, d: S.userPos ? dkm(S.userPos, p) : null }))
+
+  if (jak === 'abc') return sD.sort((a, b) => a.p.n.localeCompare(b.p.n, 'cs'))
+  if (jak === 'hodnoceni') return sD.sort((a, b) => (store.rating[b.p.id] || 0) - (store.rating[a.p.id] || 0))
+  if (jak === 'doba') {
+    // `d` je volný text („2-3 h“, „0,5-1 h“). Řadí se podle prvního čísla,
+    // co v něm je – přesnější to z těch dat udělat nejde.
+    const cislo = (t) => parseFloat(String(t).replace(',', '.')) || 99
+    return sD.sort((a, b) => cislo(a.p.d) - cislo(b.p.d))
+  }
+  return S.userPos ? sD.sort((a, b) => a.d - b.d) : sD.sort((a, b) => a.p.n.localeCompare(b.p.n, 'cs'))
+}
+
+/**
+ * Meta řádek pod názvem.
+ *
+ * Předloha má ★ u každého místa. Hodnocení si ale dává uživatel a většina
+ * z 580 míst ho nemá, takže se ukáže jen kde je; jinde nastoupí doba,
+ * která je vyplněná u všech. Žádná vymyšlená čísla.
+ */
+function meta(p, d) {
+  const k = KAT[p.k] || {}
+  const hv = store.rating[p.id]
+  const kus = [`${IC(k.i)}${esc(p.t)}`]
+  if (hv) kus.push(`<span class="hvezdy">${'★'.repeat(hv)}</span>`)
+  else if (p.d) kus.push(`${IC('i-clock')}${esc(p.d)}`)
+  if (d != null) kus.push(`${IC('i-nav')}${fmtKm(d)}`)
+  return kus.join('<span class="tecka">·</span>')
+}
+
 export function renderList() {
-  const el = document.getElementById('listInner')
+  const heroEl = document.getElementById('listHero')
+  const aktivniEl = document.getElementById('listAktivni')
+  const pocetEl = document.getElementById('listPocet')
+  const kartyEl = document.getElementById('listKarty')
+  if (!kartyEl) return
 
-  // Se známou polohou se řadí podle vzdálenosti, jinak abecedně česky.
-  const vs = visible()
-  const sVzdalenosti = S.userPos
-    ? vs.map((p) => ({ p, d: dkm(S.userPos, p) })).sort((a, b) => a.d - b.d)
-    : [...vs].sort((a, b) => a.n.localeCompare(b.n, 'cs')).map((p) => ({ p, d: null }))
+  if (!heroEl.innerHTML) {
+    heroEl.innerHTML = heroPas({
+      obrazek: heroObr,
+      nadpis: 'Seznam míst',
+      podtitulek: 'Najdi místa, která tě volají.',
+    })
+  }
 
-  const nazevFiltru = [F.coll && COLL.find((c) => c.k === F.coll)?.n, F.reg, F.zeme, F.typ].filter(Boolean).join(' · ')
-  const head = `<div class="hdr">${IC('i-book')}${nazevFiltru || 'Všechna místa'}<span class="n">${sVzdalenosti.length}</span></div>`
+  const serazene = serad(visible())
 
-  if (!sVzdalenosti.length) {
-    el.innerHTML = `${head}<div class="empty">${IC('i-map')}Nic neodpovídá filtrům.<br>Zkus je zrušit tlačítkem ⚙️.</div>`
+  // Řádek aktivních filtrů. V předloze je jen když něco filtruje.
+  const aktivni = [
+    F.coll && COLL.find((c) => c.k === F.coll)?.n,
+    F.reg,
+    F.zeme,
+    F.typ,
+    F.stav === 'wish' ? 'Chci navštívit' : F.stav === 'visited' ? 'Navštíveno' : '',
+    ...[...F.kat],
+  ].filter(Boolean)
+
+  aktivniEl.innerHTML = aktivni.length
+    ? `<div class="aktivni">Filtry: ${aktivni.map(esc).join(' <span class="tecka">•</span> ')}
+        <button id="listZrus">Zrušit vše</button></div>`
+    : ''
+
+  pocetEl.textContent = `${serazene.length} ${serazene.length === 1 ? 'místo' : serazene.length < 5 ? 'místa' : 'míst'} nalezeno`
+
+  if (!serazene.length) {
+    kartyEl.innerHTML = `<div class="empty">${IC('i-map')}Nic neodpovídá filtrům.<br>Zkus je zrušit.</div>`
     return
   }
 
-  el.innerHTML =
-    head +
-    sVzdalenosti
+  kartyEl.innerHTML =
+    serazene
       .slice(0, STROP)
-      .map(({ p, d }) => kartaSeznam(p, d))
+      .map(({ p, d }) => {
+        const k = KAT[p.k] || {}
+        const stav = store.stav[p.id]
+        const obr = obrazekMista(p, PHOTOS)
+        return radek({
+          id: p.id,
+          obrazek: obr.src,
+          zaloha: obr.zaloha,
+          vyrez: obr.vyrez,
+          nadpis: p.n,
+          podnadpis: p.r && p.r !== p.z ? `${p.r}, ${p.z}` : p.z,
+          meta: meta(p, d),
+          vpravo:
+            ikonBtn(stav === 'visited' ? 'i-check' : 'i-srdce', {
+              titul: stav === 'visited' ? 'Navštíveno' : 'Chci navštívit',
+              on: !!stav,
+            }) + stavPill(stav),
+          tridy: 'misto',
+          styl: `--pc:${k.c}`,
+        })
+      })
       .join('') +
-    (sVzdalenosti.length > STROP
-      ? `<div class="meta" style="text-align:center;padding:10px">Zobrazeno prvních ${STROP} – zpřesni hledání.</div>`
+    (serazene.length > STROP
+      ? `<div class="meta" style="text-align:center;padding:12px">Zobrazeno prvních ${STROP} – zpřesni hledání.</div>`
       : '')
 
-  for (const c of el.querySelectorAll('.card[data-id]')) {
-    c.onclick = () => goTo(S.byId[c.dataset.id])
+  const zrus = document.getElementById('listZrus')
+  if (zrus) zrus.onclick = () => document.getElementById('fReset').click()
+
+  for (const r of kartyEl.querySelectorAll('.radek[data-id]')) {
+    const id = r.dataset.id
+    r.onclick = () => goTo(S.byId[id])
+    // Srdce/fajfka nesmí otevřít detail – je to zkratka přímo ze seznamu.
+    r.querySelector('.ikonbtn').onclick = (e) => {
+      e.stopPropagation()
+      prepniStav(id)
+    }
   }
+}
+
+/**
+ * Přepne stav místa rovnou ze seznamu: nic → chci → navštíveno → nic.
+ *
+ * V předloze je srdce a fajfka na každém řádku. Do teď se stav dal měnit
+ * jen v detailu, což znamenalo otevřít a zavřít panel u každého místa.
+ */
+function prepniStav(id) {
+  const ted = store.stav[id]
+  if (!ted) store.stav[id] = 'wish'
+  else if (ted === 'wish') store.stav[id] = 'visited'
+  else delete store.stav[id]
+
+  save()
+  draw()
 }

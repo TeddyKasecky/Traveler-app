@@ -17,10 +17,12 @@
 
 <header id="top">
   <div id="brand">
-    <img id="logo" src="/src/assets/icon-192.png" alt="Vandrbuch">
-    <div><h1>Vandrbuch</h1><div class="sub"><span id="totalN"></span> míst · <span id="visitedN">0</span> navštíveno</div></div>
+    <img id="logo" src="/src/assets/icon-192.png" alt="">
+    <h1>Vandrbuch</h1>
+    <!-- Počty zůstávají v DOM: visí na nich smoke i parity. Vidět jsou
+         v Profilu a v řádku výsledků na Seznamu, v hlavičce je předloha nemá. -->
+    <span class="sub" hidden><span id="totalN"></span> míst · <span id="visitedN">0</span> navštíveno</span>
     <button id="profilOpen" title="Profil"><svg class="ic"><use href="#i-profil"/></svg></button>
-    <div id="search"><svg class="ic" style="font-size:17px"><use href="#i-hledat"/></svg><input id="q" type="search" placeholder="Hledat místo…" autocomplete="off"></div>
   </div>
   <div id="chips"></div>
   <div class="road" id="topRoad"></div>
@@ -36,7 +38,38 @@
 
 <section class="panel" id="panelHome"><div class="inner" id="homeInner"></div></section>
 <section class="panel" id="panelDisc"><div class="inner" id="discInner"></div></section>
-<section class="panel" id="panelList"><div class="inner" id="listInner"></div></section>
+<section class="panel" id="panelList">
+  <!-- Lišta je staticky tady, ne v renderList(): #q, #fReg, #fZeme a #fTyp mají
+       obsluhu navěšenou při startu a musí existovat od začátku. -->
+  <div class="inner" id="listInner">
+    <div id="listHero"></div>
+    <div class="list">
+      <div class="hledani">
+        <div id="qWrap"><svg class="ic"><use href="#i-hledat"/></svg><input id="q" type="search" placeholder="Hledat místo…" autocomplete="off"></div>
+        <button class="ikonbtn" id="listFiltry" title="Filtry"><svg class="ic"><use href="#i-sliders"/></svg></button>
+      </div>
+      <div class="filtrpilulky">
+        <select id="fReg"><option value="">Oblast</option></select>
+        <select id="fZeme"><option value="">Země</option></select>
+        <select id="fTyp"><option value="">Typ</option></select>
+        <select id="fStav"><option value="">Stav</option><option value="wish">Chci navštívit</option><option value="visited">Navštíveno</option></select>
+      </div>
+      <div id="listAktivni"></div>
+      <div class="vysledky">
+        <span id="listPocet"></span>
+        <label class="razeni">Seřadit:
+          <select id="fRazeni">
+            <option value="dopor">Doporučené</option>
+            <option value="abc">Podle abecedy</option>
+            <option value="hodnoceni">Podle hodnocení</option>
+            <option value="doba">Podle doby</option>
+          </select>
+        </label>
+      </div>
+      <div id="listKarty"></div>
+    </div>
+  </div>
+</section>
 <section class="panel" id="panelPlan"><div class="inner" id="planWrap"></div></section>
 <section class="panel" id="panelProfil"><div class="inner" id="profilInner"></div></section>
 
@@ -44,9 +77,6 @@
 
 <aside id="filters">
   <h2><svg class="ic"><use href="#i-sliders"/></svg>Filtry</h2>
-  <div class="fgroup"><label>Oblast</label><select id="fReg"><option value="">Všechny oblasti</option></select></div>
-  <div class="fgroup"><label>Země</label><select id="fZeme"><option value="">Všechny země</option></select></div>
-  <div class="fgroup"><label>Typ</label><select id="fTyp"><option value="">Všechny typy</option></select></div>
   <div class="fgroup"><label>Rychlé filtry</label>
     <div class="togglerow">
       <button class="toggle" data-f="free"><svg class="ic" style="color:var(--moss)"><use href="#i-euro"/></svg>Zdarma</button>

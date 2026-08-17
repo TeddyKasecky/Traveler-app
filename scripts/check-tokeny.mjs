@@ -134,7 +134,7 @@ else projde('oba tmavé bloky jsou shodné', `${Object.keys(media).length} prom�
 
 const definovane = new Set([...Object.keys(svetle), ...Object.keys(media), ...Object.keys(atribut)])
 /** Proměnné nastavované za běhu z JavaScriptu na konkrétním prvku. */
-const ZA_BEHU = new Set(['--pc', '--cc', '--chipc', '--mc', '--sous', '--hranice', '--voda', '--more'])
+const ZA_BEHU = new Set(['--pc', '--cc', '--chipc', '--mc', '--dc', '--sous', '--hranice', '--voda', '--more'])
 
 const nezname = new Set()
 for (const f of souboryCss) {

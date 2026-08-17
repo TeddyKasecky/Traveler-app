@@ -70,7 +70,7 @@ async function projdi(page) {
   }
   await page.evaluate(() => document.getElementById('fabFilter')?.click())
   await page.waitForTimeout(500)
-  await page.evaluate(() => document.querySelector('#listInner .card')?.click())
+  await page.evaluate(() => document.querySelector('#listInner .radek')?.click())
   await page.waitForTimeout(1200)
 }
 

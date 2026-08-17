@@ -137,20 +137,22 @@ await kontrola('statistika míst', () => page.locator('.hstat b').first().innerT
 // Seznam
 await page.click('#tabs button[data-tab="list"]')
 await page.waitForTimeout(300)
-await kontrola('seznam vykreslen', () => page.locator('#listInner .card').count(), 250)
+// Seznam od přestavby rozvržení nekreslí `.card` z panel.css, ale `.radek`
+// z vzory.css – řádek s náhledem vlevo podle mockupu grafika/…(3).png.
+await kontrola('seznam vykreslen', () => page.locator('#listInner .radek').count(), 250)
 await kontrola('adresa se změnila', () => page.evaluate(() => location.hash), '#list')
 
 // Zástupná ilustrace kategorie. Nestačí, že je v HTML <img> – musí se opravdu
 // načíst, jinak by 318 míst bez vlastní fotky ukazovalo prázdný rámeček.
-await kontrola('náhledy v kartách', () => page.locator('#listInner .cthumb').count().then((n) => n > 0))
+await kontrola('náhledy v kartách', () => page.locator('#listInner .radek-obr').count().then((n) => n > 0))
 await kontrola('zástupná ilustrace se načetla', () =>
-  page.locator('#listInner .cthumb').first().evaluate((i) => i.complete && i.naturalWidth > 0)
+  page.locator('#listInner .radek-obr').first().evaluate((i) => i.complete && i.naturalWidth > 0)
 )
 
 // hledání bez diakritiky
 await page.fill('#q', 'soutesky')
 await page.waitForTimeout(300)
-await kontrola('hledání "soutesky" bez diakritiky', () => page.locator('#listInner .card').count(), 3)
+await kontrola('hledání "soutesky" bez diakritiky', () => page.locator('#listInner .radek').count(), 3)
 await page.fill('#q', '')
 await page.waitForTimeout(300)
 
@@ -184,7 +186,7 @@ await kontrola('po oddálení jsou vidět všechna místa', () => page.locator('
 // detail místa
 await page.click('#tabs button[data-tab="list"]')
 await page.waitForTimeout(300)
-await page.locator('#listInner .card').first().click()
+await page.locator('#listInner .radek').first().click()
 await page.waitForTimeout(900)
 await kontrola('detail otevřený', () => page.locator('#sheet.show').count(), 1)
 await kontrola('detail má nadpis', () => page.locator('#sheet h2').innerText().then((t) => t.length > 0))
@@ -205,7 +207,7 @@ await kontrola('zpět zavřelo detail', () => page.locator('#sheet.show').count(
 // na předchozí záložku, takže spoléhat na to, kde skončíme, by bylo křehké.
 await page.click('#tabs button[data-tab="list"]')
 await page.waitForTimeout(400)
-await page.locator('#listInner .card').first().click()
+await page.locator('#listInner .radek').first().click()
 await page.waitForTimeout(700)
 await page.evaluate(() => document.getElementById('dPorovnat').click())
 await page.waitForTimeout(200)
@@ -216,7 +218,7 @@ await page.goBack()
 await page.waitForTimeout(400)
 await page.click('#tabs button[data-tab="list"]')
 await page.waitForTimeout(400)
-await page.locator('#listInner .card').nth(1).click()
+await page.locator('#listInner .radek').nth(1).click()
 await page.waitForTimeout(700)
 await page.evaluate(() => document.getElementById('dPorovnat').click())
 await page.waitForTimeout(400)

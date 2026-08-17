@@ -66,6 +66,12 @@ export function aktivujZalozku(t, zHistorie = false) {
   for (const b of document.querySelectorAll('#tabs button')) {
     b.classList.toggle('on', b.dataset.tab === t)
   }
+  // Chipy kategorií jsou rychlý filtr nad mapou – předlohy je jinde nemají.
+  // Na Seznamu je stejná věc dostupná jako pilulka „Typ".
+  const jeMapa = t === 'map'
+  document.getElementById('chips').hidden = !jeMapa
+  // Tečkovaná silnice se animuje při posunu mapy – jinde nemá co hlásit.
+  document.getElementById('topRoad').hidden = !jeMapa
   for (const [klic, zal] of Object.entries(ZALOZKY)) {
     if (zal.panel) document.getElementById(zal.panel)?.classList.toggle('show', klic === t)
   }

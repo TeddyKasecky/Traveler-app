@@ -126,7 +126,7 @@ async function zmer(zpomaleni) {
     const t0 = performance.now()
     document.querySelector('#tabs button[data-tab="list"]').click()
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
-    return { ms: performance.now() - t0, karet: document.querySelectorAll('#listInner .card').length }
+    return { ms: performance.now() - t0, karet: document.querySelectorAll('#listInner .radek').length }
   })
 
   const m = Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map((x) => [x.name, x.value]))

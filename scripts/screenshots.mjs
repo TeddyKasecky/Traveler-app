@@ -106,7 +106,7 @@ const OBRAZOVKY = [
     pred: async (p) => {
       await p.click('#tabs button[data-tab="list"]')
       await p.waitForTimeout(400)
-      await p.locator('#listInner .card').first().click()
+      await p.locator('#listInner .radek').first().click()
       await p.waitForTimeout(1600)
     },
   },

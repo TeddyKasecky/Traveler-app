@@ -198,7 +198,7 @@ console.log('\n3. Plná paměť se ohlásí varovným pruhem')
   await page.click('#introGo')
   await page.click('#tabs button[data-tab="list"]')
   await page.waitForTimeout(400)
-  await page.locator('#listInner .card').first().click()
+  await page.locator('#listInner .radek').first().click()
   await page.waitForTimeout(900)
 
   // Zaplnit úložiště doopravdy.
@@ -244,7 +244,7 @@ console.log('\n4. Psaní poznámky nezapisuje při každé klávese')
   await page.click('#introGo')
   await page.click('#tabs button[data-tab="list"]')
   await page.waitForTimeout(400)
-  await page.locator('#listInner .card').first().click()
+  await page.locator('#listInner .radek').first().click()
   await page.waitForTimeout(900)
 
   const vLocalStorage = () =>
@@ -274,7 +274,7 @@ console.log('\n5. Rozepsaná poznámka se dopíše při odchodu')
   await page.click('#introGo')
   await page.click('#tabs button[data-tab="list"]')
   await page.waitForTimeout(400)
-  await page.locator('#listInner .card').first().click()
+  await page.locator('#listInner .radek').first().click()
   await page.waitForTimeout(900)
 
   await page.fill('#noteBox', 'NEDOPSANA POZNAMKA')

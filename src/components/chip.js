@@ -45,6 +45,7 @@ export function syncFiltersUI() {
     ['fReg', 'reg'],
     ['fZeme', 'zeme'],
     ['fTyp', 'typ'],
+    ['fStav', 'stav'],
   ]) {
     const el = document.getElementById(id)
     if (el) el.value = F[k] || ''

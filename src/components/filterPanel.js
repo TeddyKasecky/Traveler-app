@@ -81,13 +81,22 @@ export function fillSelects() {
   }
   const unik = (klic) => [...new Set(S.places.map((p) => p[klic]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'cs'))
 
-  mk('fReg', unik('r'), 'Všechny oblasti')
-  mk('fZeme', unik('z'), 'Všechny země')
-  mk('fTyp', unik('t'), 'Všechny typy')
+  // Prázdná volba je zároveň popiskem pilulky – tak to má předloha Seznamu.
+  mk('fReg', unik('r'), 'Oblast')
+  mk('fZeme', unik('z'), 'Země')
+  mk('fTyp', unik('t'), 'Typ')
 
-  document.getElementById('fReg').onchange = (e) => (F.reg = e.target.value)
-  document.getElementById('fZeme').onchange = (e) => (F.zeme = e.target.value)
-  document.getElementById('fTyp').onchange = (e) => (F.typ = e.target.value)
+  // Pilulky na Seznamu překreslují hned, protože jsou vidět rovnou nad výsledky.
+  // Přepínače v panelu Filtry se dál potvrzují tlačítkem „Ukázat výsledky".
+  const hned = (klic) => (e) => {
+    F[klic] = e.target.value
+    draw()
+  }
+  document.getElementById('fReg').onchange = hned('reg')
+  document.getElementById('fZeme').onchange = hned('zeme')
+  document.getElementById('fTyp').onchange = hned('typ')
+  document.getElementById('fStav').onchange = hned('stav')
+  document.getElementById('fRazeni').onchange = () => draw()
 }
 
 /** Zvýrazní tlačítko, které odpovídá uložené volbě vzhledu. */
@@ -100,6 +109,9 @@ function srovnejMotivUI() {
 /** Naváže ovládání panelu. Volá se jednou při startu. */
 export function initFilterPanel() {
   document.getElementById('fabFilter').onclick = otevriFiltry
+  // Tlačítko filtrů je nově i ve vyhledávací liště na Seznamu – předloha ho
+  // má u hledání, ne jako plovoucí knoflík vpravo dole.
+  document.getElementById('listFiltry').onclick = otevriFiltry
   backdrop().onclick = () => zavriVse()
 
   for (const b of document.querySelectorAll('.motivbtn')) {

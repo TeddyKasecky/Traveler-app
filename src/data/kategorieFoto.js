@@ -77,6 +77,30 @@ export function fotoKategorie(p, velikost = 'male') {
 }
 
 /**
+ * Obrázek místa i s náhradou, kdyby se nenačetl.
+ *
+ * Fotka z Wikimedie je cizí zdroj: bez signálu, po přejmenování souboru nebo
+ * při blokovaném obsahu se prostě nenačte a v řádku zůstane prázdný rámeček
+ * s ikonou rozbitého obrázku. Akvarel kategorie je náš, v balíčku, a načte
+ * se vždycky – proto je záchranou.
+ *
+ * @param {Record<string, any>} p
+ * @param {Record<string, string>} fotky  obsah PHOTOS
+ * @returns {{src: string, zaloha: string, vyrez: string}}
+ */
+export function obrazekMista(p, fotky = {}) {
+  const vlastni = fotky[p.id]
+  const kategorie = fotoKategorie(p)
+  return {
+    src: vlastni || p.img || kategorie,
+    // Vlastní vyfocená fotka je z IndexedDB, ta selhat nemůže – u ní záchrana
+    // nedává smysl a jen by blikla.
+    zaloha: vlastni ? '' : kategorie,
+    vyrez: vyrez(p),
+  }
+}
+
+/**
  * Svislý posun výřezu, aby dvě místa téže kategorie nevypadala stejně.
  * Vrací hodnotu pro `object-position`.
  * @param {Record<string, any>} p

@@ -244,7 +244,7 @@ await zkus('přepnutí záložky zapíše historii', async () => {
 await zkus('zpět zavře detail místa a nechá záložku být', async () => {
   await zpetPage.click('#tabs button[data-tab="list"]')
   await zpetPage.waitForTimeout(250)
-  await zpetPage.locator('#listInner .card').first().click()
+  await zpetPage.locator('#listInner .radek').first().click()
   await zpetPage.waitForTimeout(1100)
   const otevreno = await zpetPage.locator('#sheet.show').count()
   // Ťuknutí na kartu volá goTo(), a to přepíná na mapu – stejně jako originál
@@ -361,7 +361,7 @@ await zkus('fotka se uloží pod id místa', async () => {
   await page.waitForTimeout(300)
   await page.click('#tabs button[data-tab="list"]')
   await page.waitForTimeout(400)
-  await page.locator('#listInner .card').first().click()
+  await page.locator('#listInner .radek').first().click()
   await page.waitForTimeout(1100)
   await page.setInputFiles('#photoIn', { name: 't.png', mimeType: 'image/png', buffer: PNG })
   await page.waitForTimeout(1400)
