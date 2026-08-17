@@ -100,7 +100,7 @@ const kontrola = async (popis, fn, ocekavano) => {
   console.log(`  ${ok ? 'ok   ' : 'CHYBA'} ${popis.padEnd(42)} ${hodnota}`)
 }
 
-await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 56)
+await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 57)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
 await kontrola('chipy kategorií', () => page.locator('#chips .chip').count(), 10)
@@ -130,7 +130,6 @@ await kontrola('uvítání zavřené', () => page.locator('#intro.show').count()
 // Domů
 await kontrola('Domů je aktivní', () => page.locator('#panelHome.show').count(), 1)
 await kontrola('hero s dodávkou', () => page.locator('.homehero img').count(), 1)
-await kontrola('dlaždice nálad', () => page.locator('.mood').count(), 6)
 await kontrola('karty bikeparků', () => page.locator('.bpc').count(), 32)
 await kontrola('statistika míst', () => page.locator('.hstat b').first().innerText(), '580')
 
@@ -168,7 +167,11 @@ await page.waitForTimeout(400)
 // Objevuj
 await page.click('#tabs button[data-tab="disc"]')
 await page.waitForTimeout(300)
-await kontrola('kolekce v Objevuj', () => page.locator('.coll').count(), 11)
+// Objevuj má od přestavby rozvržení dlaždice `.dlazdice-kus` místo `.coll`
+// a nálady jako pilulky – přestěhovaly se sem z Domů, kde je předloha nemá.
+await kontrola('kolekce v Objevuj', () => page.locator('.dlazdice-kus').count(), 11)
+await kontrola('nálady v Objevuj', () => page.locator('.nalady .pilulka').count(), 6)
+await kontrola('karusel doporučených', () => page.locator('.karusel .fotokarta').count(), 8)
 await kontrola('oblasti v Objevuj', () => page.locator('.reg').count() )
 
 // Výřez: po oddálení na celý svět musí být vidět všechna místa. Tohle je pojistka

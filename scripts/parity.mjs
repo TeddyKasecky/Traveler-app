@@ -296,19 +296,22 @@ await zkus('„Moje poloha“ najde souřadnice', async () => {
   return { ok: znacka > 0 && nalezena, dukaz: `${znacka}× puntík (${barva}) · hlášky: ${h.length ? h.join(' | ') : 'žádné'}` }
 })
 
+// Nálady se přestěhovaly z Domů na Objevuj a jsou z nich pilulky – v předloze
+// jsou právě tam, protože „jakou máte náladu" je otázka pro toho, kdo neví,
+// kam chce. Kontrola jde za nimi, chování se nemění.
 await zkus('„Něco blízko“ přepne na Objevuj', async () => {
-  await page.click('#tabs button[data-tab="home"]')
-  await page.waitForTimeout(300)
-  await page.locator('.mood', { hasText: 'Něco blízko' }).click()
+  await page.click('#tabs button[data-tab="disc"]')
+  await page.waitForTimeout(400)
+  await page.locator('.nalady .pilulka', { hasText: 'Něco blízko' }).click()
   await page.waitForTimeout(700)
   const kde = await zalozka(page)
   return { ok: kde === '#disc', dukaz: `záložka ${kde}` }
 })
 
 await zkus('„Překvap mě“ vylosuje místo', async () => {
-  await page.click('#tabs button[data-tab="home"]')
-  await page.waitForTimeout(300)
-  await page.locator('.mood', { hasText: 'Překvap mě' }).click()
+  await page.click('#tabs button[data-tab="disc"]')
+  await page.waitForTimeout(400)
+  await page.locator('.nalady .pilulka', { hasText: 'Překvap mě' }).click()
   await page.waitForTimeout(900)
   const t = await page.locator('#toast').innerText().catch(() => '')
   const tip = await page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs') || '{}').lastTip)

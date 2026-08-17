@@ -14,7 +14,6 @@ import { hash } from '../../components/postcard.js'
 import { openWizard } from '../../components/wizard.js'
 import { goTo } from '../../map/map.js'
 import { togglePlan } from '../plan/plan.js'
-import { applyMood, HOME_MOODS } from './moods.js'
 import vanImg from '../../assets/van.webp'
 
 /** Kolik prioritních míst a kolik denních tipů se vejde do pruhu. */
@@ -81,8 +80,6 @@ export function renderHome() {
     <div class="htitle"><h1>${IC('i-van')}Vandrbuch</h1>
       <p id="hgreet" title="Ťukni a nastav oslovení">${esc(greeting())}</p></div>
 
-    <div class="sechd">${IC('i-compass')}Na co máme náladu?</div>
-    <div class="moods">${HOME_MOODS.map((m) => `<button class="mood" data-m="${m.id}" style="--mc:${m.c}">${IC(m.ic)}<span>${m.l}</span></button>`).join('')}</div>
     <button class="locpill ${S.userPos ? 'ok' : ''}" id="locBtn">${IC('i-pinme')}${S.userPos ? 'Poloha nalezena ✓' : 'Použít moji polohu'}</button>
 
     <div class="sechd">${IC('i-quill')}Možná dnes. Možná někdy.</div>
@@ -161,9 +158,6 @@ export function renderHome() {
     inp.onblur = () => done(true)
   }
 
-  for (const b of el.querySelectorAll('.mood')) {
-    b.onclick = () => applyMood(HOME_MOODS.find((m) => m.id === b.dataset.m))
-  }
   el.querySelector('#locBtn').onclick = zjistiPolohu
   el.querySelector('#wipPlan').onclick = () => aktivujZalozku('plan')
   el.querySelector('#wipWiz').onclick = (e) => {

@@ -86,20 +86,23 @@
 /* Přechod, aby byl název čitelný i na světlém akvarelu. */
 .fotokarta-text{position:absolute;inset:auto 0 0 0;padding:26px 11px 10px;
   background:linear-gradient(180deg,transparent,rgba(27,36,26,.82));color:var(--zn-ivory)}
-.fotokarta-text h3{margin:0;font-family:var(--f-disp);font-weight:700;font-size:.98rem;line-height:1.15}
+.fotokarta-text h3{margin:0;font-family:var(--f-disp);font-weight:700;font-size:.98rem;line-height:1.15;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .fotokarta-text span{font-size:.72rem;font-weight:600;opacity:.86}
 .fotokarta-meta{margin-top:4px;font-size:.72rem;font-weight:700;color:var(--zvyrazneni);display:flex;gap:5px;align-items:center}
 
 /* ---------- dlaždice ---------- */
-.dlazdice{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
-@media (max-width:430px){.dlazdice{grid-template-columns:repeat(2,1fr)}}
+/* Čtyři sloupce i na telefonu – tak to má předloha. Dlaždice je proto úzká
+ * (~82 px) a písmo drobné; delší názvy se zalomí na dva řádky, což je v pořádku,
+ * protože výšku drží `min-height`. */
+.dlazdice{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
 .dlazdice-kus{background:var(--plocha);border:var(--line);border-radius:var(--r-s);box-shadow:var(--stin-1);
-  padding:12px 8px 11px;display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;
-  transition:transform .16s var(--pop)}
+  padding:10px 5px 9px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  gap:5px;text-align:center;min-height:104px;transition:transform .16s var(--pop)}
 .dlazdice-kus:active{transform:var(--stisk)}
-.dlazdice-kus b{font-family:var(--f-disp);font-weight:700;font-size:.9rem;line-height:1.15}
-.dlazdice-kus svg.ic{font-size:26px;color:var(--dc,var(--akcent))}
-.dlazdice-kus span{font-size:.66rem;font-weight:600;color:var(--text2);line-height:1.3}
+.dlazdice-kus b{font-family:var(--f-disp);font-weight:700;font-size:.74rem;line-height:1.15;overflow-wrap:anywhere}
+.dlazdice-kus svg.ic{font-size:21px;color:var(--dc,var(--akcent))}
+.dlazdice-kus span{font-size:.58rem;font-weight:600;color:var(--text2);line-height:1.2}
 
 /* ---------- pilulky ---------- */
 .pilulky{display:flex;gap:8px;overflow-x:auto;margin:0 -14px;padding:2px 14px 4px;scrollbar-width:none}

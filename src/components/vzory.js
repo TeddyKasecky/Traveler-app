@@ -58,7 +58,7 @@ export function heroPas({ obrazek, nadpis, podtitulek = '', vpravo = '' }) {
  */
 export function sekce(popisek, { akce = '', akceId = '', pozn = '' } = {}) {
   const vpravo = akce
-    ? `<button class="sekce-akce"${akceId ? ` id="${akceId}"` : ''}>${esc(akce)}${IC('i-vice', 'font-size:13px')}</button>`
+    ? `<button class="sekce-akce"${akceId ? ` id="${akceId}"` : ''}>${esc(akce)}${IC('i-sipka', 'font-size:12px')}</button>`
     : pozn
       ? `<span class="sekce-pozn">${esc(pozn)}</span>`
       : ''
