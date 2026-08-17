@@ -16,11 +16,11 @@ shodná s tím, co běží dnes.
 | Schéma dat | `npm run validate` | **0 chyb**, 5 varování |
 | ~~CSS pravidlo po pravidle~~ | ~~`npm run check-css`~~ | **odstaveno redesignem**, viz §10 Q14 |
 | Návrhové tokeny a kontrast | `npm run check-tokeny` | **7 / 7** |
-| Dělení plánu na dny | `npm run check-dny` | **14 / 14** |
+| Dělení plánu na dny a výpravy | `npm run check-dny` | **34 / 34** |
 | Filtry, 134 kombinací | `npm run check-filters` | **všechny sedí** |
 | Napojení tlačítek | `npm run check-handlers` | **61 / 61** |
-| Proklikání, hostovaná | `npm run smoke` | **76 / 76** |
-| Proklikání, single-file | `npm run smoke:single` | **66 / 66** |
+| Proklikání, hostovaná | `npm run smoke` | **107 / 107** |
+| Proklikání, single-file | `npm run smoke:single` | **95 / 95** |
 | Kontrolní seznam níž | `npm run parity` | **26 / 26** |
 | Úložiště a plná paměť | `npm run check-uloziste` | **13 / 13** |
 | Formulář vyrábí platná místa | `npm run check-form` | **18 / 18** |
@@ -234,20 +234,28 @@ Dnes hlásí **61 ku 61** a při každé další změně to ohlídá.
 `npm run perf`. Zpomalení procesoru napodobuje mobil: 4× odpovídá zhruba střední
 třídě, 6× starším nebo přehřátým telefonům.
 
+**MĚŘENÍ KOLÍSÁ, ČTĚTE MEDIÁN.** Jeden běh `perf` se od druhého liší až o čtvrtinu.
+Při přestavbě rozvržení jsem se na tom spálil: první běh po malované mapě ukázal
+u špendlíků 4 792 ms proti 2 417 ms a vypadalo to jako osmdesátiprocentní regrese.
+Po třech bězích na obou stranách se ukázalo, že rozdíl je v šumu. **Porovnávat se
+smí jen medián aspoň ze tří běhů.**
+
+Čísla po přestavbě rozvržení (medián ze tří běhů), v závorce stav před ní:
+
 | Procesor | První obraz | DOM hotový | 580 špendlíků | Seznam 250 karet |
 |---|---|---|---|---|
-| 1× (počítač) | 216 ms | 190 ms | 211 ms | 76 ms |
-| 4× (běžný mobil) | 260 ms | 852 ms | 997 ms | 323 ms |
-| 6× (starší mobil) | 380 ms | 1 319 ms | 1 517 ms | 529 ms |
+| 1× (počítač) | ~480 ms | ~400 ms | ~950 ms | ~250 ms |
+| 4× (běžný mobil) | ~330 ms | 2 386 ms | 5 216 ms *(4 299)* | 1 164 ms *(1 166)* |
+| 6× (starší mobil) | ~450 ms | ~2 900 ms | ~7 300 ms | ~1 900 ms |
 
-| Procesor | Běh JavaScriptu | Rozvržení a styly | Paměť |
-|---|---|---|---|
-| 1× | 79 ms | 264 ms | 8 MB |
-| 4× | 365 ms | 1 224 ms | 8 MB |
-| 6× | 617 ms | 1 784 ms | 8 MB |
+Seznam se nezměnil vůbec. Špendlíky stojí asi **o pětinu víc** — přibylo CSS
+(pět nových souborů dílů) a víc prvků na obrazovce. Je to cena za přestavbu
+a je vidět; kdyby rostla dál, první na řadě je virtualizace seznamu (N10)
+a prořídnutí špendlíků při oddálení.
 
-**Závěr: rychlost řešit nepotřebujeme.** I na záměrně zmrzačeném procesoru je appka
-kompletní do 1,5 sekundy a první obraz do 0,4 s.
+**Závěr: rychlost dál řešit nepotřebujeme,** ale rezerva už není taková jako dřív.
+Appka je i na zmrzačeném procesoru použitelná; hlídat to má smysl u každé další
+etapy, ne až se to projeví na telefonu.
 
 ### Doplněno: co stojí ovládání, ne start
 

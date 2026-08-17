@@ -95,8 +95,9 @@ router nesmí znát obrazovky.
 - `draw()` staví špendlíky znovu (stavy se mohly změnit), posun mapy jen doplňuje
   a odebírá. Špendlík přidaný posunem **nesmí nabíhat animací** — `pinIcon(p, i, true)`.
 - **Počítadlo míst ukazuje všechna filtrovaná místa**, ne jen vykreslená.
-- Zjednodušený podklad pro offline leží v samostatném pane pod dlaždicemi a nepřepíná se,
-  viz `src/map/offlineMap.js`.
+- Malovaná offline mapa leží v samostatných pane pod dlaždicemi a nepřepíná se sama,
+  viz `src/map/podklad.js`. Přepíná se pilulkou vlevo nahoře (`prefs.podklad`);
+  plochy zemí jsou v mapě i online, aby bez signálu nevznikla díra.
 
 ## CSS
 

@@ -18,10 +18,11 @@ Nechávám 1:1, ale stojí za rozhodnutí.
 Filtr `fire` chybí, takže když je zapnutý jen on, na tlačítku filtrů se nic neukáže,
 přestože se výsledky filtrují. Oprava = přidat `'fire'` do seznamu.
 
-**N2 — Záloha neukládá priority, ale obnova je čte**
-Export (`#expBtn`) posílá jen `notes, stav, rating, plan`. Import (`#impIn`) přitom
-umí načíst i `d.prio`. Plamínky se tedy zálohou **ztratí**. Oprava = přidat `prio`
-do exportu (zpětně kompatibilní, staré zálohy `prio` prostě nemají).
+**N2 — Záloha neukládá priority, ale obnova je čte — ~~HOTOVO~~**
+Export posílal jen `notes, stav, rating, plan`, takže se plamínky zálohou ztrácely.
+`zalohaData()` v `src/core/csv.js` dnes posílá i `prio`, `planDny`, `vypravy`
+a `vypravaNazev`. Zpětná kompatibilita drží: staré zálohy tyhle klíče nemají
+a obnova je prostě přeskočí.
 
 **N3 — Import CSV vypne „Objevuj"**
 Import nastaví u všech míst `col: []`. Kolekce i dlaždice v Objevuj pak zmizí

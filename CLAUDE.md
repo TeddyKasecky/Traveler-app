@@ -62,12 +62,12 @@ npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
 
-npm run smoke            # proklikání v prohlížeči, 76 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 66 kontrol
+npm run smoke            # proklikání v prohlížeči, 107 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 95 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
-npm run check-dny        # že se dělení plánu na dny neztratí, 14 bodů
+npm run check-dny        # že se dělení na dny a přepínání výprav neztratí, 34 bodů
 npm run check-filters    # 134 kombinací filtrů
 npm run check-handlers   # napojení tlačítek, 61/61
 npm run check-form       # že formulář vyrábí platná místa, 18/18
@@ -77,7 +77,8 @@ npm run perf             # rychlost startu při zpomaleném procesoru
 node scripts/screenshots.mjs --baseline   # základna před zásahem
 node scripts/screenshots.mjs && node scripts/compare-screens.mjs   # co se změnilo
 node scripts/make-kat-fota.mjs     # zástupné ilustrace kategorií z grafika/
-node scripts/make-basemap.mjs   # přegeneruje podklad offline mapy (ručně, zřídka)
+node scripts/make-basemap.mjs   # přegeneruje obrysy zemí z Natural Earth (ručně, zřídka)
+node scripts/make-kresba.mjs    # papír, malované stromy a hory a jejich kotvy
 ```
 
 Pre-commit hook (`.githooks/pre-commit`) pustí `validate-data.mjs`, ale jen když se změnilo
@@ -93,12 +94,12 @@ Jediná runtime závislost je Leaflet 1.9.4 (přišpendlená přesná verze, bez
 | `src/main.js` | vstupní bod — jen poskládá díly a zaregistruje odběry událostí, žádná logika |
 | `src/core/` | čistá logika bez DOM: `store.js` (stav + pub/sub), `router.js`, `filters.js`, `search.js`, `geo.js`, `csv.js`, `storage.js` (localStorage), `fotoDb.js` (IndexedDB), `html.js`, `motiv.js` (světlý/tmavý), `barvy.js` (čtení tokenů do JS) |
 | `src/data/` | `places.json` (580 míst), `places-nova.json` (přihrádka), číselníky `categories.js`/`collections.js`/`moods.js`, `validate.js`, `schema.md`, `basemap.json` (podklad offline mapy) |
-| `src/views/` | obrazovky Domů, Objevuj, Seznam, Plán, Detail, Profil, Porovnání + registr `index.js` |
-| `src/components/` | díly použité na víc obrazovkách (karta, filtry, sheet, wizard, formulář, toast) |
-| `src/map/` | Leaflet: `map.js`, `markers.js`, `planLine.js`, `detailMap.js`, `offlineMap.js` (podklad bez signálu) |
+| `src/views/` | obrazovky Domů, Mapa (spodní část), Objevuj, Seznam, Plán, Detail, Profil, Porovnání + registr `index.js` |
+| `src/components/` | díly použité na víc obrazovkách: `vzory.js` (11 stavebních dílů rozvržení), `vypravaKarta.js`, `vyberMista.js`, `plusMenu.js`, karta, filtry, sheet, wizard, formulář, toast |
+| `src/map/` | Leaflet: `map.js`, `markers.js`, `planLine.js`, `detailMap.js`, `podklad.js` (malovaná offline mapa) |
 | `src/styles/` | CSS po dílech, pořadí určuje `index.css`; barvy a rozměry jen z `tokens.css` |
 | `src/pwa/` | `sw.js` (šablona service workeru) a `register.js` |
-| `scripts/` | 20 ověřovacích skriptů, viz [.claude/rules/kontroly.md](.claude/rules/kontroly.md) |
+| `scripts/` | 21 ověřovacích skriptů, viz [.claude/rules/kontroly.md](.claude/rules/kontroly.md) |
 | `reference/` | bajtově shodná kopie původní aplikace — jen ke čtení |
 
 **Moduly se nevolají napřímo — oznamují si změny událostmi** přes `on()`/`emit()` ze
@@ -153,6 +154,29 @@ pro oba stejně.
 - V konfliktu v JSON nikdy „vzít moje"/„vzít jeho" naslepo — ověřit, že se nesmazalo
   cizí místo nebo poznámka.
 
+## Rozvržení podle předloh (srpen 2026)
+
+Druhé kolo redesignu přestavělo rozvržení všech obrazovek podle mockupů ve složce
+`grafika/`. **Každá obrazovka odpovídá na jednu otázku** a to určuje, co na ní smí být:
+Domů „co dnes", Mapa „kde to je", Objevuj „nevím, kam chci", Seznam „vím, co chci",
+Plán „jak to pojedeme", Profil „kdo jsem a moje data".
+
+Obrazovky se skládají z jedenácti společných dílů ve `src/components/vzory.js`
+(hero pás, popisek sekce, řádek, karusel, dlaždice, pilulky, segment, panel statistik,
+řada čísel, stavová pilulka, ikonové tlačítko). **Nové obrazovky skládej z nich**, ne
+z vlastního HTML — kdyby si je psala každá zvlášť, do měsíce by se rozešly.
+
+Co se kam přestěhovalo a proč, je v [VZHLED.md](VZHLED.md) v části
+„Rozvržení podle předloh". Nejdůležitější pro práci s kódem:
+
+- **Statické lišty patří do `index.html`**, ne do `render*()`. Prvky s obsluhou navěšenou
+  při startu (`#q`, `#qMapa`, `#fReg`, `#planNav`, `#expBtn`, `.motivbtn`, `#csvIn`)
+  musí existovat od začátku — překreslení by obsluhu smazalo.
+- **Chrome mapy se schovává přes `body[data-tab]`**, ne seznamem `hidden` v JavaScriptu.
+- **Karta výpravy je na dvou obrazovkách naráz**, takže má třídy, ne `id`.
+- **Výpravy** (`store.vypravy`, `store.vypravaNazev`) fungují stejně jako dny: přidat
+  vedle, nikdy nepřepisovat, žádná migrace. Hlídá to `npm run check-dny`.
+
 ## Známé vlastnosti (neopravovat bez vyžádání)
 
 - **`esc()` v `src/core/html.js` ošetřuje jen `&` a `<`**, ne `>` ani uvozovky, přestože se
@@ -162,11 +186,14 @@ pro oba stejně.
   `collections.js` má jen 11 definic (N5).
 - **Osm `id` má před číslicemi dvě pomlčky** (`…-to-je--057`). Slug se uřízl na pomlčce,
   kontrola to připouští, není to chyba.
+- **Přepínač podkladu mapy**: výchozí je online mapa z OpenStreetMap, malovaná mapa
+  je offline varianta (`prefs.podklad`, pilulka vlevo nahoře). Plochy zemí leží pod
+  dlaždicemi i online, aby bez signálu nevznikla díra.
 - **318 míst nemá `img`** a zobrazuje se u nich akvarel podle kategorie
   (`src/assets/kategorie/`); kreslená pohlednice z `postcard.js` zůstává pod ním jako
   záchrana, když se obrázek nenačte. Je to záměr, ne nedodělek — fotky nedoplňuj náhodně.
-- **Záloha poznámek neukládá priority**, ale obnova je umí načíst (N2). Plamínky se zálohou
-  ztratí.
+- **Záloha nese `prio`, `planDny`, `vypravy` i `vypravaNazev`** (N2 hotové). Staré zálohy
+  tyhle klíče nemají a obnova je přeskočí.
 - **Badge u filtrů nepočítá filtr `fire`** („Musíme!") (N1).
 - Všech 8 parkovišť má `transitStatus: "verified"`; zbylé tři stavy aplikace umí zobrazit,
   jen se zatím nepoužily.

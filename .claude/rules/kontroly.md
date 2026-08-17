@@ -11,7 +11,7 @@ _Zjištěno auditem: 13 souborů v `scripts/`, `package.json:7-24`, `PARITA.md`,
 `.githooks/pre-commit`._
 
 **Není tu žádný test framework** — chybí Jest, Vitest, `tests/` i `npm test`. Nezaváděj je
-bez vyžádání. Místo nich je 20 samostatných spustitelných `.mjs` skriptů; každý vypíše
+bez vyžádání. Místo nich je 21 samostatných spustitelných `.mjs` skriptů; každý vypíše
 `X / Y` a skončí kódem 1 při chybě.
 
 ## Co který skript ověřuje
@@ -23,18 +23,19 @@ bez vyžádání. Místo nich je 20 samostatných spustitelných `.mjs` skriptů
 | `extract-places.mjs` | `npm run check-data` | že `places.json` je 1:1 s originálem |
 | `check-css-parity.mjs` | `npm run check-css:original` | 338 CSS pravidel proti originálu — **odstaveno redesignem** |
 | `check-tokeny.mjs` | `npm run check-tokeny` | barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů |
-| `check-dny.mjs` | `npm run check-dny` | že se dělení plánu na dny neztratí, 14 bodů |
+| `check-dny.mjs` | `npm run check-dny` | že se dělení plánu na dny a přepínání výprav neztratí, 34 bodů |
 | `check-filters-parity.mjs` | `npm run check-filters` | 134 kombinací filtrů |
 | `check-handlers.mjs` | `npm run check-handlers` | napojení tlačítek za běhu, 61/61 |
 | `check-form.mjs` | `npm run check-form` | že formulář vyrábí platná místa, 18/18 |
 | `check-images.mjs` | `npm run check-images` | existenci odkazů na fotky — **chodí na síť** |
-| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 76 / 66 kontrol |
+| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 107 / 95 kontrol |
 | `parity.mjs` | `npm run parity` | kontrolní seznam z `PARITA.md`, 26 bodů |
 | `perf.mjs` | `npm run perf` | rychlost startu při zpomaleném procesoru |
 | `screenshots.mjs` + `compare-screens.mjs` | ručně | 8 obrazovek proti základně, i v tmavém režimu |
 | `slouc.mjs` | `npm run slouc` | přesune přihrádku do hlavního souboru |
 | `make-icons.mjs`, `fetch-fonts.mjs` | ručně | jednorázoví pomocníci (ikony PWA, stažení fontů) |
 | `make-basemap.mjs` | ručně | přegeneruje `src/data/basemap.json` z Natural Earth — **chodí na síť** |
+| `make-kresba.mjs` | ručně | papír, malované stromy a hory a jejich kotvy pro offline mapu |
 
 `nove-styly.mjs` není kontrola, ale sdílený seznam CSS prvků, které v originále protějšek
 nemají. Používá ho `check-css-parity.mjs` i `parity.mjs` — když měl každý svůj, přidání
@@ -65,7 +66,7 @@ Chromium se schválně nestahuje. Skripty proti `dist/` potřebují napřed `npm
 | `src/core/storage.js`, `store.js`, `fotoDb.js` | `npm run check-uloziste` |
 | `src/map/**`, nový CSS soubor | `npm run smoke`, `npm run check-tokeny`, `npm run parity` |
 | CSS, `tokens.css` | `npm run check-tokeny` |
-| `store.plan`, dny v plánu, záloha | `npm run check-dny` |
+| `store.plan`, dny v plánu, výpravy, záloha | `npm run check-dny` |
 | filtry, hledání | `npm run check-filters` |
 | obsluha tlačítek, nová obrazovka | `npm run check-handlers`, `npm run smoke` |
 | formulář „Přidat místo" | `npm run check-form` |
