@@ -100,7 +100,9 @@ const kontrola = async (popis, fn, ocekavano) => {
   console.log(`  ${ok ? 'ok   ' : 'CHYBA'} ${popis.padEnd(42)} ${hodnota}`)
 }
 
-await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 57)
+// 58 = 57 z původní aplikace + `i-filtr` (trychtýř podle listu „SADA PIKTOGRAMŮ",
+// viz VZHLED.md). Číslo se mění jen s vědomým přidáním ikony do sprite.svg.
+await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 58)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
 // Nad mapou je pět rychlých pilulek podle předlohy, od srpna 2026 „moje věci"
