@@ -18,6 +18,10 @@ Nechávám 1:1, ale stojí za rozhodnutí.
 Filtr `fire` chybí, takže když je zapnutý jen on, na tlačítku filtrů se nic neukáže,
 přestože se výsledky filtrují. Oprava = přidat `'fire'` do seznamu.
 
+Pozor: nové filtry `ulozene` a `vPlanu` (rychlé pilulky nad mapou, srpen 2026)
+se do odznaku **počítají** — žádné dědictví nedrží. Nesrovnalost je tedy jen
+u `fire`.
+
 **N2 — Záloha neukládá priority, ale obnova je čte — ~~HOTOVO~~**
 Export posílal jen `notes, stav, rating, plan`, takže se plamínky zálohou ztrácely.
 `zalohaData()` v `src/core/csv.js` dnes posílá i `prio`, `planDny`, `vypravy`
@@ -74,16 +78,11 @@ pořadí dlaždic, tedy vzhled.
 
 ## Offline mapa
 
-**N11 — Tlačítko „přepnout na zjednodušenou mapu"**
-Podklad leží pod dlaždicemi a nepřepíná se, takže nic neproblikává. Při slabém signálu
-ale vzniká jiná nepříjemnost: prohlížeč část dlaždic vytáhne ze své cache a část ne, takže
-kus mapy je podrobný a kus zjednodušený — a při posunu se to střídá. Mapa pak vypadá
-roztrhaně.
-
-Řešení by bylo tlačítko, kterým se dlaždice úplně vypnou a jede se jen na zjednodušené
-mapě, dokud ho uživatel nevypne zpět. Mapa by byla jednotná a nic by se nedotahovalo.
-Vyžaduje rozmyslet, kam tlačítko patří (dnes je vlevo dole jen štítek, který nic nedělá)
-a jestli se stav má pamatovat mezi spuštěními.
+**N11 — Tlačítko „přepnout na zjednodušenou mapu" — ~~HOTOVO~~**
+Pilulka vlevo nahoře nad mapou (`#podkladBtn`) přepíná mezi online mapou z OpenStreetMap
+a malovanou offline mapou. Volba se pamatuje v `prefs.podklad`, výchozí je online.
+Řeší to i původní důvod: při slabém signálu už mapa nevypadá roztrhaně, protože se
+dlaždice dají vypnout úplně.
 
 ---
 

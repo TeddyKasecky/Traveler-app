@@ -116,5 +116,5 @@ router nesmí znát obrazovky.
 
 ## Ikony
 
-Symboly v `src/icons/sprite.svg`, 56 kusů, jména `i-neco`. Vkládají se `IC('i-van')`
+Symboly v `src/icons/sprite.svg`, 58 kusů, jména `i-neco`. Vkládají se `IC('i-van')`
 nebo `<svg class="ic"><use href="#i-van"/></svg>`. Nová ikona = symbol do sprite.svg.

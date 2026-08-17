@@ -62,12 +62,12 @@ npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
 
-npm run smoke            # proklikání v prohlížeči, 107 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 95 kontrol
+npm run smoke            # proklikání v prohlížeči, 121 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 109 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
-npm run check-dny        # že se dělení na dny a přepínání výprav neztratí, 34 bodů
+npm run check-dny        # dělení na dny, výpravy, automatické dělení, 46 bodů
 npm run check-filters    # 134 kombinací filtrů
 npm run check-handlers   # napojení tlačítek, 61/61
 npm run check-form       # že formulář vyrábí platná místa, 18/18
@@ -124,7 +124,7 @@ _Odvozeno ze skutečného kódu — žádný linter to nevynucuje._
 - Parametry typované JSDoc anotacemi (`@param {Record<string, any>} p`), ne TypeScriptem.
 - CSS: barvy a rozměry výhradně přes proměnné z `tokens.css`, nikdy natvrdo. Nová barva
   patří do sémantické vrstvy **a do obou tmavých bloků** — viz [VZHLED.md](VZHLED.md).
-- Ikony jsou symboly v `src/icons/sprite.svg` (56 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
+- Ikony jsou symboly v `src/icons/sprite.svg` (58 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
 
 Podrobná pravidla podle oblasti (auto-scoped podle cesty):
 [.claude/rules/database.md](.claude/rules/database.md) ·
@@ -176,6 +176,10 @@ Co se kam přestěhovalo a proč, je v [VZHLED.md](VZHLED.md) v části
 - **Karta výpravy je na dvou obrazovkách naráz**, takže má třídy, ne `id`.
 - **Výpravy** (`store.vypravy`, `store.vypravaNazev`) fungují stejně jako dny: přidat
   vedle, nikdy nepřepisovat, žádná migrace. Hlídá to `npm run check-dny`.
+- **Automatické dělení na dny** (`rozdelPodleHodin`, `rozdelNaPocet` v `views/plan/dny.js`)
+  jsou čisté funkce délky úseků → délky dnů. Zápis jde přes `nastavDny()`, které odmítne
+  rozdělení, jehož součet nesedí na počet zastávek. **Před přepsáním ručního dělení se
+  vždycky ukáže náhled a musí se potvrdit.**
 
 ## Známé vlastnosti (neopravovat bez vyžádání)
 
@@ -194,7 +198,16 @@ Co se kam přestěhovalo a proč, je v [VZHLED.md](VZHLED.md) v části
   záchrana, když se obrázek nenačte. Je to záměr, ne nedodělek — fotky nedoplňuj náhodně.
 - **Záloha nese `prio`, `planDny`, `vypravy` i `vypravaNazev`** (N2 hotové). Staré zálohy
   tyhle klíče nemají a obnova je přeskočí.
-- **Badge u filtrů nepočítá filtr `fire`** („Musíme!") (N1).
+- **Badge u filtrů nepočítá filtr `fire`** („Musíme!") (N1). Nové filtry `ulozene`
+  a `vPlanu` se do něj naopak počítají.
+- **Výplně ikon nejdou přes CSS.** Ikony se vkládají jako `<use>` a do stromu instance
+  selektor z dokumentu nedosáhne, takže `svg.ic .f{fill:currentColor}` v `base.css` se
+  nikdy neuplatní. Výplň se musí psát jako **atribut** do `sprite.svg` — tak to má
+  `i-fire` a `i-star`. Zbylých 43 ikon s třídou `.f` kreslí jen obrys, stejně jako
+  v původní aplikaci. Podrobně ve `VZHLED.md`.
+- **Barvu ikony na tmavé ploše určuje `stroke`, ne `color`.** `color` se u ikon
+  uplatní jen na vyplněné části. Kdo dá ikonu na mechovou nebo okrovou plochu, musí
+  napsat obojí — jinak si vezme `--ink`, který se s režimem převrací.
 - Všech 8 parkovišť má `transitStatus: "verified"`; zbylé tři stavy aplikace umí zobrazit,
   jen se zatím nepoužily.
 - `renderList()` kreslí maximálně 250 karet a vypíše „Zobrazeno prvních 250". Není to
