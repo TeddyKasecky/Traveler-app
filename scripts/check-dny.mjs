@@ -21,7 +21,8 @@
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} }
 
 const { store } = await import('../src/core/store.js')
-const { dnyPlanu, presunDoDne, zrusDny } = await import('../src/views/plan/dny.js')
+const { dnyPlanu, presunDoDne, zrusDny, rozdelPodleHodin, rozdelNaPocet, nastavDny } =
+  await import('../src/views/plan/dny.js')
 const { zalohaData, obnovZalohu } = await import('../src/core/csv.js')
 
 const barvy = process.stdout.isTTY && !process.env.NO_COLOR
@@ -187,6 +188,52 @@ pripravV(['a', 'b'], [1, 1], [{ nazev: 'Dolomity', plan: ['d'], planDny: [] }], 
 pripravV(['a', 'b'], [], [{ nazev: 'X', plan: ['c'], planDny: [] }], 'Alpy')
 obnovZalohu(store, { plan: ['x', 'y'] }, {}, {})
 t('stará záloha bez výprav je nesmaže', store.vypravy.length === 1 && jako(store.plan) === jako(['x', 'y']))
+
+/* ================= automatické dělení na dny ================= */
+/* Sahá na `planDny`, tedy na uživatelská data. Nejdůležitější je, že se
+ * NIKDY neztratí zastávka: součet délek dnů musí vždycky sedět na délku plánu. */
+
+console.log('\nAutomatické dělení na dny:')
+
+// `useky[i]` = hodin jízdy na i-tou zastávku; první je vždycky 0.
+{
+  const u = [0, 1, 1, 1, 1, 1]
+  const d = rozdelPodleHodin(u, 2)
+  t('podle hodin: součet sedí na počet zastávek', d.reduce((a, b) => a + b, 0) === u.length)
+  t('podle hodin: žádný den nepřekročí limit', d.every((_, i) => {
+    const od = d.slice(0, i).reduce((a, b) => a + b, 0)
+    return u.slice(od, od + d[i]).reduce((a, b) => a + b, 0) <= 2
+  }))
+  t('podle hodin: vzniklo víc dní', d.length > 1)
+}
+{
+  // Jeden úsek delší než celý limit musí dostat vlastní den, ne zacyklit.
+  const u = [0, 9, 0.2, 0.2]
+  const d = rozdelPodleHodin(u, 3)
+  t('podle hodin: dlouhý úsek nezacyklí', d.reduce((a, b) => a + b, 0) === u.length)
+}
+{
+  const u = [0, 0.2, 0.2, 0.2]
+  t('podle hodin: co se vejde do dne, se nedělí', rozdelPodleHodin(u, 8).length === 0)
+}
+{
+  const u = [0, 1, 5, 1, 1]
+  const d = rozdelNaPocet(u, 2)
+  t('podle počtu: součet sedí na počet zastávek', d.reduce((a, b) => a + b, 0) === u.length)
+  t('podle počtu: vyšly přesně dva dny', d.length === 2)
+  t('podle počtu: žádný den není prázdný', d.every((x) => x > 0))
+}
+{
+  const u = [0, 1, 1]
+  t('podle počtu: víc dní než zastávek nevyrobí prázdné dny', rozdelNaPocet(u, 9).every((x) => x > 0))
+}
+{
+  priprav(['a', 'b', 'c', 'd'], [])
+  t('nastavDny zapíše sedící rozdělení', nastavDny([2, 2]) && jako(store.planDny) === jako([2, 2]))
+  const predtim = jako(store.planDny)
+  t('nastavDny odmítne nesedící součet', nastavDny([2, 5]) === false && jako(store.planDny) === predtim)
+  t('žádná zastávka se dělením neztratila', jako(dnyPlanu().flat()) === jako(store.plan))
+}
 
 console.log(`\n${ok}/${ok + chyb} kontrol prošlo`)
 process.exit(chyb ? 1 : 0)

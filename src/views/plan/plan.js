@@ -27,7 +27,9 @@ import { sekce, segment, statpanel, ikonBtn } from '../../components/vzory.js'
 import { otevriVyber } from '../../components/vyberMista.js'
 import { goTo, draw, mapa, priblizNaFiltr } from '../../map/map.js'
 import { aktivujZalozku } from '../../core/router.js'
-import { dnyPlanu, pridejDen, presunDoDne, zrusDny } from './dny.js'
+import { stahniSoubor } from '../../core/csv.js'
+import { dnyPlanu, pridejDen, presunDoDne, zrusDny, rozdelPodleHodin, rozdelNaPocet, nastavDny } from './dny.js'
+import { gpxZPlanu, nazevSouboru } from './gpx.js'
 import { seznamVyprav, prepniVypravu, novaVyprava, prejmenujVypravu, smazAktivniVypravu, BEZ_NAZVU } from './vypravy.js'
 
 /** Kolik zastávek unese odkaz do Google Maps. */
@@ -62,6 +64,32 @@ export function planStats(items) {
   for (let i = 1; i < items.length; i++) d += dkm(items[i - 1], items[i])
   const road = d * KLIKATOST
   return { air: d, road, hrs: road / KMH }
+}
+
+/**
+ * Čas jízdy na každou zastávku, v hodinách. `useky[0]` je 0 – na první
+ * zastávku se nikam nejede. Vstup pro automatické dělení na dny.
+ * @param {Array<Record<string, any>>} items
+ * @returns {number[]}
+ */
+function useky(items) {
+  return items.map((p, i) => (i === 0 ? 0 : (dkm(items[i - 1], p) * KLIKATOST) / KMH))
+}
+
+/**
+ * Kolik zastávek je odškrtnutých a kolik kilometrů zbývá.
+ *
+ * „Zbývá“ je součet úseků, jejichž CÍLOVÁ zastávka ještě není navštívená.
+ * Definice, která funguje i tehdy, když se odškrtává na přeskáčku – a to se
+ * na cestě stane pokaždé, když se něco vynechá.
+ */
+export function prubehVypravy(items) {
+  const hotovo = items.filter((p) => store.stav[p.id] === 'visited').length
+  let zbyva = 0
+  for (let i = 1; i < items.length; i++) {
+    if (store.stav[items[i].id] !== 'visited') zbyva += dkm(items[i - 1], items[i]) * KLIKATOST
+  }
+  return { hotovo, celkem: items.length, zbyva }
 }
 
 /** Čas za volantem pro člověka. */
@@ -147,6 +175,7 @@ function prehled(items, dny) {
   return (
     sekce('Moje výpravy', { akce: 'Nová výprava', akceId: 'vypNova' }) +
     `<div class="vypravy">${seznamHtml}</div>` +
+    (items.length ? pruhPrubehu(items) : '') +
     sekce('Trasa a přehled') +
     (items.length
       ? `<div class="trasakarta">
@@ -158,9 +187,39 @@ function prehled(items, dny) {
             { ikona: 'i-globe', popisek: 'Zemí na trase', hodnota: String(zemi) },
           ])}
           ${items.length > 2 ? `<button class="btn zvyrazneny" id="planOpt">${IC('i-sparkles')}Optimalizovat trasu</button>` : ''}
+          ${items.length > 2 ? rozdeleni() : ''}
         </div>`
       : prazdno())
   )
+}
+
+/**
+ * Pruh průběhu výpravy.
+ *
+ * Do teď byl Plán jen seznam před cestou a za jízdy neměl co dělat. Odškrtnutá
+ * zastávka se zapisuje jako navštívená (`store.stav`), takže se objeví i v číslech
+ * na Domů a v Seznamu — je to jedna a ta samá informace, ne druhá evidence.
+ */
+function pruhPrubehu(items) {
+  const { hotovo, celkem, zbyva } = prubehVypravy(items)
+  const podil = celkem ? Math.round((hotovo / celkem) * 100) : 0
+  const vpravo = hotovo === celkem ? 'Hotovo, celá výprava objetá' : `zbývá ${fmtKm(zbyva)}`
+
+  return `<div class="prubeh">
+    <div class="prubeh-hlava"><b>${hotovo} z ${celkem} ${sklonuj(celkem, 'zastávky', 'zastávek', 'zastávek')}</b><span>${esc(vpravo)}</span></div>
+    <div class="prubeh-lista"><i style="width:${podil}%"></i></div>
+  </div>`
+}
+
+/** Tlačítka na automatické rozdělení trasy na dny. */
+function rozdeleni() {
+  return `<div class="rozdeleni">
+    <span>Rozdělit na dny</span>
+    <div class="btnrow" style="margin:0">
+      <button class="btn small" id="planDnyHodiny">${IC('i-clock')}podle hodin</button>
+      <button class="btn small" id="planDnyPocet">${IC('i-kalendar')}podle počtu dní</button>
+    </div>
+  </div>`
 }
 
 /** Prázdná výprava. Nabídne obojí, čím se dá začít. */
@@ -230,7 +289,9 @@ function zastavka(p, poradi, predchozi, denIdx, poctDnu, posledniVeDni, uplnePos
   const leg = predchozi ? dkm(predchozi, p) * KLIKATOST : 0
   const role = uplnePosledni && poradi > 1 ? 'Cíl' : !predchozi ? 'Příjezd' : posledniVeDni && poctDnu > 1 ? 'Nocleh' : 'Zastávka'
 
-  return `<div class="zastavka${rozbaleno === p.id ? ' otevrena' : ''}" data-id="${p.id}" style="--pc:${k.c}">
+  const hotova = store.stav[p.id] === 'visited'
+
+  return `<div class="zastavka${rozbaleno === p.id ? ' otevrena' : ''}${hotova ? ' hotova' : ''}" data-id="${p.id}" style="--pc:${k.c}">
     <div class="zastavka-radek">
       <span class="uchyt" data-uchyt title="Táhni pro změnu pořadí">${IC('i-vice')}</span>
       <img class="zastavka-obr" src="${obr.src}" alt="" loading="lazy" decoding="async"
@@ -243,6 +304,9 @@ function zastavka(p, poradi, predchozi, denIdx, poctDnu, posledniVeDni, uplnePos
           predchozi ? `${fmtKm(leg)} <span class="tecka">•</span> ${fmtCas((leg / KMH) * 1)}` : esc(p.r || p.z)
         }${store.notes[p.id] ? ` <span class="tecka">•</span> ${IC('i-quill', 'font-size:12px')}poznámka` : ''}</div>
       </div>
+      <button class="zastavka-hotovo${hotova ? ' on' : ''}" data-act="hotovo"
+        title="${hotova ? 'Přece jsme tam nebyli' : 'Byli jsme tady'}"
+        aria-label="${hotova ? 'Přece jsme tam nebyli' : 'Byli jsme tady'}">${IC('i-check')}</button>
       <button class="zastavka-vice" data-act="vice" title="Co s touhle zastávkou">${IC('i-vice')}</button>
     </div>
     <div class="zastavka-akce">
@@ -338,6 +402,12 @@ function napoj(wrap, items) {
       draw()
     }
 
+  const dnyHodiny = document.getElementById('planDnyHodiny')
+  if (dnyHodiny) dnyHodiny.onclick = () => rozdelDny('hodiny', items)
+
+  const dnyPocet = document.getElementById('planDnyPocet')
+  if (dnyPocet) dnyPocet.onclick = () => rozdelDny('pocet', items)
+
   const bezDnu = document.getElementById('planBezDnu')
   if (bezDnu)
     bezDnu.onclick = () => {
@@ -354,6 +424,14 @@ function napoj(wrap, items) {
     z.querySelector('[data-act=vice]').onclick = () => {
       rozbaleno = rozbaleno === id ? '' : id
       renderPlan()
+    }
+    // Odškrtnutí zapisuje do `store.stav` jako navštívené – tedy do téhož
+    // místa, kde to má srdce v Seznamu i fajfka v detailu. Žádná druhá evidence.
+    z.querySelector('[data-act=hotovo]').onclick = () => {
+      if (store.stav[id] === 'visited') delete store.stav[id]
+      else store.stav[id] = 'visited'
+      save()
+      draw()
     }
     z.querySelector('[data-act=open]').onclick = () => goTo(S.byId[id])
     z.querySelector('[data-act=rm]').onclick = () => togglePlan(id)
@@ -440,6 +518,72 @@ function napojTahani(wrap) {
       }
     }
   }
+}
+
+/**
+ * Rozdělí trasu na dny automaticky.
+ *
+ * PŘED ZÁPISEM SE UKÁŽE, CO Z TOHO VYJDE. Ruční dělení je práce, kterou by
+ * jedno ťuknutí smazalo — a `store.planDny` jsou uživatelská data. Potvrzení
+ * proto není zdvořilost, ale pojistka.
+ *
+ * @param {'hodiny'|'pocet'} zpusob
+ * @param {Array<Record<string, any>>} items
+ */
+function rozdelDny(zpusob, items) {
+  if (items.length < 3) return
+  const u = useky(items)
+
+  let delky
+  if (zpusob === 'hodiny') {
+    const zadano = prompt('Kolik hodin denně chceme nejvýš jet?', '4')
+    if (zadano === null) return
+    const limit = Number(String(zadano).replace(',', '.'))
+    if (!(limit > 0)) {
+      toast('To není počet hodin')
+      return
+    }
+    delky = rozdelPodleHodin(u, limit)
+    if (!delky.length) {
+      toast(`Do ${limit} h denně se celá trasa vejde za jeden den`)
+      return
+    }
+  } else {
+    const zadano = prompt('Na kolik dní to rozdělit?', String(Math.max(2, dnyPlanu().length)))
+    if (zadano === null) return
+    const pocet = Math.floor(Number(zadano))
+    if (!(pocet > 1)) {
+      toast('Dní musí být aspoň dva')
+      return
+    }
+    delky = rozdelNaPocet(u, pocet)
+    if (!delky.length) {
+      toast('Na tolik dní to rozdělit nejde')
+      return
+    }
+  }
+
+  // Náhled: kolik zastávek a kolik za volantem připadne na každý den.
+  let od = 0
+  const nahled = delky
+    .map((d, i) => {
+      const den = items.slice(od, od + d)
+      // Úsek na první zastávku dne se počítá do něj – je to cesta, která ten
+      // den opravdu čeká.
+      const hodin = u.slice(od, od + d).reduce((a, b) => a + b, 0)
+      od += d
+      return `Den ${i + 1}: ${den.length} ${sklonuj(den.length, 'zastávka', 'zastávky', 'zastávek')} · ${fmtCas(hodin)}`
+    })
+    .join('\n')
+
+  if (!confirm(`Rozdělit takhle?\n\n${nahled}\n\nDosavadní rozdělení na dny se přepíše.`)) return
+
+  if (!nastavDny(delky)) {
+    toast('Rozdělení nesedělo na počet zastávek, nic jsem neměnila')
+    return
+  }
+  draw()
+  toast(`Rozděleno na ${delky.length} ${sklonuj(delky.length, 'den', 'dny', 'dní')}`)
 }
 
 /** Hladové řazení: začni u nejbližšího místa a pak vždy skoč na nejbližší další. */
@@ -557,6 +701,7 @@ function napojNavigaci() {
   // prohlížeče blokují window.open, které nepřijde přímo z gesta uživatele,
   // a `parity` na to spoléhá.
   nav.onclick = () => {
+    const vsechny = store.plan.map((id) => S.byId[id]).filter(Boolean)
     const items = zastavky()
     if (!items.length) {
       toast('Plán je prázdný')
@@ -569,7 +714,28 @@ function napojNavigaci() {
       '_blank'
     )
     zavriNavigaci()
+    // Uříznutý konec trasy se musí ohlásit. Do teď se `slice()` provedl mlčky
+    // a člověk odjel s tím, že má v navigaci celou výpravu.
+    if (vsechny.length > MAX_DO_NAVIGACE) {
+      const zbytek = vsechny.length - MAX_DO_NAVIGACE
+      toast(`Google unese ${MAX_DO_NAVIGACE} bodů – ${zbytek} ${sklonuj(zbytek, 'zastávka se nevešla', 'zastávky se nevešly', 'zastávek se nevešlo')}. Celou trasu má GPX.`)
+    }
   }
+
+  // GPX: jediná cesta, jak dostat do navigace opravdu celou trasu.
+  const gpx = document.getElementById('planGpx')
+  if (gpx)
+    gpx.onclick = () => {
+      const items = store.plan.map((id) => S.byId[id]).filter(Boolean)
+      if (!items.length) {
+        toast('Plán je prázdný')
+        return
+      }
+      const nazev = store.vypravaNazev || BEZ_NAZVU
+      stahniSoubor(gpxZPlanu(nazev, items, store.notes), nazevSouboru(nazev), 'application/gpx+xml')
+      zavriNavigaci()
+      toast(`Staženo ${items.length} ${sklonuj(items.length, 'zastávka', 'zastávky', 'zastávek')} do GPX`)
+    }
 
   // Apple Maps ani Waze neumějí spolehlivě předat víc zastávek najednou.
   // Posílá se proto první zastávka a řekne se to nahlas – jinak by si člověk

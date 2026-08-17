@@ -69,6 +69,36 @@
 .zastavka-vice{flex:0 0 auto;width:32px;height:32px;border-radius:50%;border:0;background:none;
   display:grid;place-items:center}
 .zastavka-vice svg.ic{font-size:17px;color:var(--text3)}
+
+/* ---------- odškrtnutí zastávky ---------- */
+/* Fajfka přímo na řádku, ne až pod „…": je to jediná akce, která se dělá
+ * za jízdy, a schovaná pod dvěma ťuknutími by se nepoužívala. */
+.zastavka-hotovo{flex:0 0 auto;width:32px;height:32px;border-radius:50%;
+  border:1.5px solid var(--obrys-silny);background:none;display:grid;place-items:center;
+  transition:transform .16s var(--pop),background .18s,border-color .18s}
+.zastavka-hotovo svg.ic{font-size:15px;color:var(--text3);stroke:var(--text3)}
+.zastavka-hotovo:active{transform:var(--stisk)}
+.zastavka-hotovo.on{background:var(--akcent);border-color:transparent}
+.zastavka-hotovo.on svg.ic{color:var(--na-akcentu);stroke:var(--na-akcentu)}
+/* Odjetá zastávka ustoupí do pozadí, ale nezmizí – pořád je součástí trasy
+ * a člověk se k ní může chtít vrátit. Přeškrtnutý název by se hůř četl. */
+.zastavka.hotova .zastavka-obr,
+.zastavka.hotova .zastavka-text{opacity:.55}
+
+/* ---------- pruh průběhu ---------- */
+.prubeh{background:var(--plocha);border:var(--line);border-radius:var(--r);box-shadow:var(--stin-1);
+  padding:12px 14px;margin:0 0 14px}
+.prubeh-hlava{display:flex;align-items:baseline;gap:10px;margin-bottom:9px}
+.prubeh-hlava b{font-size:.86rem;font-weight:800}
+.prubeh-hlava span{margin-left:auto;font-size:.72rem;font-weight:700;color:var(--text2)}
+.prubeh-lista{height:8px;border-radius:99px;background:var(--plocha2);overflow:hidden}
+.prubeh-lista i{display:block;height:100%;border-radius:99px;background:var(--akcent);
+  transition:width .3s var(--pop)}
+
+/* ---------- rozdělení na dny ---------- */
+.rozdeleni{margin-top:12px;padding-top:12px;border-top:var(--line)}
+.rozdeleni > span{display:block;margin-bottom:8px;font-size:.66rem;font-weight:800;
+  letter-spacing:1.4px;text-transform:uppercase;color:var(--text2)}
 /* Ovládání zastávky je schované, dokud se neťukne na „…". Na řádku by se šest
  * tlačítek nevešlo a předloha je tam nemá. */
 .zastavka-akce{display:none;flex-wrap:wrap;gap:6px;padding:0 11px 11px 45px}

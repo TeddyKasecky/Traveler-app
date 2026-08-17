@@ -188,8 +188,19 @@ export function obnovZalohu(store, d, photos, prefs) {
 
 /** Stáhne objekt jako soubor JSON. */
 export function stahniJson(data, nazev) {
+  stahniSoubor(JSON.stringify(data, null, 1), nazev, 'application/json')
+}
+
+/**
+ * Stáhne libovolný text jako soubor. Používá to záloha i export trasy do GPX.
+ *
+ * @param {string} text
+ * @param {string} nazev
+ * @param {string} typ  MIME typ
+ */
+export function stahniSoubor(text, nazev, typ) {
   const a = document.createElement('a')
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }))
+  a.href = URL.createObjectURL(new Blob([text], { type: typ }))
   a.download = nazev
   a.click()
 }

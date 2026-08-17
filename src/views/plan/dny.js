@@ -96,3 +96,111 @@ export function zrusDny() {
   store.planDny = []
   return save()
 }
+
+/* ================= automatické dělení ================= */
+
+/**
+ * Obě funkce níž jsou ČISTÉ: dostanou délky úseků a vrátí délky dnů. Nic
+ * nezapisují a neznají rychlost ani klikatost silnic — ty patří do `plan.js`,
+ * kde jsou konstanty KMH a KLIKATOST. Díky tomu se dají spočítat i nanečisto
+ * a ukázat, co z toho vyjde, než se to uloží.
+ *
+ * `useky[i]` je čas z předchozí zastávky na i-tou. `useky[0]` je vždycky 0 —
+ * na první zastávku se nikam nejede.
+ */
+
+/**
+ * Rozdělí zastávky tak, aby žádný den nepřekročil limit hodin za volantem.
+ *
+ * Zastávka, na kterou se jede déle než celý limit, dostane vlastní den —
+ * jinak by se cyklus zacyklil, nebo by vznikl den s jedinou zastávkou navíc
+ * k předchozímu. Tak jako tak se ten den pojede dýl, než člověk chtěl,
+ * a aplikace to nemá zamlčet.
+ *
+ * @param {number[]} useky
+ * @param {number} limit  hodin za volantem denně
+ * @returns {number[]} délky dnů
+ */
+export function rozdelPodleHodin(useky, limit) {
+  if (useky.length < 2 || !(limit > 0)) return []
+
+  const delky = []
+  let vDni = 1
+  let hodin = 0
+
+  for (let i = 1; i < useky.length; i++) {
+    const u = useky[i] || 0
+    if (hodin + u > limit && vDni > 0) {
+      delky.push(vDni)
+      vDni = 1
+      // Cesta z místa noclehu na první zastávku dalšího dne se počítá do NĚJ.
+      // Původně se tady nulovalo, což ten úsek nezapočítalo nikam – dny pak
+      // limit překračovaly a náhled v `plan.js` ukazoval jiná čísla než
+      // rozdělení, podle kterého vznikly. Odhalil to check-dny.
+      hodin = u
+    } else {
+      vDni++
+      hodin += u
+    }
+  }
+  delky.push(vDni)
+  return delky.length > 1 ? delky : []
+}
+
+/**
+ * Rozdělí zastávky na daný počet dní tak, aby dny byly časově co nejvyrovnanější.
+ *
+ * Ne po stejném počtu zastávek: pět měst vedle sebe a pak dvě stě kilometrů
+ * do hor je jeden krátký a jeden dlouhý den, ne dva stejné. Dělí se proto
+ * podle času — hledá se hranice, u které je součet nejblíž rovnému dílu.
+ *
+ * @param {number[]} useky
+ * @param {number} pocet
+ * @returns {number[]} délky dnů
+ */
+export function rozdelNaPocet(useky, pocet) {
+  const n = useky.length
+  if (n < 2 || !(pocet > 1)) return []
+  // Víc dnů než zastávek nedává smysl – prázdné dny se stejně zahodí.
+  const dni = Math.min(Math.floor(pocet), n)
+
+  const celkem = useky.reduce((a, b) => a + (b || 0), 0)
+  const delky = []
+  let vDni = 0
+  let hodin = 0
+  let hotovo = 0
+
+  for (let i = 0; i < n; i++) {
+    vDni++
+    hodin += useky[i] || 0
+    const zbyvaDnu = dni - delky.length
+    const zbyvaZastavek = n - i - 1
+    // Uzavřít den, když je nabraný jeho díl času – ale jen dokud zbývá dost
+    // zastávek na zbylé dny, jinak by poslední dny vyšly prázdné.
+    const dil = (celkem - hotovo) / zbyvaDnu
+    if (zbyvaDnu > 1 && zbyvaZastavek >= zbyvaDnu && hodin >= dil) {
+      delky.push(vDni)
+      hotovo += hodin
+      vDni = 0
+      hodin = 0
+    }
+  }
+  if (vDni) delky.push(vDni)
+  return delky.length > 1 ? delky : []
+}
+
+/**
+ * Zapíše navržené délky dnů.
+ *
+ * Kontroluje, že součet sedí na počet zastávek – kdyby ne, dělení by tiše
+ * ukrojilo konec plánu. Radši se nezapíše nic.
+ *
+ * @param {number[]} delky
+ * @returns {boolean}
+ */
+export function nastavDny(delky) {
+  const soucet = delky.reduce((a, b) => a + b, 0)
+  if (soucet !== store.plan.length) return false
+  store.planDny = delky.length > 1 ? delky : []
+  return save()
+}

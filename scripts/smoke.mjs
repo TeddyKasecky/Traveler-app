@@ -315,12 +315,34 @@ await kontrola('zastávka přibyla do plánu', () =>
 )
 await kontrola('počítadlo nad záložkou Plán', () => page.locator('#planCount').innerText(), '1')
 
-// Navigace je nově pod jedním tlačítkem, ne třemi v řádku.
+// Průběh výpravy: odškrtnutá zastávka se zapisuje jako navštívená, tedy do
+// téhož místa jako srdce v Seznamu. Žádná druhá evidence.
+await kontrola('pruh průběhu je v přehledu', () => page.locator('.prubeh').count(), 1)
+await kontrola('průběh začíná na nule', () => page.locator('.prubeh-hlava b').innerText(), '0 z 1 zastávky')
+await page.click('#planSegment button[data-seg="plan"]')
+await page.waitForTimeout(500)
+await kontrola('zastávka má fajfku „byli jsme tady"', () => page.locator('.zastavka-hotovo').count(), 1)
+await page.click('.zastavka-hotovo')
+await page.waitForTimeout(500)
+await kontrola('odškrtnutí se zapíše jako navštíveno', () =>
+  page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('vandrbuch:v1')).stav).filter((x) => x === 'visited').length),
+  1
+)
+await page.click('.zastavka-hotovo')
+await page.waitForTimeout(500)
+await page.click('#planSegment button[data-seg="prehled"]')
+await page.waitForTimeout(400)
+
+// Navigace je pod jedním tlačítkem, ne třemi v řádku. GPX je čtvrtá volba –
+// jediná, která unese celou trasu (Google jen deset bodů, Apple a Waze jeden).
 await page.click('#planDoNavigace')
 await page.waitForTimeout(500)
 await kontrola('nabídka navigace se otevřela', () => page.locator('#navSheet.show').count(), 1)
-await kontrola('tři cíle navigace', () => page.locator('#navSheet .navvolba').count(), 3)
-await page.click('#backdrop')
+await kontrola('čtyři cíle navigace včetně GPX', () => page.locator('#navSheet .navvolba').count(), 4)
+await kontrola('GPX je mezi nimi', () => page.locator('#planGpx').count(), 1)
+// Klik nahoru, ne doprostřed: nabídka je od přibytí GPX vyšší a střed ztmavení
+// je pod ní. Doprostřed by se klik trefil do nabídky, ne mimo ni.
+await page.click('#backdrop', { position: { x: 190, y: 40 } })
 await page.waitForTimeout(400)
 
 // uklidit po sobě, ať další kontroly počítají s prázdným plánem
