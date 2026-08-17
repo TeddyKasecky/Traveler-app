@@ -498,9 +498,10 @@ await zkus('obnova vrátí všechno zpátky', async () => {
   await page.evaluate(() => document.getElementById('introGo')?.click())
   await page.waitForTimeout(300)
 
-  await page.click('#tabs button[data-tab="map"]')
-  await page.waitForTimeout(250)
-  await page.click('#fabFilter')
+  // Zálohy, obnova a CSV se přestěhovaly z panelu Filtry do Profilu: panel
+  // Filtry odpovídá na „co chci vidět", Profil na „moje data". Cesta vede
+  // kolečkem v hlavičce, ne přes plovoucí knoflík filtrů.
+  await page.click('#profilOpen')
   await page.waitForTimeout(400)
   await page.setInputFiles('#impIn', { name: 'z.json', mimeType: 'application/json', buffer: Buffer.from(zaloha) })
   await page.waitForTimeout(1200)
@@ -536,6 +537,11 @@ await zkus('CSV se naimportuje a vymění data', async () => {
 })
 
 await zkus('„Vrátit vestavěná data“ obnoví 580 míst', async () => {
+  // Import CSV přepne na Domů, aby byla nová data hned vidět, takže se Profil
+  // musí otevřít znovu. Dřív tenhle krok nebyl potřeba: správa dat byla
+  // v panelu Filtry, který na přepnutí záložky nereaguje.
+  await page.click('#profilOpen')
+  await page.waitForTimeout(400)
   page.once('dialog', (d) => d.accept())
   await page.click('#dataReset')
   await page.waitForTimeout(1500)

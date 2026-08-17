@@ -173,6 +173,12 @@ await page.waitForTimeout(300)
 await kontrola('Profil se otevřel', () => page.locator('#panelProfil.show').count(), 1)
 await kontrola('Profil má adresu', () => page.evaluate(() => location.hash), '#profil')
 await kontrola('Profil má čísla', () => page.locator('#profilInner .pstat').count(), 6)
+// Zálohy, obnova, CSV a vzhled se přestěhovaly z panelu Filtry do Profilu:
+// panel Filtry odpovídá na „co chci vidět", Profil na „moje data".
+await kontrola('Profil má zálohu a obnovu', () => page.locator('#panelProfil #expBtn, #panelProfil #impIn').count(), 2)
+await kontrola('Profil má přepínač vzhledu', () => page.locator('#panelProfil .motivbtn').count(), 3)
+await kontrola('Profil má správu vlastních dat', () => page.locator('#panelProfil #csvIn, #panelProfil #dataReset').count(), 2)
+await kontrola('v panelu Filtry už zálohy nejsou', () => page.locator('#filters #expBtn').count(), 0)
 await page.goBack()
 await page.waitForTimeout(400)
 
@@ -371,9 +377,13 @@ await kontrola('uvítání zapsané do storu', () =>
 
 console.log('\n  formulář „Přidat místo":')
 
-await page.click('#fabFilter')
+// „Přidat místo" se přestěhovalo z panelu Filtry (kde ho nikdo nenašel)
+// do nabídky pod okrovým „+" na mapě. Cesta je proto přes „+".
+await page.click('#tabs button[data-tab="map"]')
 await page.waitForTimeout(400)
-await page.evaluate(() => document.getElementById('addOpen').click())
+await page.click('#fabPlus')
+await page.waitForTimeout(300)
+await page.click('#plusMisto')
 await page.waitForTimeout(1300)
 
 await kontrola('formulář se otevřel', () => page.locator('#addPlace.show').count(), 1)

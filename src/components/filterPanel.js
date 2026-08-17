@@ -1,5 +1,10 @@
 /**
- * Panel filtrů a správa dat (CSV, záloha, obnova, návrat k vestavěným datům).
+ * Panel filtrů.
+ *
+ * Zálohy, obnova, CSV a přepínač vzhledu se přestěhovaly do Profilu: panel
+ * Filtry odpovídá na otázku „co chci vidět", Profil na „moje data". Obsluha
+ * ale zůstala tady, protože se věší při startu na prvky, které jsou staticky
+ * v `index.html` – ať už leží kdekoli.
  */
 
 import {
@@ -22,7 +27,6 @@ import { mistaZCsv, zalohaData, obnovZalohu, stahniJson } from '../core/csv.js'
 import { draw } from '../map/map.js'
 import { toast } from './toast.js'
 import { syncFiltersUI } from './chip.js'
-import { otevriFormular } from './addForm.js'
 import { nastavMotiv, zvolenyMotiv } from '../core/motiv.js'
 
 const panel = () => document.getElementById('filters')
@@ -31,38 +35,8 @@ const backdrop = () => document.getElementById('backdrop')
 export const jeOtevreny = () => panel().classList.contains('show')
 
 export function otevriFiltry() {
-  obnovInfoOZaloze()
   panel().classList.add('show')
   backdrop().classList.add('show')
-}
-
-/**
- * Doplní hlášku „poslední záloha před …".
- *
- * Přepočítává se při každém otevření panelu, ne jednou při startu – aplikace
- * bývá otevřená celý den a údaj by zestárnul.
- *
- * Po týdnu se zvýrazní. Záloha je jediná cesta, jak si data přenést do jiného
- * telefonu, a na cestě poznámek rychle přibývá.
- */
-function obnovInfoOZaloze() {
-  const el = document.getElementById('zalohaInfo')
-  if (!el) return
-
-  const kdy = prefs.posledniZaloha || 0
-  const dni = kdy ? Math.floor((Date.now() - kdy) / 86400000) : -1
-  const text =
-    dni < 0
-      ? 'Zálohu jsi ještě nestahovala.'
-      : dni === 0
-        ? 'Záloha stažená dnes.'
-        : dni === 1
-          ? 'Poslední záloha včera.'
-          : `Poslední záloha před ${dni} dny.`
-
-  el.textContent = text
-  el.style.color = dni < 0 || dni >= 7 ? 'var(--clay)' : ''
-  el.style.fontWeight = dni < 0 || dni >= 7 ? '800' : ''
 }
 
 export function zavriFiltry() {
@@ -221,13 +195,6 @@ function initData() {
       }
     }
     rd.readAsText(f, 'utf-8')
-  }
-
-  // Formulář na přidání místa. Schválně tady mezi správcovskými tlačítky,
-  // ne na hlavní obrazovce – přidávání míst není každodenní činnost.
-  document.getElementById('addOpen').onclick = () => {
-    zavriFiltry()
-    otevriFormular()
   }
 
   document.getElementById('dataReset').onclick = () => {

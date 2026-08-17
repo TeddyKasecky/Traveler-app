@@ -93,7 +93,37 @@
   </div>
 </section>
 <section class="panel" id="panelPlan"><div class="inner" id="planWrap"></div></section>
-<section class="panel" id="panelProfil"><div class="inner" id="profilInner"></div></section>
+<section class="panel" id="panelProfil">
+  <!-- Vzhled a správa dat jsou staticky tady, ne v renderProfil(): obsluha se
+       věší při startu (filterPanel.js) a hlídá ji check-handlers. Kdyby je
+       Profil kreslil znovu při každém otevření, obsluha by se ztratila. -->
+  <div class="inner">
+    <div id="profilInner"></div>
+
+    <div class="sechd"><svg class="ic"><use href="#i-sliders"/></svg>Vzhled</div>
+    <div class="motivrow" id="motivRow">
+      <button class="motivbtn" data-motiv="svetly"><svg class="ic"><use href="#i-sun"/></svg>Světlý</button>
+      <button class="motivbtn" data-motiv="tmavy"><svg class="ic"><use href="#i-moon"/></svg>Tmavý</button>
+      <button class="motivbtn" data-motiv="system"><svg class="ic"><use href="#i-sliders"/></svg>Podle systému</button>
+    </div>
+
+    <div class="sechd"><svg class="ic"><use href="#i-save"/></svg>Zálohy a data</div>
+    <div class="meta" style="margin:0 2px 10px">Poznámky, hodnocení i fotky jsou jen v tomhle telefonu. Záloha je jediná cesta, jak si je přenést jinam.</div>
+    <div class="btnrow" style="margin:0">
+      <button class="btn primary" id="expBtn"><svg class="ic"><use href="#i-save"/></svg>Stáhnout zálohu</button>
+      <label class="btn" style="cursor:pointer"><svg class="ic"><use href="#i-up"/></svg>Obnovit ze zálohy<input id="impIn" type="file" accept=".json" hidden></label>
+    </div>
+    <div class="meta" id="zalohaInfo" style="margin-top:7px"></div>
+
+    <div class="sechd"><svg class="ic"><use href="#i-book"/></svg>Vlastní data míst</div>
+    <div class="meta" style="margin:0 2px 10px">CSV se sloupci z „vse-dohromady-v3" nahradí vestavěných 580 míst. Poznámky a hodnocení zůstanou.</div>
+    <div class="btnrow" style="margin:0">
+      <label class="btn small" style="cursor:pointer"><svg class="ic"><use href="#i-book"/></svg>Načíst CSV<input id="csvIn" type="file" accept=".csv" hidden></label>
+      <button class="btn small" id="dataReset">Vrátit vestavěná data</button>
+    </div>
+    <div style="height:20px"></div>
+  </div>
+</section>
 
 <div id="backdrop"></div>
 
@@ -125,26 +155,6 @@
   <div class="btnrow">
     <button class="btn primary" id="fApply"><svg class="ic"><use href="#i-check"/></svg>Ukázat výsledky</button>
     <button class="btn" id="fReset">Zrušit vše</button>
-  </div>
-  <div class="road" style="margin:12px 0"></div>
-  <div class="fgroup"><label>Vzhled</label>
-    <div class="motivrow" id="motivRow">
-      <button class="motivbtn" data-motiv="svetly"><svg class="ic"><use href="#i-sun"/></svg>Světlý</button>
-      <button class="motivbtn" data-motiv="tmavy"><svg class="ic"><use href="#i-moon"/></svg>Tmavý</button>
-      <button class="motivbtn" data-motiv="system"><svg class="ic"><use href="#i-sliders"/></svg>Podle systému</button>
-    </div>
-  </div>
-  <div class="road" style="margin:12px 0"></div>
-  <div class="fgroup"><label>Data a zálohy</label>
-    <div class="btnrow" style="margin:0">
-      <label class="btn small" style="cursor:pointer"><svg class="ic"><use href="#i-book"/></svg>Načíst CSV<input id="csvIn" type="file" accept=".csv" hidden></label>
-      <button class="btn small" id="expBtn"><svg class="ic"><use href="#i-save"/></svg>Záloha poznámek</button>
-      <label class="btn small" style="cursor:pointer">Obnovit zálohu<input id="impIn" type="file" accept=".json" hidden></label>
-    </div>
-    <div class="meta" id="zalohaInfo" style="margin-top:7px"></div>
-    <div class="meta" style="margin-top:7px">CSV: sloupce z „vse-dohromady-v3". Záloha uloží poznámky, hodnocení, plán i navštívená místa.</div>
-    <div class="btnrow" style="margin-top:8px"><button class="btn small" id="dataReset">Vrátit vestavěná data</button></div>
-    <div class="btnrow" style="margin-top:8px"><button class="btn small" id="addOpen"><svg class="ic"><use href="#i-plus"/></svg>Přidat místo</button></div>
   </div>
 </aside>
 
