@@ -22,3 +22,34 @@
 .fotocard .ftxt{display:flex;flex-direction:column;line-height:1.25;flex:1}
 .fotocard b{font-size:.86rem;font-weight:800}
 .fotocard small{font-size:.68rem;font-weight:700;color:var(--ink2)}
+
+/* ---------- přestavba detailu podle manuálu ----------
+ * Krátký popis `sh` má vyplněných všech 580 míst a do teď se nikde neukazoval.
+ * Ikonová řada nahradila řádek pěti tlačítek dole: stav místa je rozhodnutí,
+ * které se dělá nahoře u názvu, ne až na konci panelu. */
+.sh-kratky{margin:0 0 12px;font-size:.92rem;font-weight:500;line-height:1.5;color:var(--text2)}
+.ikonrada{display:flex;gap:9px;margin:0 0 14px}
+.ikonrada .ikonbtn{width:46px;height:46px;border-radius:var(--r-s)}
+.ikonrada .ikonbtn svg.ic{font-size:20px}
+#dViceMenu{margin:-6px 0 14px;background:var(--plocha);border:var(--line);border-radius:var(--r);
+  box-shadow:var(--stin-2);padding:6px}
+#dViceMenu[hidden]{display:none}
+#dViceMenu a,#dViceMenu button{display:flex;gap:10px;align-items:center;width:100%;background:none;
+  border:0;padding:11px 12px;border-radius:var(--r-s);font:inherit;font-size:.88rem;font-weight:700;
+  color:var(--text);text-align:left;text-decoration:none}
+#dViceMenu svg.ic{font-size:18px;color:var(--akcent);flex:0 0 auto}
+#dViceMenu a:active,#dViceMenu button:active{background:var(--plocha2)}
+
+/* Instagram jako karta. Pole `ig` má 454 z 580 míst – nejvíc nevyužitá data
+ * v aplikaci; do teď to byl textový řádek úplně dole. */
+.igkarta{display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit;
+  background:var(--plocha);border:var(--line);border-radius:var(--r);box-shadow:var(--stin-1);
+  padding:12px 14px;margin-bottom:9px;transition:transform .16s var(--pop)}
+.igkarta:active{transform:var(--stisk)}
+.igico{flex:0 0 auto;width:40px;height:40px;border-radius:var(--r-s);background:var(--plocha-fialova);
+  display:grid;place-items:center}
+.igico svg.ic{font-size:20px;color:var(--plum)}
+.igtxt{flex:1;min-width:0}
+.igtxt b{display:block;font-size:.92rem;font-weight:800}
+.igtxt small{display:block;font-size:.74rem;font-weight:600;color:var(--text2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

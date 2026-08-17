@@ -71,13 +71,24 @@ export function openDetail(p, focus) {
               )}</a>`
           )
       : []),
-    ...(p.ig
-      ? p.ig
-          .split(' | ')
-          .filter(Boolean)
-          .map((u) => `<a href="${u}" target="_blank" rel="noopener">${IC('i-cam', 'font-size:14px')} Instagram</a>`)
-      : []),
   ].join('<br>')
+
+  /**
+   * Instagram jako karta, ne řádek na konci seznamu odkazů.
+   *
+   * Pole `ig` má vyplněných 454 z 580 míst – nejvíc nevyužitá data v aplikaci.
+   * Do teď to byl textový odkaz úplně dole, kam nikdo nedoscrolloval.
+   */
+  const instagram = (p.ig || '')
+    .split(' | ')
+    .filter((u) => u.startsWith('http'))
+    .map(
+      (u) => `<a class="igkarta" href="${u}" target="_blank" rel="noopener noreferrer">
+        <span class="igico">${IC('i-cam')}</span>
+        <span class="igtxt"><b>Instagram</b><small>${esc(u.replace(/^https?:\/\/(www\.)?instagram\.com\//, '@').replace(/\/$/, ''))}</small></span>
+        ${IC('i-sipka', 'font-size:15px;opacity:.55')}</a>`
+    )
+    .join('')
 
   // Sousedi, kteří v datech opravdu jsou. Vzdálenost se bere z dat, nepočítá se.
   const nb = (p.nb || []).map((x) => ({ q: S.byId[x.id], d: x.d })).filter((x) => x.q)
@@ -107,16 +118,33 @@ export function openDetail(p, focus) {
         <h2>${esc(p.n)}</h2>
         <div class="meta">${esc(p.r || p.z)}${p.r && p.r !== p.z ? ` · ${esc(p.z)}` : ''}${S.userPos ? ` · ${fmtKm(dkm(S.userPos, p))} od tebe` : ''}</div></div>
     </div>
+    ${
+      // Krátký popis má vyplněných všech 580 míst, ale do teď se v detailu
+      // nikde neukazoval – jediné, co o místě řekne jednou větou.
+      //
+      // U části míst je ale `sh` jen začátek dlouhého popisu `p`. Ukázat obojí
+      // by znamenalo přečíst tutéž větu dvakrát pod sebou, tak se v tom případě
+      // vynechá – text z `p` je delší a stejně tam je.
+      p.sh && !(p.p || '').startsWith(p.sh.slice(0, 40)) ? `<div class="sh-kratky">${esc(p.sh)}</div>` : ''
+    }
+    <div class="ikonrada">
+      <button class="ikonbtn${store.stav[p.id] === 'wish' ? ' on' : ''}" id="dWish" title="Chci navštívit">${IC('i-srdce')}</button>
+      <button class="ikonbtn${visited ? ' on' : ''}" id="dVisit" title="Byli jsme tu">${IC('i-check')}</button>
+      <button class="ikonbtn${inPlan ? ' on' : ''}" id="dPlan" title="Do plánu">${IC('i-route')}</button>
+      <button class="ikonbtn" id="dVice" title="Další akce">${IC('i-vice')}</button>
+    </div>
+    <div id="dViceMenu" hidden>
+      <a href="${wx}" target="_blank" rel="noopener noreferrer">${IC('i-rain')}Počasí na místě</a>
+      <a href="${mc}" target="_blank" rel="noopener noreferrer">${IC('i-boot')}Otevřít v Mapy.com</a>
+      <a href="${imgQ}" target="_blank" rel="noopener noreferrer">${IC('i-cam')}Fotky ve vyhledávání</a>
+      <button id="dPorovnat">${IC('i-sdilet')}Porovnat s jiným místem</button>
+    </div>
     <div class="maincta">
       ${pk ? `<a class="gbtn park" href="${pkNav}" target="_blank" rel="noopener noreferrer">${IC('i-van')}<span><b>Navigovat na parkoviště</b><small>${esc(pk.name)}${pk.walk ? ` · ${esc(pk.walk)}` : ''}</small></span>${IC('i-nav', 'font-size:16px;opacity:.6')}</a>` : ''}
       <div class="gbtnrow">
-        <a class="gbtn half" href="${gmView}" target="_blank" rel="noopener noreferrer">${IC('i-map')}Otevřít v Google Maps</a>
         <a class="gbtn half" href="${gmNav}" target="_blank" rel="noopener noreferrer">${IC('i-nav')}Navigovat k místu</a>
+        <a class="gbtn half ghost" href="${gmView}" target="_blank" rel="noopener noreferrer">${IC('i-map')}Ukázat v mapě</a>
       </div>
-      <a class="fotocard" href="${imgQ}" target="_blank" rel="noopener noreferrer">
-        <span class="fico">${IC('i-cam')}</span>
-        <span class="ftxt"><b>Fotky místa</b><small>Prohlédnout fotografie ve vyhledávání Google.</small></span>
-        ${IC('i-nav', 'font-size:15px;opacity:.55')}</a>
     </div>
     <div class="facts">
       <div class="fact">${IC('i-euro')}<div><b>Vstup</b><span>${esc(p.c) || '—'}</span></div></div>
@@ -166,13 +194,7 @@ export function openDetail(p, focus) {
     </div>`
     }
     ${p.f ? `<div class="lore"><div class="lab">${IC('i-quill')}Z deníku</div><p>${esc(p.f)}</p></div>` : ''}
-    <div class="btnrow" style="margin-top:0">
-      <button class="btn ${inPlan ? 'sun' : ''}" id="dPlan">${IC(inPlan ? 'i-check' : 'i-plus')}${inPlan ? 'V plánu' : 'Do plánu'}</button>
-      <button class="btn ${visited ? 'moss' : ''}" id="dVisit">${IC('i-check')}${visited ? 'Navštíveno' : 'Byli jsme tu'}</button>
-      <a class="btn small" href="${wx}" target="_blank" rel="noopener noreferrer">${IC('i-rain')}Počasí</a>
-      <a class="btn small" href="${mc}" target="_blank" rel="noopener noreferrer">${IC('i-boot')}Mapy.com</a>
-      <button class="btn small" id="dPorovnat" title="Porovnat s jiným místem">${IC('i-sdilet')}Porovnat</button>
-    </div>
+
     ${
       p.av || p.bs
         ? `<div class="sec">${IC('i-ferrata', 'font-size:16px')}Topo a podrobnosti</div><div class="ferbtns">
@@ -233,6 +255,7 @@ export function openDetail(p, focus) {
       .join('')}</div>
     <div class="sec">${IC('i-quill', 'font-size:16px')}Poznámka</div>
     <textarea id="noteBox" placeholder="parkál za kostelem · brát hotovost · jet brzy ráno…">${esc(store.notes[p.id] || '')}</textarea>
+    ${instagram ? `<div class="sec">${IC('i-cam', 'font-size:16px')}Jak to tam vypadá</div>${instagram}` : ''}
     ${links ? `<div class="sec">${IC('i-globe', 'font-size:16px')}Odkazy</div><div class="links">${links}</div>` : ''}
     <div style="height:10px"></div>`
 
@@ -243,6 +266,25 @@ export function openDetail(p, focus) {
   const telo = teloSheetu()
 
   document.getElementById('dPorovnat').onclick = () => pridejDoPorovnani(p)
+
+  // Srdce: „chci navštívit". Do teď se dalo nastavit jen ze Seznamu, přestože
+  // detail je místo, kde se člověk rozhoduje.
+  document.getElementById('dWish').onclick = () => {
+    if (store.stav[p.id] === 'wish') delete store.stav[p.id]
+    else store.stav[p.id] = 'wish'
+    save()
+    draw()
+    openDetail(p)
+  }
+
+  // Vedlejší akce (počasí, Mapy.com, fotky, porovnání) jsou pod „…", ne v řádku
+  // pěti tlačítek – manuál má jednu primární akci a zbytek schovaný.
+  const vice = document.getElementById('dVice')
+  const viceMenu = document.getElementById('dViceMenu')
+  vice.onclick = () => {
+    viceMenu.hidden = !viceMenu.hidden
+    vice.classList.toggle('on', !viceMenu.hidden)
+  }
 
   document.getElementById('dPlan').onclick = () => {
     togglePlan(p.id)

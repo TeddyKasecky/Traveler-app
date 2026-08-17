@@ -212,6 +212,16 @@ await kontrola('detail má hvězdičky', () => page.locator('#dStars button').co
 await kontrola('detail má plamínky', () => page.locator('#dPrio button').count(), 3)
 await kontrola('detail má mini-mapu', () => page.locator('#sheet .minimap, #sheet .mmfail').count(), 1)
 await kontrola('detail má poznámku', () => page.locator('#noteBox').count(), 1)
+// Přestavba detailu: ikonová řada nahoře místo řádku pěti tlačítek dole,
+// vedlejší akce pod „…", Instagram jako karta (pole `ig` má 454 z 580 míst
+// a do teď to byl textový řádek úplně dole, kam nikdo nedoscrolloval).
+await kontrola('detail má ikonovou řadu', () => page.locator('#sheet .ikonrada .ikonbtn').count(), 4)
+await page.evaluate(() => document.getElementById('dVice').click())
+await page.waitForTimeout(300)
+await kontrola('„…" nabízí vedlejší akce', () =>
+  page.locator('#dViceMenu a, #dViceMenu button').count().then((n) => n === 4)
+)
+await page.evaluate(() => document.getElementById('dVice').click())
 
 // tlačítko zpět zavře detail
 await page.goBack()
