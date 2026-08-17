@@ -196,6 +196,14 @@ export const prefs = nacti(PREFK, {
    * 'malovany' (offline mapa podle grafických předloh, bez sítě).
    */
   podklad: 'dlazdice',
+  /**
+   * Je spodek obrazovky Mapa (karta výpravy a uložená místa) sbalený?
+   *
+   * Výchozí `false`, tedy rozbalený: kdo appku otevře poprvé, má vidět, že tam
+   * něco je. Kdo si to sbalí, najde to příště sbalené – proto to bydlí
+   * v předvolbách a ne jen v paměti.
+   */
+  mapaSbaleno: false,
 })
 export const savePrefs = () => zapis(PREFK, prefs)
 

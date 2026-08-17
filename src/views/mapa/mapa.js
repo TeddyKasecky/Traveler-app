@@ -14,7 +14,7 @@
  * i na Domů a nesmí se rozejít.
  */
 
-import { S, F, store, save, PHOTOS } from '../../core/store.js'
+import { S, F, store, save, prefs, savePrefs, PHOTOS } from '../../core/store.js'
 import { esc } from '../../core/html.js'
 import { IC } from '../../icons/sprite.js'
 import { obrazekMista } from '../../data/kategorieFoto.js'
@@ -30,11 +30,53 @@ const ULOZENYCH = 12
 /** Název bez závorek a pomlčkových přívlastků – do karty se dlouhý nevejde. */
 const kratce = (n) => n.split(/\s[–(]/)[0]
 
+/**
+ * Srovná sbalení spodku se stavem v předvolbách.
+ *
+ * Karta výpravy a uložená místa braly skoro polovinu obrazovky natrvalo,
+ * přestože Mapa odpovídá na otázku „kde to je“ – tedy má být vidět hlavně mapa.
+ * Sbalené zbude bublina nad „+“ a na ní počet zastávek, aby se nedalo
+ * zapomenout, že tam nějaká výprava je.
+ */
+export function srovnejSbaleni() {
+  const dolu = document.getElementById('mapDolu')
+  if (!dolu) return
+  const sbaleno = !!prefs.mapaSbaleno
+  dolu.classList.toggle('sbaleno', sbaleno)
+
+  const bublina = document.getElementById('mapBublina')
+  if (bublina) bublina.hidden = !sbaleno
+
+  const n = document.getElementById('mapBublinaN')
+  if (n) {
+    n.hidden = !store.plan.length
+    n.textContent = store.plan.length
+  }
+}
+
+/**
+ * Naváže sbalování. Volá se jednou při startu, ne z `renderMapaDole()` –
+ * úchyt i bublina jsou staticky v `index.html` a překreslení by obsluhu smazalo.
+ */
+export function initMapaDole() {
+  const prepni = (na) => {
+    prefs.mapaSbaleno = na
+    // Návratovou hodnotu nezahazovat: když se nepovede zapsat, `store.js`
+    // z toho pošle `ulozeniSelhalo` a ukáže se varovný pruh.
+    savePrefs()
+    srovnejSbaleni()
+  }
+  document.getElementById('mapGrip').onclick = () => prepni(true)
+  document.getElementById('mapBublina').onclick = () => prepni(false)
+  srovnejSbaleni()
+}
+
 export function renderMapaDole() {
   const karta = document.getElementById('vypravaKarta')
   const ulozeneEl = document.getElementById('mapUlozene')
   if (!karta || !ulozeneEl) return
 
+  srovnejSbaleni()
   karta.innerHTML = vypravaKarta()
 
   const ulozena = S.places.filter((p) => store.stav[p.id] === 'wish')

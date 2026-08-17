@@ -55,6 +55,36 @@ body:not([data-tab='map']) #mapDolu{display:none}
 /* Karta leží nad plochou papíru, která ji zespodu podebírá – v předloze je
  * u ní vidět kus mapy po stranách. Proto `z-index`, ne pořadí v toku. */
 #vypravaKarta{position:relative;z-index:2;margin:0 14px}
+
+/* ---------- sbalení spodku ---------- */
+/* Karta výpravy a uložená místa zabíraly zhruba polovinu obrazovky Mapy
+ * natrvalo. Úchyt je stejné gesto jako u vysouvacího detailu (`#sheet .grip`),
+ * jen ťukací. Hit box je schválně vysoký 26 px, i když čárka má 6 – na proužek
+ * široký jako tužka se palcem netrefí nikdo. */
+#mapGrip{position:relative;z-index:3;display:block;width:100%;height:26px;border:0;background:none;padding:0}
+#mapGrip::before{content:"";display:block;width:52px;height:6px;margin:10px auto 0;
+  border-radius:99px;background:var(--plocha);box-shadow:var(--stin-2)}
+#mapGrip:active::before{background:var(--plocha2)}
+
+/* Sbalený stav: zbude bublina nad „+“. `padding-bottom` musí zůstat – bez něj
+ * by se `#mapDolu` smrsklo na nulu a „+“ (`bottom:100%`) by spadlo na lištu
+ * záložek. */
+#mapDolu.sbaleno{padding-bottom:calc(env(safe-area-inset-bottom) + 96px)}
+#mapDolu.sbaleno #mapGrip,
+#mapDolu.sbaleno #vypravaKarta,
+#mapDolu.sbaleno #mapUlozene{display:none}
+
+#mapBublina{position:absolute;right:14px;bottom:100%;margin-bottom:80px;z-index:3;
+  width:46px;height:46px;border-radius:50%;border:var(--line);background:var(--plocha);
+  box-shadow:var(--stin-2);display:grid;place-items:center;transition:transform .16s var(--pop)}
+#mapBublina svg.ic{font-size:21px;color:var(--akcent)}
+#mapBublina:active{transform:var(--stisk)}
+#mapBublina[hidden]{display:none}
+/* Počet zastávek na bublině – jinak by sbalená výprava byla neviditelná. */
+#mapBublina .badge{position:absolute;top:-5px;right:-5px;background:var(--zvyrazneni);
+  color:var(--na-zvyrazneni);border-radius:var(--r-pill);font-size:.62rem;font-weight:800;
+  min-width:19px;height:19px;display:grid;place-items:center}
+#mapBublina .badge[hidden]{display:none}
 #mapUlozene{position:relative;background:var(--paper);margin-top:-38px;
   padding:50px 14px calc(env(safe-area-inset-bottom) + 96px)}
 #mapUlozene .sekce{margin-top:0}

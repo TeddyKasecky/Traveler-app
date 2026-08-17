@@ -54,6 +54,13 @@
 <div id="mapDolu">
   <button id="fabPlus" title="Přidat"><svg class="ic"><use href="#i-plus"/></svg></button>
   <div id="plusMenu" hidden></div>
+  <!-- Sbalení spodku, ať je vidět co nejvíc mapy. Úchyt nahoře je stejné
+       gesto jako u vysouvacího detailu; bublina ho vrátí zpátky. Volba se
+       pamatuje v prefs.mapaSbaleno. -->
+  <button id="mapGrip" title="Skrýt výpravu a uložená místa" aria-label="Skrýt výpravu a uložená místa"></button>
+  <button id="mapBublina" title="Zobrazit výpravu a uložená místa" hidden>
+    <svg class="ic"><use href="#i-route"/></svg><span class="badge" id="mapBublinaN" hidden></span>
+  </button>
   <div id="vypravaKarta"></div>
   <div id="mapUlozene"></div>
 </div>

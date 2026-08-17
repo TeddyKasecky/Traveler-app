@@ -348,6 +348,27 @@ await page.click('#fabPlus')
 await page.waitForTimeout(250)
 await kontrola('druhé ťuknutí nabídku zavře', () => page.locator('#plusMenu[hidden]').count(), 1)
 
+// sbalení spodku: karta a uložená místa braly skoro třetinu obrazovky natrvalo
+const spodek = () => page.locator('#mapDolu').evaluate((e) => Math.round(e.getBoundingClientRect().height))
+const spodekRozbaleny = await spodek()
+await page.click('#mapGrip')
+await page.waitForTimeout(300)
+await kontrola('sbalení schová kartu výpravy', () => page.locator('#vypravaKarta').isVisible(), false)
+await kontrola('sbalení schová uložená místa', () => page.locator('#mapUlozene').isVisible(), false)
+await kontrola('sbalené zbude bublina', () => page.locator('#mapBublina').isVisible(), true)
+await kontrola('sbalením se získá aspoň 200 px mapy', async () => spodekRozbaleny - (await spodek()) >= 200, true)
+// „+" visí na `bottom:100%` spodku, takže po sbalení nesmí spadnout na lištu záložek
+await kontrola('„+" zůstal nad lištou záložek', async () => {
+  const f = await page.locator('#fabPlus').boundingBox()
+  const t = await page.locator('#tabs').boundingBox()
+  return f.y + f.height <= t.y + 2
+}, true)
+await kontrola('sbalení se uložilo do předvoleb', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs')).mapaSbaleno), true)
+await page.click('#mapBublina')
+await page.waitForTimeout(300)
+await kontrola('bublina kartu vrátí', () => page.locator('#vypravaKarta').isVisible(), true)
+
 // rychlý filtr nad mapou se projeví hned, bez potvrzování
 await page.click('#chips .pilulka[data-id="kempy"]')
 await page.waitForTimeout(400)

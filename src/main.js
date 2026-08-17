@@ -35,7 +35,7 @@ import { renderHome } from './views/home/home.js'
 import { renderDisc } from './views/discover/discover.js'
 import { renderList } from './views/list/list.js'
 import { renderPlan, zavriNavigaci, jeOtevrenaNavigace } from './views/plan/plan.js'
-import { renderMapaDole } from './views/mapa/mapa.js'
+import { renderMapaDole, initMapaDole } from './views/mapa/mapa.js'
 
 import { registrujServiceWorker } from './pwa/register.js'
 
@@ -55,6 +55,9 @@ initFilterPanel()
 initWizard()
 initVyberMista()
 initPlusMenu()
+// Sbalování spodku Mapy. Úchyt i bublina jsou staticky v index.html, takže
+// se obsluha věší jednou tady, ne v renderMapaDole().
+initMapaDole()
 // Až za panely: registrace overlaye určuje, co zavře tlačítko zpět jako první.
 initAddForm()
 // Porovnání se otevírá z detailu, takže musí být nad ním.
