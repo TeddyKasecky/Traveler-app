@@ -154,6 +154,27 @@
   <div id="wizBody"></div>
 </div>
 <section id="sheet" aria-modal="true"><div class="grip"></div><div class="body" id="sheetBody"></div></section>
+
+<!-- Odeslání trasy do navigace. Tlačítka jsou staticky tady, ne v renderPlan():
+     #planNav musí existovat od startu (hlídá check-handlers) a okno se musí
+     otevírat přímo v obsluze kliknutí, jinak ho prohlížeč zablokuje. -->
+<section id="navSheet" aria-modal="true" role="dialog">
+  <div class="grip"></div>
+  <div class="body">
+    <h2><svg class="ic"><use href="#i-nav"/></svg>Odeslat do navigace</h2>
+    <button class="navvolba" id="planNav"><svg class="ic"><use href="#i-map"/></svg><div><b>Google Maps</b><span>celá trasa se všemi zastávkami</span></div><svg class="ic sip"><use href="#i-sipka"/></svg></button>
+    <button class="navvolba" id="planNavApple"><svg class="ic"><use href="#i-nav"/></svg><div><b>Apple Maps</b><span>jen první zastávka</span></div><svg class="ic sip"><use href="#i-sipka"/></svg></button>
+    <button class="navvolba" id="planNavWaze"><svg class="ic"><use href="#i-nav"/></svg><div><b>Waze</b><span>jen první zastávka</span></div><svg class="ic sip"><use href="#i-sipka"/></svg></button>
+    <div class="meta" style="margin-top:10px">Apple Maps ani Waze neumějí spolehlivě předat víc zastávek najednou.</div>
+  </div>
+</section>
+
+<!-- Vybírátko míst pro „Přidat zastávku". Obsah plní components/vyberMista.js. -->
+<section id="vyberMista" aria-modal="true" role="dialog">
+  <div class="grip"></div>
+  <button id="vmClose" title="Zavřít"><svg class="ic"><use href="#i-x"/></svg></button>
+  <div class="body" id="vmBody"></div>
+</section>
 <section id="porovnani" aria-modal="true" role="dialog"><div class="grip"></div><div id="porovnaniBody"></div></section>
 
 <!-- Formulář na přidání místa. Jediná obrazovka, kterou původní aplikace neměla. -->

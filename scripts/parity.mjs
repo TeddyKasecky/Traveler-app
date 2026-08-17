@@ -418,6 +418,11 @@ await zkus('„Kopírovat“ dá text do schránky', async () => {
   await page.waitForTimeout(400)
   await page.click('#tabs button[data-tab="plan"]')
   await page.waitForTimeout(400)
+  // „Kopírovat“ se přestavbou Plánu přesunulo z řádku tlačítek do nabídky pod
+  // „…“ – vedlejší akce tam patří podle předlohy. Cesta se tím prodloužila
+  // o jedno ťuknutí a kontrola ji musí projít stejně jako uživatel.
+  await page.click('#planVice')
+  await page.waitForTimeout(300)
   await page.click('#planShare')
   await page.waitForTimeout(600)
   const t = await page.evaluate(() => navigator.clipboard.readText())

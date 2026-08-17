@@ -10,15 +10,19 @@
  * ta má u nás pět záložek. Šesté místo by je zmáčklo pod čitelnou šířku, takže
  * je „+“ plovoucí kolečko nad kartou výpravy.
  *
- * „Přidat zastávku“ tu zatím není: přidávat zastávky se dnes dá jen z detailu
- * místa a vybírátko na to přijde s přestavbou Plánu, kde bude potřeba i pro
- * tlačítko „+ Přidat zastávku“ v itineráři. Až bude, patří sem jako třetí řádek.
+ * „Přidat zastávku“ používá stejné vybírátko jako tlačítko „+ Přidat zastávku“
+ * v itineráři na Plánu – jedno místo, kde se vybírá, ať se na něj sáhne odkud
+ * chce.
  */
 
+import { store, save } from '../core/store.js'
 import { IC } from '../icons/sprite.js'
 import { registrujOverlay } from '../core/router.js'
+import { draw } from '../map/map.js'
 import { otevriFormular } from './addForm.js'
 import { openWizard } from './wizard.js'
+import { otevriVyber } from './vyberMista.js'
+import { toast } from './toast.js'
 
 const tlacitko = () => document.getElementById('fabPlus')
 const nabidka = () => document.getElementById('plusMenu')
@@ -38,6 +42,7 @@ function otevriPlus() {
 /** Naváže „+“ a jeho nabídku. Volá se jednou při startu. */
 export function initPlusMenu() {
   nabidka().innerHTML = [
+    { id: 'plusZastavka', ikona: 'i-route', popisek: 'Přidat zastávku' },
     { id: 'plusMisto', ikona: 'i-plus', popisek: 'Přidat místo' },
     { id: 'plusVylet', ikona: 'i-wand', popisek: 'Naplánovat výlet' },
   ]
@@ -46,6 +51,15 @@ export function initPlusMenu() {
 
   tlacitko().onclick = () => (jeOtevreny() ? zavriPlus() : otevriPlus())
 
+  document.getElementById('plusZastavka').onclick = () => {
+    zavriPlus()
+    otevriVyber((p) => {
+      store.plan.push(p.id)
+      save()
+      draw()
+      toast(`${p.n.split(/\s[–(]/)[0]} přidáno do plánu`)
+    })
+  }
   document.getElementById('plusMisto').onclick = () => {
     zavriPlus()
     otevriFormular()

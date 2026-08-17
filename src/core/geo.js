@@ -27,7 +27,8 @@ export function dkm(a, b) {
  * @param {number} d
  * @returns {string}
  */
-export const fmtKm = (d) => (d < 10 ? `${d.toFixed(1).replace('.', ',')} km` : `${Math.round(d)} km`)
+export const fmtKm = (d) =>
+  d < 10 ? `${d.toFixed(1).replace('.', ',')} km` : `${Math.round(d).toLocaleString('cs-CZ')} km`
 
 /** Do jaké dálky se ještě hledají sousedi a kolik se jich uloží. */
 export const OKOLI_KM = 45

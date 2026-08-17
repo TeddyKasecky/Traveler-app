@@ -72,6 +72,17 @@ async function projdi(page) {
   await page.waitForTimeout(500)
   await page.evaluate(() => document.querySelector('#listInner .radek')?.click())
   await page.waitForTimeout(1200)
+
+  // Až úplně nakonec: vedlejší akce Plánu (Kopírovat, Vyprázdnit) se přestavbou
+  // přesunuly pod „…“ a napojují se teprve při otevření nabídky. Nabídku navíc
+  // zavře každé překreslení Plánu, takže musí zůstat otevřená až do sběru –
+  // jinak by kontrola hlásila, že tlačítka z originálu nemají protějšek,
+  // a měla by pravdu jen proto, že se na ně nedostala.
+  // V originále `#planVice` neexistuje, takže se na staré verzi nic nestane.
+  await page.evaluate(() => document.querySelector('#tabs button[data-tab="plan"]')?.click())
+  await page.waitForTimeout(500)
+  await page.evaluate(() => document.getElementById('planVice')?.click())
+  await page.waitForTimeout(400)
 }
 
 /** Vrátí množinu „id.udalost" pro všechna napojení na prvky s id. */

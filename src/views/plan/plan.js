@@ -1,15 +1,34 @@
 /**
- * Záložka Plán – pořadí zastávek, kilometry, export do navigace.
+ * Záložka Plán – „jak to pojedeme".
+ *
+ * Skladba podle předlohy `grafika/…11_09_50 (4).png`: název výpravy, segment
+ * Přehled · Plán · Mapa, karta trasy se statistikami a tlačítkem „Optimalizovat
+ * trasu", itinerář po dnech s náhledy a dole lišta „Uloženo" a „Odeslat do
+ * navigace".
+ *
+ * PROČ SEGMENT, A NE JEDNA DLOUHÁ STRÁNKA: obrazovka odpovídá na tři různé
+ * otázky – kolik to je (Přehled), v jakém pořadí (Plán) a kudy (Mapa).
+ * Do teď byly všechny tři pomíchané v jednom sloupci karet.
+ *
+ * NAVIGAČNÍ TLAČÍTKA (`#planNav`, `#planNavApple`, `#planNavWaze`) se přesunula
+ * do vysouvací nabídky, ale **zůstala synchronní**: okno se otevírá přímo
+ * v obsluze kliknutí. Prohlížeče blokují `window.open`, které nepřijde rovnou
+ * z gesta uživatele, a `parity` na tom stojí.
  */
 
-import { S, store, save } from '../../core/store.js'
+import { S, store, save, PHOTOS } from '../../core/store.js'
 import { esc } from '../../core/html.js'
 import { dkm, fmtKm } from '../../core/geo.js'
 import { KAT } from '../../data/categories.js'
+import { obrazekMista } from '../../data/kategorieFoto.js'
 import { IC } from '../../icons/sprite.js'
 import { toast } from '../../components/toast.js'
-import { goTo, draw } from '../../map/map.js'
+import { sekce, segment, statpanel, ikonBtn } from '../../components/vzory.js'
+import { otevriVyber } from '../../components/vyberMista.js'
+import { goTo, draw, mapa, priblizNaFiltr } from '../../map/map.js'
+import { aktivujZalozku } from '../../core/router.js'
 import { dnyPlanu, pridejDen, presunDoDne, zrusDny } from './dny.js'
+import { seznamVyprav, prepniVypravu, novaVyprava, prejmenujVypravu, smazAktivniVypravu, BEZ_NAZVU } from './vypravy.js'
 
 /** Kolik zastávek unese odkaz do Google Maps. */
 const MAX_DO_NAVIGACE = 10
@@ -17,6 +36,11 @@ const MAX_DO_NAVIGACE = 10
 const KLIKATOST = 1.35
 /** Průměrná rychlost pro odhad času za volantem. */
 const KMH = 62
+
+/** Který díl segmentu je vidět. Jen v paměti – po restartu se začíná Přehledem. */
+let dil = 'prehled'
+/** Která zastávka má rozbalené ovládání pod sebou. */
+let rozbaleno = ''
 
 /** Přidá nebo odebere místo z plánu. */
 export function togglePlan(id) {
@@ -40,116 +64,272 @@ export function planStats(items) {
   return { air: d, road, hrs: road / KMH }
 }
 
+/** Čas za volantem pro člověka. */
+function fmtCas(hrs) {
+  if (hrs < 1) return `${Math.round(hrs * 60)} min`
+  const h = Math.floor(hrs)
+  const m = Math.round((hrs - h) * 60)
+  return m ? `${h} h ${m} min` : `${h} h`
+}
+
+const sklonuj = (n, a, b, c) => (n === 1 ? a : n < 5 ? b : c)
+
+/* ================= vykreslení ================= */
+
 export function renderPlan() {
   const wrap = document.getElementById('planWrap')
+  if (!wrap) return
+
   const items = store.plan.map((id) => S.byId[id]).filter(Boolean)
+  const dny = dnyPlanu()
 
   const pc = document.getElementById('planCount')
   pc.hidden = !items.length
   pc.textContent = items.length
 
+  wrap.innerHTML =
+    hlava(items, dny) +
+    segment(
+      [
+        { id: 'prehled', popisek: 'Přehled' },
+        { id: 'plan', popisek: 'Plán' },
+        { id: 'mapa', popisek: 'Mapa' },
+      ],
+      dil,
+      'planSegment'
+    ) +
+    (dil === 'prehled' ? prehled(items, dny) : dil === 'plan' ? itinerar(items, dny) : mapaDil(items)) +
+    lista(items)
+
+  napoj(wrap, items)
+}
+
+/** Hlavička: název výpravy a co obnáší. */
+function hlava(items, dny) {
   const st = planStats(items)
-  const cas = st.hrs < 1 ? `${Math.round(st.hrs * 60)} min` : `${st.hrs.toFixed(1).replace('.', ',')} h`
-  const head = `<div class="card" style="--pc:var(--sun)"><span class="spine"></span>
-      <h3>${IC('i-route')}Plán výletu</h3>
-      ${
-        items.length > 1
-          ? `<div class="meta">${items.length} zastávek · ${fmtKm(st.road)} po silnici (odhad) · ${cas} za volantem</div>`
-          : '<div class="meta">Poskládej zastávky, spočítám kilometry a pošlu trasu do navigace.</div>'
-      }
-      <div class="btnrow" style="margin-bottom:0">
-        <button class="btn small" id="planNav">${IC('i-nav')}Google Maps</button>
-        <button class="btn small" id="planNavApple" title="Apple Maps – jen další zastávka">${IC('i-nav')}Apple</button>
-        <button class="btn small" id="planNavWaze" title="Waze – jen další zastávka">${IC('i-nav')}Waze</button>
-        ${items.length > 2 ? `<button class="btn small" id="planOpt">${IC('i-sparkles')}Seřadit podle trasy</button>` : ''}
-        <button class="btn small" id="planShare">${IC('i-copy')}Kopírovat</button>
-        <button class="btn small" id="planClear">${IC('i-trash')}</button>
-      </div></div>`
+  const popis = items.length
+    ? `${items.length} ${sklonuj(items.length, 'zastávka', 'zastávky', 'zastávek')} · ${dny.length} ${sklonuj(dny.length, 'den', 'dny', 'dní')}${
+        items.length > 1 ? ` · ${fmtKm(st.road)}` : ''
+      }`
+    : 'Zatím prázdná'
 
-  if (!items.length) {
-    wrap.innerHTML = `${head}<div class="empty">${IC('i-van')}Plán je zatím prázdný.<br>V detailu místa ťukni na <b>Do plánu</b>.</div>`
-    bindPlanBtns()
-    return
-  }
+  return `<div class="planhlava">
+    <div class="planhlava-text">
+      <h2>${esc(store.vypravaNazev || BEZ_NAZVU)}</h2>
+      <div class="meta">${esc(popis)}</div>
+    </div>
+    ${ikonBtn('i-vice', { id: 'planVice', titul: 'Další akce' })}
+  </div>
+  <div id="planMenu" hidden></div>`
+}
 
-  const dny = dnyPlanu()
+/* ---------- Přehled ---------- */
+
+function prehled(items, dny) {
+  const st = planStats(items)
+  const zemi = new Set(items.map((p) => p.z)).size
+
+  const vypravy = seznamVyprav()
+  const seznamHtml = vypravy
+    .map((v) => {
+      const km = planStats(v.plan.map((id) => S.byId[id]).filter(Boolean)).road
+      return `<button class="vypravaradek${v.aktivni ? ' on' : ''}" data-vyprava="${v.index}">
+        ${IC(v.aktivni ? 'i-route' : 'i-map')}
+        <div>
+          <b>${esc(v.nazev)}</b>
+          <span>${v.plan.length} ${sklonuj(v.plan.length, 'zastávka', 'zastávky', 'zastávek')}${v.plan.length > 1 ? ` · ${fmtKm(km)}` : ''}</span>
+        </div>
+        ${v.aktivni ? `<i>aktivní</i>` : IC('i-sipka', 'font-size:15px;color:var(--text3)')}
+      </button>`
+    })
+    .join('')
+
+  return (
+    sekce('Moje výpravy', { akce: 'Nová výprava', akceId: 'vypNova' }) +
+    `<div class="vypravy">${seznamHtml}</div>` +
+    sekce('Trasa a přehled') +
+    (items.length
+      ? `<div class="trasakarta">
+          ${statpanel([
+            { ikona: 'i-route', popisek: 'Celkem vzdálenost', hodnota: items.length > 1 ? fmtKm(st.road) : '—' },
+            { ikona: 'i-clock', popisek: 'Odhadovaný čas', hodnota: items.length > 1 ? fmtCas(st.hrs) : '—' },
+            { ikona: 'i-pinme', popisek: 'Zastávky', hodnota: `${items.length} ${sklonuj(items.length, 'místo', 'místa', 'míst')}` },
+            { ikona: 'i-kalendar', popisek: 'Rozděleno na', hodnota: `${dny.length} ${sklonuj(dny.length, 'den', 'dny', 'dní')}` },
+            { ikona: 'i-globe', popisek: 'Zemí na trase', hodnota: String(zemi) },
+          ])}
+          ${items.length > 2 ? `<button class="btn zvyrazneny" id="planOpt">${IC('i-sparkles')}Optimalizovat trasu</button>` : ''}
+        </div>`
+      : prazdno())
+  )
+}
+
+/** Prázdná výprava. Nabídne obojí, čím se dá začít. */
+function prazdno() {
+  return `<div class="empty">${IC('i-van')}Ve výpravě zatím nejsou žádné zastávky.
+    <div class="btnrow" style="justify-content:center;margin-bottom:0">
+      <button class="btn small primary" id="planPridat">${IC('i-plus')}Přidat zastávku</button>
+    </div></div>`
+}
+
+/* ---------- Itinerář ---------- */
+
+function itinerar(items, dny) {
+  if (!items.length) return prazdno()
+
   const vicDnu = dny.length > 1
-
-  // Průběžné číslování napříč dny. parity.mjs hlídá, že „Kopírovat“ vyrobí
-  // text s „1. “, „2. “ – kdyby se čísla resetovala v každém dni, přestalo by
-  // to sedět, a hlavně by uživatel nevěděl, kolikátá zastávka to celkem je.
+  // Průběžné číslování napříč dny. `parity` hlídá, že „Kopírovat“ vyrobí text
+  // s „1. “, „2. “ – kdyby se čísla resetovala v každém dni, přestalo by to
+  // sedět, a hlavně by uživatel nevěděl, kolikátá zastávka to celkem je.
   let poradi = 0
 
-  wrap.innerHTML =
-    head +
-    dny
-      .map((den, di) => {
-        const mista = den.map((id) => S.byId[id]).filter(Boolean)
-        const sd = planStats(mista)
-        const hlavicka = vicDnu
-          ? `<div class="denhd">${IC('i-kalendar')}<b>Den ${di + 1}</b>
-              <span>${mista.length} ${mista.length === 1 ? 'zastávka' : mista.length < 5 ? 'zastávky' : 'zastávek'}${
-                mista.length > 1 ? ` · ${fmtKm(sd.road)}` : ''
-              }</span></div>`
-          : ''
-        return (
-          hlavicka +
-          mista
-            .map((p, i) => {
-              const k = KAT[p.k] || {}
-              poradi++
-              const predchozi = i > 0 ? mista[i - 1] : null
-              const leg = predchozi ? dkm(predchozi, p) * KLIKATOST : 0
-              return `${
-                predchozi
-                  ? `<div class="meta" style="margin:-6px 0 8px 22px;display:flex;align-items:center;gap:7px">${IC('i-nav', 'font-size:13px;color:var(--akcent)')}${fmtKm(leg)}</div>`
-                  : ''
-              }
-            <div class="card" data-id="${p.id}" style="--pc:${k.c}"><span class="spine"></span>
-            <span class="dist">${poradi}.</span>
-            <h3>${IC(k.i)}${esc(p.n)}</h3>
-            ${p.sh ? `<div class="short">${esc(p.sh)}</div>` : ''}
-            <div class="meta">${esc(p.r || p.z)} · ${esc(p.d)}${store.notes[p.id] ? ' · ✎ poznámka' : ''}</div>
-            <div class="btnrow" style="margin:9px 0 0">
-              <button class="btn small" data-act="open">Detail</button>
-              <button class="btn small" data-act="up">${IC('i-up')}</button>
-              <button class="btn small" data-act="down">${IC('i-down')}</button>
-              ${vicDnu ? `<button class="btn small" data-act="denzpet" title="O den zpět">${IC('i-kalendar')}${IC('i-up', 'font-size:11px')}</button>` : ''}
-              ${vicDnu ? `<button class="btn small" data-act="dendal" title="O den dál">${IC('i-kalendar')}${IC('i-down', 'font-size:11px')}</button>` : ''}
-              <button class="btn small" data-act="rm">${IC('i-x')}</button>
-            </div></div>`
-            })
-            .join('')
-        )
-      })
-      .join('') +
+  const telo = dny
+    .map((den, di) => {
+      const mista = den.map((id) => S.byId[id]).filter(Boolean)
+      const sd = planStats(mista)
+      const hlavicka = vicDnu
+        ? `<div class="denhd">${IC('i-kalendar')}<b>Den ${di + 1}</b>
+            <span>${mista.length} ${sklonuj(mista.length, 'zastávka', 'zastávky', 'zastávek')}${mista.length > 1 ? ` · ${fmtKm(sd.road)}` : ''}</span></div>`
+        : ''
+
+      return (
+        hlavicka +
+        mista
+          .map((p, i) => {
+            poradi++
+            const posledniVeDni = i === mista.length - 1
+            return zastavka(p, poradi, i === 0 ? null : mista[i - 1], di, dny.length, posledniVeDni, poradi === items.length)
+          })
+          .join('')
+      )
+    })
+    .join('')
+
+  return (
+    sekce('Itinerář – dny a zastávky', { pozn: items.length > 1 ? 'Táhni za úchyt' : '' }) +
+    `<div class="itinerar" id="itinerar">${telo}</div>
+    <button class="pridatzastavku" id="planPridat">${IC('i-plus')}Přidat zastávku</button>` +
     (items.length > 1
-      ? `<div class="btnrow" style="margin-top:4px">
-          <button class="btn small" id="planDen">${IC('i-plus')}Přidat den</button>
+      ? `<div class="btnrow" style="margin-top:10px">
+          <button class="btn small" id="planDen">${IC('i-kalendar')}Přidat den</button>
           ${vicDnu ? `<button class="btn small" id="planBezDnu">Zrušit dny</button>` : ''}
         </div>`
       : '')
+  )
+}
 
-  for (const c of wrap.querySelectorAll('.card[data-id]')) {
-    const id = c.dataset.id
-    c.querySelector('[data-act=open]').onclick = () => goTo(S.byId[id])
-    c.querySelector('[data-act=rm]').onclick = () => togglePlan(id)
-    c.querySelector('[data-act=up]').onclick = () => posun(id, -1)
-    c.querySelector('[data-act=down]').onclick = () => posun(id, 1)
-    // Tlačítka dnů jsou v kartě jen když se plán na dny dělí.
-    const zpet = c.querySelector('[data-act=denzpet]')
-    if (zpet)
-      zpet.onclick = () => {
-        presunDoDne(id, -1)
-        draw()
-      }
-    const dal = c.querySelector('[data-act=dendal]')
-    if (dal)
-      dal.onclick = () => {
-        presunDoDne(id, 1)
-        draw()
-      }
+/**
+ * Jedna zastávka v itineráři.
+ *
+ * Role je odvozená z pozice, ne z dat: první zastávka dne je příjezd, poslední
+ * v celé výpravě cíl, poslední ve dni nocleh. Předloha má u zastávek přesně
+ * tyhle popisky a jsou to jediné, které se z plánu dají poctivě odvodit.
+ */
+function zastavka(p, poradi, predchozi, denIdx, poctDnu, posledniVeDni, uplnePosledni) {
+  const k = KAT[p.k] || {}
+  const obr = obrazekMista(p, PHOTOS)
+  const leg = predchozi ? dkm(predchozi, p) * KLIKATOST : 0
+  const role = uplnePosledni && poradi > 1 ? 'Cíl' : !predchozi ? 'Příjezd' : posledniVeDni && poctDnu > 1 ? 'Nocleh' : 'Zastávka'
+
+  return `<div class="zastavka${rozbaleno === p.id ? ' otevrena' : ''}" data-id="${p.id}" style="--pc:${k.c}">
+    <div class="zastavka-radek">
+      <span class="uchyt" data-uchyt title="Táhni pro změnu pořadí">${IC('i-vice')}</span>
+      <img class="zastavka-obr" src="${obr.src}" alt="" loading="lazy" decoding="async"
+        ${obr.zaloha ? `data-zaloha="${obr.zaloha}" onerror="this.onerror=null;this.src=this.dataset.zaloha"` : ''}
+        ${obr.vyrez ? `style="object-position:${obr.vyrez}"` : ''}>
+      <div class="zastavka-text">
+        <h3><span class="zastavka-cislo">${poradi}</span>${esc(p.n)}</h3>
+        <div class="zastavka-pod">${poctDnu > 1 ? `Den ${denIdx + 1} <span class="tecka">•</span> ` : ''}${role}</div>
+        <div class="zastavka-meta">${
+          predchozi ? `${fmtKm(leg)} <span class="tecka">•</span> ${fmtCas((leg / KMH) * 1)}` : esc(p.r || p.z)
+        }${store.notes[p.id] ? ` <span class="tecka">•</span> ${IC('i-quill', 'font-size:12px')}poznámka` : ''}</div>
+      </div>
+      <button class="zastavka-vice" data-act="vice" title="Co s touhle zastávkou">${IC('i-vice')}</button>
+    </div>
+    <div class="zastavka-akce">
+      <button class="btn small" data-act="open">${IC('i-map')}Detail</button>
+      <button class="btn small" data-act="up">${IC('i-up')}Nahoru</button>
+      <button class="btn small" data-act="down">${IC('i-down')}Dolů</button>
+      ${poctDnu > 1 ? `<button class="btn small" data-act="denzpet">${IC('i-kalendar')}O den zpět</button>` : ''}
+      ${poctDnu > 1 ? `<button class="btn small" data-act="dendal">${IC('i-kalendar')}O den dál</button>` : ''}
+      <button class="btn small" data-act="rm">${IC('i-x')}Odebrat</button>
+    </div>
+  </div>`
+}
+
+/* ---------- Mapa ---------- */
+
+function mapaDil(items) {
+  if (!items.length) return prazdno()
+  return (
+    sekce('Trasa na mapě', { pozn: `${items.length} ${sklonuj(items.length, 'zastávka', 'zastávky', 'zastávek')}` }) +
+    `<div class="empty" style="padding:26px 24px">${IC('i-route')}Trasa se kreslí na hlavní mapě – okrovou čarou přes všechny zastávky.
+      <div class="btnrow" style="justify-content:center;margin-bottom:0">
+        <button class="btn small primary" id="planNaMapu">${IC('i-map')}Ukázat na mapě</button>
+      </div></div>`
+  )
+}
+
+/* ---------- spodní lišta ---------- */
+
+function lista(items) {
+  return `<div class="planlista">
+    <div class="planlista-stav">${IC('i-check')}<div><b>Uloženo</b><span>Změny jsou v telefonu</span></div></div>
+    <button class="btn primary" id="planDoNavigace" ${items.length ? '' : 'disabled'}>${IC('i-nav')}Odeslat do navigace</button>
+  </div>`
+}
+
+/* ================= obsluha ================= */
+
+function napoj(wrap, items) {
+  for (const b of wrap.querySelectorAll('#planSegment button')) {
+    b.onclick = () => {
+      dil = b.dataset.seg
+      renderPlan()
+    }
   }
+
+  for (const b of wrap.querySelectorAll('[data-vyprava]')) {
+    b.onclick = () => {
+      const i = Number(b.dataset.vyprava)
+      if (i < 0) return
+      prepniVypravu(i)
+      draw()
+      toast(`Výprava: ${store.vypravaNazev || BEZ_NAZVU}`)
+    }
+  }
+
+  const nova = document.getElementById('vypNova')
+  if (nova)
+    nova.onclick = () => {
+      const nazev = prompt('Jak se bude výprava jmenovat?', '')
+      if (nazev === null) return
+      novaVyprava(nazev)
+      draw()
+      toast('Nová výprava založená')
+    }
+
+  const vice = document.getElementById('planVice')
+  if (vice) vice.onclick = () => prepniMenu()
+
+  const pridat = document.getElementById('planPridat')
+  if (pridat)
+    pridat.onclick = () =>
+      otevriVyber((p) => {
+        store.plan.push(p.id)
+        save()
+        draw()
+        toast(`${p.n.split(/\s[–(]/)[0]} přidáno do plánu`)
+      })
+
+  const naMapu = document.getElementById('planNaMapu')
+  if (naMapu)
+    naMapu.onclick = () => {
+      aktivujZalozku('map')
+      priblizNaFiltr(items)
+    }
+
+  const opt = document.getElementById('planOpt')
+  if (opt) opt.onclick = optimalizuj
 
   const den = document.getElementById('planDen')
   if (den)
@@ -157,6 +337,7 @@ export function renderPlan() {
       pridejDen()
       draw()
     }
+
   const bezDnu = document.getElementById('planBezDnu')
   if (bezDnu)
     bezDnu.onclick = () => {
@@ -164,7 +345,36 @@ export function renderPlan() {
       draw()
       toast('Dny zrušeny, zastávky zůstaly')
     }
-  bindPlanBtns()
+
+  const doNav = document.getElementById('planDoNavigace')
+  if (doNav) doNav.onclick = otevriNavigaci
+
+  for (const z of wrap.querySelectorAll('.zastavka[data-id]')) {
+    const id = z.dataset.id
+    z.querySelector('[data-act=vice]').onclick = () => {
+      rozbaleno = rozbaleno === id ? '' : id
+      renderPlan()
+    }
+    z.querySelector('[data-act=open]').onclick = () => goTo(S.byId[id])
+    z.querySelector('[data-act=rm]').onclick = () => togglePlan(id)
+    z.querySelector('[data-act=up]').onclick = () => posun(id, -1)
+    z.querySelector('[data-act=down]').onclick = () => posun(id, 1)
+    const zpet = z.querySelector('[data-act=denzpet]')
+    if (zpet)
+      zpet.onclick = () => {
+        presunDoDne(id, -1)
+        draw()
+      }
+    const dal = z.querySelector('[data-act=dendal]')
+    if (dal)
+      dal.onclick = () => {
+        presunDoDne(id, 1)
+        draw()
+      }
+  }
+
+  napojTahani(wrap)
+  napojNavigaci()
 }
 
 /** Posune zastávku o jedno místo nahoru (−1) nebo dolů (+1). */
@@ -177,86 +387,117 @@ function posun(id, smer) {
   draw()
 }
 
-function bindPlanBtns() {
-  const nav = document.getElementById('planNav')
-  if (!nav) return
+/**
+ * Tahání za úchyt.
+ *
+ * Ukazatelové události, ne HTML5 drag-and-drop: ten na mobilu nefunguje.
+ * Přesouvá se jen `store.plan`, dělení na dny zůstává jak bylo – délky dnů
+ * se počítají z počtů, takže zastávka po přesunu spadne do dne podle pozice
+ * a žádná se neztratí.
+ */
+function napojTahani(wrap) {
+  const seznam = wrap.querySelector('#itinerar')
+  if (!seznam) return
 
-  /** Zastávky plánu jako místa, ořezané na to, co unese odkaz. */
-  const zastavky = () => store.plan.map((id) => S.byId[id]).filter(Boolean).slice(0, MAX_DO_NAVIGACE)
+  for (const uchyt of seznam.querySelectorAll('[data-uchyt]')) {
+    uchyt.onpointerdown = (e) => {
+      const zastavkaEl = uchyt.closest('.zastavka')
+      if (!zastavkaEl) return
+      e.preventDefault()
+      uchyt.setPointerCapture(e.pointerId)
 
-  // Google Maps unese celou trasu. Zůstává pod #planNav a otevírá okno rovnou
-  // v obsluze kliknutí – parity.mjs na to spoléhá a prohlížeče blokují
-  // window.open, které nepřijde přímo z gesta uživatele.
-  nav.onclick = () => {
-    const items = zastavky()
-    if (!items.length) {
-      toast('Plán je prázdný')
-      return
-    }
-    const dest = items[items.length - 1]
-    const wp = items.slice(0, -1).map((p) => `${p.lat},${p.lon}`).join('|')
-    window.open(
-      `https://www.google.com/maps/dir/?api=1&destination=${dest.lat},${dest.lon}${wp ? `&waypoints=${encodeURIComponent(wp)}` : ''}`,
-      '_blank'
-    )
-  }
+      const id = zastavkaEl.dataset.id
+      zastavkaEl.classList.add('tahne')
+      let cil = store.plan.indexOf(id)
 
-  // Apple Maps ani Waze neumějí spolehlivě předat víc zastávek najednou.
-  // Posílá se proto první zastávka a řekne se to nahlas – jinak by si člověk
-  // na cestě myslel, že má v navigaci celou trasu, a měl by tam jeden bod.
-  const jedenCil = (adresa, jmeno) => () => {
-    const items = zastavky()
-    if (!items.length) {
-      toast('Plán je prázdný')
-      return
-    }
-    window.open(adresa(items[0]), '_blank')
-    if (items.length > 1) toast(`${jmeno}: poslala jsem první zastávku`)
-  }
-
-  document.getElementById('planNavApple').onclick = jedenCil(
-    (p) => `https://maps.apple.com/?daddr=${p.lat},${p.lon}&dirflg=d`,
-    'Apple Maps'
-  )
-  document.getElementById('planNavWaze').onclick = jedenCil(
-    (p) => `https://waze.com/ul?ll=${p.lat},${p.lon}&navigate=yes`,
-    'Waze'
-  )
-
-  // Hladové řazení: začni u nejbližšího místa a pak vždy skoč na nejbližší další.
-  const opt = document.getElementById('planOpt')
-  if (opt)
-    opt.onclick = () => {
-      let rest = store.plan.map((id) => S.byId[id]).filter(Boolean)
-      if (rest.length < 3) return
-      const start = S.userPos ? rest.reduce((a, b) => (dkm(S.userPos, a) < dkm(S.userPos, b) ? a : b)) : rest[0]
-      const out = [start]
-      rest = rest.filter((p) => p !== start)
-      while (rest.length) {
-        const last = out[out.length - 1]
-        let best = rest[0]
-        let bd = dkm(last, best)
-        for (const p of rest) {
-          const d = dkm(last, p)
-          if (d < bd) {
-            bd = d
-            best = p
-          }
+      const posun = (ev) => {
+        // Cílová pozice se určuje podle středů ostatních zastávek – tak se
+        // chová každý seznam, ve kterém se dá tahat.
+        const vsechny = [...seznam.querySelectorAll('.zastavka')]
+        let novy = 0
+        for (const el of vsechny) {
+          if (el === zastavkaEl) continue
+          const r = el.getBoundingClientRect()
+          if (ev.clientY > r.top + r.height / 2) novy++
         }
-        out.push(best)
-        rest = rest.filter((p) => p !== best)
+        cil = Math.max(0, Math.min(store.plan.length - 1, novy))
+        zastavkaEl.style.transform = `translateY(${ev.clientY - (zastavkaEl.getBoundingClientRect().top + zastavkaEl.offsetHeight / 2)}px)`
       }
-      store.plan = out.map((p) => p.id)
-      save()
-      draw()
-      toast('Seřazeno podle nejkratší trasy')
+
+      uchyt.onpointermove = posun
+      uchyt.onpointerup = () => {
+        uchyt.onpointermove = null
+        uchyt.onpointerup = null
+        zastavkaEl.classList.remove('tahne')
+        zastavkaEl.style.transform = ''
+        const kde = store.plan.indexOf(id)
+        if (kde >= 0 && cil !== kde) {
+          store.plan.splice(kde, 1)
+          store.plan.splice(cil, 0, id)
+          save()
+          draw()
+        }
+      }
     }
+  }
+}
+
+/** Hladové řazení: začni u nejbližšího místa a pak vždy skoč na nejbližší další. */
+function optimalizuj() {
+  let rest = store.plan.map((id) => S.byId[id]).filter(Boolean)
+  if (rest.length < 3) return
+  const start = S.userPos ? rest.reduce((a, b) => (dkm(S.userPos, a) < dkm(S.userPos, b) ? a : b)) : rest[0]
+  const out = [start]
+  rest = rest.filter((p) => p !== start)
+  while (rest.length) {
+    const last = out[out.length - 1]
+    let best = rest[0]
+    let bd = dkm(last, best)
+    for (const p of rest) {
+      const d = dkm(last, p)
+      if (d < bd) {
+        bd = d
+        best = p
+      }
+    }
+    out.push(best)
+    rest = rest.filter((p) => p !== best)
+  }
+  store.plan = out.map((p) => p.id)
+  save()
+  draw()
+  toast('Seřazeno podle nejkratší trasy')
+}
+
+/* ---------- nabídka „…" ---------- */
+
+function prepniMenu() {
+  const m = document.getElementById('planMenu')
+  if (!m) return
+  if (!m.hidden) {
+    m.hidden = true
+    return
+  }
+
+  m.innerHTML = `
+    <button id="planPrejmenuj">${IC('i-quill')}Přejmenovat výpravu</button>
+    <button id="planShare">${IC('i-copy')}Kopírovat plán</button>
+    <button id="planClear">${IC('i-trash')}Vyprázdnit zastávky</button>
+    <button id="planSmaz">${IC('i-x')}Smazat celou výpravu</button>`
+  m.hidden = false
+
+  document.getElementById('planPrejmenuj').onclick = () => {
+    const n = prompt('Název výpravy:', store.vypravaNazev || '')
+    if (n === null) return
+    prejmenujVypravu(n)
+    renderPlan()
+  }
 
   document.getElementById('planShare').onclick = async () => {
     const items = store.plan.map((id) => S.byId[id]).filter(Boolean)
     const st = planStats(items)
     const t =
-      `🚐 Plán Vandrbuch (${fmtKm(st.road)})\n` +
+      `🚐 ${store.vypravaNazev || 'Plán Vandrbuch'} (${fmtKm(st.road)})\n` +
       items
         .map((p, i) => `${i + 1}. ${p.n} — ${p.lat},${p.lon}${store.notes[p.id] ? `\n   ✎ ${store.notes[p.id]}` : ''}`)
         .join('\n')
@@ -269,10 +510,87 @@ function bindPlanBtns() {
   }
 
   document.getElementById('planClear').onclick = () => {
-    if (confirm('Vyprázdnit plán?')) {
-      store.plan = []
-      save()
-      draw()
-    }
+    if (!confirm('Vyprázdnit zastávky téhle výpravy?')) return
+    store.plan = []
+    store.planDny = []
+    save()
+    draw()
   }
+
+  document.getElementById('planSmaz').onclick = () => {
+    if (!confirm(`Smazat výpravu „${store.vypravaNazev || BEZ_NAZVU}" i se zastávkami?`)) return
+    smazAktivniVypravu()
+    draw()
+    toast('Výprava smazána')
+  }
+}
+
+/* ---------- navigace ---------- */
+
+function otevriNavigaci() {
+  const s = document.getElementById('navSheet')
+  s.classList.add('show')
+  document.getElementById('backdrop').classList.add('show')
+}
+
+export function zavriNavigaci() {
+  document.getElementById('navSheet').classList.remove('show')
+  document.getElementById('backdrop').classList.remove('show')
+}
+
+export const jeOtevrenaNavigace = () => document.getElementById('navSheet').classList.contains('show')
+
+/**
+ * Naváže tlačítka v nabídce navigace.
+ *
+ * Nabídka je staticky v `index.html`, takže se tlačítka nevyrábějí znovu –
+ * `#planNav` musí existovat od startu, hlídá to `check-handlers`.
+ */
+function napojNavigaci() {
+  const nav = document.getElementById('planNav')
+  if (!nav) return
+
+  /** Zastávky plánu jako místa, ořezané na to, co unese odkaz. */
+  const zastavky = () => store.plan.map((id) => S.byId[id]).filter(Boolean).slice(0, MAX_DO_NAVIGACE)
+
+  // Google Maps unese celou trasu. Okno se otevírá rovnou v obsluze kliknutí –
+  // prohlížeče blokují window.open, které nepřijde přímo z gesta uživatele,
+  // a `parity` na to spoléhá.
+  nav.onclick = () => {
+    const items = zastavky()
+    if (!items.length) {
+      toast('Plán je prázdný')
+      return
+    }
+    const dest = items[items.length - 1]
+    const wp = items.slice(0, -1).map((p) => `${p.lat},${p.lon}`).join('|')
+    window.open(
+      `https://www.google.com/maps/dir/?api=1&destination=${dest.lat},${dest.lon}${wp ? `&waypoints=${encodeURIComponent(wp)}` : ''}`,
+      '_blank'
+    )
+    zavriNavigaci()
+  }
+
+  // Apple Maps ani Waze neumějí spolehlivě předat víc zastávek najednou.
+  // Posílá se proto první zastávka a řekne se to nahlas – jinak by si člověk
+  // na cestě myslel, že má v navigaci celou trasu, a měl by tam jeden bod.
+  const jedenCil = (adresa, jmeno) => () => {
+    const items = zastavky()
+    if (!items.length) {
+      toast('Plán je prázdný')
+      return
+    }
+    window.open(adresa(items[0]), '_blank')
+    zavriNavigaci()
+    if (items.length > 1) toast(`${jmeno}: poslala jsem první zastávku`)
+  }
+
+  document.getElementById('planNavApple').onclick = jedenCil(
+    (p) => `https://maps.apple.com/?daddr=${p.lat},${p.lon}&dirflg=d`,
+    'Apple Maps'
+  )
+  document.getElementById('planNavWaze').onclick = jedenCil(
+    (p) => `https://waze.com/ul?ll=${p.lat},${p.lon}&navigate=yes`,
+    'Waze'
+  )
 }

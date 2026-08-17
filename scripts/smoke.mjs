@@ -244,6 +244,43 @@ await page.waitForTimeout(400)
 await page.click('#tabs button[data-tab="plan"]')
 await page.waitForTimeout(300)
 await kontrola('prázdný plán má hlášku', () => page.locator('#planWrap .empty').count(), 1)
+await kontrola('segment Přehled · Plán · Mapa', () => page.locator('#planSegment button').count(), 3)
+// I bez jediné zastávky má člověk jednu výpravu – tu bezejmennou, kterou měl
+// odjakživa. Kdyby se seznam ukázal prázdný, vypadalo by to, že se něco ztratilo.
+await kontrola('výprava je v seznamu i prázdná', () => page.locator('.vypravaradek').count(), 1)
+await kontrola('aktivní výprava je označená', () => page.locator('.vypravaradek.on').count(), 1)
+
+// „Přidat zastávku“ → vybírátko míst → zastávka v plánu
+await page.click('#planPridat')
+await page.waitForTimeout(600)
+await kontrola('vybírátko míst se otevřelo', () => page.locator('#vyberMista.show').count(), 1)
+await kontrola('vybírátko nabízí místa', () => page.locator('#vmBody .radek').count().then((n) => n > 0))
+await page.locator('#vmBody .radek').first().click()
+await page.waitForTimeout(700)
+await kontrola('zastávka přibyla do plánu', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).plan.length),
+  1
+)
+await kontrola('počítadlo nad záložkou Plán', () => page.locator('#planCount').innerText(), '1')
+
+// Navigace je nově pod jedním tlačítkem, ne třemi v řádku.
+await page.click('#planDoNavigace')
+await page.waitForTimeout(500)
+await kontrola('nabídka navigace se otevřela', () => page.locator('#navSheet.show').count(), 1)
+await kontrola('tři cíle navigace', () => page.locator('#navSheet .navvolba').count(), 3)
+await page.click('#backdrop')
+await page.waitForTimeout(400)
+
+// uklidit po sobě, ať další kontroly počítají s prázdným plánem
+await page.evaluate(() => document.getElementById('planVice').click())
+await page.waitForTimeout(300)
+page.once('dialog', (d) => d.accept())
+await page.evaluate(() => document.getElementById('planClear').click())
+await page.waitForTimeout(500)
+await kontrola('plán se dá vyprázdnit', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).plan.length),
+  0
+)
 
 // filtry – tlačítko je od přestavby rozvržení ve vyhledávacím řádku Mapy,
 // takže se na mapu musí přepnout. Dřív to byl plovoucí knoflík vpravo dole,
@@ -258,7 +295,7 @@ await kontrola('prázdná výprava nabízí průvodce', () => page.locator('#vkZ
 await kontrola('bez uložených míst je hláška', () => page.locator('#mapUlozene .mapdolu-prazdno').count(), 1)
 await page.click('#fabPlus')
 await page.waitForTimeout(250)
-await kontrola('„+" otevře nabídku', () => page.locator('#plusMenu button').count(), 2)
+await kontrola('„+" otevře nabídku', () => page.locator('#plusMenu button').count(), 3)
 await page.click('#fabPlus')
 await page.waitForTimeout(250)
 await kontrola('druhé ťuknutí nabídku zavře', () => page.locator('#plusMenu[hidden]').count(), 1)

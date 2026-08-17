@@ -1,0 +1,135 @@
+/* ===== obrazovka Plán (v originále jen sloupec karet) =====
+ *
+ * Podle předlohy `grafika/…11_09_50 (4).png`: název výpravy, segment,
+ * karta trasy se statistikami, itinerář s náhledy a spodní lišta.
+ * Segment, panel statistik a popisky sekcí jsou hotové díly z `vzory.css`.
+ */
+
+/* ---------- hlavička výpravy ---------- */
+.planhlava{display:flex;align-items:center;gap:12px;margin:2px 2px 14px}
+.planhlava-text{flex:1;min-width:0}
+.planhlava h2{margin:0;font-family:var(--f-disp);font-weight:700;font-size:1.5rem;line-height:1.15;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.planhlava .meta{margin-top:3px}
+
+#planMenu{margin:0 2px 14px;background:var(--plocha);border:var(--line);border-radius:var(--r);
+  box-shadow:var(--stin-2);padding:6px;animation:planMenuIn .18s var(--pop)}
+#planMenu[hidden]{display:none}
+#planMenu button{display:flex;gap:10px;align-items:center;width:100%;background:none;border:0;
+  padding:11px 12px;border-radius:var(--r-s);font:inherit;font-size:.88rem;font-weight:700;
+  color:var(--text);text-align:left}
+#planMenu button svg.ic{font-size:18px;color:var(--akcent);flex:0 0 auto}
+#planMenu button:active{background:var(--plocha2)}
+@keyframes planMenuIn{from{opacity:0;transform:translateY(-6px)}}
+
+/* ---------- seznam výprav ---------- */
+.vypravy{display:flex;flex-direction:column;gap:8px}
+.vypravaradek{display:flex;gap:11px;align-items:center;width:100%;text-align:left;
+  background:var(--plocha);border:var(--line);border-radius:var(--r-s);box-shadow:var(--stin-1);
+  padding:11px 13px;font:inherit;transition:transform .16s var(--pop),background .18s}
+.vypravaradek:active{transform:var(--stisk)}
+.vypravaradek svg.ic{font-size:19px;color:var(--text3);flex:0 0 auto}
+.vypravaradek div{flex:1;min-width:0}
+.vypravaradek b{display:block;font-family:var(--f-disp);font-weight:700;font-size:1rem;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vypravaradek span{font-size:.74rem;font-weight:600;color:var(--text2)}
+.vypravaradek i{flex:0 0 auto;font-style:normal;font-size:.62rem;font-weight:800;letter-spacing:.8px;
+  text-transform:uppercase;color:var(--na-zvyrazneni);background:var(--zvyrazneni);
+  border-radius:var(--r-pill);padding:4px 9px}
+.vypravaradek.on{background:var(--plocha-zelena);border-color:var(--akcent)}
+.vypravaradek.on svg.ic{color:var(--akcent)}
+
+/* ---------- karta trasy ---------- */
+.trasakarta{background:var(--plocha);border:var(--line);border-radius:var(--r);box-shadow:var(--stin-2);
+  padding:15px 17px;display:flex;flex-direction:column;gap:15px}
+.trasakarta .btn.zvyrazneny{background:var(--zvyrazneni);color:var(--na-zvyrazneni);border-color:transparent;
+  justify-content:center;margin:0;font-weight:800}
+.trasakarta .btn.zvyrazneny svg.ic{color:var(--na-zvyrazneni)}
+
+/* ---------- itinerář ---------- */
+.itinerar{display:flex;flex-direction:column;gap:9px}
+.zastavka{background:var(--plocha);border:var(--line);border-radius:var(--r);box-shadow:var(--stin-1);
+  overflow:hidden;transition:box-shadow .18s}
+.zastavka.tahne{box-shadow:var(--stin-3);position:relative;z-index:5;opacity:.94}
+.zastavka-radek{display:flex;gap:10px;align-items:center;padding:10px 11px}
+/* Úchyt musí vypnout posun stránky prstem, jinak by tažení rolovalo seznam. */
+.uchyt{flex:0 0 auto;width:24px;display:grid;place-items:center;color:var(--text3);
+  touch-action:none;cursor:grab}
+.uchyt svg.ic{font-size:17px;transform:rotate(90deg)}
+.zastavka-obr{flex:0 0 auto;width:62px;height:62px;border-radius:var(--r-s);object-fit:cover;background:var(--plocha2)}
+.zastavka-text{flex:1;min-width:0}
+.zastavka-text h3{margin:0;font-family:var(--f-disp);font-weight:700;font-size:.98rem;line-height:1.2;
+  display:flex;gap:7px;align-items:baseline;overflow:hidden}
+.zastavka-cislo{flex:0 0 auto;width:19px;height:19px;border-radius:50%;background:var(--pc,var(--akcent));
+  color:var(--plocha);font-family:var(--f-body);font-size:.62rem;font-weight:800;
+  display:inline-grid;place-items:center;align-self:center}
+.zastavka-pod{margin-top:3px;font-size:.72rem;font-weight:700;color:var(--akcent)}
+.zastavka-meta{margin-top:2px;font-size:.72rem;font-weight:600;color:var(--text2);
+  display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.zastavka-vice{flex:0 0 auto;width:32px;height:32px;border-radius:50%;border:0;background:none;
+  display:grid;place-items:center}
+.zastavka-vice svg.ic{font-size:17px;color:var(--text3)}
+/* Ovládání zastávky je schované, dokud se neťukne na „…". Na řádku by se šest
+ * tlačítek nevešlo a předloha je tam nemá. */
+.zastavka-akce{display:none;flex-wrap:wrap;gap:6px;padding:0 11px 11px 45px}
+.zastavka.otevrena .zastavka-akce{display:flex}
+.zastavka-akce .btn{margin:0}
+
+/* Čárkované tlačítko, jak ho má předloha pod itinerářem. */
+.pridatzastavku{display:flex;gap:8px;align-items:center;justify-content:center;width:100%;
+  margin-top:10px;padding:13px;border:1.5px dashed var(--obrys-silny);border-radius:var(--r);
+  background:none;font:inherit;font-size:.88rem;font-weight:700;color:var(--text2);
+  transition:transform .16s var(--pop),background .18s}
+.pridatzastavku svg.ic{font-size:17px;color:var(--akcent)}
+.pridatzastavku:active{transform:var(--stisk);background:var(--plocha)}
+
+/* ---------- spodní lišta ---------- */
+/* „Uloženo" říká nahlas to, co aplikace dělá tiše. Na cestě, kde je záloha
+ * jediná pojistka, je to informace, kterou člověk chce vidět. */
+.planlista{display:flex;gap:12px;align-items:center;margin:18px 0 4px;padding:12px 14px;
+  background:var(--plocha);border:var(--line);border-radius:var(--r);box-shadow:var(--stin-1)}
+.planlista-stav{flex:1;min-width:0;display:flex;gap:9px;align-items:center}
+.planlista-stav svg.ic{font-size:17px;color:var(--akcent);flex:0 0 auto}
+.planlista-stav b{display:block;font-size:.82rem;font-weight:800}
+.planlista-stav span{font-size:.68rem;font-weight:600;color:var(--text2)}
+.planlista .btn{flex:0 0 auto;margin:0;white-space:nowrap}
+.planlista .btn[disabled]{opacity:.45}
+
+/* ---------- nabídka navigace ---------- */
+#navSheet{position:fixed;inset:auto 0 0 0;z-index:1360;background:var(--plocha);
+  border-radius:var(--r-l) var(--r-l) 0 0;box-shadow:var(--stin-panel);
+  transform:translateY(106%);visibility:hidden;transition:transform .34s var(--pop),visibility 0s linear .34s}
+#navSheet.show{transform:translateY(0);visibility:visible;transition:transform .34s var(--pop),visibility 0s}
+#navSheet .grip{width:58px;height:6px;border-radius:var(--r-pill);background:var(--text);opacity:.25;margin:12px auto 0}
+#navSheet .body{padding:10px 20px calc(env(safe-area-inset-bottom) + 20px)}
+#navSheet h2{font-family:var(--f-disp);font-weight:700;font-size:1.2rem;margin:0 0 12px;
+  display:flex;gap:9px;align-items:center}
+#navSheet h2 svg.ic{font-size:20px;color:var(--akcent)}
+.navvolba{display:flex;gap:12px;align-items:center;width:100%;text-align:left;margin-bottom:8px;
+  background:var(--bg);border:var(--line);border-radius:var(--r-s);padding:13px 14px;font:inherit;
+  transition:transform .16s var(--pop)}
+.navvolba:active{transform:var(--stisk)}
+.navvolba > svg.ic{font-size:20px;color:var(--akcent);flex:0 0 auto}
+.navvolba div{flex:1;min-width:0}
+.navvolba b{display:block;font-size:.92rem;font-weight:800}
+.navvolba span{font-size:.72rem;font-weight:600;color:var(--text2)}
+.navvolba .sip{font-size:15px;color:var(--text3);flex:0 0 auto}
+
+/* ---------- vybírátko míst ---------- */
+#vyberMista{position:fixed;inset:auto 0 0 0;z-index:1360;background:var(--plocha);
+  border-radius:var(--r-l) var(--r-l) 0 0;box-shadow:var(--stin-panel);max-height:88vh;
+  display:flex;flex-direction:column;
+  transform:translateY(106%);visibility:hidden;transition:transform .34s var(--pop),visibility 0s linear .34s}
+#vyberMista.show{transform:translateY(0);visibility:visible;transition:transform .34s var(--pop),visibility 0s}
+#vyberMista .grip{width:58px;height:6px;border-radius:var(--r-pill);background:var(--text);opacity:.25;
+  margin:12px auto 0;flex:0 0 auto}
+#vyberMista .body{overflow-y:auto;padding:8px 16px calc(env(safe-area-inset-bottom) + 16px)}
+#vmClose{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:50%;border:var(--line);
+  background:var(--bg);display:grid;place-items:center;box-shadow:var(--stin-1);z-index:2}
+#vmClose svg.ic{font-size:16px;color:var(--text2)}
+#vmClose:active{transform:var(--stisk)}
+.vmhead{margin:2px 44px 12px 2px}
+.vmhead h2{font-family:var(--f-disp);font-weight:700;font-size:1.25rem;margin:0;
+  display:flex;gap:9px;align-items:center}
+.vmhead h2 svg.ic{font-size:19px;color:var(--akcent)}
+.vmhead .meta{margin-top:2px}

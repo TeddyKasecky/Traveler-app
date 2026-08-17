@@ -148,9 +148,11 @@ export function zalohaData(store, photos, prefs) {
     stav: store.stav,
     rating: store.rating,
     plan: store.plan,
-    // Bez tohohle řádku by se rozdělení na dny při záloze tiše ztratilo
-    // a poznalo by se to až po obnově na jiném telefonu.
+    // Bez těchhle tří řádků by se rozdělení na dny a odložené výpravy při
+    // záloze tiše ztratily a poznalo by se to až po obnově na jiném telefonu.
     planDny: store.planDny || [],
+    vypravy: store.vypravy || [],
+    vypravaNazev: store.vypravaNazev || '',
     prio: store.prio,
     photos: photos || {},
     prefs: prefs || {},
@@ -175,8 +177,11 @@ export function obnovZalohu(store, d, photos, prefs) {
   store.rating = Object.assign(store.rating, d.rating || {})
   store.prio = Object.assign(store.prio, d.prio || {})
   if (Array.isArray(d.plan)) store.plan = d.plan
-  // Ze starší zálohy `planDny` chybí – pak se plán prostě nedělí na dny.
+  // Ze starší zálohy `planDny` a `vypravy` chybí – pak se plán prostě nedělí
+  // na dny a výprava je jedna, jako bylo dřív.
   if (Array.isArray(d.planDny)) store.planDny = d.planDny
+  if (Array.isArray(d.vypravy)) store.vypravy = d.vypravy
+  if (typeof d.vypravaNazev === 'string') store.vypravaNazev = d.vypravaNazev
   if (photos && d.photos) Object.assign(photos, d.photos)
   if (prefs && d.prefs) Object.assign(prefs, d.prefs)
 }

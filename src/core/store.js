@@ -66,6 +66,10 @@ export const store = nacti(KEY, {
   /** Délky dnů v plánu, např. [3,2]. Prázdné = plán se na dny nedělí.
    *  Vedle `plan`, ne místo něj – viz views/plan/dny.js. */
   planDny: [],
+  /** Odložené výpravy [{nazev, plan, planDny}]. Aktivní zůstává v `plan`. */
+  vypravy: [],
+  /** Název aktivní výpravy. Prázdný = „Náš plán“. Viz views/plan/vypravy.js. */
+  vypravaNazev: '',
   prio: {},
   dataOverride: null,
   seen: false,

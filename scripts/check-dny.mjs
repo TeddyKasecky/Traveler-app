@@ -108,5 +108,85 @@ priprav(['a', 'b', 'c'], [1, 2])
 zrusDny()
 t('zrušení dnů zachová zastávky i pořadí', jako(store.plan) === jako(['a', 'b', 'c']) && store.planDny.length === 0)
 
+/* ================= výpravy ================= */
+
+// Stejná past jako u dnů, jen o patro výš: přepnutí výpravy sahá na `plan`
+// i `planDny` naráz. Kdyby se aktivní výprava někam neodložila, zastávky by
+// zmizely tiše a nevratně – uživatel by to poznal, až by se chtěl vrátit.
+console.log('\nVýpravy\n')
+
+const { seznamVyprav, prepniVypravu, novaVyprava, smazAktivniVypravu, BEZ_NAZVU } = await import(
+  '../src/views/plan/vypravy.js'
+)
+
+/** Nastaví stav včetně odložených výprav. */
+function pripravV(plan, planDny, vypravy, nazev) {
+  priprav(plan, planDny)
+  store.vypravy = JSON.parse(JSON.stringify(vypravy))
+  store.vypravaNazev = nazev
+}
+
+/** Všechny zastávky napříč aktivní i odloženými výpravami, seřazené. */
+const vsechnyZastavky = () =>
+  [...store.plan, ...store.vypravy.flatMap((v) => v.plan)].sort().join(',')
+
+pripravV(['a', 'b'], [], [], '')
+t('bez klíče `vypravy` je jedna výprava beze jména', seznamVyprav().length === 1 && seznamVyprav()[0].nazev === BEZ_NAZVU)
+
+pripravV(['a', 'b', 'c'], [2, 1], [{ nazev: 'Dolomity', plan: ['d', 'e'], planDny: [] }], 'Alpy')
+{
+  const pred = vsechnyZastavky()
+  prepniVypravu(0)
+  t('přepnutí nahraje vybranou výpravu', jako(store.plan) === jako(['d', 'e']) && store.vypravaNazev === 'Dolomity')
+  t('přepnutí odloží tu předchozí', jako(store.vypravy[0].plan) === jako(['a', 'b', 'c']))
+  t('přepnutí odloží i její dny', jako(store.vypravy[0].planDny) === jako([2, 1]))
+  t('přepnutím se neztratí ani jedna zastávka', vsechnyZastavky() === pred)
+  t('dny se přepnutím přenesly správně', jako(dnyPlanu()) === jako([['d', 'e']]))
+}
+
+pripravV(['a', 'b', 'c'], [2, 1], [{ nazev: 'Dolomity', plan: ['d'], planDny: [] }], 'Alpy')
+{
+  const pred = vsechnyZastavky()
+  prepniVypravu(0)
+  prepniVypravu(0)
+  t('přepnutí tam a zpět vrátí přesně původní stav', jako(store.plan) === jako(['a', 'b', 'c']))
+  t('přepnutí tam a zpět vrátí i dny', jako(store.planDny) === jako([2, 1]))
+  t('přepnutí tam a zpět nic neztratí', vsechnyZastavky() === pred)
+}
+
+pripravV(['a', 'b'], [1, 1], [], 'Alpy')
+{
+  novaVyprava('Norsko')
+  t('nová výprava začíná prázdná', store.plan.length === 0 && store.planDny.length === 0)
+  t('nová výprava odloží tu předchozí i s dny', jako(store.vypravy[0].plan) === jako(['a', 'b']) && jako(store.vypravy[0].planDny) === jako([1, 1]))
+  t('nová výprava má svůj název', store.vypravaNazev === 'Norsko')
+}
+
+pripravV([], [], [], '')
+novaVyprava('Prázdná')
+t('prázdná aktivní výprava se neodkládá', store.vypravy.length === 0)
+
+pripravV(['a'], [], [{ nazev: 'Dolomity', plan: ['d', 'e'], planDny: [1, 1] }], 'Alpy')
+{
+  smazAktivniVypravu()
+  t('smazání aktivní nahraje první odloženou', jako(store.plan) === jako(['d', 'e']) && store.vypravaNazev === 'Dolomity')
+  t('smazání aktivní přenese i její dny', jako(store.planDny) === jako([1, 1]))
+  t('smazaná výprava zmizí ze seznamu', store.vypravy.length === 0)
+}
+
+pripravV(['a', 'b'], [1, 1], [{ nazev: 'Dolomity', plan: ['d'], planDny: [] }], 'Alpy')
+{
+  const z = JSON.parse(JSON.stringify(zalohaData(store, {}, {})))
+  pripravV([], [], [], '')
+  obnovZalohu(store, z, {}, {})
+  t('záloha nese odložené výpravy', store.vypravy.length === 1 && jako(store.vypravy[0].plan) === jako(['d']))
+  t('záloha nese název aktivní výpravy', store.vypravaNazev === 'Alpy')
+  t('obnova vrátí aktivní plán i dny', jako(store.plan) === jako(['a', 'b']) && jako(store.planDny) === jako([1, 1]))
+}
+
+pripravV(['a', 'b'], [], [{ nazev: 'X', plan: ['c'], planDny: [] }], 'Alpy')
+obnovZalohu(store, { plan: ['x', 'y'] }, {}, {})
+t('stará záloha bez výprav je nesmaže', store.vypravy.length === 1 && jako(store.plan) === jako(['x', 'y']))
+
 console.log(`\n${ok}/${ok + chyb} kontrol prošlo`)
 process.exit(chyb ? 1 : 0)

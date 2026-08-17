@@ -23,16 +23,18 @@ import { toast } from './components/toast.js'
 import { initSheet, jeOtevreny as jeOtevrenyDetail } from './components/sheet.js'
 import { initWizard } from './components/wizard.js'
 import { initPlusMenu } from './components/plusMenu.js'
+import { initVyberMista, otevriVyber } from './components/vyberMista.js'
 import { initIntro } from './components/intro.js'
 import { initAddForm } from './components/addForm.js'
 import { initPorovnani } from './views/porovnani/porovnani.js'
 
+import { registrujOverlay } from './core/router.js'
 import { registrujZalozky } from './views/index.js'
 import { openDetail } from './views/detail/detail.js'
 import { renderHome } from './views/home/home.js'
 import { renderDisc } from './views/discover/discover.js'
 import { renderList } from './views/list/list.js'
-import { renderPlan } from './views/plan/plan.js'
+import { renderPlan, zavriNavigaci, jeOtevrenaNavigace } from './views/plan/plan.js'
 import { renderMapaDole } from './views/mapa/mapa.js'
 
 import { registrujServiceWorker } from './pwa/register.js'
@@ -51,11 +53,16 @@ initChipy()
 initSheet()
 initFilterPanel()
 initWizard()
+initVyberMista()
 initPlusMenu()
 // Až za panely: registrace overlaye určuje, co zavře tlačítko zpět jako první.
 initAddForm()
 // Porovnání se otevírá z detailu, takže musí být nad ním.
 initPorovnani()
+
+// Nabídka navigace na Plánu. Registruje se tady, protože obsah je staticky
+// v index.html a `plan.js` jen věší obsluhu při každém překreslení.
+registrujOverlay({ jeOtevreny: jeOtevrenaNavigace, zavri: zavriNavigaci })
 
 for (const b of document.querySelectorAll('#tabs button')) {
   b.onclick = () => aktivujZalozku(b.dataset.tab)

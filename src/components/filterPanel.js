@@ -171,10 +171,18 @@ export function initFilterPanel() {
   registrujOverlay({ jeOtevreny, zavri: zavriFiltry })
 }
 
-/** Zavře panel filtrů i průvodce – oboje visí na stejném ztmavení. */
+/**
+ * Zavře všechno, co visí na stejném ztmavení: panel filtrů, průvodce, nabídku
+ * navigace a vybírátko míst.
+ *
+ * Sahá se na ně přes DOM, ne přes import: zavření je čistě vizuální věc
+ * a panel filtrů nemá důvod znát obrazovku Plán ani vybírátko.
+ */
 function zavriVse() {
   zavriFiltry()
-  document.getElementById('wizard').classList.remove('show')
+  for (const id of ['wizard', 'navSheet', 'vyberMista']) {
+    document.getElementById(id)?.classList.remove('show')
+  }
 }
 
 /* ================= data a zálohy ================= */
