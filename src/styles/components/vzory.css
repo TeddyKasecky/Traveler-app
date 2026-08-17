@@ -88,6 +88,19 @@
   font:inherit;font-size:.66rem;letter-spacing:.6px;text-transform:none;font-weight:700;color:var(--akcent)}
 .sekce-pozn{margin-left:auto;font-weight:600;letter-spacing:.2px;text-transform:none;color:var(--text3)}
 
+/* ---------- pruh průběhu ---------- */
+/* Kolik z výpravy je odjeté. Je na Plánu i na Domů, takže patří sem mezi
+ * společné díly – kdyby si ho každá obrazovka psala zvlášť, rozešly by se. */
+.prubeh{background:var(--plocha);border:var(--line);border-radius:var(--r);box-shadow:var(--stin-1);
+  padding:12px 14px;margin:0 0 14px}
+.prubeh-hlava{display:flex;align-items:baseline;gap:10px;margin-bottom:9px}
+.prubeh-hlava b{font-size:.86rem;font-weight:800}
+.prubeh-hlava span{margin-left:auto;font-size:.72rem;font-weight:700;color:var(--text2)}
+.prubeh-lista{height:8px;border-radius:99px;background:var(--plocha2);overflow:hidden}
+.prubeh-lista i{display:block;height:100%;border-radius:99px;background:var(--akcent);
+  transition:width .3s var(--pop)}
+
+
 /* ---------- řádek ---------- */
 .radek{display:flex;gap:12px;align-items:center;background:var(--plocha);border:var(--line);
   border-radius:var(--r);box-shadow:var(--stin-1);padding:10px 12px;margin-bottom:10px;
