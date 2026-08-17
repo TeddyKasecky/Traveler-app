@@ -1,24 +1,19 @@
-/* ===== bikepark dashboard ===== */
-.bphead{display:flex;align-items:baseline;gap:9px;padding:18px 20px 2px}
-.bphead h2{font-family:var(--f-disp);font-size:1.25rem;margin:0;display:flex;gap:9px;align-items:center}
-.bphead h2 svg.ic{font-size:21px;color:var(--pine)}
-.bpnote{padding:0 20px 10px;color:var(--ink2);font-size:.74rem;font-weight:600}
-.bpcards{display:flex;flex-direction:column;gap:11px;padding:0 20px}
-.bpc{border:var(--line);border-radius:17px;background:var(--card);box-shadow:var(--stin-2);padding:12px 13px;position:relative;overflow:hidden}
-.bpc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--pine);opacity:.75}
-.bpc.hot::before{background:var(--rust)}
-.bpc .r1{display:flex;align-items:flex-start;gap:9px}
-.bpc h3{margin:0;font-size:.95rem;font-weight:800;flex:1;line-height:1.25}
-.bpc .meta{margin:1px 0 0}
-.pricechip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--obrys);border-radius:999px;
-  padding:3px 10px;font-size:.74rem;font-weight:800;background:var(--plocha-zelena);white-space:nowrap}
-.pricechip.est{background:var(--plocha-zluta)}
-.pricechip.link{background:var(--plocha-fialova)}
-.pricechip svg.ic{font-size:12px}
-.bpc .note{font-size:.72rem;color:var(--ink2);font-weight:600;margin-top:5px}
-.bpc .r2{display:flex;gap:8px;margin-top:9px;align-items:center}
-.bpbtn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--obrys);border-radius:12px;
-  padding:8px 6px;font-size:.76rem;font-weight:800;background:var(--paper);box-shadow:var(--stin-1);cursor:pointer;text-decoration:none;color:var(--ink)}
-.bpbtn:active{transform:var(--stisk)}
-.bpbtn svg.ic{font-size:14px;color:var(--rust)}
-.bpbtn.web svg.ic{color:var(--sky)}
+/* ===== ceny bikeparků =====
+ *
+ * Přehled 32 bikeparků odešel z Domů do kolekce „Na kolo" v Objevuj – byla to
+ * jedna kategorie z deseti a zabírala většinu obrazovky. Ceny se ale ztratit
+ * nesměly: jsou to údaje o konkrétním místě, takže jsou nově v jeho detailu.
+ * Cenový chip (`.pchip`) a `bpWeb()` zůstávají sdílené, jen se používají jinde.
+ */
+.cenabox{background:var(--plocha2);border-radius:var(--r-s);padding:12px 14px;margin:0 0 14px}
+.cenalab{display:flex;align-items:center;gap:8px;font-size:.7rem;font-weight:800;letter-spacing:1px;
+  text-transform:uppercase;color:var(--text2)}
+.cenalab svg.ic{font-size:16px;color:var(--akcent)}
+.cenachip{margin-left:auto;text-transform:none;letter-spacing:0}
+.cenanote{margin-top:7px;font-size:.78rem;font-weight:600;color:var(--text2);line-height:1.45}
+.cenabox .gbtn{margin-top:10px}
+
+/* Přehled bikeparků na Domů (`.bphead`, `.bpcards`, `.bpc`, `.bpbtn`) odešel
+ * celý – 32 karet jedné kategorie z deseti zabíralo většinu obrazovky
+ * a v předlohách nic takového není. Místa jsou dál v kolekci „Na kolo".
+ */

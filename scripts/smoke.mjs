@@ -134,9 +134,16 @@ await kontrola('uvítání zavřené', () => page.locator('#intro.show').count()
 
 // Domů
 await kontrola('Domů je aktivní', () => page.locator('#panelHome.show').count(), 1)
-await kontrola('hero s dodávkou', () => page.locator('.homehero img').count(), 1)
-await kontrola('karty bikeparků', () => page.locator('.bpc').count(), 32)
-await kontrola('statistika míst', () => page.locator('.hstat b').first().innerText(), '580')
+// Domů se přestavěla na společné díly: hero pás s pozdravem místo obrázku
+// dodávky (ta je nově na mapě, na trase plánu), karta výpravy, karusel
+// „Možná dnes" a řada čísel.
+await kontrola('hero pás s pozdravem', () => page.locator('#homeInner .heropas-obr').count(), 1)
+await kontrola('karta výpravy na Domů', () => page.locator('#homeInner .vkarta').count(), 1)
+await kontrola('karusel „Možná dnes"', () => page.locator('#homeInner .fotokarta').count().then((n) => n > 0))
+await kontrola('statistika míst', () => page.locator('#homeInner .cislo b').first().innerText(), '580')
+// Přehled 32 bikeparků odešel do kolekce „Na kolo". Ceny se ale ztratit
+// nesměly – kontrola „ceny bikeparku v detailu" níž ověřuje, že jsou v detailu.
+await kontrola('bikeparky už nejsou na Domů', () => page.locator('#homeInner .bpc').count(), 0)
 
 // Seznam
 await page.click('#tabs button[data-tab="list"]')
@@ -176,7 +183,9 @@ await page.waitForTimeout(300)
 // a nálady jako pilulky – přestěhovaly se sem z Domů, kde je předloha nemá.
 await kontrola('kolekce v Objevuj', () => page.locator('.dlazdice-kus').count(), 11)
 await kontrola('nálady v Objevuj', () => page.locator('.nalady .pilulka').count(), 6)
-await kontrola('karusel doporučených', () => page.locator('.karusel .fotokarta').count(), 8)
+// Karusel má od přestavby Domů dvě obrazovky, takže se musí počítat jen ten
+// na Objevuj – bez `#discInner` by se sečetly oba a číslo by nic neznamenalo.
+await kontrola('karusel doporučených', () => page.locator('#discInner .karusel .fotokarta').count(), 8)
 await kontrola('oblasti v Objevuj', () => page.locator('.reg').count() )
 
 // Výřez: po oddálení na celý svět musí být vidět všechna místa. Tohle je pojistka
@@ -208,6 +217,27 @@ await kontrola('detail má poznámku', () => page.locator('#noteBox').count(), 1
 await page.goBack()
 await page.waitForTimeout(500)
 await kontrola('zpět zavřelo detail', () => page.locator('#sheet.show').count(), 0)
+
+// Ceny bikeparků: přehled odešel z Domů, ale údaje se nesměly ztratit.
+// Cesta je přes hledání, aby se ověřilo i to, že se k bikeparku dá dostat.
+//
+// Na Seznam se kliká výslovně: `goBack()` zavře detail, ale zároveň se vrátí
+// o záložku zpět, takže políčko `#q` nemusí být vidět.
+await page.click('#tabs button[data-tab="list"]')
+await page.waitForTimeout(300)
+await page.fill('#q', 'bikepark')
+await page.waitForTimeout(400)
+await page.locator('#listInner .radek').first().click()
+await page.waitForTimeout(900)
+await kontrola('ceny bikeparku jsou v detailu', () => page.locator('#sheet .cenabox').count(), 1)
+await kontrola('cena má štítek s částkou', () => page.locator('#sheet .cenabox .pricechip').count(), 1)
+await page.goBack()
+await page.waitForTimeout(500)
+// Zase výslovně na Seznam: `goBack()` vrátil i záložku, takže by `#q` nebylo vidět.
+await page.click('#tabs button[data-tab="list"]')
+await page.waitForTimeout(300)
+await page.fill('#q', '')
+await page.waitForTimeout(300)
 
 // Porovnání dvou míst. První kliknutí jen naplní košík, druhé otevře.
 //
@@ -291,7 +321,9 @@ await kontrola('na mapě není žádný panel', () => page.locator('.panel.show'
 
 // spodní část obrazovky Mapa – karta výpravy a uložená místa (nové, podle předlohy)
 await kontrola('karta výpravy je na mapě', () => page.locator('#vypravaKarta .vkarta').count(), 1)
-await kontrola('prázdná výprava nabízí průvodce', () => page.locator('#vkZaloz').count(), 1)
+// Karta výpravy je na dvou obrazovkách naráz (Domů i Mapa), takže se počítá
+// jen ta na mapě. Dřív měla `id` a druhá karta by kvůli tomu neměla obsluhu.
+await kontrola('prázdná výprava nabízí průvodce', () => page.locator('#vypravaKarta .vk-zaloz').count(), 1)
 await kontrola('bez uložených míst je hláška', () => page.locator('#mapUlozene .mapdolu-prazdno').count(), 1)
 await page.click('#fabPlus')
 await page.waitForTimeout(250)

@@ -13,6 +13,7 @@ import { IC } from '../../icons/sprite.js'
 import { otevriSheet, teloSheetu } from '../../components/sheet.js'
 import { flames, setPrio, PRIO_LBL } from '../../components/prio.js'
 import { scene } from '../../components/postcard.js'
+import { priceChip, bpWeb } from '../../components/priceChip.js'
 import { fotoKategorie, vyrez } from '../../data/kategorieFoto.js'
 import { pridejDoPorovnani } from '../porovnani/porovnani.js'
 import { addPhoto, smazFotku } from '../../components/photos.js'
@@ -124,6 +125,22 @@ export function openDetail(p, focus) {
       <div class="fact">${IC('i-leaf')}<div><b>Sezóna</b><span>${esc(p.s) || '—'}</span></div></div>
       ${p.ps ? `<div class="fact">${IC('i-paw')}<div><b>Psi</b><span>${esc(p.ps)}</span></div></div>` : ''}
     </div>
+    ${
+      // Ceny bikeparků bývaly na Domů jako 32 karet přes celou obrazovku.
+      // Přestavba je odtamtud odstranila (jedna kategorie z deseti), ale údaje
+      // se nesměly ztratit – patří k místu, tak jsou tady.
+      p.pv || p.pn || bpWeb(p)
+        ? `<div class="cenabox">
+      <div class="cenalab">${IC('i-euro')}Denní pass<span class="cenachip">${priceChip(p)}</span></div>
+      ${p.pn ? `<div class="cenanote">${esc(p.pn)}</div>` : ''}
+      ${
+        bpWeb(p)
+          ? `<a class="gbtn half ghost" href="${bpWeb(p)}" target="_blank" rel="noopener noreferrer">${IC('i-globe')}Oficiální web a ceník</a>`
+          : ''
+      }
+    </div>`
+        : ''
+    }
     ${p.p ? `<div class="desc">${esc(p.p)}</div>` : ''}
     <div class="minimap" id="${mmid}"></div>
     <div class="mmbar">${IC('i-pinme', 'font-size:14px')}<span>${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</span>

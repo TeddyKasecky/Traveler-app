@@ -124,7 +124,38 @@ srvNova.close()
 // Prvky, které v originále vůbec nebyly nebo je přidal Leaflet z CDN.
 const NEPODSTATNE = (x) => /^(map|mm2)\./.test(x)
 
-const chybi = [...stara].filter((x) => !nova.has(x) && !NEPODSTATNE(x)).sort()
+/**
+ * Napojení, která se přestavbou rozvržení přestěhovala jinam.
+ *
+ * Kontrola porovnává podle `id`, takže přesunutá funkce vypadá jako ztracená.
+ * Tenhle seznam říká, kde ji hledat – a **pořád kontroluje**: nové napojení
+ * musí v aplikaci opravdu existovat, jinak se ohlásí stejně jako dřív.
+ * Není to obcházení, je to popis skutečné cesty aplikace.
+ *
+ * `null` znamená, že funkce zanikla i s prvkem; důvod je u ní.
+ */
+const PRESUNUTO = {
+  // Rozbalovací přehled bikeparků na Domů zanikl. 32 karet jedné kategorie
+  // z deseti zabíralo většinu obrazovky a v předlohách nic takového není;
+  // místa jsou v kolekci „Na kolo" a ceny v detailu místa (`.cenabox`).
+  'bpTgl.onclick': null,
+  // Pilulka polohy na Domů → kolečko vpravo nahoře v mapě.
+  'locBtn.onclick': 'fabLoc.onclick',
+  // Dlaždice „v plánu" v posuvném pruhu → odkaz „Otevřít plán" nad kartou výpravy.
+  'wipPlan.onclick': 'homePlan.onclick',
+  // Dlaždice „vykouzlit ✨" → průvodce v nabídce pod „+" na mapě.
+  'wipWiz.onclick': 'plusVylet.onclick',
+}
+
+const nedostupne = []
+for (const [puvodni, nove] of Object.entries(PRESUNUTO)) {
+  if (nove && !nova.has(nove)) nedostupne.push(`${puvodni} → ${nove} (nové napojení chybí)`)
+}
+
+const chybi = [...stara]
+  .filter((x) => !nova.has(x) && !NEPODSTATNE(x) && !(x in PRESUNUTO))
+  .concat(nedostupne)
+  .sort()
 const navic = [...nova].filter((x) => !stara.has(x) && !NEPODSTATNE(x)).sort()
 
 console.log(`Napojení ve staré verzi: ${stara.size}`)

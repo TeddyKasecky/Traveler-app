@@ -203,3 +203,8 @@
 
 .tecka{color:var(--text3);margin:0 1px}
 .hvezdy{color:var(--zvyrazneni);letter-spacing:1px}
+
+/* Panel s řadou čísel – „Náš Vandrbuch v číslech" na Domů. Řada sama je bez
+ * pozadí, aby šla použít i uvnitř karty výpravy. */
+.cislapanel{background:var(--plocha);border:var(--line);border-radius:var(--r);
+  box-shadow:var(--stin-1);padding:14px 16px}
