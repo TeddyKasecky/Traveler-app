@@ -9,14 +9,31 @@
 
 /* ---------- hero pás ---------- */
 /* Nadpis leží vlevo dole v bezpečné zóně, jak předepisuje list „Obrázky
- * na pozadí". Přechod dolů zajišťuje, že text nikdy nesedí na hranu. */
-.heropas{position:relative;margin:0 -14px;height:196px;overflow:hidden;background:var(--bg2)}
+ * na pozadí". Přechod dolů zajišťuje, že text nikdy nesedí na hranu.
+ *
+ * VÝŠKA: polovina displeje, ne pevných 196 px jako do srpna 2026. Z obrázku
+ * byl vidět jen vršek a působil jako ozdobná lišta, ne jako obraz.
+ *
+ * `svh`, ne `vh`: `vh` na mobilu počítá s výškou BEZ adresního řádku, takže
+ * při jeho schování obrázek poskočí. `svh` je ta menší, jistá výška.
+ *
+ * `max-height` je kvůli desktopu – na monitoru vysokém 1200 px by polovina
+ * byla 600 px obrázku a obsah by začínal až za ohybem. */
+.heropas{position:relative;margin:0 -14px;height:52svh;min-height:196px;max-height:460px;
+  overflow:hidden;background:var(--bg2);scroll-snap-align:start}
 /* `object-position:top` schválně: nadpis leží nahoře a pod ním musí být obloha
  * nebo mlha, ne koruny stromů. Na akvarelech je světlo vždycky nahoře. */
 .heropas-obr{display:block;width:100%;height:100%;object-fit:cover;object-position:top}
-/* Dva přechody: shora zesvětluje pod nadpisem, zdola váže obrázek na plochu. */
+/* Dva přechody: shora zesvětluje pod nadpisem, zdola váže obrázek na plochu.
+ *
+ * Zastávky jsou v PIXELECH, ne v procentech. V procentech se přechod roztáhl
+ * s výškou, takže na vysokém hero byla mlhou zalitá celá horní třetina
+ * a z obrázku zbyl pruh uprostřed. Takhle je zesvětlení vždycky jen tam, kde
+ * opravdu leží nadpis, a spodní navázání vždycky jen na poslední kus. */
 .heropas::after{content:"";position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(180deg,rgba(250,245,236,.92) 0%,rgba(250,245,236,.62) 30%,rgba(250,245,236,.12) 52%,var(--bg) 100%)}
+  background:
+    linear-gradient(180deg,rgba(250,245,236,.92) 0,rgba(250,245,236,.62) 58px,rgba(250,245,236,0) 132px),
+    linear-gradient(0deg,var(--bg) 0,rgba(250,245,236,0) 96px)}
 .heropas-text{position:absolute;inset:20px 20px auto 20px;z-index:2}
 .heropas-text h2{margin:0;font-family:var(--f-disp);font-weight:700;font-size:1.72rem;line-height:1.12;color:var(--zn-forest)}
 .heropas-text p{margin:6px 0 0;font-size:.86rem;font-weight:500;line-height:1.4;color:var(--zn-forest);opacity:.82;max-width:19rem}
@@ -33,18 +50,35 @@
  * nikdo nevšiml. Tohle `check-tokeny` nepozná, hlídá jen proměnné. */
 @media (prefers-color-scheme:dark){
   :root:not([data-motiv="svetly"]) .heropas::after{
-    background:linear-gradient(180deg,rgba(27,36,26,.72) 0%,rgba(27,36,26,.5) 30%,rgba(27,36,26,.2) 52%,var(--bg) 100%)}
+    background:
+      linear-gradient(180deg,rgba(27,36,26,.78) 0,rgba(27,36,26,.5) 58px,rgba(27,36,26,0) 132px),
+      linear-gradient(0deg,var(--bg) 0,rgba(27,36,26,0) 96px)}
   :root:not([data-motiv="svetly"]) .heropas-text h2,
   :root:not([data-motiv="svetly"]) .heropas-text p{color:var(--text)}
 }
 :root[data-motiv="tmavy"] .heropas::after{
-  background:linear-gradient(180deg,rgba(27,36,26,.72) 0%,rgba(27,36,26,.5) 30%,rgba(27,36,26,.2) 52%,var(--bg) 100%)}
+  background:
+    linear-gradient(180deg,rgba(27,36,26,.78) 0,rgba(27,36,26,.5) 58px,rgba(27,36,26,0) 132px),
+    linear-gradient(0deg,var(--bg) 0,rgba(27,36,26,0) 96px)}
 :root[data-motiv="tmavy"] .heropas-text h2,
 :root[data-motiv="tmavy"] .heropas-text p{color:var(--text)}
 
-/* List obsahu, který na hero pás mírně přesahuje. */
-.list{position:relative;z-index:3;margin:-20px -14px 0;padding:18px 14px 0;
-  background:var(--bg);border-radius:var(--r-l) var(--r-l) 0 0}
+/* List obsahu, který na hero pás mírně přesahuje.
+ *
+ * `scroll-snap-align:start` z něj dělá druhou magnetickou polohu: sjetím dolů
+ * se list přisaje pod hlavičku a odkryje se obsah, vyjetím nahoru se vrátí
+ * velký obrázek. Mezi tím to nezůstane viset – viz `scroll-snap-type`
+ * v `panel.css`. Kvůli `margin-top:-20px` se přisátý list zastaví 20 px
+ * v hero pásu, takže zaoblený okraj zůstane na obrázku. */
+/*
+ * `min-height:100%` je to, co dělá přisátí dosažitelné i na krátkém obsahu.
+ * Bez toho se Domů (nejkratší obrazovka) dala posunout jen o 307 px z 429
+ * potřebných, takže list nikdy nedojel nahoru a magnetická poloha zůstala
+ * nedosažitelná. Procento se počítá z výšky `.inner`, která je daná
+ * (`flex:1` ve fixním sloupci), takže je z listu vždycky aspoň celá obrazovka.
+ */
+.list{position:relative;z-index:3;margin:-20px -14px 0;padding:18px 14px 0;min-height:100%;
+  background:var(--bg);border-radius:var(--r-l) var(--r-l) 0 0;scroll-snap-align:start}
 
 /* ---------- popisek sekce ---------- */
 .sekce{display:flex;align-items:center;gap:10px;margin:20px 2px 11px;

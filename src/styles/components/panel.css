@@ -3,7 +3,11 @@
   padding-top:calc(env(safe-area-inset-top) + 54px);padding-bottom:calc(env(safe-area-inset-bottom) + 86px)}
 .panel.show{display:flex;animation:fadein .25s}
 @keyframes fadein{from{opacity:0}}
-.panel .inner{overflow-y:auto;padding:6px 14px;flex:1}
+/* `scroll-snap-type: proximity`, ne `mandatory`. Magnetické jsou jen dvě
+ * polohy – velký hero obrázek a přisátý list obsahu (viz `vzory.css`).
+ * S `mandatory` by prohlížeč přichytával pořád, i uprostřed dvousetkarétového
+ * seznamu, kde žádná další zastávka není a scrollování by se lepilo. */
+.panel .inner{overflow-y:auto;padding:6px 14px;flex:1;scroll-snap-type:y proximity}
 /* content-visibility: seznam kreslí až 250 karet naráz (NAPADY.md N10) a od
  * doplnění náhledů je v každé navíc obrázek. Tohle nechá prohlížeč přeskočit
  * vykreslení karet mimo výřez; contain-intrinsic-size mu řekne, jak vysoké
