@@ -1,6 +1,6 @@
 # Kde jsme skončili
 
-Stav k **14. 8. 2026**. Tenhle soubor je předávka mezi sezeními: co je hotové, co
+Stav k **17. 8. 2026**. Tenhle soubor je předávka mezi sezeními: co je hotové, co
 musíte udělat vy, co se rozhodlo a proč, a co je na řadě. Důkazy a čísla jsou
 v [`PARITA.md`](PARITA.md), odložené nápady v [`NAPADY.md`](NAPADY.md).
 
@@ -10,19 +10,27 @@ v [`PARITA.md`](PARITA.md), odložené nápady v [`NAPADY.md`](NAPADY.md).
 
 **Na obou telefonech, v tomhle pořadí.** Dokud to neuděláte, běží vám tam stará verze.
 
-1. **Záloha jako první.** Filtry → **Záloha poznámek**. Stěhování dat je navržené
-   bezpečně, ale záloha stojí deset vteřin a je to jediná pojistka.
+1. **Záloha jako první.** Filtry → **Záloha poznámek**. Nasazení se uložených dat
+   nedotýká, ale záloha stojí deset vteřin a je to jediná pojistka.
 2. **Zavřít aplikaci úplně a otevřít dvakrát.** Napoprvé se nová verze stáhne na
-   pozadí, napodruhé naběhne. Potřebuje signál.
+   pozadí, napodruhé naběhne. Potřebuje signál. Tahle aktualizace stáhne celou
+   aplikaci znovu — měnilo se skoro všechno včetně `sw.js`.
 3. **Zkontrolovat, že sedí** poznámky, hvězdičky, plamínky, plán a vlastní fotky.
-   Přesun fotek do IndexedDB proběhne sám a pozná se jen tím, že se nic neztratilo.
-4. **Letadlový režim** → Mapa → posunout tam, kam jste se nedívali. Má naskočit
-   zjednodušená mapa a vlevo dole štítek „Offline".
+4. **Vyzkoušet tmavý režim.** Filtry → **Vzhled** → Světlý / Tmavý / Podle systému.
+   Ve výchozím stavu se řídí nastavením telefonu.
+5. **Letadlový režim** → Mapa → posunout tam, kam jste se nedívali. Má naskočit
+   zjednodušená mapa a vlevo dole štítek „Offline". **V tmavém režimu má být tmavá** —
+   to je jediná věc, kterou skripty neuvidí.
 
 Kdyby v bodě 3 něco chybělo, řekněte to hned — jde vrátit commit i obnovit ze zálohy.
 
-Tohle byla poslední aktualizace, která stáhne celou aplikaci znovu (měnil se
-`sw.js`). Od příště se stahuje jen to, co se opravdu změnilo — viz `PARITA.md` §2c.
+Dvě věci, které si zaslouží pohled, protože je skripty posoudit neumějí:
+
+- **Dlaždice mapy v tmavém režimu.** Jsou z OpenStreetMap a zůstávají světlé.
+  Ztlumit se dají, ale je to kompromis — rozhodnout to jde jen podle telefonu.
+- **Zástupné ilustrace v seznamu.** Míst bez vlastní fotky je 318 a všechna
+  z jedné kategorie sdílejí jeden akvarel, jen s jiným výřezem. Otázka je,
+  jestli to v dlouhém seznamu nepůsobí jednotvárně.
 
 ---
 
@@ -39,6 +47,21 @@ Tohle byla poslední aktualizace, která stáhne celou aplikaci znovu (měnil se
 | **Offline mapa** | podklad z Natural Earth pod dlaždicemi; kde dlaždice chybí, prosvítá |
 | **Špendlíky jen ve výřezu** | 580 kusů v stránce stálo ~850 ms přepočtu stylů při každém posunu mapy |
 | **Stabilní verze cache** | telefon si při každém nasazení stahoval celou aplikaci znovu, i když se nic nezměnilo |
+
+**Vizuální redesign (17. 8. 2026)** podle grafického manuálu „Golden Moss" — výklad
+je ve [`VZHLED.md`](VZHLED.md), 16 commitů:
+
+| Co | |
+|---|---|
+| **Nový vzhled** | paleta Golden Moss, Playfair Display, měkké karty místo černých obrysů a tvrdých stínů, tmavě zelená spodní pilulka |
+| **Tmavý režim** | podle systému, nebo ručně ve Filtrech; volba se pamatuje |
+| **Zástupné ilustrace** | 318 míst bez fotky má akvarel podle kategorie, kreslená pohlednice zůstává jako záchrana |
+| **Profil** | čísla o cestách a jméno; otevírá se kolečkem v hlavičce |
+| **Dny v plánu** | zastávky se dají rozdělit po dnech, kilometry se počítají zvlášť i celkem |
+| **Apple Maps a Waze** | vedle Google Maps; umějí jen jeden cíl a aplikace to řekne |
+| **Porovnání dvou míst** | tlačítko v detailu |
+| **Uvítání** | tři kroky s akvarely místo jednoho boxu |
+| **Rychlejší seznam** | vykreslení 250 karet je rychlejší než před redesignem, a to s obrázky navíc |
 
 Kontroly: `validate` · `check-uloziste` 13/13 · `smoke` 76/76 · `smoke:single` 66/66 ·
 `check-tokeny` 7/7 · `check-dny` 14/14 · `check-handlers` 61/61 · `parity` 26/26 · `check-form`.
