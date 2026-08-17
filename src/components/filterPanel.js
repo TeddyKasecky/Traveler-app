@@ -129,10 +129,10 @@ export function initFilterPanel() {
 
   document.getElementById('fReset').onclick = () => {
     resetFiltru()
-    for (const i of ['fReg', 'fZeme', 'fTyp']) document.getElementById(i).value = ''
-    for (const t of document.querySelectorAll('.toggle')) t.classList.remove('on')
-    document.querySelector('.toggle.stav[data-s=""]').classList.add('on')
-    for (const c of document.querySelectorAll('.chip')) c.classList.remove('on')
+    // Jedno srovnání místo pěti smyček: `syncFiltersUI()` umí přepínače,
+    // rozbalovací seznamy i rychlé pilulky nad mapou. Když se přidal další
+    // prvek filtru, na tenhle výčet se pokaždé zapomnělo.
+    syncFiltersUI()
     zavriVse()
     draw()
     toast('Filtry zrušeny')
@@ -152,11 +152,19 @@ export function initFilterPanel() {
     }
   }
 
-  // Hledání naopak reaguje okamžitě a z mapy přepne na seznam.
-  document.getElementById('q').oninput = (e) => {
-    F.q = e.target.value
-    draw()
-    if (S.activeTab === 'map' && F.q) aktivujZalozku('list')
+  // Hledání je podle předlohy na dvou obrazovkách – v liště Mapy i Seznamu.
+  // Obě políčka píšou do jednoho `F.q` a to druhé si srovnají, aby si
+  // neprotiřečila. Skok na Seznam při psaní na mapě odpadl: na mapě jsou
+  // výsledkem hledání špendlíky, což je celý smysl toho, že tam hledání je.
+  for (const id of ['q', 'qMapa']) {
+    document.getElementById(id).oninput = (e) => {
+      F.q = e.target.value
+      for (const druhe of ['q', 'qMapa']) {
+        const el = document.getElementById(druhe)
+        if (el && el !== e.target) el.value = F.q
+      }
+      draw()
+    }
   }
 
   initData()

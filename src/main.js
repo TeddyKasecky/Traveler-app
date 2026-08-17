@@ -21,6 +21,7 @@ import { initFilterPanel, fillSelects, stahniZalohu } from './components/filterP
 import { ukazPruh } from './components/pruh.js'
 import { initSheet, jeOtevreny as jeOtevrenyDetail } from './components/sheet.js'
 import { initWizard } from './components/wizard.js'
+import { initPlusMenu } from './components/plusMenu.js'
 import { initIntro } from './components/intro.js'
 import { initAddForm } from './components/addForm.js'
 import { initPorovnani } from './views/porovnani/porovnani.js'
@@ -31,6 +32,7 @@ import { renderHome } from './views/home/home.js'
 import { renderDisc } from './views/discover/discover.js'
 import { renderList } from './views/list/list.js'
 import { renderPlan } from './views/plan/plan.js'
+import { renderMapaDole } from './views/mapa/mapa.js'
 
 import { registrujServiceWorker } from './pwa/register.js'
 
@@ -48,6 +50,7 @@ initChipy()
 initSheet()
 initFilterPanel()
 initWizard()
+initPlusMenu()
 // Až za panely: registrace overlaye určuje, co zavře tlačítko zpět jako první.
 initAddForm()
 // Porovnání se otevírá z detailu, takže musí být nad ním.
@@ -75,6 +78,7 @@ document.getElementById('profilOpen').onclick = () => aktivujZalozku('profil')
 on('prekresleno', () => {
   if (S.activeTab === 'list') renderList()
   if (S.activeTab === 'disc') renderDisc()
+  if (S.activeTab === 'map') renderMapaDole()
   renderPlan()
 })
 

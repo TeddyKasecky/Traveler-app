@@ -164,16 +164,18 @@ export function dlazdice(polozky) {
 /**
  * Řádek pilulek: ikona nad popiskem, aktivní plná.
  *
- * Předlohy je používají na nálady a na rychlé filtry nad mapou.
+ * Předlohy je používají na nálady a na rychlé filtry nad mapou. Prázdná `ikona`
+ * se vynechá — rychlý filtr „Vše“ ji v předloze nemá a `IC('')` by vyrobilo
+ * odkaz do prázdna.
  *
- * @param {Array<{id:string, popisek:string, ikona:string, on?:boolean}>} polozky
+ * @param {Array<{id:string, popisek:string, ikona?:string, on?:boolean}>} polozky
  * @param {string} [tridy]
  */
 export function pilulky(polozky, tridy = '') {
   return `<div class="pilulky ${tridy}">${polozky
     .map(
       (p) => `<button class="pilulka${p.on ? ' on' : ''}" data-id="${p.id}">
-        ${IC(p.ikona)}<span>${esc(p.popisek)}</span>
+        ${p.ikona ? IC(p.ikona) : ''}<span>${esc(p.popisek)}</span>
       </button>`
     )
     .join('')}</div>`
@@ -210,13 +212,18 @@ export function statpanel(radky, tridy = '') {
 
 /**
  * Vodorovná řada čísel s popiskem – „6 420 km · 28 míst · 12 kempů · 4 země".
+ *
+ * Ikona stojí vedle čísla a popisek je pod nimi, jak to má karta výpravy
+ * v předloze. Sloupce odděluje vlasová linka, ne mezera.
+ *
  * @param {Array<{ikona?:string, hodnota:string, popisek:string}>} cisla
  */
 export function cislaRada(cisla) {
   return `<div class="cisla">${cisla
     .map(
-      (c) => `<div class="cislo">${c.ikona ? IC(c.ikona) : ''}
-        <b>${esc(c.hodnota)}</b><span>${esc(c.popisek)}</span>
+      (c) => `<div class="cislo">
+        <div class="cislo-h">${c.ikona ? IC(c.ikona) : ''}<b>${esc(c.hodnota)}</b></div>
+        <span>${esc(c.popisek)}</span>
       </div>`
     )
     .join('')}</div>`

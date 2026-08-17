@@ -24,17 +24,36 @@
     <span class="sub" hidden><span id="totalN"></span> míst · <span id="visitedN">0</span> navštíveno</span>
     <button id="profilOpen" title="Profil"><svg class="ic"><use href="#i-profil"/></svg></button>
   </div>
+  <!-- Hledání a rychlé filtry patří na obrazovku Mapy, ne do hlavičky: tak to
+       má předloha. Na ostatních záložkách je schová CSS podle body[data-tab]. -->
+  <div class="hledani" id="mapHledani">
+    <div class="hledani-pole"><svg class="ic"><use href="#i-hledat"/></svg><input id="qMapa" type="search" placeholder="Hledat místa, trasy, kempy…" autocomplete="off"></div>
+    <button class="ikonbtn" id="fabFilter" title="Filtry"><svg class="ic"><use href="#i-sliders"/></svg><span class="badge" id="fBadge" hidden></span></button>
+  </div>
   <div id="chips"></div>
-  <div class="road" id="topRoad"></div>
+  <!-- Poloha je podle předlohy kolečko vpravo nahoře v mapě, ne plovoucí
+       knoflík vpravo dole. Visí pod hlavičkou (`top:100%`), aby se nemusela
+       počítat její výška – ta se mění podle záložky i podle bezpečné zóny. -->
+  <button class="mapkolecko" id="fabLoc" title="Moje poloha"><svg class="ic"><use href="#i-pinme"/></svg></button>
+  <!-- Hlásí, že zrovna chybí dlaždice. Obsah plní map/offlineMap.js. Visí pod
+       hlavičkou stejně jako kolečko polohy – dole už je karta výpravy. -->
+  <div id="offlineStitek" hidden></div>
 </header>
 
 <div id="map"></div>
-<div id="count"><svg class="ic"><use href="#i-map"/></svg><span id="countN"></span></div>
-<!-- Hlásí, že zrovna chybí dlaždice. Obsah plní map/offlineMap.js. -->
-<div id="offlineStitek" hidden></div>
+<!-- Počet míst zůstává v DOM (čtou ho kontroly), ale předloha ho na mapě nemá –
+     je v řádku výsledků na Seznamu. Změnu rychlého filtru hlásí toast. -->
+<div id="count" hidden><svg class="ic"><use href="#i-map"/></svg><span id="countN"></span></div>
 
-<button class="fab" id="fabLoc" title="Moje poloha"><svg class="ic"><use href="#i-pinme"/></svg></button>
-<button class="fab" id="fabFilter" title="Filtry"><svg class="ic"><use href="#i-sliders"/></svg><span class="badge" id="fBadge" hidden></span></button>
+<!-- Spodní část obrazovky Mapa: karta výpravy plave nad mapou, pod ní plocha
+     papíru s uloženými místy. Obsah plní views/mapa/mapa.js.
+     Tlačítko „+“ je uvnitř, aby se drželo nad kartou i když ta změní výšku. -->
+<div id="mapDolu">
+  <button id="fabPlus" title="Přidat"><svg class="ic"><use href="#i-plus"/></svg></button>
+  <div id="plusMenu" hidden></div>
+  <div id="vypravaKarta"></div>
+  <div id="mapUlozene"></div>
+</div>
 
 <section class="panel" id="panelHome"><div class="inner" id="homeInner"></div></section>
 <section class="panel" id="panelDisc"><div class="inner" id="discInner"></div></section>
@@ -45,7 +64,7 @@
     <div id="listHero"></div>
     <div class="list">
       <div class="hledani">
-        <div id="qWrap"><svg class="ic"><use href="#i-hledat"/></svg><input id="q" type="search" placeholder="Hledat místo…" autocomplete="off"></div>
+        <div class="hledani-pole"><svg class="ic"><use href="#i-hledat"/></svg><input id="q" type="search" placeholder="Hledat místo…" autocomplete="off"></div>
         <button class="ikonbtn" id="listFiltry" title="Filtry"><svg class="ic"><use href="#i-sliders"/></svg></button>
       </div>
       <div class="filtrpilulky">
@@ -85,6 +104,13 @@
       <button class="toggle" data-f="wow"><svg class="ic" style="color:var(--sun)"><use href="#i-star"/></svg>Hodnocené 4+</button>
       <button class="toggle" data-f="fire"><svg class="ic" style="color:var(--rust)"><use href="#i-fire"/></svg>Musíme!</button>
     </div>
+  </div>
+  <!-- Deset kategorií. Nad mapou z nich zbylo pět rychlých pilulek podle
+       předlohy, takže úplný výběr musí být tady – jinak by se na Bikeparky,
+       Jeskyně, Města a Ostatní nedalo dostat. Obsah plní components/chip.js
+       podle KAT, ať se seznam nepíše dvakrát. -->
+  <div class="fgroup"><label>Kategorie</label>
+    <div class="togglerow" id="katRow"></div>
   </div>
   <div class="fgroup"><label>Stav</label>
     <div class="togglerow">

@@ -47,6 +47,7 @@
 @import './components/plan-dny.css';
 @import './components/porovnani.css';
 @import './components/vzory.css';
+@import './components/mapa.css';
 
 /* 5. responzivní přepisy – vždy poslední */
 @import './responsive.css';

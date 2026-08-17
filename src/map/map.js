@@ -49,7 +49,9 @@ export function initMapa() {
     maxZoom: 18,
     attribution: '© OpenStreetMap',
   }).addTo(mapa)
-  L.control.zoom({ position: 'bottomleft' }).addTo(mapa)
+  // Knoflíky +/− tu bývaly vlevo dole. Tam je od přestavby rozvržení karta
+  // výpravy a předloha je nikde nemá; přibližuje se prsty, kolečkem myši nebo
+  // klávesami, což Leaflet umí sám.
   vrstva = L.layerGroup().addTo(mapa)
 
   // Zjednodušený podklad se dotáhne, jakmile poprvé selže dlaždice, a pak už
@@ -65,11 +67,6 @@ export function initMapa() {
   // Po každém posunu i přiblížení srovnat, které špendlíky jsou vidět.
   // `moveend` přijde i po zoomu, takže stačí jedna událost.
   mapa.on('moveend', () => srovnejVyrez(true))
-
-  // Při posunu mapy se rozjede tečkovaná „silnice“ v hlavičce.
-  const road = document.getElementById('topRoad')
-  mapa.on('movestart', () => road.classList.add('go'))
-  mapa.on('moveend', () => setTimeout(() => road.classList.remove('go'), 350))
 }
 
 /**

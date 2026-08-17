@@ -103,7 +103,12 @@ const kontrola = async (popis, fn, ocekavano) => {
 await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 57)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
-await kontrola('chipy kategorií', () => page.locator('#chips .chip').count(), 10)
+// Nad mapou je od přestavby rozvržení pět rychlých pilulek podle předlohy
+// (Vše, Kempy, Výhledy, Turistika, U vody) místo deseti chipů kategorií.
+// Kategorie se tím neztratily – všech deset je v panelu Filtry, což ověřuje
+// druhá kontrola. Bez ní by se dalo pět chybějících kategorií přehlédnout.
+await kontrola('rychlé filtry nad mapou', () => page.locator('#chips .pilulka').count(), 5)
+await kontrola('všech deset kategorií ve filtru', () => page.locator('#katRow .toggle.kat').count(), 10)
 await kontrola('naplněné oblasti ve filtru', () => page.locator('#fReg option').count(), 118)
 await kontrola('mapa má dlaždicovou vrstvu', () => page.locator('.leaflet-tile-pane').count(), 1)
 // Do stránky se vkládají jen špendlíky ve výřezu – 580 kusů naráz stálo skoro
@@ -240,10 +245,32 @@ await page.click('#tabs button[data-tab="plan"]')
 await page.waitForTimeout(300)
 await kontrola('prázdný plán má hlášku', () => page.locator('#planWrap .empty').count(), 1)
 
-// filtry – tlačítko je pod panely, takže jen na mapě. Tak to bylo i v originále.
+// filtry – tlačítko je od přestavby rozvržení ve vyhledávacím řádku Mapy,
+// takže se na mapu musí přepnout. Dřív to byl plovoucí knoflík vpravo dole,
+// ale i ten byl pod panely, takže cesta je stejná.
 await page.click('#tabs button[data-tab="map"]')
 await page.waitForTimeout(300)
 await kontrola('na mapě není žádný panel', () => page.locator('.panel.show').count(), 0)
+
+// spodní část obrazovky Mapa – karta výpravy a uložená místa (nové, podle předlohy)
+await kontrola('karta výpravy je na mapě', () => page.locator('#vypravaKarta .vkarta').count(), 1)
+await kontrola('prázdná výprava nabízí průvodce', () => page.locator('#vkZaloz').count(), 1)
+await kontrola('bez uložených míst je hláška', () => page.locator('#mapUlozene .mapdolu-prazdno').count(), 1)
+await page.click('#fabPlus')
+await page.waitForTimeout(250)
+await kontrola('„+" otevře nabídku', () => page.locator('#plusMenu button').count(), 2)
+await page.click('#fabPlus')
+await page.waitForTimeout(250)
+await kontrola('druhé ťuknutí nabídku zavře', () => page.locator('#plusMenu[hidden]').count(), 1)
+
+// rychlý filtr nad mapou se projeví hned, bez potvrzování
+await page.click('#chips .pilulka[data-id="kempy"]')
+await page.waitForTimeout(400)
+await kontrola('rychlý filtr Kempy', () => page.locator('#countN').innerText(), '11 míst')
+await page.click('#chips .pilulka[data-id="vse"]')
+await page.waitForTimeout(400)
+await kontrola('rychlý filtr Vše vrátí všechna', () => page.locator('#countN').innerText(), '580 míst')
+
 await page.click('#fabFilter')
 await page.waitForTimeout(400)
 await kontrola('panel filtrů otevřený', () => page.locator('#filters.show').count(), 1)

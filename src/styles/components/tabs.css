@@ -24,3 +24,6 @@
 #tabs .lbl{position:relative}
 #tabs .pcount{position:absolute;top:-30px;right:-15px;background:var(--upozorneni);color:var(--na-upozorneni);
   border-radius:999px;font-size:.58rem;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center}
+/* `hidden` samo o sobě nestačí – `display:grid` o řádek výš ho přebije.
+ * Nad záložkou Plán proto svítila nula, i když byl plán prázdný. */
+#tabs .pcount[hidden]{display:none}

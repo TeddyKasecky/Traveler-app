@@ -23,10 +23,11 @@
   text-shadow:0 0 3px var(--card),0 0 3px var(--card),0 0 3px var(--card)
 }
 
-/* Štítek se stavem, nad počítadlem míst vlevo dole. Jen hlásí, nepřepíná –
- * přepínat není co, podklad leží pod dlaždicemi a nepřekáží. */
+/* Štítek se stavem, vlevo nahoře pod hlavičkou naproti kolečku polohy. Dole
+ * ho mít nejde, tam je od přestavby rozvržení karta výpravy. Jen hlásí,
+ * nepřepíná – přepínat není co, podklad leží pod dlaždicemi a nepřekáží. */
 #offlineStitek{
-  position:fixed;left:14px;bottom:calc(env(safe-area-inset-bottom) + 132px);z-index:1100;
+  position:absolute;left:14px;top:100%;margin-top:24px;z-index:1100;
   background:var(--sand);color:var(--ink);border:var(--line);border-radius:999px;
   padding:6px 12px;font-size:.7rem;font-weight:800;
   box-shadow:var(--stin-1);pointer-events:none

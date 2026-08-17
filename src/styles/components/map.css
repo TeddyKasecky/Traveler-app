@@ -3,7 +3,7 @@
  * v tmavém režimu by při načítání dlaždic blikl světlý obdélník. */
 #map{position:fixed;inset:0;z-index:1;background:var(--bg2)}
 .leaflet-container{font:inherit;background:var(--bg2)}
-.leaflet-control-zoom a{border:1px solid var(--obrys)!important;color:var(--ink)!important;background:var(--card)!important;font-weight:800}
+/* Uznání OSM. Sedí nad kartou výpravy, takže se drží co nejníž a nenápadně. */
 .leaflet-control-attribution{background:var(--plocha)!important;font-size:.6rem!important}
 /* PROČ TU NENÍ ROZOSTŘENÝ STÍN: špendlíků je ve výřezu přes pět set a Leaflet
  * při posunu mapy přepíná třídy na kontejneru, takže prohlížeč přepočítá styly

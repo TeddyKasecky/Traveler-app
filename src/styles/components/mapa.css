@@ -1,0 +1,94 @@
+/* ===== obrazovka Mapa =====
+ *
+ * Podle předlohy `grafika/…11_09_49 (1).png`: hledání a pět rychlých pilulek
+ * pod nápisem, mapa přes celou šířku, dole karta výpravy plovoucí nad mapou
+ * a pod ní plocha papíru s uloženými místy.
+ *
+ * CO SE KDE SCHOVÁVÁ: hledání, pilulky, kolečko polohy, „+“ a spodní část
+ * patří jen mapě. Řídí to `body[data-tab]`, které nastavuje `core/router.js` –
+ * dřív to byl seznam `hidden` v JavaScriptu a s každým dalším prvkem rostl.
+ */
+
+body:not([data-tab='map']) #mapHledani,
+body:not([data-tab='map']) #chips,
+body:not([data-tab='map']) #fabLoc,
+body:not([data-tab='map']) #offlineStitek,
+body:not([data-tab='map']) #mapDolu{display:none}
+
+/* ---------- hledání a rychlé filtry ---------- */
+
+#mapHledani{margin:12px 0 0}
+#fabFilter{position:relative}
+#fabFilter .badge{position:absolute;top:-6px;right:-6px;background:var(--upozorneni);color:var(--na-upozorneni);
+  border:1px solid var(--obrys);border-radius:var(--r-pill);font-size:.62rem;font-weight:800;
+  min-width:19px;height:19px;display:grid;place-items:center}
+/* `hidden` samo o sobě nestačí – `display:grid` o řádek výš ho přebije.
+ * Bez tohohle svítila na tlačítku filtrů nula, i když žádný filtr nebyl. */
+#fabFilter .badge[hidden]{display:none}
+#chips .pilulky{margin:0 -14px;padding:11px 12px 12px}
+
+/* ---------- kolečko polohy ---------- */
+/* `top:100%` na hlavičce: sedí těsně pod ní bez ohledu na to, jak je vysoká. */
+.mapkolecko{position:absolute;right:14px;top:100%;margin-top:12px;width:46px;height:46px;
+  border-radius:50%;border:var(--line);background:var(--plocha);box-shadow:var(--stin-2);
+  display:grid;place-items:center;transition:transform .16s var(--pop)}
+.mapkolecko svg.ic{font-size:21px;color:var(--akcent)}
+.mapkolecko:active{transform:var(--stisk)}
+
+/* ---------- spodní část ---------- */
+
+#mapDolu{position:fixed;left:0;right:0;bottom:0;z-index:1100}
+/* Karta leží nad plochou papíru, která ji zespodu podebírá – v předloze je
+ * u ní vidět kus mapy po stranách. Proto `z-index`, ne pořadí v toku. */
+#vypravaKarta{position:relative;z-index:2;margin:0 14px}
+#mapUlozene{position:relative;background:var(--paper);margin-top:-38px;
+  padding:50px 14px calc(env(safe-area-inset-bottom) + 96px)}
+#mapUlozene .sekce{margin-top:0}
+.mapdolu-prazdno{display:flex;gap:9px;align-items:center;font-size:.78rem;font-weight:600;
+  color:var(--text2);padding:2px 2px 6px}
+.mapdolu-prazdno svg.ic{font-size:18px;color:var(--text3);flex:0 0 auto}
+
+/* ---------- karta výpravy ---------- */
+
+.vkarta{background:var(--plocha);border:var(--line);border-radius:var(--r-l);box-shadow:var(--stin-3);
+  padding:13px 15px 15px;display:flex;flex-direction:column;gap:13px}
+.vk-hlava{display:flex;gap:13px;align-items:center}
+.vk-obr{flex:0 0 auto;width:84px;height:84px;border-radius:var(--r-s);object-fit:cover;background:var(--plocha2)}
+.vk-text{flex:1;min-width:0}
+.vk-text h3{margin:0;font-family:var(--f-disp);font-weight:700;font-size:1.24rem;line-height:1.15;
+  display:flex;align-items:center;gap:7px}
+.vk-text h3 svg.ic{font-size:17px;color:var(--akcent);flex:0 0 auto}
+.vk-pod{margin-top:4px;font-size:.78rem;font-weight:600;color:var(--text2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- tlačítko „+“ ---------- */
+/* Okrové kolečko vpravo nad kartou. V předloze Plánu sedí uprostřed spodní
+ * lišty, jenže tam máme pět záložek a šesté místo by je zmáčklo pod čitelnost.
+ * Plovoucí kolečko je totéž tlačítko na místě, kde na ně palec dosáhne. */
+#fabPlus{position:absolute;right:14px;bottom:100%;margin-bottom:14px;z-index:3;
+  width:56px;height:56px;border-radius:50%;border:0;background:var(--zvyrazneni);
+  box-shadow:var(--stin-3);display:grid;place-items:center;transition:transform .18s var(--pop)}
+#fabPlus svg.ic{font-size:26px;color:var(--na-zvyrazneni)}
+#fabPlus:active{transform:var(--stisk)}
+#fabPlus.on{transform:rotate(45deg)}
+
+#plusMenu{position:absolute;right:14px;bottom:100%;margin-bottom:80px;z-index:3;
+  background:var(--plocha);border:var(--line);border-radius:var(--r);box-shadow:var(--stin-3);
+  padding:6px;min-width:14rem;animation:plusIn .18s var(--pop)}
+#plusMenu[hidden]{display:none}
+#plusMenu button{display:flex;gap:10px;align-items:center;width:100%;background:none;border:0;
+  padding:11px 12px;border-radius:var(--r-s);font:inherit;font-size:.88rem;font-weight:700;
+  color:var(--text);text-align:left}
+#plusMenu button svg.ic{font-size:19px;color:var(--akcent);flex:0 0 auto}
+#plusMenu button:active{background:var(--plocha2)}
+@keyframes plusIn{from{opacity:0;transform:translateY(8px) scale(.96)}}
+
+/* ---------- uložená místa ---------- */
+/* Karusel řádků je z `vzory.css`; tady se jen zúží, ať se vedle sebe ukážou
+ * dva a je vidět, že se dá posouvat. */
+#mapUlozene .karusel-radky .radek{width:min(72vw,268px)}
+#mapUlozene .radek .tag{background:var(--plocha2);border-color:transparent}
+/* Název na jeden řádek: v karuselu stojí karty vedle sebe a dvouřádkový název
+ * by jednu z nich udělal vyšší než druhou. V Seznamu, kde jsou pod sebou,
+ * se dvouřádkový název naopak hodí. */
+#mapUlozene .radek-text h3{-webkit-line-clamp:1;overflow-wrap:anywhere}

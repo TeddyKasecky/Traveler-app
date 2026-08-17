@@ -96,7 +96,19 @@ await zkus('stejný počet použití env(safe-area-inset-*)', async () => {
   const cti = (f) => fs.readFileSync(path.join(ROOT, 'src', 'styles', f), 'utf8')
   const nase = spocti(vsechny.filter((f) => !jeNovy(f)).map(cti).join(''))
   const novy = spocti(vsechny.filter(jeNovy).map(cti).join(''))
-  return { ok: nase === puvodni, dukaz: `originál ${puvodni}× · naše ${nase}× (+ ${novy}× v nových prvcích)` }
+
+  // Tři použití z originálu zmizela s prvky, které přestavba rozvržení zrušila:
+  // plovoucí knoflíky `#fabLoc` a `#fabFilter` (poloha je nově kolečko v mapě,
+  // filtry tlačítko ve vyhledávacím řádku) a pilulka `#count` (počet nalezených
+  // je v řádku výsledků na Seznamu). Jejich náhrady bezpečný okraj mají, jen
+  // v `mapa.css`, které patří mezi nové prvky. Zbylých osm musí sedět přesně –
+  // kdyby někdo zapomněl na výřez u dalšího prvku, kontrola pořád spadne.
+  const ZRUSENE = 3
+  const ceka = puvodni - ZRUSENE
+  return {
+    ok: nase === ceka,
+    dukaz: `originál ${puvodni}× − ${ZRUSENE} zrušené prvky = ${ceka} · naše ${nase}× (+ ${novy}× v nových prvcích)`,
+  }
 })
 
 nadpis('2. Klíče v localStorage se nezměnily')
