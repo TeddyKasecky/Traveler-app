@@ -11,14 +11,16 @@
  *   4. názvy zemí   – `data/staty.js`, Playfair
  *   5. názvy měst   – z `basemap.json`, až od většího přiblížení
  *
- * OTOČENÍ ROLÍ PROTI PŘEDCHOZÍ VERZI: tohle býval `offlineMap.js` – náhradní
- * podklad, který se zapnul, až když selhala dlaždice z OpenStreetMap. Teď je
- * to **výchozí podklad** a dlaždice jsou volitelné (`prefs.podklad`).
+ * ROLE: výchozí je běžná mapa z OpenStreetMap, tohle je **offline varianta**.
+ * Dlaždice se offline neukládají a hromadně stahovat se nesmějí (podmínky OSM),
+ * takže bez signálu byla mapa šedá. Přepíná se pilulkou vlevo nahoře
+ * (`prefs.podklad`, viz `map/map.js`).
  *
- * Offline chování z toho vypadne samo: plochy leží pod dlaždicemi a jsou tam
- * pořád, takže když dlaždice nedorazí, není v mapě díra. Přepínat se nemusí
- * nic – přesně kvůli tomu, že prohlížeč offline část dlaždic vydá z cache
- * a část ne, takže by přepínání pod rukama blikalo.
+ * Plochy zemí ale leží **pod dlaždicemi a jsou tam i online**: když dlaždice
+ * nedorazí, není v mapě díra a nemusí se nic přepínat. Přesně kvůli tomu, že
+ * prohlížeč offline část dlaždic vydá z cache a část ne, takže by automatické
+ * přepínání pod rukama blikalo. Papír, kresby a názvy zemí se naopak ukazují
+ * jen v offline režimu – přes dlaždice by se s jejich vlastní kresbou tloukly.
  *
  * Data ploch jsou z Natural Earth (public domain), připravuje je
  * `scripts/make-basemap.mjs`. Kresby a kotvy dělá `scripts/make-kresba.mjs`.

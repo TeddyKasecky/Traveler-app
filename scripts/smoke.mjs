@@ -353,29 +353,29 @@ if (!SINGLE) {
     page.evaluate(() => document.fonts.check('700 1.5rem "Playfair Display"'))
   )
 
-  // Malovaná mapa. Dlaždice jsou z cizí domény, service worker je neukládá
-  // a hromadně stahovat se nesmějí – bez vlastního podkladu by mapa byla šedá.
+  // Chování bez signálu má dvě části a obě se zkoušejí:
   //
-  // Od přestavby rozvržení je malovaný podklad **výchozí**, ne náhradní, takže
-  // se nemusí čekat, až selže dlaždice. Zkouška je proto přísnější než dřív:
-  // ověřuje, že mapa je nakreslená hned, ne až se něco pokazí.
+  //   1. ONLINE REŽIM (výchozí). Dlaždice jsou z cizí domény, service worker
+  //      je neukládá a hromadně stahovat se nesmějí. Plochy zemí ale leží pod
+  //      nimi pořád, takže v mapě nevznikne díra, a rozsvítí se štítek.
+  //      Samotné vypnutí sítě nestačí: prohlížeč si dlaždice z prvního načtení
+  //      nechal ve své cache a beze změny výřezu je servíruje dál. Přiblížení
+  //      vyžádá dlaždice, které v cache nejsou.
+  //   2. OFFLINE MAPA, na kterou se přepíná pilulkou – malovaná krajina
+  //      s kresbami a názvy zemí, která žádnou síť nepotřebuje.
   //
   // Napřed na záložku Mapa – po znovunačtení je navrchu panel Domů. Přibližuje
-  // se kolečkem: názvy měst nabíhají až od většího přiblížení.
+  // se kolečkem, ne tlačítkem: knoflíky +/− mapa nemá.
   await page.click('#tabs button[data-tab="map"]')
-  await page.waitForTimeout(2500) // ať se stihne načíst podklad a kresby
-
-  // Kresby se kreslí jen v pásmu přiblížení 4–8, takže se kontrolují tady,
-  // ve výchozím pohledu na Evropu, ne až po přiblížení kolečkem níž.
-  await kontrola('offline: malované kresby', () => page.locator('.kresba img').count().then((n) => n > 0))
-
+  await page.waitForTimeout(500)
   await page.mouse.move(195, 480)
   for (let i = 0; i < 3; i++) {
     await page.mouse.wheel(0, -400)
     await page.waitForTimeout(500)
   }
-  await page.waitForTimeout(2500)
+  await page.waitForTimeout(3000) // ať stihnou selhat dlaždice a načíst se podklad
 
+  await kontrola('offline: štítek chybějících dlaždic', () => page.locator('#offlineStitek').isVisible(), true)
   await kontrola('offline: podklad má vlastní vrstvu', () =>
     page.locator('.leaflet-podklad-pane canvas').count().then((n) => n >= 1)
   )
@@ -389,14 +389,19 @@ if (!SINGLE) {
       return false
     })
   )
-  await kontrola('offline: názvy měst', () => page.locator('.mesto-popisek').count().then((n) => n > 0))
-  // Dřív se tu hlídala třída `#map.offline`, která zapínala náhradní barvy.
-  // Ta zanikla: barva moře je v mapě pořád, ať je signál nebo ne.
-  //
-  // Hodnota tokenu se nepočítá ručně – nechá se přeložit prohlížečem přes
-  // pomocný prvek. Zapsaný `#C6DAE1` a spočítaný `rgb(198, 218, 225)` jsou
-  // tatáž barva a porovnání řetězců by na tom padalo.
-  await kontrola('offline: mapa má barvu moře, ne šeď', () =>
+
+  // Přepnutí na malovanou offline mapu.
+  await page.evaluate(() => document.getElementById('podkladBtn').click())
+  await page.waitForTimeout(1200)
+
+  await kontrola('offline mapa: přepínač hlásí stav', () => page.locator('#podkladBtn span').innerText(), 'Offline')
+  await kontrola('offline mapa: názvy měst', () => page.locator('.mesto-popisek').count().then((n) => n > 0))
+  // Barva moře se dřív zapínala třídou `#map.offline`. Ta zanikla – moře je
+  // teď obyčejné pozadí mapy z tokenu `--mapa-more`. Hodnota se nepočítá ručně,
+  // nechá se přeložit prohlížečem přes pomocný prvek: zapsaný `#C6DAE1`
+  // a spočítaný `rgb(198, 218, 225)` jsou tatáž barva a porovnání řetězců
+  // by na tom padalo.
+  await kontrola('offline mapa: barva moře, ne šeď', () =>
     page.evaluate(() => {
       const sonda = document.createElement('div')
       sonda.style.color = 'var(--mapa-more)'
@@ -406,15 +411,14 @@ if (!SINGLE) {
       return getComputedStyle(document.getElementById('map')).backgroundColor === ocekavano
     })
   )
-  // Štítek „offline" má smysl jen v režimu dlaždic – v malovaném podkladu žádné
-  // dlaždice nechodí, takže by svítil pořád a nic by neříkal.
-  await page.evaluate(() => document.getElementById('podkladBtn').click())
-  await page.waitForTimeout(500)
-  await page.mouse.wheel(0, -400)
-  await page.waitForTimeout(3000)
-  await kontrola('offline: štítek při přepnutí na dlaždice', () => page.locator('#offlineStitek').isVisible(), true)
-  await page.evaluate(() => document.getElementById('podkladBtn').click())
+  // Kresby se ukazují jen v pásmu přiblížení 4–8, takže se napřed oddálí zpátky.
+  await page.mouse.wheel(0, 400)
+  await page.waitForTimeout(400)
+  await page.mouse.wheel(0, 400)
+  await page.waitForTimeout(1500)
+  await kontrola('offline mapa: malované kresby', () => page.locator('.kresba img').count().then((n) => n > 0))
 
+  await page.evaluate(() => document.getElementById('podkladBtn').click())
   await page.context().setOffline(false)
 }
 

@@ -187,8 +187,11 @@ export const prefs = nacti(PREFK, {
   posledniZaloha: 0,
   /** Vzhled: 'system' (podle telefonu), 'svetly', 'tmavy'. Viz core/motiv.js. */
   motiv: 'system',
-  /** Podklad mapy: 'malovany' (výchozí, podle předloh) nebo 'dlazdice' (OSM). */
-  podklad: 'malovany',
+  /**
+   * Podklad mapy: 'dlazdice' (výchozí – běžná mapa z OpenStreetMap) nebo
+   * 'malovany' (offline mapa podle grafických předloh, bez sítě).
+   */
+  podklad: 'dlazdice',
 })
 export const savePrefs = () => zapis(PREFK, prefs)
 

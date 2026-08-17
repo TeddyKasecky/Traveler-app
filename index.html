@@ -35,9 +35,9 @@
        knoflík vpravo dole. Visí pod hlavičkou (`top:100%`), aby se nemusela
        počítat její výška – ta se mění podle záložky i podle bezpečné zóny. -->
   <button class="mapkolecko" id="fabLoc" title="Moje poloha"><svg class="ic"><use href="#i-pinme"/></svg></button>
-  <!-- Malovaná mapa nemá silnice a při přiblížení kresby dojdou. Kdo potřebuje
-       vidět, kudy se tam jede, přepne na dlaždice z OpenStreetMap. -->
-  <button class="mapkolecko" id="podkladBtn" title="Přepnout na podrobnou mapu"><svg class="ic"><use href="#i-map"/></svg></button>
+  <!-- Přepínač podkladu. Výchozí je běžná mapa z OpenStreetMap; malovaná mapa
+       je offline varianta – funguje bez signálu, ale nemá silnice. -->
+  <button id="podkladBtn" title="Přepnout na offline mapu"><svg class="ic"><use href="#i-map"/></svg><span>Online</span></button>
   <!-- Hlásí, že zrovna chybí dlaždice. Obsah plní map/offlineMap.js. Visí pod
        hlavičkou stejně jako kolečko polohy – dole už je karta výpravy. -->
   <div id="offlineStitek" hidden></div>

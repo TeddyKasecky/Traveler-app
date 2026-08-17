@@ -66,9 +66,10 @@ for (const b of document.querySelectorAll('#tabs button')) {
 // scripts/check-handlers.mjs, který napojení porovnává s originálem za běhu.
 document.getElementById('fabLoc').onclick = zjistiPolohu
 
-// Přepínač podkladu mapy. Malovaná mapa je výchozí, dlaždice z OSM na vyžádání.
+// Přepínač podkladu mapy. Výchozí je online mapa z OSM, malovaná je pro cesty
+// bez signálu – dlaždice se offline neukládají a stahovat se hromadně nesmějí.
 document.getElementById('podkladBtn').onclick = () => {
-  toast(prepniPodklad() ? 'Podrobná mapa' : 'Malovaná mapa')
+  toast(prepniPodklad() ? 'Offline mapa – funguje bez signálu' : 'Online mapa z OpenStreetMap')
 }
 
 // Profil nemá tlačítko ve spodní liště, otevírá se z hlavičky.

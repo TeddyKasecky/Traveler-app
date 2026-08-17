@@ -98,27 +98,32 @@ function srovnejPodklad() {
   }
 
   nastavRezim(chceDlazdice)
+
+  // Pilulka ukazuje režim, ve kterém mapa je, ne co udělá ťuknutí. Že je mapa
+  // offline, je informace, kterou člověk na cestě potřebuje vidět.
   const b = document.getElementById('podkladBtn')
   if (b) {
-    b.classList.toggle('on', chceDlazdice)
-    b.title = chceDlazdice ? 'Zpět na malovanou mapu' : 'Přepnout na podrobnou mapu'
+    b.classList.toggle('on', !chceDlazdice)
+    b.querySelector('span').textContent = chceDlazdice ? 'Online' : 'Offline'
+    b.title = chceDlazdice ? 'Přepnout na offline mapu' : 'Zpět na online mapu'
   }
 }
 
 /**
- * Přepne podklad mezi malovaným a dlaždicemi z OpenStreetMap.
+ * Přepne podklad mezi dlaždicemi z OpenStreetMap a malovanou offline mapou.
  *
- * Malovaná mapa je podle předlohy a vypadá jako z cestovatelského deníku, ale
- * nemá silnice a při větším přiblížení kresby dojdou. Kdo potřebuje vidět,
- * kudy se tam jede, přepne – a volba se pamatuje.
+ * Výchozí je online mapa: má silnice a dá se podle ní jet. Malovaná mapa je
+ * pro chvíle bez signálu – dlaždice se offline neukládají a hromadně stahovat
+ * se nesmějí (podmínky OSM), takže bez ní by mapa bez signálu byla šedá.
+ * Volba se pamatuje v `prefs.podklad`.
  *
- * @returns {boolean} true = nově jsou zapnuté dlaždice
+ * @returns {boolean} true = nově je zapnutá offline mapa
  */
 export function prepniPodklad() {
   prefs.podklad = prefs.podklad === 'dlazdice' ? 'malovany' : 'dlazdice'
   savePrefs()
   srovnejPodklad()
-  return prefs.podklad === 'dlazdice'
+  return prefs.podklad === 'malovany'
 }
 
 /**

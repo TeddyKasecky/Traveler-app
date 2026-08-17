@@ -35,8 +35,18 @@ body:not([data-tab='map']) #mapDolu{display:none}
   display:grid;place-items:center;transition:transform .16s var(--pop),background .18s}
 .mapkolecko svg.ic{font-size:21px;color:var(--akcent);transition:color .18s}
 .mapkolecko:active{transform:var(--stisk)}
-#podkladBtn{margin-top:66px}
-#podkladBtn.on{background:var(--akcent)}
+
+/* ---------- přepínač podkladu ---------- */
+/* Drobná pilulka vlevo nahoře, naproti kolečku polohy. Ukazuje, v jakém
+ * režimu mapa právě je, ne co se stane po ťuknutí – stav je informace,
+ * kterou člověk na mapě potřebuje (offline mapa nemá silnice). */
+#podkladBtn{position:absolute;left:14px;top:100%;margin-top:12px;height:34px;padding:0 12px;
+  border-radius:var(--r-pill);border:var(--line);background:var(--plocha);box-shadow:var(--stin-2);
+  display:flex;align-items:center;gap:6px;font:inherit;font-size:.72rem;font-weight:800;
+  letter-spacing:.3px;color:var(--text2);transition:transform .16s var(--pop),background .18s,color .18s}
+#podkladBtn svg.ic{font-size:15px;color:var(--akcent);transition:color .18s}
+#podkladBtn:active{transform:var(--stisk)}
+#podkladBtn.on{background:var(--akcent);color:var(--na-akcentu)}
 #podkladBtn.on svg.ic{color:var(--na-akcentu)}
 
 /* ---------- spodní část ---------- */
