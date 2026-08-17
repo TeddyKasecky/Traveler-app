@@ -1,13 +1,14 @@
 /**
  * Rychlé filtry nad mapou a úplný výběr kategorií v panelu Filtry.
  *
- * PROČ PĚT MÍSTO DESETI: předloha `grafika/…11_09_49 (1).png` má nad mapou pět
- * pilulek — Vše, Kempy, Výhledy, Turistika, U vody. Deset chipů se na telefon
- * nevešlo a lišta se musela posouvat, takže poslední čtyři nikdo neviděl.
+ * PROČ PĚT: předloha `grafika/…11_09_49 (1).png` má nad mapou pět pilulek.
+ * Deset chipů se na telefon nevešlo a lišta se musela posouvat, takže poslední
+ * čtyři nikdo neviděl.
  *
- * Kategorie se tím ale neztrácejí: úplný výběr všech deseti je v panelu Filtry
- * (`#katRow`) a `t` (typ) je jako pilulka na Seznamu. Rychlá pilulka je zkratka,
- * ne zmenšení.
+ * CO V NICH JE: od srpna 2026 „moje věci“ (uložená, Musíme!, v plánu, byli
+ * jsme), ne kategorie. Zdůvodnění je u `RYCHLE` níž. Kategorie zůstávají
+ * v panelu Filtry (`#katRow`) a `t` (typ) jako pilulka na Seznamu — rychlá
+ * pilulka je zkratka, ne zmenšení.
  *
  * Na rozdíl od panelu filtrů se pilulka projeví hned — kliknutí rovnou překreslí
  * mapu. Tak to bylo v původní aplikaci a je to schválně: rychlý filtr je rychlý,
@@ -23,35 +24,46 @@ import { draw } from '../map/map.js'
 import { toast } from './toast.js'
 
 /**
- * Pět rychlých filtrů podle předlohy.
+ * Pět rychlých filtrů: MOJE VĚCI, ne kategorie.
  *
- * Každý sahá na `F.kat` (kategorie `k`), „Výhledy“ navíc na `F.typ` — vyhlídka
- * je v datech typ (26 míst), ne kategorie. Míchání dvou polí v jednom filtru
- * není hezké, ale je to jediné, co ta data dovolují; vymýšlet novou kategorii
- * a přeznačkovat 580 míst kvůli jedné pilulce by bylo horší.
+ * Do srpna 2026 to bylo pět kategorií (Kempy, Výhledy, Turistika, U vody).
+ * Na mapě je to ale nejmíň užitečná pětice, jakou jde vybrat: kategorii už
+ * rozlišuje barva a ikona špendlíku, takže pilulka jen ubírala z toho, co je
+ * vidět. Co na mapě poznat NEJDE, je, co si k místům člověk sám poznamenal —
+ * a přesně to teď pilulky filtrují.
+ *
+ * Kategorie se neztratily: všech deset zůstává v panelu Filtry (`#katRow`)
+ * a `t` (typ) je jako pilulka na Seznamu.
+ *
+ * Každá pilulka je stav čtyř polí filtru. „Vše“ je má všechna prázdná, takže
+ * se nemusí řešit zvlášť — je to obyčejný záznam jako ostatní.
  *
  * @typedef {Object} RychlyFiltr
  * @property {string} id
  * @property {string} popisek
- * @property {string} ikona   prázdná u „Vše“ – předloha tam ikonu nemá
- * @property {string[]} kat   hodnoty pole `k`
- * @property {string} typ     hodnota pole `t`
+ * @property {string} ikona     prázdná u „Vše“ – předloha tam ikonu nemá
+ * @property {boolean} ulozene  uložené srdcem
+ * @property {boolean} fire     tři plamínky („Musíme!“)
+ * @property {boolean} vPlanu   je v aktivní výpravě
+ * @property {string} stav      '' nebo 'visited'
  */
 
 /** @type {RychlyFiltr[]} */
 export const RYCHLE = [
-  { id: 'vse', popisek: 'Vše', ikona: '', kat: [], typ: '' },
-  { id: 'kempy', popisek: 'Kempy', ikona: 'i-van', kat: ['Spaní'], typ: '' },
-  { id: 'vyhledy', popisek: 'Výhledy', ikona: 'i-mount', kat: [], typ: 'Vyhlídka' },
-  { id: 'turistika', popisek: 'Turistika', ikona: 'i-boot', kat: ['Hory a túry', 'Soutěsky', 'Ferraty'], typ: '' },
-  { id: 'voda', popisek: 'U vody', ikona: 'i-swim', kat: ['Jezera', 'Vodopády'], typ: '' },
+  { id: 'vse', popisek: 'Vše', ikona: '', ulozene: false, fire: false, vPlanu: false, stav: '' },
+  { id: 'ulozene', popisek: 'Uložená', ikona: 'i-zalozka', ulozene: true, fire: false, vPlanu: false, stav: '' },
+  { id: 'musime', popisek: 'Musíme!', ikona: 'i-fire', ulozene: false, fire: true, vPlanu: false, stav: '' },
+  { id: 'vplanu', popisek: 'V plánu', ikona: 'i-route', ulozene: false, fire: false, vPlanu: true, stav: '' },
+  { id: 'byli', popisek: 'Byli jsme', ikona: 'i-check', ulozene: false, fire: false, vPlanu: false, stav: 'visited' },
 ]
+
+/** Pole filtru, kterými se rychlé pilulky přepínají. */
+const POLE = ['ulozene', 'fire', 'vPlanu']
 
 /** Sedí stav filtrů přesně na tenhle rychlý filtr? */
 function jeAktivni(r) {
-  if ((F.typ || '') !== r.typ) return false
-  if (F.kat.size !== r.kat.length) return false
-  return r.kat.every((k) => F.kat.has(k))
+  if ((F.stav || '') !== r.stav) return false
+  return POLE.every((k) => !!F[k] === !!r[k])
 }
 
 /** Vykreslí pilulky nad mapou a přiřadí kategorie do panelu. Volá se jednou. */
@@ -83,9 +95,8 @@ export function initChipy() {
 function prepniRychly(r) {
   if (!r) return
   const vypnout = jeAktivni(r)
-  F.kat.clear()
-  F.typ = vypnout ? '' : r.typ
-  if (!vypnout) for (const k of r.kat) F.kat.add(k)
+  for (const k of POLE) F[k] = vypnout ? false : !!r[k]
+  F.stav = vypnout ? '' : r.stav
 
   syncFiltersUI()
   draw()
@@ -136,13 +147,9 @@ export function syncFiltersUI() {
   for (const t of document.querySelectorAll('.toggle.stav')) {
     t.classList.toggle('on', t.dataset.s === F.stav)
   }
-  for (const [id, k] of [
-    ['fReg', 'reg'],
-    ['fZeme', 'zeme'],
-    ['fTyp', 'typ'],
-    ['fStav', 'stav'],
-  ]) {
-    const el = document.getElementById(id)
-    if (el) el.value = F[k] || ''
-  }
+  // Jen `fStav` – jeho volby mají hodnotu v atributu. Oblast, Země a Typ nesou
+  // v textu počet („Vodopády (37)"), takže se `value` netrefí; srovnává je
+  // `srovnejPocty()` ve `filterPanel.js` při každém překreslení.
+  const stav = document.getElementById('fStav')
+  if (stav) stav.value = F.stav || ''
 }

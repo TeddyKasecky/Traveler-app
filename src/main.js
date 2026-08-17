@@ -17,7 +17,7 @@ import { vlozSprite } from './icons/sprite.js'
 import { initMapa, draw, goTo, zobrazPolohu, prepniPodklad, mapa } from './map/map.js'
 import { prebarviPodklad } from './map/podklad.js'
 import { initChipy } from './components/chip.js'
-import { initFilterPanel, fillSelects, stahniZalohu } from './components/filterPanel.js'
+import { initFilterPanel, fillSelects, srovnejPocty, stahniZalohu } from './components/filterPanel.js'
 import { ukazPruh } from './components/pruh.js'
 import { toast } from './components/toast.js'
 import { initSheet, jeOtevreny as jeOtevrenyDetail } from './components/sheet.js'
@@ -93,6 +93,9 @@ document.getElementById('profilOpen').onclick = () => aktivujZalozku('profil')
  * Plán se překresluje vždycky – drží počítadlo na tlačítku záložky.
  */
 on('prekresleno', () => {
+  // Počty ve filtrech na Seznamu závisí na ostatních filtrech i na hledání,
+  // takže se přepočítávají s každým překreslením, ne jen při výměně dat.
+  srovnejPocty()
   if (S.activeTab === 'list') renderList()
   if (S.activeTab === 'disc') renderDisc()
   if (S.activeTab === 'map') renderMapaDole()

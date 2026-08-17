@@ -21,7 +21,7 @@ import {
   ulozVlastniData,
 } from '../core/store.js'
 import { esc } from '../core/html.js'
-import { resetFiltru } from '../core/filters.js'
+import { resetFiltru, visible } from '../core/filters.js'
 import { registrujOverlay, aktivujZalozku } from '../core/router.js'
 import { mistaZCsv, zalohaData, obnovZalohu, stahniJson } from '../core/csv.js'
 import { draw } from '../map/map.js'
@@ -45,25 +45,98 @@ export function zavriFiltry() {
 }
 
 /**
+ * Které pole dat patří ke kterému rozbalovacímu seznamu.
+ * Používá se na počty i na plnění, ať to nikde nestojí dvakrát.
+ */
+const SEZNAMY = [
+  { id: 'fReg', klic: 'reg', pole: 'r', popisek: 'Oblast' },
+  { id: 'fZeme', klic: 'zeme', pole: 'z', popisek: 'Země' },
+  { id: 'fTyp', klic: 'typ', pole: 't', popisek: 'Typ' },
+]
+
+/**
+ * Kolik míst by dala každá volba, kdyby se zapnula PŘI ZAPNUTÝCH OSTATNÍCH
+ * filtrech.
+ *
+ * Vlastní filtr se na chvíli vypne — jinak by každá volba vyšla nula kromě
+ * té právě vybrané. `visible()` se tím projde jednou na seznam, ne jednou
+ * na volbu; při 68 oblastech by to jinak bylo 68 průchodů 580 místy.
+ *
+ * @param {{klic:string, pole:string}} s
+ * @returns {Map<string, number>}
+ */
+function pocty(s) {
+  const puvodni = F[s.klic]
+  F[s.klic] = ''
+  const zaklad = visible()
+  F[s.klic] = puvodni
+
+  const m = new Map()
+  for (const p of zaklad) {
+    const v = p[s.pole]
+    if (v) m.set(v, (m.get(v) || 0) + 1)
+  }
+  return m
+}
+
+/**
+ * Přepíše volby v rozbalovacích seznamech i s počty a zašedne prázdné.
+ *
+ * Bez tohohle nabízel Seznam po výběru země typy, které v ní vůbec nejsou,
+ * a ťuknutí na ně vrátilo prázdný výsledek. Volá se po každém překreslení,
+ * protože počty závisí na ostatních filtrech i na hledání.
+ *
+ * Mění se jen `<option>`, ne samotný `<select>` — obsluha `onchange` visí
+ * na něm a přežije to. Vybraná hodnota se musí vrátit ručně.
+ */
+export function srovnejPocty() {
+  for (const s of SEZNAMY) {
+    const el = document.getElementById(s.id)
+    if (!el) continue
+    const m = pocty(s)
+    const hodnoty = [...new Set(S.places.map((p) => p[s.pole]).filter(Boolean))].sort((a, b) =>
+      a.localeCompare(b, 'cs')
+    )
+    el.innerHTML =
+      `<option value="">${s.popisek}</option>` +
+      hodnoty
+        .map((x) => {
+          const n = m.get(x) || 0
+          return `<option${n ? '' : ' disabled'}>${esc(x)}${n ? ` (${n})` : ' (0)'}</option>`
+        })
+        .join('')
+    // Text volby nese počet, takže se hledá podle hodnoty bez něj.
+    const chci = F[s.klic]
+    el.selectedIndex = chci ? [...el.options].findIndex((o) => bezPoctu(o.text) === chci) : 0
+    if (el.selectedIndex < 0) el.selectedIndex = 0
+
+    // Z VYBRANÉ volby se počet zase odřízne. Pilulka je úzká (8,5 rem
+    // s ellipsis) a text zavřené pilulky je právě vybraná volba – „Bádensko-
+    // Württembersko (24)" by se ořízlo uprostřed názvu. Číslo navíc nic
+    // nepřidává: po výběru stojí hned pod pilulkami „17 míst nalezeno".
+    const vybrana = el.options[el.selectedIndex]
+    if (vybrana && el.selectedIndex > 0) vybrana.text = bezPoctu(vybrana.text)
+  }
+}
+
+/** Vytáhne z textu volby („Vodopády (37)") samotnou hodnotu. */
+const bezPoctu = (t) => t.replace(/\s\(\d+\)$/, '')
+
+/**
  * Naplní rozbalovací seznamy hodnotami, které se v datech opravdu vyskytují.
  * Volá se znovu po každé výměně dat (import CSV, návrat k vestavěným).
  */
 export function fillSelects() {
-  const mk = (id, vals, vse) => {
-    const s = document.getElementById(id)
-    s.innerHTML = `<option value="">${vse}</option>${vals.map((x) => `<option>${esc(x)}</option>`).join('')}`
-  }
-  const unik = (klic) => [...new Set(S.places.map((p) => p[klic]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'cs'))
-
-  // Prázdná volba je zároveň popiskem pilulky – tak to má předloha Seznamu.
-  mk('fReg', unik('r'), 'Oblast')
-  mk('fZeme', unik('z'), 'Země')
-  mk('fTyp', unik('t'), 'Typ')
+  srovnejPocty()
 
   // Pilulky na Seznamu překreslují hned, protože jsou vidět rovnou nad výsledky.
   // Přepínače v panelu Filtry se dál potvrzují tlačítkem „Ukázat výsledky".
+  //
+  // `bezPoctu` je nutné: volby nemají atribut `value`, takže `e.target.value`
+  // vrací jejich text — a ten od srpna 2026 nese i počet („Vodopády (37)").
+  // `#fStav` má hodnoty napsané v atributu, tam se nic neodřízne.
   const hned = (klic) => (e) => {
-    F[klic] = e.target.value
+    F[klic] = bezPoctu(e.target.value)
     draw()
   }
   document.getElementById('fReg').onchange = hned('reg')

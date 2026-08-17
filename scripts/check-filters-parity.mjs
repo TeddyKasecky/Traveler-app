@@ -193,6 +193,53 @@ F.free = true
 const odznakFree = pocetAktivnich()
 console.log(`\nOdznak filtrů: jen "Musíme!" → ${odznakFire} (v originále taky 0, viz N1), jen "Zdarma" → ${odznakFree}`)
 
+/* ---------- rychlé filtry „moje věci“ (v originále nebyly) ---------- */
+/* Originál je nezná, takže se nedají porovnat – ověřuje se jejich význam.
+ * Nejdůležitější je, že `ulozene` NENÍ totéž co `stav: 'wish'`: to druhé
+ * z originálu znamená „všechno kromě navštíveného“, tedy skoro celá databáze. */
+
+console.log('\nRychlé filtry „moje věci“ – originál je nezná, ověřuje se význam:')
+
+// Umělý stav výš dal `visited` každému třetímu; pár míst se uloží a naplánuje.
+const ulozeneId = S.places.filter((p) => store.stav[p.id] !== 'visited').slice(0, 7).map((p) => p.id)
+for (const id of ulozeneId) store.stav[id] = 'wish'
+store.plan = S.places.slice(10, 14).map((p) => p.id)
+
+const zkus = (popis, uprav, cekano) => {
+  nastavF(vychozi())
+  // `vychozi()` je z doby před novými filtry a `nastavF` je proto nenuluje.
+  F.ulozene = F.vPlanu = false
+  uprav()
+  const n = visible().length
+  const ok = n === cekano
+  if (!ok) cisla++
+  console.log(`  ${ok ? 'ok  ' : 'CHYBA'} ${popis.padEnd(28)} ${n} (čekáno ${cekano})`)
+}
+
+zkus('uložená srdcem', () => (F.ulozene = true), ulozeneId.length)
+zkus('v plánu', () => (F.vPlanu = true), store.plan.length)
+zkus('navštíveno', () => (F.stav = 'visited'), Object.values(store.stav).filter((x) => x === 'visited').length)
+zkus(
+  'uložená ≠ stav „wish"',
+  () => (F.stav = 'wish'),
+  S.places.filter((p) => store.stav[p.id] !== 'visited').length
+)
+zkus('uložená + v plánu naráz', () => {
+  F.ulozene = true
+  F.vPlanu = true
+}, ulozeneId.filter((id) => store.plan.includes(id)).length)
+
+nastavF(vychozi())
+F.ulozene = true
+F.vPlanu = false
+const odznakUloz = pocetAktivnich()
+console.log(`  odznak filtrů: jen „Uložená" → ${odznakUloz} (nové filtry se do odznaku počítají)`)
+if (odznakUloz !== 1) cisla++
+
+// Uklidit po sobě, ať to neovlivní nic dalšího.
+for (const id of ulozeneId) delete store.stav[id]
+store.plan = []
+
 /* ---------- hledání bez diakritiky (odsouhlasená změna) ---------- */
 
 console.log('\nHledání bez diakritiky – tady se od originálu lišíme schválně:')

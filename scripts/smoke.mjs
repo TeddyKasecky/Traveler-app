@@ -103,13 +103,17 @@ const kontrola = async (popis, fn, ocekavano) => {
 await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 57)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
-// Nad mapou je od přestavby rozvržení pět rychlých pilulek podle předlohy
-// (Vše, Kempy, Výhledy, Turistika, U vody) místo deseti chipů kategorií.
+// Nad mapou je pět rychlých pilulek podle předlohy, od srpna 2026 „moje věci"
+// (Vše, Uložená, Musíme!, V plánu, Byli jsme) místo kategorií.
 // Kategorie se tím neztratily – všech deset je v panelu Filtry, což ověřuje
 // druhá kontrola. Bez ní by se dalo pět chybějících kategorií přehlédnout.
 await kontrola('rychlé filtry nad mapou', () => page.locator('#chips .pilulka').count(), 5)
 await kontrola('všech deset kategorií ve filtru', () => page.locator('#katRow .toggle.kat').count(), 10)
 await kontrola('naplněné oblasti ve filtru', () => page.locator('#fReg option').count(), 118)
+// Volby nesou počet a prázdné jsou zašedlé – bez toho nabízel Seznam po výběru
+// země typy, které v ní vůbec nejsou, a ťuknutí na ně vrátilo prázdno.
+await kontrola('volby ve filtru nesou počet', () =>
+  page.locator('#fTyp option').nth(1).innerText().then((t) => /\(\d+\)$/.test(t)), true)
 await kontrola('mapa má dlaždicovou vrstvu', () => page.locator('.leaflet-tile-pane').count(), 1)
 // Do stránky se vkládají jen špendlíky ve výřezu – 580 kusů naráz stálo skoro
 // vteřinu přepočtu stylů při každém posunu mapy. Že se tím žádné místo neztratí,
@@ -369,10 +373,14 @@ await page.click('#mapBublina')
 await page.waitForTimeout(300)
 await kontrola('bublina kartu vrátí', () => page.locator('#vypravaKarta').isVisible(), true)
 
-// rychlý filtr nad mapou se projeví hned, bez potvrzování
-await page.click('#chips .pilulka[data-id="kempy"]')
+// Rychlé filtry nad mapou se projeví hned, bez potvrzování. Od srpna 2026
+// filtrují „moje věci" (uložená, Musíme!, v plánu, byli jsme), ne kategorie —
+// kategorii už na mapě rozlišuje barva špendlíku, viz components/chip.js.
+await kontrola('nad mapou je pět rychlých pilulek', () => page.locator('#chips .pilulka').count(), 5)
+await page.click('#chips .pilulka[data-id="ulozene"]')
 await page.waitForTimeout(400)
-await kontrola('rychlý filtr Kempy', () => page.locator('#countN').innerText(), '11 míst')
+// Nic uloženého zatím není, takže filtr musí vrátit nulu – a hlavně ne 580.
+await kontrola('rychlý filtr Uložená', () => page.locator('#countN').innerText(), '0 míst')
 await page.click('#chips .pilulka[data-id="vse"]')
 await page.waitForTimeout(400)
 await kontrola('rychlý filtr Vše vrátí všechna', () => page.locator('#countN').innerText(), '580 míst')

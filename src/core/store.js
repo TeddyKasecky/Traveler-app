@@ -223,6 +223,14 @@ export const F = {
   fire: false,
   stav: '',
   coll: '',
+  /**
+   * Rychlé filtry „moje věci“ nad mapou. Nejsou v původní aplikaci.
+   *
+   * `ulozene` je opravdu uložené srdcem, na rozdíl od `stav: 'wish'`, které
+   * z originálu znamená „všechno kromě navštíveného“. Viz `core/filters.js`.
+   */
+  ulozene: false,
+  vPlanu: false,
 }
 
 /* ================= běhový stav ================= */

@@ -35,6 +35,12 @@ export function visible() {
     if (F.fire && (store.prio[p.id] || 0) < 3) return false
     if (F.stav === 'visited' && store.stav[p.id] !== 'visited') return false
     if (F.stav === 'wish' && store.stav[p.id] === 'visited') return false
+    // `ulozene` NENÍ totéž co `stav: 'wish'`. To druhé je z původní aplikace
+    // a znamená „všechno kromě navštíveného“, tedy 575 z 580 míst. Tohle jsou
+    // místa, která si člověk opravdu uložil srdcem – bez toho by rychlá
+    // pilulka „Uložená“ nad mapou ukazovala skoro celou databázi.
+    if (F.ulozene && store.stav[p.id] !== 'wish') return false
+    if (F.vPlanu && !store.plan.includes(p.id)) return false
     if (q && !sedi(p, q)) return false
     return true
   })
@@ -53,6 +59,8 @@ export function pocetAktivnich() {
   return (
     [F.reg, F.zeme, F.typ, F.coll].filter(Boolean).length +
     ['free', 'kids', 'dogs', 'wow'].filter((k) => F[k]).length +
+    // `ulozene` a `vPlanu` jsou nové, žádné dědictví nedrží – počítají se.
+    ['ulozene', 'vPlanu'].filter((k) => F[k]).length +
     (F.stav ? 1 : 0)
   )
 }
@@ -61,6 +69,7 @@ export function pocetAktivnich() {
 export function resetFiltru() {
   F.reg = F.zeme = F.typ = F.coll = ''
   F.free = F.kids = F.dogs = F.wow = F.fire = false
+  F.ulozene = F.vPlanu = false
   F.stav = ''
   F.kat.clear()
 }
