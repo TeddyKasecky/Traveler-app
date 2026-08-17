@@ -52,7 +52,11 @@
 .stars svg.ic{font-size:29px;color:var(--sun);transition:transform .2s var(--pop)}
 .stars .off svg.ic{color:transparent}
 .stars button:active svg.ic{transform:scale(1.35) rotate(-8deg)}
-#noteBox{width:100%;border:var(--line);border-radius:14px;background:var(--paper);padding:11px;font:inherit;font-size:.9rem;min-height:74px;resize:vertical;outline:none}
+/* `color` tady musí být napsaná. Textarea si barvu textu nedědí ze stránky,
+ * bere ji od prohlížeče – tedy černou. Na tmavém papíru pak byla poznámka
+ * černá na tmavé a nedala se přečíst. Stejná chyba byla u .afarea, .wsel,
+ * .afout textarea a select v panelu Filtry. */
+#noteBox{width:100%;border:var(--line);border-radius:14px;background:var(--paper);color:var(--text);padding:11px;font:inherit;font-size:.9rem;min-height:74px;resize:vertical;outline:none}
 #noteBox:focus{box-shadow:0 0 0 3px var(--sun)}
 .links a{color:var(--rust);font-weight:700;word-break:break-all;font-size:.82rem;text-decoration:none;border-bottom:2px dotted var(--rust)}
 .sec{font-family:var(--f-disp);font-weight:600;font-size:.97rem;margin:16px 0 7px;display:flex;align-items:center;gap:8px}

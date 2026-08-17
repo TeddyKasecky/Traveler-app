@@ -17,10 +17,16 @@
   background:var(--plocha-nav);border-radius:var(--r-pill);box-shadow:var(--stin-3)}
 #tabs button{flex:1;background:none;border:0;font-weight:700;font-size:.62rem;letter-spacing:.2px;color:var(--na-nav);
   display:flex;flex-direction:column;gap:4px;align-items:center;padding:6px 2px;border-radius:var(--r-pill);opacity:.72}
-#tabs button svg.ic{font-size:20px;color:var(--na-nav);width:34px;height:34px;padding:7px;border-radius:50%;
-  transition:background .18s,color .18s,transform .2s var(--pop)}
+/* `stroke` musí být napsaný vedle `color`. Obrys ikony kreslí `stroke`
+ * (base.css), ne `color` – ten se u ikon uplatní jen na vyplněné části přes
+ * `currentColor`. Bez toho si ikona brala `stroke:var(--ink)`, který se
+ * s režimem převrací, takže ve SVĚTLÉM režimu byly popisky záložek tmavé
+ * na tmavě zelené pilulce a nešly vidět. Barvy se tady řídí podkladem
+ * (pilulka je tmavá vždy), ne režimem. */
+#tabs button svg.ic{font-size:20px;color:var(--na-nav);stroke:var(--na-nav);width:34px;height:34px;padding:7px;border-radius:50%;
+  transition:background .18s,color .18s,stroke .18s,transform .2s var(--pop)}
 #tabs button.on{opacity:1}
-#tabs button.on svg.ic{background:var(--zvyrazneni);color:var(--na-zvyrazneni);transform:translateY(-1px)}
+#tabs button.on svg.ic{background:var(--zvyrazneni);color:var(--na-zvyrazneni);stroke:var(--na-zvyrazneni);transform:translateY(-1px)}
 #tabs .lbl{position:relative}
 #tabs .pcount{position:absolute;top:-30px;right:-15px;background:var(--upozorneni);color:var(--na-upozorneni);
   border-radius:999px;font-size:.58rem;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center}

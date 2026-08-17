@@ -28,7 +28,8 @@
   border:2px solid var(--inkfade);border-radius:7px;padding:1px 5px}
 
 .afnote{font-size:.7rem;color:var(--ink2);line-height:1.4;margin-top:5px}
-.afarea{width:100%;border:var(--line);border-radius:14px;background:var(--paper);padding:11px;font:inherit;
+/* `color` viz sheet.css u #noteBox – textarea si ji od stránky nedědí. */
+.afarea{width:100%;border:var(--line);border-radius:14px;background:var(--paper);color:var(--text);padding:11px;font:inherit;
   font-size:.86rem;resize:vertical;outline:none}
 .afarea:focus{box-shadow:0 0 0 3px var(--sun)}
 
@@ -51,5 +52,5 @@
   margin:14px 0 4px;box-shadow:var(--stin-2);font-size:.84rem;font-weight:800;display:flex;gap:9px;align-items:center}
 .afok svg.ic{font-size:19px;color:var(--moss)}
 
-.afout textarea{width:100%;border:var(--line);border-radius:14px;background:var(--paper);padding:11px;
+.afout textarea{width:100%;border:var(--line);border-radius:14px;background:var(--paper);color:var(--text);padding:11px;
   font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.68rem;line-height:1.45;resize:vertical;outline:none}

@@ -3,6 +3,10 @@
 html,body{margin:0;height:100%;overflow:hidden;font-family:var(--f-body);background:var(--paper);color:var(--ink)}
 button{font-family:var(--f-body);cursor:pointer;color:var(--ink)}
 svg.ic{width:1em;height:1em;display:inline-block;vertical-align:-.12em;stroke:var(--ink);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+/* Tyhle dva řádky NEFUNGUJÍ a zůstávají jen proto, že jsou 1:1 z originálu.
+ * Ikony se vkládají jako <use>, a do stromu instance selektor z dokumentu
+ * nedosáhne – uplatní se jen dědění, tedy `fill:none` o řádek výš. Výplň se
+ * proto musí psát jako atribut přímo do sprite.svg; podrobně tam v hlavičce. */
 svg.ic .f{fill:currentColor;stroke:none}
 svg.ic .fi{fill:var(--ink);stroke:none}
 ::-webkit-scrollbar{width:0;height:0}

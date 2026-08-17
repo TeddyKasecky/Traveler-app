@@ -47,7 +47,7 @@ body:not([data-tab='map']) #mapDolu{display:none}
 #podkladBtn svg.ic{font-size:15px;color:var(--akcent);transition:color .18s}
 #podkladBtn:active{transform:var(--stisk)}
 #podkladBtn.on{background:var(--akcent);color:var(--na-akcentu)}
-#podkladBtn.on svg.ic{color:var(--na-akcentu)}
+#podkladBtn.on svg.ic{color:var(--na-akcentu);stroke:var(--na-akcentu)}
 
 /* ---------- spodní část ---------- */
 
@@ -82,7 +82,7 @@ body:not([data-tab='map']) #mapDolu{display:none}
 #fabPlus{position:absolute;right:14px;bottom:100%;margin-bottom:14px;z-index:3;
   width:56px;height:56px;border-radius:50%;border:0;background:var(--zvyrazneni);
   box-shadow:var(--stin-3);display:grid;place-items:center;transition:transform .18s var(--pop)}
-#fabPlus svg.ic{font-size:26px;color:var(--na-zvyrazneni)}
+#fabPlus svg.ic{font-size:26px;color:var(--na-zvyrazneni);stroke:var(--na-zvyrazneni)}
 #fabPlus:active{transform:var(--stisk)}
 #fabPlus.on{transform:rotate(45deg)}
 

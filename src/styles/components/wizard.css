@@ -26,7 +26,8 @@
 .wopt svg.ic{font-size:14px;color:var(--rust)}
 .wopt.on{background:var(--plocha-tepla)}
 .wopt:active{transform:var(--stisk)}
-.wsel{width:100%;border:1px solid var(--obrys);border-radius:13px;padding:10px 12px;font:inherit;font-weight:700;background:var(--paper);margin-top:2px}
+/* `color` viz sheet.css u #noteBox – select ani input si ji od stránky nedědí. */
+.wsel{width:100%;border:1px solid var(--obrys);border-radius:13px;padding:10px 12px;font:inherit;font-weight:700;background:var(--paper);color:var(--text);margin-top:2px}
 .wgo{width:100%;margin-top:16px;border:var(--line);border-radius:15px;background:var(--plocha-tepla);
   padding:13px;font-size:1rem;font-weight:800;box-shadow:var(--stin-2);display:flex;justify-content:center;gap:9px;align-items:center;cursor:pointer}
 .wgo:active{transform:var(--stisk)}

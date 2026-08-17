@@ -37,6 +37,18 @@ export const teloSheetu = () => document.getElementById('sheetBody')
 export function initSheet() {
   document.addEventListener('click', (e) => {
     if (!jeOtevreny()) return
+    // Odpojený cíl znamená, že klik obsloužil někdo uvnitř aplikace a při tom
+    // překreslil – „mimo panel“ to není.
+    //
+    // Tohle byla ta chyba, kvůli které se detail místa nedal používat: obsluha
+    // tlačítek v detailu (srdce, fajfka, plán, hvězdičky, plamínky, fotky) volá
+    // na konci openDetail(), a to přepíše sheetBody.innerHTML. Odběr na
+    // document se ale vyhodnocuje až po obsluze tlačítka, takže do
+    // `el().contains(e.target)` už přišla odpojená hvězdička – kontrola vyšla
+    // false, žádná z výjimek níž na ni nepasovala a panel se zavřel. Na Mapě se
+    // tím odkryla mapa, takže to vypadalo, že detail „spadne do mapy“
+    // a že hodnocení nefunguje (přitom se uložilo, jen nebylo vidět).
+    if (!e.target.isConnected) return
     if (el().contains(e.target)) return
     if (
       e.target.closest('.leaflet-marker-icon') ||

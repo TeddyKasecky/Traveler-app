@@ -44,7 +44,7 @@
   padding:15px 17px;display:flex;flex-direction:column;gap:15px}
 .trasakarta .btn.zvyrazneny{background:var(--zvyrazneni);color:var(--na-zvyrazneni);border-color:transparent;
   justify-content:center;margin:0;font-weight:800}
-.trasakarta .btn.zvyrazneny svg.ic{color:var(--na-zvyrazneni)}
+.trasakarta .btn.zvyrazneny svg.ic{color:var(--na-zvyrazneni);stroke:var(--na-zvyrazneni)}
 
 /* ---------- itinerář ---------- */
 .itinerar{display:flex;flex-direction:column;gap:9px}

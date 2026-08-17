@@ -12,4 +12,4 @@
 .motivbtn svg.ic{font-size:16px;color:var(--text2)}
 .motivbtn:active{transform:var(--stisk)}
 .motivbtn.on{background:var(--akcent);color:var(--na-akcentu)}
-.motivbtn.on svg.ic{color:var(--na-akcentu)}
+.motivbtn.on svg.ic{color:var(--na-akcentu);stroke:var(--na-akcentu)}

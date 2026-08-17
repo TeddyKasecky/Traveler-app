@@ -1,7 +1,18 @@
 <!-- Sada ikon z původní aplikace. Vytaženo 1:1 z index-original.html.
      Vkládá se do DOM za běhu (src/icons/sprite.js), ne přes <use href="sprite.svg#…">:
      symboly používají var(--card) a currentColor a ty se do externího SVG nepřenesou.
-     Ikony se odkazují dvěma způsoby – <use href="#i-van"/> a jako holý řetězec v JS. -->
+     Ikony se odkazují dvěma způsoby – <use href="#i-van"/> a jako holý řetězec v JS.
+
+     POZOR NA VÝPLNĚ: ikony se do stránky dostávají jako <use>, a do toho stromu
+     selektor z dokumentu nedosáhne. Pravidlo `svg.ic .f{fill:currentColor}`
+     v base.css se tedy NIKDY neuplatní – uvnitř <use> se zdědí jen `fill:none`
+     z `svg.ic`, takže 44 ikon má výplň, která se nikdy nevykreslila (stejně
+     jako v původní aplikaci, odkud je to opsané).
+
+     Kdo chce výplň, musí ji napsat jako ATRIBUT na element (`fill="currentColor"`).
+     Atribut se do <use> zkopíruje a přebije dědění. Tak to má i i-fire
+     (`fill="none" stroke="currentColor"`) a od srpna 2026 i i-star – bez toho
+     nebylo vidět hodnocení místa, protože plná a prázdná hvězdička vypadaly stejně. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
 <symbol id="i-fire" viewBox="0 0 24 24"><path d="M12 2.5c.6 3-1.4 4.6-2.8 6.3C7.7 10.6 7 12.3 7 14a5 5 0 0 0 10 0c0-1.2-.4-2.4-1-3.4-.5 1-1.2 1.7-2 2.1.4-2.6-.3-5.2-2-7.4-.6 1.6-1.6 2.5-2.4 3.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="i-wand" viewBox="0 0 24 24"><path d="m5 19 9.5-9.5M13 4l.9 2.1L16 7l-2.1.9L13 10l-.9-2.1L10 7l2.1-.9zM19 11l.6 1.4L21 13l-1.4.6L19 15l-.6-1.4L17 13l1.4-.6zM6 4l.5 1.2L7.7 5.7 6.5 6.2 6 7.4 5.5 6.2 4.3 5.7l1.2-.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
@@ -20,7 +31,7 @@
 <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" class="f" opacity=".18"/><circle cx="12" cy="12" r="9"/><path class="fi" d="M15.8 8.2l-2.4 5.2-5.2 2.4 2.4-5.2z"/><circle cx="12" cy="12" r="1.2" fill="var(--card)"/></symbol>
 <symbol id="i-pinme" viewBox="0 0 24 24"><path class="f" opacity=".2" d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.6" class="fi"/></symbol>
 <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h13"/><circle cx="15" cy="7" r="2.2" class="f"/><circle cx="9" cy="12" r="2.2" class="f"/><circle cx="19" cy="17" r="2.2" class="f"/></symbol>
-<symbol id="i-star" viewBox="0 0 24 24"><path class="f" d="M12 3.4l2.5 5.3 5.8.7-4.3 4 1.1 5.7-5.1-2.9-5.1 2.9 1.1-5.7-4.3-4 5.8-.7z"/><path d="M12 3.4l2.5 5.3 5.8.7-4.3 4 1.1 5.7-5.1-2.9-5.1 2.9 1.1-5.7-4.3-4 5.8-.7z"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path class="f" fill="currentColor" stroke="none" d="M12 3.4l2.5 5.3 5.8.7-4.3 4 1.1 5.7-5.1-2.9-5.1 2.9 1.1-5.7-4.3-4 5.8-.7z"/><path d="M12 3.4l2.5 5.3 5.8.7-4.3 4 1.1 5.7-5.1-2.9-5.1 2.9 1.1-5.7-4.3-4 5.8-.7z"/></symbol>
 <symbol id="i-nav" viewBox="0 0 24 24"><path class="f" d="M12 2.8 20.5 21 12 16.6 3.5 21z"/><path d="M12 2.8 20.5 21 12 16.6 3.5 21 12 2.8z"/></symbol>
 <symbol id="i-boot" viewBox="0 0 24 24"><path class="f" opacity=".18" d="M5 4h6v7c4.5 0 8 2.5 8 6v2H5z"/><path d="M5 4h6v7c4.5 0 8 2.5 8 6v2H5V4z"/><path d="M5 15h6M8 19v-2M12 19v-2M16 19v-2"/></symbol>
 <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5 9.5 18 20 6.5" stroke-width="3"/></symbol>

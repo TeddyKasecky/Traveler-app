@@ -7,7 +7,8 @@
 #filters h2 svg.ic{font-size:22px;color:var(--rust)}
 .fgroup{margin-bottom:15px}
 .fgroup label{font-size:.64rem;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--ink2);display:block;margin-bottom:7px}
-select{width:100%;border:var(--line);border-radius:14px;background:var(--paper);padding:11px;font:inherit;font-weight:700;appearance:none;
+/* `color` viz sheet.css u #noteBox – select si ji od stránky nedědí. */
+select{width:100%;border:var(--line);border-radius:14px;background:var(--paper);color:var(--text);padding:11px;font:inherit;font-weight:700;appearance:none;
   background-image:linear-gradient(45deg,transparent 49%,var(--ink) 50%),linear-gradient(-45deg,transparent 49%,var(--ink) 50%);
   background-position:calc(100% - 20px) 55%,calc(100% - 14px) 55%;background-size:6px 6px;background-repeat:no-repeat}
 .togglerow{display:flex;gap:8px;flex-wrap:wrap}

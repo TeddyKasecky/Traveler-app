@@ -114,7 +114,9 @@
 .pilulka span{font-size:.68rem;font-weight:700}
 .pilulka:active{transform:var(--stisk)}
 .pilulka.on{background:var(--akcent);color:var(--na-akcentu)}
-.pilulka.on svg.ic{color:var(--na-akcentu)}
+/* `stroke` vedle `color` – viz tabs.css. Obrys ikony kreslí stroke, a bez
+ * tohohle si bral --ink, takže na mechové ploše byl ve světlém režimu tmavý. */
+.pilulka.on svg.ic{color:var(--na-akcentu);stroke:var(--na-akcentu)}
 /* Vodorovná varianta – ikona vedle textu, na rychlé filtry nad mapou.
  * Rozměry jsou uřízlé na míru: pět pilulek se musí na 393px širokou obrazovku
  * vejít celých, jak je má předloha. S `padding:8px 14px` z prvního pokusu
@@ -161,7 +163,7 @@
 .ikonbtn svg.ic{font-size:18px;color:var(--text2)}
 .ikonbtn:active{transform:var(--stisk)}
 .ikonbtn.on{background:var(--akcent)}
-.ikonbtn.on svg.ic{color:var(--na-akcentu)}
+.ikonbtn.on svg.ic{color:var(--na-akcentu);stroke:var(--na-akcentu)}
 
 /* ---------- lišta hledání a filtrů na obrazovce ---------- */
 /* Předloha má hledání až na obrazovce, ne v hlavičce: na Domů a Objevuj

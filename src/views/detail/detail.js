@@ -10,7 +10,7 @@ import { esc } from '../../core/html.js'
 import { dkm, fmtKm } from '../../core/geo.js'
 import { KAT } from '../../data/categories.js'
 import { IC } from '../../icons/sprite.js'
-import { otevriSheet, teloSheetu } from '../../components/sheet.js'
+import { otevriSheet, teloSheetu, jeOtevreny } from '../../components/sheet.js'
 import { flames, setPrio, PRIO_LBL } from '../../components/prio.js'
 import { scene } from '../../components/postcard.js'
 import { priceChip, bpWeb } from '../../components/priceChip.js'
@@ -33,6 +33,9 @@ const TRANSIT = {
 
 /** Pořadové číslo mini-mapy, ať má každé otevření vlastní id prvku. */
 let mmSeq = 0
+
+/** Které místo je v panelu právě vykreslené. Viz posun níž. */
+let vykreslene = null
 
 /**
  * Otevře detail místa.
@@ -99,6 +102,16 @@ export function openDetail(p, focus) {
   const ilustrace = photo ? '' : fotoKategorie(p, 'velke')
 
   zavriMiniMapu()
+
+  // Kam byl panel posunutý, se musí přečíst dřív, než se obsah přepíše.
+  // Vrací se to na konci funkce, a jen když jde o překreslení téhož místa
+  // v už otevřeném panelu.
+  //
+  // Posouvá se `#sheetBody` sám (`#sheet .body{overflow-y:auto}`), ne jeho
+  // rodič. Do teď tu stálo `telo.parentElement.scrollTop = 0`, což psalo do
+  // `#sheet`, který se neposouvá – ten řádek nikdy nic nedělal.
+  const kde = teloSheetu().scrollTop
+  const prekresleniNaMiste = jeOtevreny() && vykreslene === p.id
 
   teloSheetu().innerHTML = `
     <div class="hero" style="--pc:${k.c}">
@@ -351,5 +364,12 @@ export function openDetail(p, focus) {
   requestAnimationFrame(() => setTimeout(() => vytvorMiniMapu({ elId: mmid, p, pk, gmView, pkNav }), 180))
 
   if (focus !== false) S.hiId = p.id
-  telo.parentElement.scrollTop = 0
+
+  // Na začátek se odjede jen u JINÉHO místa. Skoro každé tlačítko v detailu
+  // (srdce, fajfka, plán, hvězdičky, plamínky, fotky) překresluje panel přes
+  // openDetail(), a bezpodmínečná nula znamenala, že po ťuknutí na hvězdičku
+  // dole panel odskočil na hero obrázek – ať se sem člověk musel prorolovat
+  // znovu, aby viděl, co vlastně nastavil.
+  telo.scrollTop = prekresleniNaMiste ? kde : 0
+  vykreslene = p.id
 }
