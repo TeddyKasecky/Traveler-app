@@ -7,13 +7,13 @@
  */
 
 import L from 'leaflet'
-import { S, store, emit } from '../core/store.js'
+import { S, store, prefs, savePrefs, emit } from '../core/store.js'
 import { visible, pocetAktivnich } from '../core/filters.js'
 import { aktivujZalozku } from '../core/router.js'
 import { pinIcon } from './markers.js'
 import { token } from '../core/barvy.js'
 import { drawPlanLine } from './planLine.js'
-import { zajistiPodklad, hlasStavDlazdic } from './offlineMap.js'
+import { zajistiPodklad, nastavRezim, hlasStavDlazdic } from './podklad.js'
 
 /** @type {L.Map} */
 export let mapa
@@ -21,6 +21,8 @@ export let mapa
 let vrstva
 /** @type {L.CircleMarker|null} */
 let markerPolohy = null
+/** @type {L.TileLayer|null} dlaždice z OSM – jen když si je uživatel zapne */
+let dlazdice = null
 
 /**
  * Do stránky se vkládají jen špendlíky, které jsou vidět.
@@ -45,28 +47,78 @@ const naMape = new Map()
 /** Vytvoří mapu. Volá se jednou při startu. */
 export function initMapa() {
   mapa = L.map('map', { zoomControl: false }).setView([47.2, 10.5], 5)
-  const dlazdice = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    attribution: '© OpenStreetMap',
-  }).addTo(mapa)
   // Knoflíky +/− tu bývaly vlevo dole. Tam je od přestavby rozvržení karta
   // výpravy a předloha je nikde nemá; přibližuje se prsty, kolečkem myši nebo
   // klávesami, což Leaflet umí sám.
   vrstva = L.layerGroup().addTo(mapa)
 
-  // Zjednodušený podklad se dotáhne, jakmile poprvé selže dlaždice, a pak už
-  // zůstane – leží pod dlaždicemi, takže tam, kde dlaždice jsou, není vidět.
-  // Nekouká se na `navigator.onLine`: ten hlásí jen zapojenou wifi, ne to,
-  // jestli se dá někam dovolat.
-  dlazdice.on('tileerror', () => {
-    zajistiPodklad(mapa)
-    hlasStavDlazdic(true)
-  })
-  dlazdice.on('tileload', () => hlasStavDlazdic(false))
+  // Dlaždice (když si je uživatel zapnul) a stav přepínače. Malovaný podklad
+  // se staví až při prvním přepnutí na mapu, viz `poPrepnutiNaMapu()`.
+  srovnejPodklad()
 
   // Po každém posunu i přiblížení srovnat, které špendlíky jsou vidět.
   // `moveend` přijde i po zoomu, takže stačí jedna událost.
   mapa.on('moveend', () => srovnejVyrez(true))
+  mapa.on('zoomend', srovnejVelikostSpendliku)
+  srovnejVelikostSpendliku()
+}
+
+/**
+ * Měřítko špendlíků podle přiblížení.
+ *
+ * Při pohledu na celou Evropu je ve výřezu přes pět set míst a v plné velikosti
+ * z nich byla jedna souvislá skvrna. Zmenšené kapky drží stejnou informaci
+ * a mapa pod nimi zůstane vidět – tak to dělají i tištěné mapy.
+ *
+ * Píše se jedna proměnná na kontejner mapy, ne pět set značek: přestavovat
+ * značky při každém zoomu by bylo znát.
+ */
+const MERITKO_SPENDLIKU = { 3: 0.55, 4: 0.62, 5: 0.75, 6: 0.88 }
+
+function srovnejVelikostSpendliku() {
+  const z = mapa.getZoom()
+  mapa.getContainer().style.setProperty('--ps', String(MERITKO_SPENDLIKU[z] ?? (z < 3 ? 0.55 : 1)))
+}
+
+/** Zapne nebo vypne dlaždice podle `prefs.podklad`. */
+function srovnejPodklad() {
+  const chceDlazdice = prefs.podklad === 'dlazdice'
+
+  if (chceDlazdice && !dlazdice) {
+    dlazdice = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '© OpenStreetMap',
+    }).addTo(mapa)
+    dlazdice.on('tileerror', () => hlasStavDlazdic(true))
+    dlazdice.on('tileload', () => hlasStavDlazdic(false))
+  } else if (!chceDlazdice && dlazdice) {
+    dlazdice.remove()
+    dlazdice = null
+    hlasStavDlazdic(false)
+  }
+
+  nastavRezim(chceDlazdice)
+  const b = document.getElementById('podkladBtn')
+  if (b) {
+    b.classList.toggle('on', chceDlazdice)
+    b.title = chceDlazdice ? 'Zpět na malovanou mapu' : 'Přepnout na podrobnou mapu'
+  }
+}
+
+/**
+ * Přepne podklad mezi malovaným a dlaždicemi z OpenStreetMap.
+ *
+ * Malovaná mapa je podle předlohy a vypadá jako z cestovatelského deníku, ale
+ * nemá silnice a při větším přiblížení kresby dojdou. Kdo potřebuje vidět,
+ * kudy se tam jede, přepne – a volba se pamatuje.
+ *
+ * @returns {boolean} true = nově jsou zapnuté dlaždice
+ */
+export function prepniPodklad() {
+  prefs.podklad = prefs.podklad === 'dlazdice' ? 'malovany' : 'dlazdice'
+  savePrefs()
+  srovnejPodklad()
+  return prefs.podklad === 'dlazdice'
 }
 
 /**
@@ -164,7 +216,19 @@ export function zobrazPolohu() {
   }).addTo(mapa)
 }
 
-/** Po přepnutí na mapu si Leaflet musí přeměřit velikost. */
-export function prepocitejVelikost() {
+/**
+ * Co se dodělá, až se na mapu opravdu přepne.
+ *
+ * MALOVANÝ PODKLAD SE STAVÍ AŽ TADY, ne při startu. Aplikace startuje na Domů,
+ * kde mapa není vidět, a rozebírat 400kB podkladu, kreslit 477 ploch a stavět
+ * tři sta prvků kresby pro obrazovku, na kterou se uživatel třeba vůbec
+ * nepodívá, nemá smysl. Na číslech z `npm run perf` to není poznat – to měření
+ * kolísá o čtvrtinu a rozdíl v něm zapadne – ale ušetřená práce je skutečná
+ * a nic za ni neplatíme, protože podklad je hotový dřív, než mapa doanimuje.
+ *
+ * Leaflet si po přepnutí musí přeměřit velikost, jinak zůstane zmenšený.
+ */
+export function poPrepnutiNaMapu() {
+  zajistiPodklad(mapa).then(() => srovnejPodklad())
   setTimeout(() => mapa.invalidateSize(), 60)
 }

@@ -5,19 +5,52 @@
 .leaflet-container{font:inherit;background:var(--bg2)}
 /* Uznání OSM. Sedí nad kartou výpravy, takže se drží co nejníž a nenápadně. */
 .leaflet-control-attribution{background:var(--plocha)!important;font-size:.6rem!important}
-/* PROČ TU NENÍ ROZOSTŘENÝ STÍN: špendlíků je ve výřezu přes pět set a Leaflet
+/* Kapkovitý špendlík podle předlohy. Kapku dělá `.kapka` – otočený čtverec
+ * se třemi zaoblenými rohy. Obal `.badge-pin` se neotáčí, takže ikona i fajfka
+ * zůstávají rovně.
+ *
+ * PROČ TU NENÍ ROZOSTŘENÝ STÍN: špendlíků je ve výřezu přes pět set a Leaflet
  * při posunu mapy přepíná třídy na kontejneru, takže prohlížeč přepočítá styly
  * všech. Rozostření se u každého počítá znovu – změřeno, stálo to skoro
- * polovinu času vykreslení mapy. Obrys plus světlé pozadí stačí. */
-.badge-pin{position:relative;width:34px;height:34px;border-radius:50%;background:var(--card);border:1px solid var(--obrys-silny);
-  display:grid;place-items:center;transform-origin:50% 100%;
+ * polovinu času vykreslení mapy. Světlý obrys kapky stačí. */
+/* Špendlík se zmenšuje s oddálením – přes 580 míst by při pohledu na celou
+ * Evropu splynulo v jednu skvrnu. Měřítko `--ps` nastavuje `map.js` na
+ * kontejner mapy, takže se při zoomu nepřestavuje pět set značek.
+ * `transform-origin` míří na hrot kapky (30px čtverec otočený o 45° má vrchol
+ * 21,2px pod středem, tj. na 121 % výšky), aby špendlík při zmenšení
+ * neodplaval od svého místa. */
+.badge-pin{position:relative;width:30px;height:30px;display:grid;place-items:center;
+  transform:scale(var(--ps,1));transform-origin:50% 121%;
   animation:pop .35s var(--pop) backwards;transition:transform .18s var(--pop)}
-.badge-pin::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--pc);opacity:.16}
-.badge-pin svg.ic{font-size:19px;color:var(--pc);position:relative;z-index:2}
-.badge-pin .tick{position:absolute;right:-5px;top:-5px;width:16px;height:16px;border-radius:50%;background:var(--akcent);
-  border:1px solid var(--obrys);display:grid;place-items:center;z-index:3}
-.badge-pin .tick svg.ic{font-size:9px;stroke:var(--na-akcentu)}
-.badge-pin.inplan{outline:3px solid var(--rust);outline-offset:2px}
-.badge-pin.visited{opacity:.5;filter:saturate(.3)}
-.badge-pin.hi{transform:scale(1.35);z-index:999}
+/* Plná barva kategorie a světlý obrys, který odděluje překrývající se špendlíky.
+ *
+ * MĚŘENÍ, ABY SE UŽ NEOPAKOVALO: `npm run perf` kolísá u „špendlíky hotové"
+ * na 4× zpomaleném procesoru mezi 3200 a 4400 ms, tedy asi o čtvrtinu. Jeden
+ * běh o ničem nevypovídá – porovnávat se musí medián aspoň ze tří. Kapky proti
+ * dřívějším kolečkům nic nestály; první závěr, že je přechod a obrys zdražují,
+ * vznikl z jednoho měření a neplatí.
+ *
+ * Ikona je v barvě `--plocha` a `check-tokeny` hlídá, že všech deset barev
+ * kategorií na ni má aspoň 3:1 – proto stačí plná barva bez ztmavení. */
+.badge-pin .kapka{position:absolute;inset:0;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+  background:var(--pc);border:1.5px solid var(--plocha)}
+.badge-pin svg.ic{font-size:15px;color:var(--plocha);position:relative;z-index:2}
+.badge-pin .tick{position:absolute;right:-5px;top:-5px;width:15px;height:15px;border-radius:50%;background:var(--akcent);
+  border:1px solid var(--plocha);display:grid;place-items:center;z-index:3}
+.badge-pin .tick svg.ic{font-size:9px;stroke:var(--na-akcentu);color:var(--na-akcentu)}
+.badge-pin.inplan .kapka{border-color:var(--zvyrazneni);border-width:2.5px}
+.badge-pin.visited{opacity:.55;filter:saturate(.4)}
+.badge-pin.hi{transform:scale(calc(var(--ps,1) * 1.35));z-index:999}
 @keyframes pop{from{transform:scale(0) translateY(6px)}}
+
+/* Ilustrace dodávky na trase plánu – v předloze stojí uprostřed cesty.
+ *
+ * DLOUHÝ SELEKTOR JE NUTNÝ: Leaflet má ve svém CSS
+ * `.leaflet-container .leaflet-marker-pane img{width:auto}` se specificitou
+ * (0,3,1). Prosté `.dodavka img` (0,1,1) prohraje a dodávka se vykreslí
+ * v původní velikosti 756 px – přes půl obrazovky. Kresby stromů tenhle
+ * problém nemají, protože leží ve vlastním pane, ne v `marker-pane`. */
+.dodavka{pointer-events:none}
+.leaflet-container .leaflet-marker-pane .dodavka img{position:absolute;left:0;bottom:0;
+  transform:translate(-50%,50%);width:74px;height:auto;
+  filter:drop-shadow(0 2px 3px rgba(27,36,26,.28))}

@@ -12,6 +12,7 @@
 body:not([data-tab='map']) #mapHledani,
 body:not([data-tab='map']) #chips,
 body:not([data-tab='map']) #fabLoc,
+body:not([data-tab='map']) #podkladBtn,
 body:not([data-tab='map']) #offlineStitek,
 body:not([data-tab='map']) #mapDolu{display:none}
 
@@ -27,13 +28,16 @@ body:not([data-tab='map']) #mapDolu{display:none}
 #fabFilter .badge[hidden]{display:none}
 #chips .pilulky{margin:0 -14px;padding:11px 12px 12px}
 
-/* ---------- kolečko polohy ---------- */
+/* ---------- kolečka v mapě (poloha, podklad) ---------- */
 /* `top:100%` na hlavičce: sedí těsně pod ní bez ohledu na to, jak je vysoká. */
 .mapkolecko{position:absolute;right:14px;top:100%;margin-top:12px;width:46px;height:46px;
   border-radius:50%;border:var(--line);background:var(--plocha);box-shadow:var(--stin-2);
-  display:grid;place-items:center;transition:transform .16s var(--pop)}
-.mapkolecko svg.ic{font-size:21px;color:var(--akcent)}
+  display:grid;place-items:center;transition:transform .16s var(--pop),background .18s}
+.mapkolecko svg.ic{font-size:21px;color:var(--akcent);transition:color .18s}
 .mapkolecko:active{transform:var(--stisk)}
+#podkladBtn{margin-top:66px}
+#podkladBtn.on{background:var(--akcent)}
+#podkladBtn.on svg.ic{color:var(--na-akcentu)}
 
 /* ---------- spodní část ---------- */
 

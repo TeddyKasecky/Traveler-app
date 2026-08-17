@@ -41,7 +41,7 @@
 /* 4. obrazovky, které v originále nebyly – až za vším, ať nic nepřebíjejí */
 @import './components/addform.css';
 @import './components/pruh.css';
-@import './components/offlinemap.css';
+@import './components/podklad.css';
 @import './components/motiv.css';
 @import './components/profil.css';
 @import './components/plan-dny.css';

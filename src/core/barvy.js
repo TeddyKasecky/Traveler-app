@@ -6,7 +6,7 @@
  * Když se ta hodnota napíše do kódu natvrdo, rozejde se s `tokens.css` –
  * a od zavedení tmavého režimu i s tím, co má být zrovna vidět.
  *
- * Vzorem je `src/map/offlineMap.js`, který to tak dělal odjakživa.
+ * Vzorem je `src/map/podklad.js`, který to tak dělal odjakživa.
  *
  * Používá se jen tam, kde to jinak nejde. V CSS i v inline stylech v šablonách
  * se dál píše `var(--neco)` – to prohlížeč přepočítá sám a s přepnutím režimu

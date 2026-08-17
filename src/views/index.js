@@ -17,7 +17,7 @@ import { renderList } from './list/list.js'
 import { renderPlan } from './plan/plan.js'
 import { renderProfil } from './profil/profil.js'
 import { renderMapaDole } from './mapa/mapa.js'
-import { prepocitejVelikost } from '../map/map.js'
+import { poPrepnutiNaMapu } from '../map/map.js'
 
 export function registrujZalozky() {
   Object.assign(ZALOZKY, {
@@ -25,7 +25,7 @@ export function registrujZalozky() {
     // Mapa panel nemá – schová se všechno ostatní a je vidět. Spodní část
     // (karta výpravy, uložená místa) je obyčejná obrazovka a kreslí se sem.
     // Leaflet si po přepnutí musí přeměřit velikost, jinak zůstane zmenšený.
-    map: { panel: null, render: () => renderMapaDole(), poAktivaci: () => prepocitejVelikost() },
+    map: { panel: null, render: () => renderMapaDole(), poAktivaci: () => poPrepnutiNaMapu() },
     disc: { panel: 'panelDisc', render: () => renderDisc() },
     list: { panel: 'panelList', render: () => renderList() },
     plan: { panel: 'panelPlan', render: () => renderPlan() },

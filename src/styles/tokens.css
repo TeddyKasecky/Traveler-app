@@ -83,6 +83,14 @@
   --night:#2F3D2C;  /* Spaní             11,2:1 */
   --sand:#A8863F;   /* Ostatní            3,3:1 */
 
+  /* ---- malovaná mapa ----
+   * Podklad z předlohy `…11_09_49 (1).png`: bledě modré moře, teplá khaki
+   * souš, hranice bílou tečkovanou čárou (ne tmavou linkou) a názvy zemí
+   * tlumenou zelení. Vlastní jména mají proto, že se s ničím jiným
+   * v aplikaci nesdílejí – mapa je jediné místo, kde tyhle plochy jsou.  */
+  --mapa-more:#C6DAE1; --mapa-sous:#E7E0C3; --mapa-voda:#9DC2CD;
+  --mapa-hranice:rgba(255,252,246,.78); --mapa-popisek:#4C5B40;
+
   --line:1px solid var(--obrys); --r:20px;
   --r-s:12px; --r-l:26px; --r-pill:999px;
   --pop:cubic-bezier(.34,1.56,.5,1);
@@ -135,6 +143,9 @@
     --plamen-zhasly:#4A5445;
     --zaves:rgba(0,0,0,.62);
 
+    --mapa-more:#16242B; --mapa-sous:#212C1E; --mapa-voda:#2F5260;
+    --mapa-hranice:rgba(237,231,216,.30); --mapa-popisek:#A9BBA1;
+
     --rust:#E09068; --moss:#9DBC8A; --pine:#79AD9B; --sky:#8FB8C9;
     --clay:#D0A075; --lake:#7FAFC4; --plum:#B0A0C2; --sun:#E1B152;
     --night:#A9BBA1; --sand:#D4B978;
@@ -170,6 +181,9 @@
   --plamen-zhasly:#4A5445;
   --zaves:rgba(0,0,0,.62);
 
+  --mapa-more:#16242B; --mapa-sous:#212C1E; --mapa-voda:#2F5260;
+  --mapa-hranice:rgba(237,231,216,.30); --mapa-popisek:#A9BBA1;
+
   --rust:#E09068; --moss:#9DBC8A; --pine:#79AD9B; --sky:#8FB8C9;
   --clay:#D0A075; --lake:#7FAFC4; --plum:#B0A0C2; --sun:#E1B152;
   --night:#A9BBA1; --sand:#D4B978;
@@ -178,7 +192,9 @@
 /* Proměnné, které se nastavují za běhu na konkrétním prvku (nepatří do :root):
  *   --pc    barva místa podle kategorie – karty, špendlíky, detail
  *   --cc    barva dlaždice kolekce v Objevuj
- *   --chipc barva chipu kategorie v hlavičce
  *   --mc    barva dlaždice nálady na Domů
  *   --dc    barva ikony dlaždice ve vzorech (components/vzory.js)
+ *   --ps    měřítko špendlíku podle přiblížení mapy (map/map.js)
+ *   --kv    velikost malované kresby podle přiblížení (map/podklad.js)
+ *   --ks    odchylka velikosti jedné kresby, aby les nebyl ze šablony
  */

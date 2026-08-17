@@ -14,11 +14,12 @@ import { zjistiPolohu } from './core/geo.js'
 import { initMotiv } from './core/motiv.js'
 import { vlozSprite } from './icons/sprite.js'
 
-import { initMapa, draw, goTo, zobrazPolohu, mapa } from './map/map.js'
-import { prebarviPodklad } from './map/offlineMap.js'
+import { initMapa, draw, goTo, zobrazPolohu, prepniPodklad, mapa } from './map/map.js'
+import { prebarviPodklad } from './map/podklad.js'
 import { initChipy } from './components/chip.js'
 import { initFilterPanel, fillSelects, stahniZalohu } from './components/filterPanel.js'
 import { ukazPruh } from './components/pruh.js'
+import { toast } from './components/toast.js'
 import { initSheet, jeOtevreny as jeOtevrenyDetail } from './components/sheet.js'
 import { initWizard } from './components/wizard.js'
 import { initPlusMenu } from './components/plusMenu.js'
@@ -64,6 +65,11 @@ for (const b of document.querySelectorAll('#tabs button')) {
 // ztratil a tlačítko „Moje poloha“ přestalo cokoli dělat – odhalil to až
 // scripts/check-handlers.mjs, který napojení porovnává s originálem za běhu.
 document.getElementById('fabLoc').onclick = zjistiPolohu
+
+// Přepínač podkladu mapy. Malovaná mapa je výchozí, dlaždice z OSM na vyžádání.
+document.getElementById('podkladBtn').onclick = () => {
+  toast(prepniPodklad() ? 'Podrobná mapa' : 'Malovaná mapa')
+}
 
 // Profil nemá tlačítko ve spodní liště, otevírá se z hlavičky.
 document.getElementById('profilOpen').onclick = () => aktivujZalozku('profil')

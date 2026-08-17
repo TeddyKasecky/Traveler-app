@@ -10,9 +10,16 @@ import { IC } from '../icons/sprite.js'
 /**
  * Ikona špendlíku pro místo.
  *
+ * TVAR KAPKY, ne kolečko: tak to má předloha `grafika/…11_09_49 (1).png`.
+ * Kapku dělá otočený čtverec se třemi zaoblenými rohy uvnitř nerotovaného
+ * obalu. Kdyby se otáčel celý špendlík, otočila by se s ním i ikona
+ * a fajfka „navštíveno“ by odplula do rohu.
+ *
  * Stavy se skládají do tříd: `visited` (vybledlý se zelenou fajfkou),
  * `inplan` (rezavý obrys), `hi` (zvětšený, když se na místo skočilo).
  * Animace nabíhá po řadě, ale nejvýš do 240 ms, ať se vykreslení neprotahuje.
+ *
+ * Vnější třída zůstává `badge-pin` – visí na ní smoke, perf i porovnání snímků.
  *
  * @param {Record<string, any>} p
  * @param {number} idx  pořadí ve vykreslované sadě
@@ -31,11 +38,14 @@ export function pinIcon(p, idx, tise = false) {
 
   return L.divIcon({
     className: '',
-    iconSize: [34, 34],
-    iconAnchor: [17, 17],
+    iconSize: [30, 30],
+    // Hrot kapky je pod spodní hranou obalu – otočený čtverec má vrchol
+    // o polovinu úhlopříčky níž než střed. Kotva proto míří pod obal.
+    iconAnchor: [15, 36],
     html:
       `<div class="${cls}" style="--pc:${k.c};${tise ? 'animation:none' : `animation-delay:${Math.min(idx * 5, 240)}ms`}">` +
-      `${IC(k.i)}${visited ? `<span class="tick">${IC('i-check')}</span>` : ''}</div>`,
+      `<span class="kapka"></span>${IC(k.i)}` +
+      `${visited ? `<span class="tick">${IC('i-check')}</span>` : ''}</div>`,
   })
 }
 

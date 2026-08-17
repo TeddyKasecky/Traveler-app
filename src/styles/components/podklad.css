@@ -1,0 +1,63 @@
+/* ===== malovaná mapa (v originále nebyla) =====
+ *
+ * Papír, na kterém je mapa „vytištěná“. Zrno je pozadím kontejneru, takže se
+ * s mapou neposouvá – přesně tak se chová papír pod tištěnou mapou a zároveň
+ * se tím nemusí řešit bezešvé dlaždicování při posunu.
+ *
+ * Barvy jsou v `tokens.css` a plátno si je odsud čte přes getComputedStyle –
+ * drží se tím pravidlo, že barvy bydlí v CSS. Viz `map/podklad.js`.
+ */
+/* Zrno je průhledný obrázek (tmavá barva s proměnnou průhledností), ne šedý
+ * obrázek podmíchaný přes `background-blend-mode`. Skládá se tím obyčejně,
+ * bez režimu prolnutí, který na velké ploše zbytečně mění cestu vykreslování. */
+#map{background-color:var(--mapa-more);background-image:url('../../assets/papir.webp');
+  background-size:128px 128px;background-repeat:repeat}
+#map .leaflet-container{background:transparent}
+
+/* V režimu dlaždic papír překáží – dlaždice mají vlastní kresbu a zrno pod
+ * nimi stejně není vidět, jen by prosvítalo na okrajích při načítání. */
+#map.dlazdice{background-image:none;background-color:var(--bg2)}
+
+/* ---------- kresby (stromy a hory) ---------- */
+/* Značka má nulovou velikost a obrázek z ní visí patou na kotvě. Díky tomu
+ * se dá měnit velikost jednou proměnnou `--kv` na kontejneru mapy: kdyby
+ * velikost určoval `iconSize`, musela by se při každém zoomu přestavět
+ * všech sto osmdesát značek. */
+.kresba{position:relative}
+.kresba img{position:absolute;bottom:0;left:0;transform:translateX(-50%);
+  height:calc(var(--kv,38px) * var(--ks,1));width:auto;pointer-events:none;
+  opacity:.92;filter:saturate(.92)}
+/* Hory jsou kulisa, ne strom – kreslí se širší a o kus níž, aby seděly
+ * na terénu a nepůsobily jako vystřižený obrázek postavený na hranu. */
+.kresba.hora img{height:calc(var(--kv,38px) * var(--ks,1) * 1.35);opacity:.88}
+
+/* Akvarely jsou malované na světlý papír, takže na tmavé mapě svítí jako
+ * nalepené výstřižky. Ztlumení je vrací do krajiny. Blok je dvakrát a s `@media`
+ * ze stejného důvodu jako v `tokens.css` – jinak by se ruční volba vzhledu
+ * neprosadila, nebo by naopak systémová volba přebila světlý režim. */
+@media (prefers-color-scheme:dark){
+  :root:not([data-motiv="svetly"]) .kresba img{filter:saturate(.7) brightness(.62)}
+}
+:root[data-motiv="tmavy"] .kresba img{filter:saturate(.7) brightness(.62)}
+
+/* ---------- názvy zemí a měst ---------- */
+/* Obrys z barvy papíru je čitelnější než stín: mapa pod nimi je světlá
+ * a plochá, takže by se stín ztratil. */
+.stat-popisek{font-family:var(--f-disp);font-size:.86rem;font-weight:600;letter-spacing:1.2px;
+  color:var(--mapa-popisek);white-space:nowrap;width:auto!important;height:auto!important;
+  transform:translate(-50%,-50%);text-align:center;
+  text-shadow:0 0 4px var(--mapa-sous),0 0 4px var(--mapa-sous),0 0 8px var(--mapa-sous)}
+.mesto-popisek{font-size:.62rem;font-weight:800;color:var(--mapa-popisek);white-space:nowrap;
+  width:auto!important;height:auto!important;transform:translate(6px,-9px);
+  text-shadow:0 0 3px var(--mapa-sous),0 0 3px var(--mapa-sous),0 0 3px var(--mapa-sous)}
+
+/* ---------- štítek offline ---------- */
+/* Vlevo nahoře pod hlavičkou naproti kolečku polohy. Dole ho mít nejde, tam
+ * je od přestavby rozvržení karta výpravy. Jen hlásí, nepřepíná. */
+#offlineStitek{
+  position:absolute;left:14px;top:100%;margin-top:24px;z-index:1100;
+  background:var(--sand);color:var(--ink);border:var(--line);border-radius:var(--r-pill);
+  padding:6px 12px;font-size:.7rem;font-weight:800;
+  box-shadow:var(--stin-1);pointer-events:none
+}
+#offlineStitek[hidden]{display:none}

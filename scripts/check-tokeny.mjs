@@ -52,11 +52,12 @@ const tokeny = bezKomentaru(fs.readFileSync(path.join(STYLY, 'tokens.css'), 'utf
 /**
  * Soubory, kde smí být barva zapsaná natvrdo, a proč.
  *
- * `fonts.css` je generovaný a barvy v něm nejsou. `offlinemap.css` má vlastní
- * lokální proměnné pro kreslení podkladu do plátna – jsou schválně jen tam
- * a JavaScript si je čte přes getComputedStyle (viz src/map/offlineMap.js).
+ * `fonts.css` je generovaný a barvy v něm nejsou. Druhá výjimka bývala
+ * `offlinemap.css`, který si držel vlastní lokální proměnné na kreslení
+ * podkladu do plátna. S malovanou mapou se barvy přestěhovaly do `tokens.css`
+ * (`--mapa-*`) a výjimka odpadla – tenhle soubor je teď pod kontrolou taky.
  */
-const VYJIMKY_CSS = ['fonts.css', 'components/offlinemap.css']
+const VYJIMKY_CSS = ['fonts.css']
 
 console.log('Návrhové tokeny\n')
 
@@ -134,7 +135,12 @@ else projde('oba tmavé bloky jsou shodné', `${Object.keys(media).length} prom�
 
 const definovane = new Set([...Object.keys(svetle), ...Object.keys(media), ...Object.keys(atribut)])
 /** Proměnné nastavované za běhu z JavaScriptu na konkrétním prvku. */
-const ZA_BEHU = new Set(['--pc', '--cc', '--chipc', '--mc', '--dc', '--sous', '--hranice', '--voda', '--more'])
+// Proměnné nastavované za běhu na konkrétním prvku, ne v `:root`.
+// `--chipc` odešlo s chipy kategorií, `--sous/--hranice/--voda/--more` s tím,
+// že barvy malované mapy se přestěhovaly do `tokens.css` jako `--mapa-*`.
+// Přibyly `--ps` (měřítko špendlíku podle zoomu, `map/map.js`) a `--kv`/`--ks`
+// (velikost kresby a její odchylka, `map/podklad.js`).
+const ZA_BEHU = new Set(['--pc', '--cc', '--mc', '--dc', '--ps', '--kv', '--ks'])
 
 const nezname = new Set()
 for (const f of souboryCss) {
