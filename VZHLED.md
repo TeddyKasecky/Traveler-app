@@ -108,9 +108,52 @@ Obrázky se vyrábějí ručně ze složky `grafika/`:
 
 ```bash
 node scripts/make-kat-fota.mjs     # zástupné ilustrace kategorií
-node scripts/make-onboarding.mjs   # obrázky do uvítání
+node scripts/make-onboarding.mjs   # obrázky do uvítání i hero obrázky obrazovek
 node scripts/make-icons.mjs        # ikony PWA z src/assets/icon.svg
 ```
+
+Hero obrázky obrazovek mají poměr **820 × 920**, tedy skoro čtverec na výšku —
+hero zabírá polovinu výšky displeje (`52svh`) a v širokém poměru by z panoramat
+`object-fit:cover` ukázal jen svislý pruh. Výřez se ze zdroje bere na 0,62 volného
+místa: od horního okraje je v těch akvarelech jen prázdná obloha.
+
+## Ikony a sada piktogramů
+
+Značka má **vlastní sadu 24 piktogramů** na listu
+`grafika/ChatGPT Image 14. 8. 2026 11_15_05 (2).png` („SADA PIKTOGRAMŮ"):
+mřížka 24 × 24 px, tloušťka tahu 2 px, zaoblené rohy a spoje, barvy Forest Ink /
+Fern Green / Ochre. List výslovně zakazuje měnit tloušťku tahu, proporce a barvy.
+
+Sprite `src/icons/sprite.svg` (58 symbolů) tomu odpovídá:
+
+- **mřížka sedí** — všechny symboly mají `viewBox="0 0 24 24"`,
+- **základní tah sedí** — `svg.ic{stroke-width:2}` v `base.css`,
+- **osm symbolů si tah upravuje** (1,7–3). Není to porušení: u `i-kid` je 2,6
+  jen na očích (dvě tečky kreslené jako úsečky by ve 2 px zmizely), u `i-snow`
+  1,7 na krystalu (jinak by se ramínka slila), u `i-check` a `i-plus` je
+  o něco silnější tah optická korekce jednotahových značek. Blanketní srovnání
+  na 2 by ikony zhoršilo, ne zlepšilo.
+
+**Výplně ikon nefungují přes CSS.** Ikony se vkládají jako `<use>` a do stromu
+instance selektor z dokumentu nedosáhne, takže `svg.ic .f{fill:currentColor}`
+v `base.css` se nikdy neuplatní — zdědí se jen `fill:none`. Kdo chce výplň, musí
+ji napsat jako **atribut** přímo do `sprite.svg` (`fill="currentColor"`). Tak to
+má `i-fire` a od srpna 2026 i `i-star`; bez toho vypadala plná a prázdná
+hvězdička stejně a hodnocení místa nešlo poznat. Zbylých 43 ikon s třídou `.f`
+kreslí jen obrys — stejně jako v původní aplikaci, odkud je to opsané.
+
+Co se od sady liší a proč:
+
+| Sada | Aplikace | |
+|---|---|---|
+| Filtr = trychtýř | `i-filtr` | **srovnáno** (do srpna 2026 `i-sliders`, tři jezdce) |
+| Domů = domeček | `i-van` | dodávka; je to aplikace o životě v dodávce |
+| Pes = hlava psa | `i-paw` | tlapka, jiná kresba téhož |
+| Voda = vlnky | `i-swim` | plavec |
+| Poznámka = sešit | `i-quill` | brk |
+| „+" uprostřed spodní lišty | plovoucí nad mapou | pět záložek, šesté místo by je zmáčklo |
+
+`i-sliders` zůstává, ale jen tam, kam patří významem — u nastavení vzhledu.
 
 ## Co hlídá `npm run check-tokeny`
 
