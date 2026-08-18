@@ -1,10 +1,16 @@
 /**
  * Vysouvací panel s detailem místa – jen mechanika otevírání a zavírání.
  * Obsah do něj plní views/detail.
+ *
+ * Zavírá se třemi způsoby: klikem mimo, tlačítkem zpět (overlay) a od srpna
+ * 2026 i stažením dolů za úchyt – panel jde za prstem a přes práh nebo
+ * švihnutím se zavře, jinak se vrátí. Táhne se za `.grip` a hlavičku, ne za
+ * celé tělo: to se svisle roluje a tažení by se s rolováním pralo.
  */
 
 import { registrujOverlay } from '../core/router.js'
 import { zavriMiniMapu } from '../map/detailMap.js'
+import { napojTah, svih } from './tah.js'
 
 /** @returns {HTMLElement} */
 const el = () => document.getElementById('sheet')
@@ -35,6 +41,25 @@ export const teloSheetu = () => document.getElementById('sheetBody')
  * zavření porovnání by člověk skončil na prázdné obrazovce.
  */
 export function initSheet() {
+  // Stažení dolů zavírá. Táhne se za úchyt, ne za celý panel – tělo se svisle
+  // roluje a tažení by se s rolováním pralo. Úchyt je proto v CSS zvětšený na
+  // celý horní pruh, aby se dal trefit prstem.
+  const panel = el()
+  const grip = panel.querySelector('.grip')
+  napojTah(
+    grip,
+    (dy, rychlost) => {
+      panel.classList.remove('tahne')
+      panel.style.transform = ''
+      if (svih(dy, rychlost, 1)) zavriSheet()
+    },
+    (dy) => {
+      panel.classList.toggle('tahne', dy > 0)
+      // Jen dolů; nahoru není kam. Bez tohohle by panel ujel pod prstem vzhůru.
+      panel.style.transform = dy > 0 ? `translateY(${dy}px)` : ''
+    }
+  )
+
   document.addEventListener('click', (e) => {
     if (!jeOtevreny()) return
     // Odpojený cíl znamená, že klik obsloužil někdo uvnitř aplikace a při tom

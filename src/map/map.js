@@ -12,7 +12,7 @@ import { visible, pocetAktivnich } from '../core/filters.js'
 import { aktivujZalozku } from '../core/router.js'
 import { pinIcon } from './markers.js'
 import { drawPlanLine } from './planLine.js'
-import vanObr from '../assets/van.webp'
+import { vybraneAutoUrl } from '../components/vyberAuta.js'
 import { zajistiPodklad, nastavRezim, hlasStavDlazdic } from './podklad.js'
 
 /** @type {L.Map} */
@@ -209,11 +209,13 @@ export function priblizNaFiltr(mista) {
 }
 
 /**
- * Kde právě jsme – ilustrace dodávky, ne zelený puntík.
+ * Kde právě jsme – auto vybrané v Profilu, ne zelený puntík.
  *
- * Je to tatáž kresba, jaká stojí uprostřed trasy plánu (`planLine.js`), takže
- * se nic nestahuje navíc. Puntík tu byl do srpna 2026; na malované mapě
- * vypadal jako cizí prvek z jiné aplikace.
+ * Ikonu vybírá `components/vyberAuta.js` (64 aut ze `src/assets/auta/`);
+ * bez volby jede výchozí dodávka. Puntík tu byl do srpna 2026 a na malované
+ * mapě vypadal jako cizí prvek z jiné aplikace.
+ *
+ * Volá se i po změně auta v Profilu – proto se značka staví vždycky znovu.
  */
 export function zobrazPolohu() {
   if (!S.userPos) return
@@ -223,7 +225,12 @@ export function zobrazPolohu() {
     keyboard: false,
     // Nulová velikost a kotva v nule: obrázek si polohu i rozměr řeší v CSS,
     // stejně jako dodávka na trase.
-    icon: L.divIcon({ className: 'poloha', iconSize: [0, 0], iconAnchor: [0, 0], html: `<img src="${vanObr}" alt="">` }),
+    icon: L.divIcon({
+      className: 'poloha',
+      iconSize: [0, 0],
+      iconAnchor: [0, 0],
+      html: `<img src="${vybraneAutoUrl()}" alt="">`,
+    }),
   }).addTo(mapa)
 }
 

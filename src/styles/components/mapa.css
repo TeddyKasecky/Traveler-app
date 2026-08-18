@@ -109,6 +109,9 @@ body:not([data-tab='map']) #mapDolu{display:none}
 
 /* Plát se otevírá `max-height`, ne `height`: obsah je pokaždé jinak vysoký
  * (nula až dvanáct řádků) a pevná výška by u krátkého seznamu nechala díru. */
+/* Během tažení řídí výšku prst (inline max-height) a přechod by se s ním
+ * pral – proto `tahne` přechod vypíná, stejně jako u karty výpravy. */
+.ulozene-obsah.tahne{transition:none}
 .ulozene-obsah{max-height:0;overflow:hidden;padding:0 14px;
   transition:max-height .28s var(--pop),padding .28s var(--pop)}
 #mapDolu.ulozeneNahore .ulozene-obsah{max-height:44svh;overflow-y:auto;padding:0 14px 6px}

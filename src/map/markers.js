@@ -30,6 +30,7 @@ import { IC } from '../icons/sprite.js'
 export function pinIcon(p, idx, tise = false) {
   const k = KAT[p.k] || { c: 'var(--ink2)', i: 'i-spark' }
   const visited = store.stav[p.id] === 'visited'
+  const wish = store.stav[p.id] === 'wish'
   const cls =
     'badge-pin' +
     (visited ? ' visited' : '') +
@@ -45,7 +46,10 @@ export function pinIcon(p, idx, tise = false) {
     html:
       `<div class="${cls}" style="--pc:${k.c};${tise ? 'animation:none' : `animation-delay:${Math.min(idx * 5, 240)}ms`}">` +
       `<span class="kapka"></span>${IC(k.i)}` +
-      `${visited ? `<span class="tick">${IC('i-check')}</span>` : ''}</div>`,
+      // Uložené místo nese růžek se záložkou, stejně jako navštívené fajfku –
+      // do srpna 2026 nebylo na mapě vůbec poznat.
+      `${visited ? `<span class="tick">${IC('i-check')}</span>` : ''}` +
+      `${wish ? `<span class="tick wish">${IC('i-zalozka')}</span>` : ''}</div>`,
   })
 }
 

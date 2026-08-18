@@ -141,7 +141,7 @@ export function openDetail(p, focus) {
       p.sh && !(p.p || '').startsWith(p.sh.slice(0, 40)) ? `<div class="sh-kratky">${esc(p.sh)}</div>` : ''
     }
     <div class="ikonrada">
-      <button class="ikonbtn${store.stav[p.id] === 'wish' ? ' on' : ''}" id="dWish" title="Chci navštívit">${IC('i-srdce')}</button>
+      <button class="ikonbtn${store.stav[p.id] === 'wish' ? ' on' : ''}" id="dWish" title="Uložit místo">${IC('i-zalozka')}</button>
       <button class="ikonbtn${visited ? ' on' : ''}" id="dVisit" title="Byli jsme tu">${IC('i-check')}</button>
       <button class="ikonbtn${inPlan ? ' on' : ''}" id="dPlan" title="Do plánu">${IC('i-route')}</button>
       <button class="ikonbtn" id="dVice" title="Další akce">${IC('i-vice')}</button>
@@ -280,7 +280,7 @@ export function openDetail(p, focus) {
 
   document.getElementById('dPorovnat').onclick = () => pridejDoPorovnani(p)
 
-  // Srdce: „chci navštívit". Do teď se dalo nastavit jen ze Seznamu, přestože
+  // Záložka: „uložit místo". Do teď se dalo nastavit jen ze Seznamu, přestože
   // detail je místo, kde se člověk rozhoduje.
   document.getElementById('dWish').onclick = () => {
     if (store.stav[p.id] === 'wish') delete store.stav[p.id]

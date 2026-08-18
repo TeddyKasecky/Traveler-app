@@ -21,6 +21,17 @@
   padding:11px 13px;font:inherit;font-size:.92rem;color:var(--text);box-shadow:var(--stin-1)}
 .pradek input:focus{outline:0;box-shadow:0 0 0 2px var(--akcent)}
 
+/* ---------- výběr auta ---------- */
+/* Mřížka po čtyřech: ikony jsou širokoúhlé, takže víc sloupců by je zmenšilo
+ * pod čitelnost a méně by z Profilu udělalo nekonečnou rolovací stěnu. */
+.automriz{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
+  max-height:340px;overflow-y:auto;padding:2px;border-radius:var(--r-s)}
+.autovolba{border:var(--line);border-radius:var(--r-s);background:var(--plocha);box-shadow:var(--stin-1);
+  padding:7px 5px;display:grid;place-items:center;transition:transform .15s var(--pop),box-shadow .18s}
+.autovolba img{width:100%;height:44px;object-fit:contain}
+.autovolba:active{transform:var(--stisk)}
+.autovolba.on{border-color:var(--akcent);box-shadow:0 0 0 1.5px var(--akcent),var(--stin-1)}
+
 /* ===== nastavení =====
  *
  * Sdílí soubor s Profilem schválně: obě obrazovky stojí na týchž dílech

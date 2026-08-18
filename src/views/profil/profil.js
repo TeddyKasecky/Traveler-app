@@ -18,6 +18,8 @@ import { S, store, PHOTOS, prefs, savePrefs } from '../../core/store.js'
 import { esc } from '../../core/html.js'
 import { IC } from '../../icons/sprite.js'
 import { toast } from '../../components/toast.js'
+import { vyberAutaHtml, napojVyberAuta } from '../../components/vyberAuta.js'
+import { zobrazPolohu } from '../../map/map.js'
 
 /** Spočítá, co se dá říct o uživatelských datech. */
 function cisla() {
@@ -61,7 +63,7 @@ export function renderProfil() {
     <div class="sechd">${IC('i-flag')}Co máš za sebou</div>
     <div class="pstats">
       ${dlazdice(c.navstiveno, 'navštíveno')}
-      ${dlazdice(c.chci, 'chci navštívit')}
+      ${dlazdice(c.chci, 'uložených')}
       ${dlazdice(c.vplanu, 'v plánu')}
       ${dlazdice(c.poznamek, 'poznámek')}
       ${dlazdice(c.hodnoceno, 'hodnocení')}
@@ -74,11 +76,21 @@ export function renderProfil() {
     </div>
     <div class="meta" style="margin:6px 2px 0">Použije se v pozdravu na Domů. Nikam se neposílá.</div>
 
+    <div class="sechd">${IC('i-van')}Čím jezdíme</div>
+    <div class="meta" style="margin:0 2px 10px">Vybrané auto jezdí po mapě na místě tvé polohy.</div>
+    ${vyberAutaHtml()}
   `
 
   // Jméno se ukládá při odchodu z políčka, ne při každém písmenu: savePrefs()
   // převádí celé předvolby na text a při psaní by to na mobilu sekalo. Stejný
   // důvod má saveOdlozene() u poznámek.
+  // Po změně auta se hned přestaví značka polohy – ať je změna vidět bez
+  // přepnutí na mapu a zpátky.
+  napojVyberAuta(wrap, () => {
+    zobrazPolohu()
+    toast('Auto vybráno')
+  })
+
   document.getElementById('profilJmeno').onblur = (e) => {
     const nove = e.target.value.trim()
     if (nove === (prefs.userName || '')) return

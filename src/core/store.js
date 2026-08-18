@@ -213,6 +213,11 @@ export const prefs = nacti(PREFK, {
    */
   kresby: 'huste',
   /**
+   * Kterým autem se jezdí po mapě – jméno souboru z `src/assets/auta/`.
+   * Vybírá se v Profilu; prázdné znamená výchozí dodávku.
+   */
+  auto: '',
+  /**
    * Viděl už uživatel kartu výpravy na Mapě?
    *
    * Karta se ukáže **jen při úplně prvním otevření Mapy**, aby se vědělo, že

@@ -68,8 +68,12 @@
  * `scroll-snap-align:start` z něj dělá druhou magnetickou polohu: sjetím dolů
  * se list přisaje pod hlavičku a odkryje se obsah, vyjetím nahoru se vrátí
  * velký obrázek. Mezi tím to nezůstane viset – viz `scroll-snap-type`
- * v `panel.css`. Kvůli `margin-top:-20px` se přisátý list zastaví 20 px
- * v hero pásu, takže zaoblený okraj zůstane na obrázku. */
+ * v `panel.css` (`proximity`, tedy jemný: dostatečné švihnutí magnet přetáhne).
+ *
+ * `scroll-margin-top` nechává v přisáté poloze vidět HORNÍCH ~20 % fotky.
+ * Dřív list dojel až pod hlavičku a fotka zmizela celá – a protože magnet
+ * drží z obou stran, platí to pro sjetí dolů i vyjetí nahoru. Hodnota je
+ * pětina výšky hero pásu (52svh sevřených mezi 196 a 460 px). */
 /*
  * `min-height:100%` je to, co dělá přisátí dosažitelné i na krátkém obsahu.
  * Bez toho se Domů (nejkratší obrazovka) dala posunout jen o 307 px z 429
@@ -78,7 +82,8 @@
  * (`flex:1` ve fixním sloupci), takže je z listu vždycky aspoň celá obrazovka.
  */
 .list{position:relative;z-index:3;margin:-20px -14px 0;padding:18px 14px 0;min-height:100%;
-  background:var(--bg);border-radius:var(--r-l) var(--r-l) 0 0;scroll-snap-align:start}
+  background:var(--bg);border-radius:var(--r-l) var(--r-l) 0 0;scroll-snap-align:start;
+  scroll-margin-top:clamp(39px, 10.4svh, 92px)}
 
 /* ---------- popisek sekce ---------- */
 .sekce{display:flex;align-items:center;gap:10px;margin:20px 2px 11px;

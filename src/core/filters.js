@@ -10,7 +10,8 @@
  *   kids  … jen přesně „Ano“ (395 míst), ne „Starší děti“.
  *   dogs  … jen přesně „Ano“. Pole `ps` je vyplněné u osmi míst, takže
  *           filtr vrací pět míst. Není to chyba filtru, ale stav dat (N6).
- *   wish  … „chci navštívit“ znamená všechno kromě navštíveného.
+ *   wish  … ve filtru stavu znamená „nenavštívená“ – všechno kromě
+ *           navštíveného. NENÍ to totéž co uložená místa (`F.ulozene`).
  */
 
 import { S, F, store } from './store.js'

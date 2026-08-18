@@ -64,7 +64,9 @@ function pluginServiceWorker() {
       // Vite jména odvozuje od zdrojů, takže je to jediné, co v `generateBundle`
       // je. Hlídá to `smoke` – jinak by přejmenování chunku tiše vrátilo
       // čtyři megabajty do instalace.
-      const JEN_SE_STAZENOU_MAPOU = /^assets\/(kresba|kresby-|vektory|vbm|maplibre-)/
+      // `auta-` sem patří taky: ikon je 64 a člověk používá jednu – stáhne se
+      // při otevření výběru v Profilu a service worker si ji uloží za běhu.
+      const JEN_SE_STAZENOU_MAPOU = /^assets\/(kresba|kresby-|vektory|vbm|maplibre-|auta-)/
       const zBundle = Object.keys(bundle).filter((f) => !JEN_SE_STAZENOU_MAPOU.test(f))
 
       // Seřazeno schválně. `Object.keys(bundle)` nevrací pokaždé stejné pořadí –

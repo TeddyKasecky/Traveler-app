@@ -232,15 +232,18 @@ export function cislaRada(cisla) {
 /**
  * Stavová pilulka podle `store.stav[id]`.
  *
- * Tři stavy, jak je má předloha Seznamu: nic → „Chci navštívit" (světlá),
- * `wish` → „Chci navštívit" zvýrazněná, `visited` → „Navštíveno" plná mechová.
+ * Tři stavy: nic → „Uložit" (světlá), `wish` → „Uložená" zvýrazněná,
+ * `visited` → „Navštíveno" plná mechová. Stav `wish` se VŠUDE jmenuje
+ * „Uložená" a kreslí záložkou – do srpna 2026 se tomu na Mapě říkalo
+ * „Uložená" a v Seznamu jinak, s botou – vypadalo to jako dvě různé věci.
+ * Bota (`i-boot`) zůstává jen filtru „Nenavštívená". Hlídá `check-ikony`.
  *
  * @param {string|undefined} stav
  */
 export function stavPill(stav) {
   if (stav === 'visited') return `<span class="stavpill je">${IC('i-check')}Navštíveno</span>`
-  if (stav === 'wish') return `<span class="stavpill chci">${IC('i-boot')}Chci navštívit</span>`
-  return `<span class="stavpill">${IC('i-boot')}Chci navštívit</span>`
+  if (stav === 'wish') return `<span class="stavpill chci">${IC('i-zalozka')}Uložená</span>`
+  return `<span class="stavpill">${IC('i-zalozka')}Uložit</span>`
 }
 
 /**

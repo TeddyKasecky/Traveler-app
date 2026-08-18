@@ -38,6 +38,10 @@
 .badge-pin .tick{position:absolute;right:-5px;top:-5px;width:15px;height:15px;border-radius:50%;background:var(--akcent);
   border:1px solid var(--plocha);display:grid;place-items:center;z-index:3}
 .badge-pin .tick svg.ic{font-size:9px;stroke:var(--na-akcentu);color:var(--na-akcentu)}
+/* Růžek uloženého místa – okrový se záložkou, ať se na první pohled liší od
+ * zelené fajfky navštíveného. Barvu ikony na barevné ploše určuje `stroke`. */
+.badge-pin .tick.wish{background:var(--zvyrazneni)}
+.badge-pin .tick.wish svg.ic{stroke:var(--na-zvyrazneni);color:var(--na-zvyrazneni)}
 .badge-pin.inplan .kapka{border-color:var(--zvyrazneni);border-width:2.5px}
 .badge-pin.visited{opacity:.55;filter:saturate(.4)}
 .badge-pin.hi{transform:scale(calc(var(--ps,1) * 1.35));z-index:999}
@@ -62,5 +66,5 @@
  * a dodávka se vykreslí v původních 756 px, tedy přes celou obrazovku. */
 .poloha{pointer-events:none;z-index:1000}
 .leaflet-container .leaflet-marker-pane .poloha img{position:absolute;left:0;bottom:0;
-  transform:translate(-50%,50%);width:48px;height:auto;
+  transform:translate(-50%,50%);width:52px;height:auto;
   filter:drop-shadow(0 2px 4px rgba(27,36,26,.42))}

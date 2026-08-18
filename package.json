@@ -23,6 +23,7 @@
     "parity": "node scripts/parity.mjs",
     "perf": "node scripts/perf.mjs",
     "check-form": "node scripts/check-form.mjs",
+    "check-ikony": "node scripts/check-ikony.mjs",
     "slouc": "node scripts/slouc.mjs"
   },
   "dependencies": {

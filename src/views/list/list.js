@@ -91,7 +91,7 @@ export function renderList() {
     F.reg,
     F.zeme,
     F.typ,
-    F.stav === 'wish' ? 'Chci navštívit' : F.stav === 'visited' ? 'Navštíveno' : '',
+    F.stav === 'wish' ? 'Nenavštívená' : F.stav === 'visited' ? 'Navštíveno' : '',
     ...[...F.kat],
   ].filter(Boolean)
 
@@ -123,8 +123,8 @@ export function renderList() {
           podnadpis: p.r && p.r !== p.z ? `${p.r}, ${p.z}` : p.z,
           meta: meta(p, d),
           vpravo:
-            ikonBtn(stav === 'visited' ? 'i-check' : 'i-srdce', {
-              titul: stav === 'visited' ? 'Navštíveno' : 'Chci navštívit',
+            ikonBtn(stav === 'visited' ? 'i-check' : 'i-zalozka', {
+              titul: stav === 'visited' ? 'Navštíveno' : 'Uložit místo',
               on: !!stav,
             }) + stavPill(stav),
           tridy: 'misto',

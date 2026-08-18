@@ -21,17 +21,16 @@ import { obrazekMista } from '../../data/kategorieFoto.js'
 import { radek, ikonBtn } from '../../components/vzory.js'
 import { vypravaKarta, napojVypravu } from '../../components/vypravaKarta.js'
 import { aktivujZalozku } from '../../core/router.js'
+import { resetFiltru } from '../../core/filters.js'
 import { goTo, draw } from '../../map/map.js'
 import { openWizard } from '../../components/wizard.js'
+import { napojTah, svih } from '../../components/tah.js'
 
 /** Kolik uložených míst se vejde do karuselu, než se odkáže na Seznam. */
 const ULOZENYCH = 12
 
 /** Název bez závorek a pomlčkových přívlastků – do karty se dlouhý nevejde. */
 const kratce = (n) => n.split(/\s[–(]/)[0]
-
-/** O kolik pixelů musí prst ujet, než se to bere jako tažení, ne jako ťuknutí. */
-const PRAH_TAHU = 40
 
 /**
  * Je karta výpravy právě vidět? Jen v paměti – při každém spuštění se začíná
@@ -100,63 +99,6 @@ function nastavUlozene(na) {
 }
 
 /**
- * Svislé tažení prstem.
- *
- * Ukazatelové události, ne HTML5 drag-and-drop – ten na mobilu nefunguje;
- * stejný důvod jako u tahání zastávek v `views/plan/plan.js`.
- *
- * `konec` dostane, o kolik prst ujel svisle (kladné = dolů). Směr si vyhodnotí
- * volající – proužek uložených míst reaguje na obě strany podle toho, v jaké
- * poloze plát je.
- *
- * Klik po tažení se spolkne. Bez toho by se stažením karty pokaždé otevřel
- * Plán, protože pod ní je obsluha `.vk-hlava`.
- *
- * @param {HTMLElement} prvek     na čem se tahá
- * @param {(dy: number) => void} konec
- * @param {(dy: number) => void} [behem]  průběžný posun, na tažení karty
- */
-function napojTah(prvek, konec, behem) {
-  prvek.onpointerdown = (e) => {
-    // Jen primární tlačítko/prst; na pravý klik se nereaguje.
-    if (e.button) return
-    // Tlačítka uvnitř (šipka na sbalení) si musí klik obsloužit sama.
-    if (e.target.closest('button') && e.target.closest('button') !== prvek) return
-
-    const y0 = e.clientY
-    let tahalo = false
-
-    prvek.onpointermove = (ev) => {
-      const dy = ev.clientY - y0
-      if (!tahalo && Math.abs(dy) > 6) {
-        tahalo = true
-        // Ukazatel se zachytává až tady, ne hned při stisku. Kdyby se zachytil
-        // rovnou, prohlížeč by na něj přesměroval i `click` – a ten by pak
-        // nedošel k tlačítku pod prstem. Šipka na kartě tím přestala fungovat.
-        prvek.setPointerCapture(ev.pointerId)
-      }
-      if (behem) behem(dy)
-    }
-
-    const dokonci = (ev) => {
-      prvek.onpointermove = null
-      prvek.onpointerup = null
-      prvek.onpointercancel = null
-      const dy = ev.clientY - y0
-      if (behem) behem(0)
-      if (tahalo) {
-        // Klik po tažení se musí spolknout, jinak by stažení karty skočilo
-        // na Plán. `once` proto, ať to nezůstane viset na dalších ťuknutích.
-        prvek.addEventListener('click', (c) => c.stopPropagation(), { capture: true, once: true })
-      }
-      konec(tahalo ? dy : 0)
-    }
-    prvek.onpointerup = dokonci
-    prvek.onpointercancel = dokonci
-  }
-}
-
-/**
  * Naváže spodek Mapy. Volá se jednou při startu, ne z `renderMapaDole()` –
  * bublina i proužek jsou staticky v `index.html` a překreslení by obsluhu
  * smazalo. Šipka na kartě je výjimka: karta se překresluje, takže se věší
@@ -166,12 +108,30 @@ export function initMapaDole() {
   document.getElementById('mapBublina').onclick = () => nastavKartu(true)
 
   const uchyt = document.getElementById('ulozeneUchyt')
+  const obsah = document.querySelector('.ulozene-obsah')
   uchyt.onclick = () => nastavUlozene(!ulozeneNahore)
-  // Tažení nahoru vytáhne, dolů vrátí — jeden posluchač na obě strany.
-  napojTah(uchyt, (dy) => {
-    if (dy <= -PRAH_TAHU) nastavUlozene(true)
-    else if (dy >= PRAH_TAHU) nastavUlozene(false)
-  })
+
+  // Kam až se plát vytahuje. Stejné číslo jako `max-height` v CSS —
+  // počítá se tady, protože během tažení se výška řídí přímo prstem.
+  const strop = () => Math.round(window.innerHeight * 0.44)
+
+  // Tažení nahoru vytáhne, dolů vrátí; během tažení jde plát za prstem.
+  // Rychlé švihnutí přehodí polohu i na kratší dráze, viz `svih()`.
+  napojTah(
+    uchyt,
+    (dy, rychlost) => {
+      obsah.classList.remove('tahne')
+      obsah.style.maxHeight = ''
+      if (!ulozeneNahore && svih(dy, rychlost, -1)) nastavUlozene(true)
+      else if (ulozeneNahore && svih(dy, rychlost, 1)) nastavUlozene(false)
+    },
+    (dy) => {
+      if (dy === 0) return
+      const zaklad = ulozeneNahore ? strop() : 0
+      obsah.classList.add('tahne')
+      obsah.style.maxHeight = `${Math.max(0, Math.min(strop(), zaklad - dy))}px`
+    }
+  )
 
   srovnejSpodek()
 }
@@ -218,7 +178,7 @@ export function renderMapaDole() {
         })
         .join('')}</div>
       <button class="ulozene-vse" id="mapUlozVse">${IC('i-sipka', 'font-size:13px')}Zobrazit všech ${ulozena.length} v Seznamu</button>`
-    : `<div class="mapdolu-prazdno">${IC('i-zalozka')}Uložená místa se sem ukládají srdcem v Seznamu.</div>`
+    : `<div class="mapdolu-prazdno">${IC('i-zalozka')}Uložená místa se sem ukládají záložkou v Seznamu.</div>`
 
   /* ---- obsluha ---- */
   napojVypravu(karta, { naPlan: () => aktivujZalozku('plan'), naPruvodce: () => openWizard() })
@@ -235,8 +195,8 @@ export function renderMapaDole() {
   if (vkarta) {
     napojTah(
       vkarta,
-      (dy) => {
-        if (dy >= PRAH_TAHU) nastavKartu(false)
+      (dy, rychlost) => {
+        if (svih(dy, rychlost, 1)) nastavKartu(false)
       },
       // Karta jde za prstem, ale jen dolů – nahoru není kam.
       (dy) => {
@@ -249,7 +209,11 @@ export function renderMapaDole() {
   const vse = document.getElementById('mapUlozVse')
   if (vse) {
     vse.onclick = () => {
-      F.stav = 'wish'
+      // `F.ulozene`, ne `F.stav = 'wish'`: „wish" ve filtru stavu znamená
+      // NEnavštívená (stovky míst), kdežto tlačítko slibuje uložená.
+      // Ostatní filtry se čistí, aby seznam ukázal přesně to, co je v plátu.
+      resetFiltru()
+      F.ulozene = true
       aktivujZalozku('list')
       draw()
     }

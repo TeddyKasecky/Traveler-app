@@ -559,7 +559,7 @@ if (!SINGLE) {
       .evaluate(async () => {
         const text = await (await fetch('./sw.js')).text()
         const seznam = JSON.parse(text.match(/const PRECACHE = (\[[\s\S]*?\n\])/)[1])
-        return seznam.filter((f) => /(kresba|kresby-|vektory|vbm|maplibre-)/.test(f))
+        return seznam.filter((f) => /(kresba|kresby-|vektory|vbm|maplibre-|auta-)/.test(f))
       })
       .then((x) => x.length), 0)
 
