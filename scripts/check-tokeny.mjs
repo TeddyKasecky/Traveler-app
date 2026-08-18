@@ -138,9 +138,10 @@ const definovane = new Set([...Object.keys(svetle), ...Object.keys(media), ...Ob
 // Proměnné nastavované za běhu na konkrétním prvku, ne v `:root`.
 // `--chipc` odešlo s chipy kategorií, `--sous/--hranice/--voda/--more` s tím,
 // že barvy malované mapy se přestěhovaly do `tokens.css` jako `--mapa-*`.
-// Přibyly `--ps` (měřítko špendlíku podle zoomu, `map/map.js`) a `--kv`/`--ks`
-// (velikost kresby a její odchylka, `map/podklad.js`).
-const ZA_BEHU = new Set(['--pc', '--cc', '--mc', '--dc', '--ps', '--kv', '--ks'])
+// Přibylo `--ps` (měřítko špendlíku podle zoomu, `map/map.js`). Odešly
+// `--kv`/`--ks`: kresby krajiny se přestěhovaly z DOM do MapLibre, kde je
+// velikost vlastností symbolu, ne proměnnou v CSS.
+const ZA_BEHU = new Set(['--pc', '--cc', '--mc', '--dc', '--ps'])
 
 const nezname = new Set()
 for (const f of souboryCss) {

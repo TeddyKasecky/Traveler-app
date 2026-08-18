@@ -2,14 +2,14 @@
  * Malovaná mapa – podklad podle grafických předloh.
  *
  * Předloha `grafika/…11_09_49 (1).png` má ručně malovanou krajinu: papír,
- * bledě modré moře, khaki souš, bílé tečkované hranice, malované lesy a hory
- * a názvy zemí patkovým písmem. Tenhle modul ji staví z pěti vrstev:
+ * bledě modré moře, khaki souš, bílé tečkované hranice a názvy zemí patkovým
+ * písmem. Tenhle modul ji staví z pěti vrstev:
  *
  *   1. papír        – zrno v pozadí mapy, `podklad.css` (statické, neposouvá se)
  *   2. plochy       – země, jezera a řeky z `data/basemap.json` na plátně
- *   3. kresby       – stromy a hory z `data/kresba.json`, obrázky z `grafika/`
+ *   3. reliéf       – stínování skutečného terénu, `assets/relief-evropa.webp`
  *   4. názvy zemí   – `data/staty.js`, Playfair
- *   5. názvy měst   – z `basemap.json`, až od většího přiblížení
+ *   5. názvy měst   – `data/mesta.json`, každé od svého přiblížení
  *
  * ROLE: výchozí je běžná mapa z OpenStreetMap, tohle je **offline varianta**.
  * Dlaždice se offline neukládají a hromadně stahovat se nesmějí (podmínky OSM),
@@ -19,60 +19,48 @@
  * Plochy zemí ale leží **pod dlaždicemi a jsou tam i online**: když dlaždice
  * nedorazí, není v mapě díra a nemusí se nic přepínat. Přesně kvůli tomu, že
  * prohlížeč offline část dlaždic vydá z cache a část ne, takže by automatické
- * přepínání pod rukama blikalo. Papír, kresby a názvy zemí se naopak ukazují
- * jen v offline režimu – přes dlaždice by se s jejich vlastní kresbou tloukly.
+ * přepínání pod rukama blikalo. Papír, reliéf a názvy se naopak ukazují jen
+ * v offline režimu – přes dlaždice by se s jejich vlastní kresbou tloukly.
+ *
+ * KRESBY STROMŮ A HOR TU UŽ NEJSOU. Bylo jich sto deset jako Leafletové
+ * značky, každá až sto dvacet pixelů vysoká a s CSS filtrem, takže je
+ * prohlížeč překresloval při každém posunu mapy – a s krajinou pod sebou
+ * neměly nic společného, protože se sypaly na pravidelnou síť. Dnes je kreslí
+ * MapLibre na GPU ze skutečných lesů a skutečného výškopisu, viz `vektory.js`.
+ * Bez stažené mapy tu proto kresby nejsou vůbec: zůstávají obrysy, reliéf
+ * a názvy, tedy přesně to, co Nastavení slibuje jako „zjednodušenou mapu".
  *
  * Data ploch jsou z Natural Earth (public domain), připravuje je
- * `scripts/make-basemap.mjs`. Kresby a kotvy dělá `scripts/make-kresba.mjs`.
- * Souřadnice jsou všude [lat, lon].
+ * `scripts/make-basemap.mjs`. Souřadnice jsou všude [lat, lon].
  */
 
 import L from 'leaflet'
 import { esc } from '../core/html.js'
+import { prefs } from '../core/store.js'
 import { STATY } from '../data/staty.js'
 import { nactiMapu } from '../core/mapaDb.js'
 
-/* Kresby se importují jmenovitě, ne `import.meta.glob`: obě varianty buildu
- * (hostovaná i jednosouborová) si je pak přeloží stejně jako ostatní obrázky
- * a nezáleží na pořadí, ve kterém by je glob vrátil. */
-import strom1 from '../assets/kresba/strom-1.webp'
-import strom2 from '../assets/kresba/strom-2.webp'
-import strom3 from '../assets/kresba/strom-3.webp'
-import strom4 from '../assets/kresba/strom-4.webp'
-import strom5 from '../assets/kresba/strom-5.webp'
-import strom6 from '../assets/kresba/strom-6.webp'
-import strom7 from '../assets/kresba/strom-7.webp'
-import strom8 from '../assets/kresba/strom-8.webp'
-import hora1 from '../assets/kresba/hora-1.webp'
-import hora2 from '../assets/kresba/hora-2.webp'
-
-const STROMY = [strom1, strom2, strom3, strom4, strom5, strom6, strom7, strom8]
-const HORY = [hora1, hora2]
-
 /* Vlastní pane. Leaflet dává `tilePane` 200, `overlayPane` 400, `markerPane` 600. */
 const PANE_PLOCHY = 'podklad'
-const PANE_KRESBY = 'kresby'
+const PANE_RELIEF = 'relief'
 const PANE_POPISKY = 'popisky'
 const Z_PLOCHY = 150
-const Z_KRESBY = 250
+const Z_RELIEF = 250
 const Z_POPISKY = 350
 
-/** Od kolika přiblížení se vypisují názvy měst. Níž by se slily do kaše. */
-const ZOOM_MESTA = 6
 /** Do kolika přiblížení mají smysl názvy zemí. Výš je zem beztak jen jedna. */
 const ZOOM_STATY = 7
-/** Meze, ve kterých se kreslí stromy a hory. Blíž dojdou a zbyde plocha. */
-const KRESBY_OD = 4
-const KRESBY_DO = 8
 
 /**
- * Výška stromu v bodech podle přiblížení.
+ * Od kterého přiblížení se ukazují všechna města ve výřezu.
  *
- * Nesahá se přitom na značky: velikost jde do proměnné `--kv` na kontejneru
- * mapy a obrázky si ji vezmou z CSS. Přestavět 180 značek při každém zoomu
- * by bylo znát, přepsat jednu proměnnou není.
+ * Každé město má z dat vlastní `min_zoom` od kartografů Protomaps a do sedmičky
+ * se drží. Výš by ale mapa osiřela: balík sahá do zoomu 6, takže žádné město
+ * nemá `min_zoom` vyšší než sedm, a v přiblíženém výřezu by pak nebyl jediný
+ * popisek. Nad sedmičkou se proto ukáže všechno, co je vidět – a protože je
+ * výřez malý, není toho moc.
  */
-const VELIKOST = { 4: 26, 5: 38, 6: 54, 7: 76, 8: 104 }
+const ZOOM_VSECHNA_MESTA = 7
 
 /** Jak dlouho po návratu dlaždic ještě svítí štítek „offline". */
 const STITEK_DOBEH = 2500
@@ -84,27 +72,25 @@ let priprava = null
 
 /** @type {L.LayerGroup|null} */
 let plochy = null
-/** @type {L.LayerGroup|null} */
-let mestaVrstva = null
-/** @type {(() => L.LayerGroup)|null} odložená stavba názvů měst */
-let mestaLine = null
+/** @type {L.ImageOverlay|null} */
+let relief = null
 /** @type {L.LayerGroup|null} */
 let statyVrstva = null
 /** @type {L.LayerGroup|null} */
-let kresbyVrstva = null
+let mestaVrstva = null
 /**
  * Vrstva MapLibre s vektorovými dlaždicemi, nebo null.
  *
- * Null znamená, že mapa není stažená nebo prohlížeč neumí WebGL – pak kreslí
- * staré plátno z `basemap.json`. Obojí schválně: plátno je jediné, co funguje
- * i v jednosouborové variantě, kam se deset megabajtů dlaždic nedá zabalit.
+ * Null znamená, že mapa není stažená, že si ji uživatel v Nastavení vypnul
+ * nebo že prohlížeč neumí WebGL – pak zůstane plátno z `basemap.json`,
+ * které funguje vždycky.
  */
 let vektory = null
 
-/** Všechny kotvy kreseb. Do mapy jde jen to, co je ve výřezu. */
-let kotvy = []
-/** @type {Map<number, L.Marker>} pořadí kotvy → značka, která je na mapě */
-const kresbyNaMape = new Map()
+/** Všechna města. `[lat, lon, jméno, od jakého přiblížení, pořadí]` */
+let mesta = []
+/** @type {Map<number, L.Marker>} pořadí města → značka, která je na mapě */
+const mestaNaMape = new Map()
 
 /** Barvy se čtou z CSS, ať zůstávají na jednom místě jako všechny ostatní. */
 function barvy(el) {
@@ -153,22 +139,34 @@ function postavPlochy(mapa, data) {
 }
 
 /**
- * Názvy měst. Jsou to prvky stránky, ne kresba – proto zvlášť.
+ * Stínování terénu jako jediný obrázek přes celou Evropu.
  *
- * Staví se až při prvním přiblížení, kdy jsou potřeba: měst je 192 a při
- * pohledu na celou Evropu se stejně nekreslí ani jedno.
+ * PROČ OBRÁZEK A NE VRSTVA V MAPLIBRE: takhle ho má **i zjednodušená mapa**,
+ * tedy i ten, kdo si nic nestáhl, i prohlížeč bez WebGL. Jedna cesta místo
+ * dvou, a stojí to jeden `L.ImageOverlay`, který prohlížeč složí jako
+ * kteroukoli jinou vrstvu.
+ *
+ * Do jednosouborové varianty se schválně nebalí: `assetsInlineLimit` je tam
+ * bez omezení, takže by se megabajt reliéfu vložil do HTML jako base64
+ * a soubor by narostl o polovinu. Konstanta je nahrazená při buildu, takže
+ * se z něj celá větev i s importem vyhodí.
  */
-function postavMesta(data) {
-  return L.layerGroup(
-    data.mesta.map(([lat, lon, nazev]) =>
-      L.marker([lat, lon], {
-        pane: PANE_POPISKY,
-        interactive: false,
-        keyboard: false,
-        icon: L.divIcon({ className: 'mesto-popisek', html: esc(nazev), iconSize: null }),
-      })
-    )
-  )
+async function postavRelief() {
+  if (import.meta.env.SINGLE_FILE) return null
+  try {
+    const [obrazek, meta] = await Promise.all([
+      import('../assets/relief-evropa.webp?url'),
+      import('../data/relief.json'),
+    ])
+    return L.imageOverlay(obrazek.default, meta.default.meze, {
+      pane: PANE_RELIEF,
+      interactive: false,
+      className: 'relief',
+    })
+  } catch (e) {
+    console.warn('Reliéf se nenačetl:', e)
+    return null
+  }
 }
 
 /** Názvy zemí v Playfair, jak je má předloha. */
@@ -186,42 +184,37 @@ function postavStaty() {
 }
 
 /**
- * Doplní kresby, které se dostaly do výřezu, a odebere ty, co z něj vypadly.
+ * Doplní názvy měst, které patří do výřezu a do přiblížení, a odebere ostatní.
  *
- * Stejný postup jako u špendlíků v `map.js` a ze stejného důvodu: 180 obrázků
- * naráz znamená, že je prohlížeč při každém posunu mapy všechny přepočítá.
+ * Měst je devět set osmdesát pět, takže se nestaví všechna: každé má v datech
+ * svoje `min_zoom` od kartografů Protomaps a mimo výřez se neskládá vůbec.
+ * Stejný postup jako u špendlíků v `map.js` a ze stejného důvodu – vkládat
+ * do stránky, co není vidět, se pozná na každém posunu.
  */
-function srovnejKresby() {
-  if (!kresbyVrstva || !mapaRef) return
-  const meze = mapaRef.getBounds().pad(0.35)
+function srovnejMesta() {
+  if (!mestaVrstva || !mapaRef) return
+  const z = mapaRef.getZoom()
+  const meze = mapaRef.getBounds().pad(0.25)
   const majiByt = new Set()
 
-  for (let i = 0; i < kotvy.length; i++) {
-    const [lat, lon, kus, v] = kotvy[i]
-    if (!meze.contains([lat, lon])) continue
+  for (let i = 0; i < mesta.length; i++) {
+    const [lat, lon, nazev, odZoomu] = mesta[i]
+    if (z < Math.min(odZoomu, ZOOM_VSECHNA_MESTA) || !meze.contains([lat, lon])) continue
     majiByt.add(i)
-    if (kresbyNaMape.has(i)) continue
-
-    const hora = kus[0] === 'h'
-    const soubor = hora ? HORY[+kus.slice(1) - 1] : STROMY[+kus.slice(1) - 1]
+    if (mestaNaMape.has(i)) continue
     const m = L.marker([lat, lon], {
-      pane: PANE_KRESBY,
+      pane: PANE_POPISKY,
       interactive: false,
       keyboard: false,
-      icon: L.divIcon({
-        className: `kresba${hora ? ' hora' : ''}`,
-        iconSize: [0, 0],
-        iconAnchor: [0, 0],
-        html: `<img src="${soubor}" alt="" decoding="async" style="--ks:${v}">`,
-      }),
-    }).addTo(kresbyVrstva)
-    kresbyNaMape.set(i, m)
+      icon: L.divIcon({ className: 'mesto-popisek', html: esc(nazev), iconSize: null }),
+    }).addTo(mestaVrstva)
+    mestaNaMape.set(i, m)
   }
 
-  for (const [i, m] of kresbyNaMape) {
+  for (const [i, m] of mestaNaMape) {
     if (majiByt.has(i)) continue
-    kresbyVrstva.removeLayer(m)
-    kresbyNaMape.delete(i)
+    mestaVrstva.removeLayer(m)
+    mestaNaMape.delete(i)
   }
 }
 
@@ -232,8 +225,6 @@ function srovnejPodleZoomu() {
   const el = mapaRef.getContainer()
   const dlazdice = el.classList.contains('dlazdice')
 
-  el.style.setProperty('--kv', `${VELIKOST[Math.min(Math.max(z, KRESBY_OD), KRESBY_DO)]}px`)
-
   // Vektorová mapa jen v malovaném režimu. Pod dlaždicemi zůstává staré
   // plátno – to je levné a je tam kvůli tomu, aby při chybějící dlaždici
   // nevznikla v mapě díra.
@@ -242,15 +233,12 @@ function srovnejPodleZoomu() {
   // Když kreslí vektory, plátno se schová: leželo by pod neprůhledným
   // podkladem a jen by se zbytečně překreslovalo při každém posunu.
   prepni(plochy, !vektoryMaji)
-
+  prepni(relief, !dlazdice)
   prepni(statyVrstva, !dlazdice && z <= ZOOM_STATY)
 
-  const mestaMaji = !dlazdice && z >= ZOOM_MESTA
-  if (mestaMaji && !mestaVrstva && mestaLine) mestaVrstva = mestaLine()
+  const mestaMaji = !dlazdice && mesta.length > 0
   prepni(mestaVrstva, mestaMaji)
-  const kresbyMaji = !dlazdice && z >= KRESBY_OD && z <= KRESBY_DO
-  prepni(kresbyVrstva, kresbyMaji)
-  if (kresbyMaji) srovnejKresby()
+  if (mestaMaji) srovnejMesta()
 }
 
 /** Přidá nebo odebere vrstvu. Opakované volání nic nedělá. */
@@ -264,25 +252,27 @@ function prepni(vrstva, maByt) {
 /** Je podklad už postavený? */
 export const jeZapnuta = () => !!plochy
 
-/** Kreslí se právě vektorová mapa? Čte to Profil i kontroly. */
+/** Kreslí se právě vektorová mapa? Čte to Nastavení i kontroly. */
 export const jsouVektory = () => !!vektory
 
 /**
  * Zkusí postavit vektorovou mapu ze staženého balíku.
  *
- * Tiše se vzdá, když mapa není stažená nebo prohlížeč neumí WebGL – v obou
- * případech zůstane plátno z `basemap.json`, které funguje vždycky. Moduly
- * MapLibre se natahují až tady dynamickým importem, aby si je nestahoval
- * každý, kdo mapu staženou nemá.
+ * Tiše se vzdá, když mapa není stažená, když si ji uživatel v Nastavení vypnul
+ * nebo když prohlížeč neumí WebGL – ve všech případech zůstane plátno
+ * z `basemap.json`, které funguje vždycky. Moduly MapLibre se natahují až tady
+ * dynamickým importem, aby si je nestahoval každý, kdo mapu staženou nemá.
  *
  * @param {L.Map} mapa
  */
 async function zkusVektory(mapa) {
-  // V jednosouborové variantě se ani nezkouší. Balík dlaždic má skoro 10 MB
-  // a do jednoho souboru se zabalit nedá, takže by se MapLibre (další megabajt)
-  // natáhl úplně zbytečně. Konstanta je nahrazená při buildu, takže se z něj
-  // celá větev i s importem vyhodí.
+  // V jednosouborové variantě se ani nezkouší. Balík dlaždic má několik
+  // megabajtů a do jednoho souboru se zabalit nedá, takže by se MapLibre
+  // (další megabajt) natáhl úplně zbytečně. Konstanta je nahrazená při
+  // buildu, takže se z něj celá větev i s importem vyhodí.
   if (import.meta.env.SINGLE_FILE) return
+  // Volba z Nastavení. Kdo chce mapu co nejrychlejší, nechá zjednodušenou.
+  if (prefs.offlineMapa === 'zjednodusena') return
   try {
     const blob = await nactiMapu()
     if (!blob) return
@@ -297,8 +287,8 @@ async function zkusVektory(mapa) {
 }
 
 /**
- * Postaví nebo zboří vektorovou mapu, když se stáhla nebo smazala.
- * Volá to Profil, aby se nemuselo restartovat.
+ * Postaví nebo zboří vektorovou mapu, když se stáhla, smazala nebo přepnula.
+ * Volá to Nastavení, aby se nemuselo restartovat.
  *
  * @param {L.Map} mapa
  */
@@ -332,7 +322,7 @@ export function zajistiPodklad(mapa) {
 
     for (const [jmeno, z] of [
       [PANE_PLOCHY, Z_PLOCHY],
-      [PANE_KRESBY, Z_KRESBY],
+      [PANE_RELIEF, Z_RELIEF],
       [PANE_POPISKY, Z_POPISKY],
     ]) {
       if (mapa.getPane(jmeno)) continue
@@ -342,20 +332,18 @@ export function zajistiPodklad(mapa) {
       p.style.pointerEvents = 'none'
     }
 
-    const [zaklad, kresba] = await Promise.all([import('../data/basemap.json'), import('../data/kresba.json')])
+    const [zaklad, mestaData] = await Promise.all([import('../data/basemap.json'), import('../data/mesta.json')])
     const data = zaklad.default
-    kotvy = kresba.default.kotvy
+    mesta = mestaData.default.mesta
 
     plochy = postavPlochy(mapa, data).addTo(mapa)
+    relief = await postavRelief()
     await zkusVektory(mapa)
     statyVrstva = postavStaty()
-    kresbyVrstva = L.layerGroup()
-    // Města se postaví, až se poprvé přiblíží. Sto devadesát dva značek naráz
-    // je při startu zbytečná práce – při pohledu na Evropu se nekreslí ani jedna.
-    mestaLine = () => postavMesta(data)
+    mestaVrstva = L.layerGroup()
 
     mapa.on('zoomend', srovnejPodleZoomu)
-    mapa.on('moveend', srovnejKresby)
+    mapa.on('moveend', srovnejMesta)
     srovnejPodleZoomu()
   })()
 
@@ -370,8 +358,8 @@ export function zajistiPodklad(mapa) {
 /**
  * Přepne mezi malovaným podkladem a dlaždicemi z OpenStreetMap.
  *
- * Malovaná mapa je hezká, ale nemá silnice a při větším přiblížení kresby
- * dojdou. Kdo potřebuje vidět, kudy se tam jede, přepne. Volba se pamatuje.
+ * Malovaná mapa je hezká, ale při větším přiblížení má míň podrobností.
+ * Kdo potřebuje vidět, kudy se tam jede, přepne. Volba se pamatuje.
  *
  * @param {boolean} dlazdiceZapnute
  */
@@ -414,7 +402,7 @@ export function prebarviPodklad() {
 let dobeh = null
 
 /**
- * Přepne štítek „Offline · zjednodušená mapa".
+ * Přepne štítek „Offline · malovaná mapa".
  *
  * Hlásí se jen v režimu dlaždic: v malovaném podkladu žádné dlaždice nechodí,
  * takže by štítek svítil pořád a nic by neříkal.

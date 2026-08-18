@@ -197,6 +197,15 @@ export const prefs = nacti(PREFK, {
    */
   podklad: 'dlazdice',
   /**
+   * Čím se kreslí offline mapa: 'stazena' (malovaná ze staženého balíku) nebo
+   * 'zjednodusena' (obrysy, města a reliéf, které jsou přímo v aplikaci).
+   *
+   * Výchozí je 'stazena', ale samo o sobě to nic neznamená – dokud balík
+   * v telefonu není, `map/podklad.js` stejně nemá co kreslit a nastoupí
+   * zjednodušená. Přepíná se v Nastavení.
+   */
+  offlineMapa: 'stazena',
+  /**
    * Viděl už uživatel kartu výpravy na Mapě?
    *
    * Karta se ukáže **jen při úplně prvním otevření Mapy**, aby se vědělo, že

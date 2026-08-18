@@ -38,8 +38,8 @@ function pluginServiceWorker() {
       //   - tečkové soubory: nejsou k ničemu,
       //   - podtržítko: `_headers` a `_redirects` si hostingy berou jako svoji
       //     konfiguraci a z nasazeného webu je mažou, takže by vrátily 404,
-      //   - `.vbm`: stažená mapa Evropy má přes 13 MB a stahuje se **na
-      //     vyžádání** z Profilu do IndexedDB. Kdyby byla v předukládaném
+      //   - `.vbm`: stažená mapa Evropy má několik megabajtů a stahuje se **na
+      //     vyžádání** z Nastavení do IndexedDB. Kdyby byla v předukládaném
       //     seznamu, stáhla by se každému hned při instalaci – přesně to,
       //     čemu se vyhýbáme.
       const publicDir = path.join(ROOT, 'public')
@@ -50,11 +50,34 @@ function pluginServiceWorker() {
         )
         .map((d) => `./${d.name}`)
 
+      // Ze stejného důvodu vypadává **všechno kolem stažené malované mapy**:
+      // MapLibre i s jeho workerem, čtečka balíku, souřadnice kreseb a sto
+      // dvacet obrázků. Dohromady přes čtyři megabajty, které jsou k ničemu
+      // každému, kdo si mapu nestáhne – a to je většina lidí.
+      //
+      // Neztratí se: service worker od srpna 2026 **ukládá i to, co si
+      // aplikace vyžádá až za běhu** (`src/pwa/sw.js`), takže se kresby
+      // uloží při prvním zapnutí vektorové mapy. Stahovat mapu se stejně
+      // musí online, takže se to vždycky stihne dřív než signál dojde.
+      //
+      // Pozná se to podle jména souboru. Je to křehčí než příznak v kódu, ale
+      // Vite jména odvozuje od zdrojů, takže je to jediné, co v `generateBundle`
+      // je. Hlídá to `smoke` – jinak by přejmenování chunku tiše vrátilo
+      // čtyři megabajty do instalace.
+      const JEN_SE_STAZENOU_MAPOU = /^assets\/(kresba|kresby-|vektory|vbm|maplibre-)/
+      const zBundle = Object.keys(bundle).filter((f) => !JEN_SE_STAZENOU_MAPOU.test(f))
+
       // Seřazeno schválně. `Object.keys(bundle)` nevrací pokaždé stejné pořadí –
       // stačilo, aby si dva fonty prohodily místo, a verze cache vyšla jiná, i když
       // se v aplikaci nezměnil jediný bajt. Telefon si pak celou aplikaci stáhl
       // znovu pro nic za nic. Řazení dělá verzi závislou na obsahu, ne na náhodě.
-      const seznam = ['./', ...Object.keys(bundle).map((f) => `./${f}`), ...zPublic].sort()
+      const seznam = ['./', ...zBundle.map((f) => `./${f}`), ...zPublic].sort()
+
+      const vazi = zBundle.reduce((a, f) => a + (bundle[f].code || bundle[f].source || '').length, 0)
+      this.warn(
+        `předukládá se ${seznam.length} souborů, ~${(vazi / 1048576).toFixed(1)} MB ` +
+          `(vynecháno ${Object.keys(bundle).length - zBundle.length} kolem stažené mapy)`
+      )
       const verze = `vandrbuch-${crypto.createHash('sha1').update(seznam.join('|')).digest('hex').slice(0, 10)}`
 
       const sablona = fs.readFileSync(path.join(ROOT, 'src', 'pwa', 'sw.js'), 'utf8')

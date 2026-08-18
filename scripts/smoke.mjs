@@ -105,7 +105,7 @@ const kontrola = async (popis, fn, ocekavano) => {
 
 // 58 = 57 z původní aplikace + `i-filtr` (trychtýř podle listu „SADA PIKTOGRAMŮ",
 // viz VZHLED.md). Číslo se mění jen s vědomým přidáním ikony do sprite.svg.
-await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 58)
+await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 59)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
 // Nad mapou je pět rychlých pilulek podle předlohy, od srpna 2026 „moje věci"
@@ -179,26 +179,46 @@ await kontrola('hledání "soutesky" bez diakritiky', () => page.locator('#listI
 await page.fill('#q', '')
 await page.waitForTimeout(300)
 
-// Profil – nemá tlačítko v liště, otevírá se kolečkem v hlavičce
+// Profil – nemá tlačítko v liště, otevírá se kolečkem v hlavičce.
+// Od srpna 2026 v něm zůstává jen identita a čísla; všechno ostatní se
+// přestěhovalo do Nastavení vedle něj.
 await page.click('#profilOpen')
 await page.waitForTimeout(300)
 await kontrola('Profil se otevřel', () => page.locator('#panelProfil.show').count(), 1)
 await kontrola('Profil má adresu', () => page.evaluate(() => location.hash), '#profil')
 await kontrola('Profil má čísla', () => page.locator('#profilInner .pstat').count(), 6)
-// Zálohy, obnova, CSV a vzhled se přestěhovaly z panelu Filtry do Profilu:
-// panel Filtry odpovídá na „co chci vidět", Profil na „moje data".
-await kontrola('Profil má zálohu a obnovu', () => page.locator('#panelProfil #expBtn, #panelProfil #impIn').count(), 2)
-await kontrola('Profil má přepínač vzhledu', () => page.locator('#panelProfil .motivbtn').count(), 3)
-// Malovaná mapa Evropy má skoro 10 MB, takže není v instalaci a stahuje se
-// odsud. Test ji nestahuje – ověřuje jen, že se nabízí a hlásí správný stav.
-await kontrola('Profil nabízí stažení mapy', () => page.locator('#mapaStahni').isVisible(), true)
+await kontrola('Profil už nemá nastavení', () =>
+  page.locator('#panelProfil #expBtn, #panelProfil .motivbtn, #panelProfil #csvIn').count(), 0)
+await page.goBack()
+await page.waitForTimeout(400)
+
+// Nastavení – druhé kolečko v hlavičce, hned vedle profilového.
+await page.click('#nastaveniOpen')
+await page.waitForTimeout(400)
+await kontrola('Nastavení se otevřelo', () => page.locator('#panelNastaveni.show').count(), 1)
+await kontrola('Nastavení má adresu', () => page.evaluate(() => location.hash), '#nastaveni')
+// Zálohy, obnova, CSV a vzhled se přestěhovaly z panelu Filtry (ten odpovídá
+// na „co chci vidět") sem, kde je zbytek pák na chování aplikace.
+await kontrola('Nastavení má zálohu a obnovu', () =>
+  page.locator('#panelNastaveni #expBtn, #panelNastaveni #impIn').count(), 2)
+await kontrola('Nastavení má přepínač vzhledu', () => page.locator('#panelNastaveni .motivbtn').count(), 3)
+await kontrola('Nastavení má správu vlastních dat', () =>
+  page.locator('#panelNastaveni #csvIn, #panelNastaveni #dataReset').count(), 2)
+// Malovaná mapa Evropy má několik megabajtů, takže není v instalaci a stahuje
+// se odsud. Test ji nestahuje – ověřuje jen, že se nabízí a hlásí správný stav.
+await kontrola('Nastavení nabízí stažení mapy', () => page.locator('#mapaStahni').isVisible(), true)
 await kontrola('bez stažení hlásí, že mapa není', () =>
-  page.locator('#mapaStav').innerText().then((t) => /nesta/i.test(t)), true)
+  page.locator('#mapaStav').innerText().then((t) => /nen[ií]/i.test(t)), true)
+// Volba malované mapy je zašedlá, dokud balík není stažený – slibovat něco,
+// co se nemá odkud vzít, je horší než to nenabídnout.
+await kontrola('bez balíku nejde malovanou zvolit', () =>
+  page.locator('.volba[data-offline="stazena"]').isDisabled(), true)
+await kontrola('Nastavení hlásí místo v telefonu', () =>
+  page.locator('#mistoInfo').innerText().then((t) => t.length > 10), true)
 // Bez stažené mapy musí nastoupit záložní plátno z basemap.json – jinak by
 // offline mapa byla prázdná. Totéž platí pro prohlížeč bez WebGL
-// a pro jednosouborovou variantu, kam se 10 MB dlaždic zabalit nedá.
+// a pro jednosouborovou variantu, kam se dlaždice zabalit nedají.
 await kontrola('bez mapy se kreslí záložní podklad', () => page.locator('.maplibregl-canvas').count(), 0)
-await kontrola('Profil má správu vlastních dat', () => page.locator('#panelProfil #csvIn, #panelProfil #dataReset').count(), 2)
 await kontrola('v panelu Filtry už zálohy nejsou', () => page.locator('#filters #expBtn').count(), 0)
 await page.goBack()
 await page.waitForTimeout(400)
@@ -577,7 +597,6 @@ if (!SINGLE) {
   await page.waitForTimeout(1200)
 
   await kontrola('offline mapa: přepínač hlásí stav', () => page.locator('#podkladBtn span').innerText(), 'Offline')
-  await kontrola('offline mapa: názvy měst', () => page.locator('.mesto-popisek').count().then((n) => n > 0))
   // Barva moře se dřív zapínala třídou `#map.offline`. Ta zanikla – moře je
   // teď obyčejné pozadí mapy z tokenu `--mapa-more`. Hodnota se nepočítá ručně,
   // nechá se přeložit prohlížečem přes pomocný prvek: zapsaný `#C6DAE1`
@@ -593,12 +612,27 @@ if (!SINGLE) {
       return getComputedStyle(document.getElementById('map')).backgroundColor === ocekavano
     })
   )
-  // Kresby se ukazují jen v pásmu přiblížení 4–8, takže se napřed oddálí zpátky.
+  // Kresby stromů a hor už nejsou prvky stránky – kreslí je MapLibre na GPU
+  // a jen se staženým balíkem. Zjednodušená mapa má obrysy, města a reliéf,
+  // takže se kontroluje reliéf: je to jediná nová vrstva, kterou je vidět
+  // i bez stažení.
   await page.mouse.wheel(0, 400)
   await page.waitForTimeout(400)
   await page.mouse.wheel(0, 400)
   await page.waitForTimeout(1500)
-  await kontrola('offline mapa: malované kresby', () => page.locator('.kresba img').count().then((n) => n > 0))
+  // Popisky měst se skládají jen pro to, co je ve výřezu, takže se kontrolují
+  // až po oddálení. Při přiblížení do Alp jich je ve výřezu klidně nula –
+  // a to není chyba, jen malý výřez.
+  await kontrola('offline mapa: názvy měst', () => page.locator('.mesto-popisek').count().then((n) => n > 0))
+  await kontrola('offline mapa: stínování terénu', () =>
+    page.locator('.leaflet-relief-pane img.relief').count().then((n) => n === 1)
+  )
+  await kontrola('offline mapa: reliéf je vidět', () =>
+    page.evaluate(() => {
+      const el = document.querySelector('img.relief')
+      return !!el && el.complete && el.naturalWidth > 1000 && Number(getComputedStyle(el).opacity) > 0.3
+    })
+  )
 
   await page.evaluate(() => document.getElementById('podkladBtn').click())
   await page.context().setOffline(false)

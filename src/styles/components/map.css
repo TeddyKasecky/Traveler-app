@@ -54,3 +54,13 @@
 .leaflet-container .leaflet-marker-pane .dodavka img{position:absolute;left:0;bottom:0;
   transform:translate(-50%,50%);width:74px;height:auto;
   filter:drop-shadow(0 2px 3px rgba(27,36,26,.28))}
+
+/* Kde právě jsme. Táž ilustrace jako na trase, jen menší – do srpna 2026 to
+ * byl zelený puntík, který na malované mapě vypadal jako z jiné aplikace.
+ * DLOUHÝ SELEKTOR ZE STEJNÉHO DŮVODU jako u `.dodavka` výš: bez něj vyhraje
+ * Leafletovo `.leaflet-container .leaflet-marker-pane img{width:auto}`
+ * a dodávka se vykreslí v původních 756 px, tedy přes celou obrazovku. */
+.poloha{pointer-events:none;z-index:1000}
+.leaflet-container .leaflet-marker-pane .poloha img{position:absolute;left:0;bottom:0;
+  transform:translate(-50%,50%);width:48px;height:auto;
+  filter:drop-shadow(0 2px 4px rgba(27,36,26,.42))}

@@ -6,11 +6,13 @@
 #logo{width:28px;height:28px;border-radius:9px;flex:0 0 auto}
 #brand h1{font-family:var(--f-body);font-weight:800;font-size:.78rem;letter-spacing:3.4px;
   text-transform:uppercase;margin:0;line-height:1;color:var(--text2)}
+/* Dvě kolečka vpravo, zleva profil a nastavení. Odsazení dostane jen to první,
+ * druhé se k němu přilepí na vzdálenost, kterou drží `gap` v `#brand`. */
 #profilOpen{margin-left:auto}
-#profilOpen{flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:var(--line);background:var(--plocha);
+#profilOpen,#nastaveniOpen{flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:var(--line);background:var(--plocha);
   display:grid;place-items:center;box-shadow:var(--stin-1);transition:transform .15s var(--pop)}
-#profilOpen svg.ic{font-size:19px;color:var(--text2)}
-#profilOpen:active{transform:var(--stisk)}
+#profilOpen svg.ic,#nastaveniOpen svg.ic{font-size:19px;color:var(--text2)}
+#profilOpen:active,#nastaveniOpen:active{transform:var(--stisk)}
 /* Tečkovaná silnice zůstává jako oddělovač v panelech (Filtry, průvodce).
  * Z hlavičky zmizela: předloha mapy má pod pilulkami rovnou mapu a čára tam
  * jen kreslila hranici, kterou dělá už sám okraj papíru. */

@@ -1,92 +1,103 @@
 /**
- * Čtení balíku malované mapy (`.vbm`) a jeho napojení na MapLibre.
+ * Napojení staženého balíku (`.vbm`) na MapLibre.
  *
- * Formát vyrábí `scripts/make-mapa.mjs`, kde je i popsaný. Ve zkratce:
+ * Vlastní čtení a rozbalování dělá `vbmWorker.js` ve vlastním vlákně – tenhle
+ * soubor je jen okénko do něj a překladač adres `vbm://{z}/{x}/{y}` na zprávy.
  *
- *   [0..3]   'VBM1'
- *   [4..7]   délka rejstříku (uint32 LE)
- *   [8..]    rejstřík (JSON, gzip)  { zoomMax, meze, dlazdice: {"z/x/y":[pozice,delka]} }
- *   pak      těla dlaždic za sebou  (MVT zabalený gzipem, každá zvlášť)
+ * PROČ TO NEDĚLÁ ROVNOU TENHLE SOUBOR: obsluha protokolu, kterou volá MapLibre,
+ * běží na hlavním vlákně. Rozbalit tam gzip každé dlaždice znamenalo jedno
+ * škubnutí na dlaždici, a to zrovna při posunu mapy, kdy jich chodí nejvíc.
  *
- * Pozice v rejstříku jsou počítané od začátku těl, ne od začátku souboru –
- * díky tomu se rejstřík nemusí přepisovat, když se změní jeho vlastní délka.
- *
- * ČTE SE Z BLOBU, ne z paměti. Balík má skoro 10 MB a `blob.slice()` nechá
- * prohlížeči možnost držet ho na disku; do paměti se dostane jen ta dlaždice,
- * kterou mapa zrovna kreslí.
- *
- * Rozbaluje se `DecompressionStream`, což umí každý prohlížeč, který umí
- * i WebGL – bez WebGL se sem stejně nikdo nedostane a nastoupí záložní
- * kreslení z `basemap.json`.
+ * Formát balíku je popsaný v `scripts/make-mapa.mjs` a v komentáři workeru.
  */
 
 /** Jméno protokolu, pod kterým se registruje v MapLibre: `vbm://…`. */
 export const PROTOKOL = 'vbm'
 
-/** @type {{blob: Blob, rejstrik: Record<string, [number, number]>, zoomMax: number, odTel: number}|null} */
-let balik = null
+/** Značka, kterou umíme přečíst. Balík se starší značkou se odmítá. */
+const ZNACKA = 'VBM2'
 
-/** Rozbalí gzip. */
-async function rozbal(buf) {
-  const s = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))
-  return new Response(s).arrayBuffer()
+/** @type {Worker|null} */
+let vlakno = null
+/** @type {Map<number, {hotovo: Function, selhalo: Function}>} */
+const cekaji = new Map()
+let poradi = 0
+
+/** Co víme o otevřeném balíku. Null znamená, že žádný otevřený není. */
+let otevreny = null
+
+/** Pošle workeru zprávu a počká na odpověď. */
+function zeptej(zprava, prenest) {
+  if (!vlakno) return Promise.reject(new Error('vlákno neběží'))
+  const id = ++poradi
+  return new Promise((hotovo, selhalo) => {
+    cekaji.set(id, { hotovo, selhalo })
+    vlakno.postMessage({ ...zprava, id }, prenest || [])
+  })
+}
+
+/** Nastartuje vlákno, pokud ještě neběží. */
+async function nastartuj() {
+  if (vlakno) return
+  // Dynamický import, aby se worker nedostal do hlavního balíčku aplikace –
+  // stáhne si ho jen ten, kdo má mapu do telefonu opravdu staženou.
+  const { default: VbmWorker } = await import('./vbmWorker.js?worker')
+  vlakno = new VbmWorker()
+  vlakno.onmessage = (e) => {
+    const c = cekaji.get(e.data.id)
+    if (!c) return
+    cekaji.delete(e.data.id)
+    if (e.data.chyba) c.selhalo(new Error(e.data.chyba))
+    else c.hotovo(e.data)
+  }
+  vlakno.onerror = (e) => {
+    for (const c of cekaji.values()) c.selhalo(new Error(e.message || 'vlákno spadlo'))
+    cekaji.clear()
+  }
 }
 
 /**
- * Otevře balík z Blobu. Přečte se jen hlavička a rejstřík, těla zůstanou na disku.
+ * Je balík ten, kterému rozumíme?
+ *
+ * Volá to Nastavení, aby mohlo napsat „stažená mapa je zastaralá" místo toho,
+ * aby mapa tiše spadla na obrysy a nikdo nevěděl proč. Čte se osm bajtů,
+ * takže se kvůli tomu nic nikam nekopíruje.
+ *
+ * @param {Blob} blob
+ * @returns {Promise<boolean>}
+ */
+export async function jeAktualni(blob) {
+  try {
+    const b = new Uint8Array(await blob.slice(0, 4).arrayBuffer())
+    return String.fromCharCode(...b) === ZNACKA
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Otevře balík z Blobu.
  *
  * @param {Blob} blob
  * @returns {Promise<{zoomMax: number, dlazdic: number}>}
  */
 export async function otevriBalik(blob) {
-  const hlavicka = new DataView(await blob.slice(0, 8).arrayBuffer())
-  const magic = String.fromCharCode(hlavicka.getUint8(0), hlavicka.getUint8(1), hlavicka.getUint8(2), hlavicka.getUint8(3))
-  if (magic !== 'VBM1') throw new Error(`tohle není balík mapy (${magic})`)
-
-  const delkaRejstriku = hlavicka.getUint32(4, true)
-  const rejstrikBin = await blob.slice(8, 8 + delkaRejstriku).arrayBuffer()
-  const hlava = JSON.parse(new TextDecoder().decode(await rozbal(rejstrikBin)))
-
-  balik = {
-    blob,
-    rejstrik: hlava.dlazdice,
-    zoomMax: hlava.zoomMax,
-    // Těla začínají hned za hlavičkou a rejstříkem.
-    odTel: 8 + delkaRejstriku,
-  }
-  return { zoomMax: hlava.zoomMax, dlazdic: Object.keys(hlava.dlazdice).length }
+  await nastartuj()
+  const { info } = await zeptej({ typ: 'otevri', blob })
+  otevreny = info
+  return info
 }
 
 /** Je balík otevřený? */
-export const jeOtevreny = () => !!balik
+export const jeOtevreny = () => !!otevreny
 
 /** Do jakého přiblížení balík sahá. Nad ním si MapLibre dlaždice roztáhne sám. */
-export const zoomMax = () => (balik ? balik.zoomMax : 0)
+export const zoomMax = () => (otevreny ? otevreny.zoomMax : 0)
 
 /** Zavře balík. Volá se, když se stažená mapa smaže. */
 export function zavriBalik() {
-  balik = null
-}
-
-/**
- * Vrátí tělo jedné dlaždice, nebo prázdno.
- *
- * Prázdná odpověď není chyba: MapLibre se ptá i na čtverce, které v balíku
- * nejsou (moře za hranicí výřezu), a musí dostat prázdno, ne výjimku – jinak
- * by si mapu obarvil hláškou o chybě.
- *
- * @param {number} z
- * @param {number} x
- * @param {number} y
- * @returns {Promise<ArrayBuffer>}
- */
-export async function dlazdice(z, x, y) {
-  if (!balik) return new ArrayBuffer(0)
-  const kde = balik.rejstrik[`${z}/${x}/${y}`]
-  if (!kde) return new ArrayBuffer(0)
-  const [pozice, delka] = kde
-  const od = balik.odTel + pozice
-  return rozbal(await balik.blob.slice(od, od + delka).arrayBuffer())
+  otevreny = null
+  if (vlakno) zeptej({ typ: 'zavri' }).catch(() => {})
 }
 
 /**
@@ -100,6 +111,12 @@ export async function dlazdice(z, x, y) {
  */
 export async function obsluhaProtokolu(pozadavek) {
   const m = /^vbm:\/\/(\d+)\/(\d+)\/(\d+)/.exec(pozadavek.url)
-  if (!m) return { data: new ArrayBuffer(0) }
-  return { data: await dlazdice(+m[1], +m[2], +m[3]) }
+  if (!m || !otevreny) return { data: new ArrayBuffer(0) }
+  try {
+    const { data } = await zeptej({ typ: 'dlazdice', z: +m[1], x: +m[2], y: +m[3] })
+    return { data }
+  } catch {
+    // Prázdno, ne výjimka: MapLibre by si jinak mapu obarvil hláškou o chybě.
+    return { data: new ArrayBuffer(0) }
+  }
 }

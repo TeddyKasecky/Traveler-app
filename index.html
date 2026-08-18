@@ -22,7 +22,11 @@
     <!-- Počty zůstávají v DOM: visí na nich smoke i parity. Vidět jsou
          v Profilu a v řádku výsledků na Seznamu, v hlavičce je předloha nemá. -->
     <span class="sub" hidden><span id="totalN"></span> míst · <span id="visitedN">0</span> navštíveno</span>
+    <!-- Vpravo nahoře dvě kolečka, zleva profil a nastavení. Profil odpovídá
+         na „kdo jsem a co mám za sebou", Nastavení na „jak to má fungovat" –
+         do léta 2026 bylo obojí na jedné obrazovce a míchalo se to. -->
     <button id="profilOpen" title="Profil"><svg class="ic"><use href="#i-profil"/></svg></button>
+    <button id="nastaveniOpen" title="Nastavení"><svg class="ic"><use href="#i-nastaveni"/></svg></button>
   </div>
   <!-- Hledání a rychlé filtry patří na obrazovku Mapy, ne do hlavičky: tak to
        má předloha. Na ostatních záložkách je schová CSS podle body[data-tab]. -->
@@ -111,11 +115,20 @@
 </section>
 <section class="panel" id="panelPlan"><div class="inner" id="planWrap"></div></section>
 <section class="panel" id="panelProfil">
-  <!-- Vzhled a správa dat jsou staticky tady, ne v renderProfil(): obsluha se
-       věší při startu (filterPanel.js) a hlídá ji check-handlers. Kdyby je
-       Profil kreslil znovu při každém otevření, obsluha by se ztratila. -->
   <div class="inner">
     <div id="profilInner"></div>
+    <div style="height:20px"></div>
+  </div>
+</section>
+
+<!-- NASTAVENÍ. Obsah je staticky tady, ne v renderNastaveni(): obsluha se věší
+     při startu (filterPanel.js, mapaKeStazeni.js) a hlídá ji check-handlers.
+     Kdyby se obrazovka kreslila znovu při každém otevření, obsluha by se
+     ztratila. renderNastaveni() proto obnovuje jen to živé – stav mapy,
+     úložiště a datum zálohy. -->
+<section class="panel" id="panelNastaveni">
+  <div class="inner">
+    <h2 class="nadpis-obrazovky"><svg class="ic"><use href="#i-nastaveni"/></svg>Nastavení</h2>
 
     <div class="sechd"><svg class="ic"><use href="#i-sliders"/></svg>Vzhled</div>
     <div class="motivrow" id="motivRow">
@@ -123,6 +136,25 @@
       <button class="motivbtn" data-motiv="tmavy"><svg class="ic"><use href="#i-moon"/></svg>Tmavý</button>
       <button class="motivbtn" data-motiv="system"><svg class="ic"><use href="#i-sliders"/></svg>Podle systému</button>
     </div>
+
+    <!-- Malovaná mapa Evropy. Má několik megabajtů, takže není součástí
+         instalace a stahuje se odsud na vyžádání do IndexedDB. -->
+    <div class="sechd"><svg class="ic"><use href="#i-map"/></svg>Offline mapa</div>
+    <div class="meta" style="margin:0 2px 10px">Čím se kreslí mapa bez signálu. Online mapa z OpenStreetMap se přepíná pilulkou přímo v mapě.</div>
+    <div class="volbarow" id="offlineVolba">
+      <button class="volba" data-offline="zjednodusena">
+        <b>Zjednodušená</b><span>Obrysy zemí, města a stínování terénu. Je v aplikaci, funguje hned.</span>
+      </button>
+      <button class="volba" data-offline="stazena">
+        <b>Malovaná</b><span>K tomu lesy, louky, pole, řeky, silnice a kreslená krajina. Musí se stáhnout.</span>
+      </button>
+    </div>
+    <div class="mapastav" id="mapaStav"></div>
+    <div class="btnrow" style="margin:0">
+      <button class="btn primary" id="mapaStahni"><svg class="ic"><use href="#i-save"/></svg>Stáhnout mapu</button>
+      <button class="btn small" id="mapaSmaz" hidden>Smazat</button>
+    </div>
+    <div class="mapapruh" id="mapaPruh" hidden><i></i></div>
 
     <div class="sechd"><svg class="ic"><use href="#i-save"/></svg>Zálohy a data</div>
     <div class="meta" style="margin:0 2px 10px">Poznámky, hodnocení i fotky jsou jen v tomhle telefonu. Záloha je jediná cesta, jak si je přenést jinam.</div>
@@ -132,23 +164,16 @@
     </div>
     <div class="meta" id="zalohaInfo" style="margin-top:7px"></div>
 
-    <!-- Malovaná mapa Evropy. Má skoro deset megabajtů, takže není součástí
-         instalace a stahuje se odsud na vyžádání do IndexedDB. -->
-    <div class="sechd"><svg class="ic"><use href="#i-map"/></svg>Malovaná mapa do telefonu</div>
-    <div class="meta" style="margin:0 2px 10px">Lesy, louky, pole, řeky a silnice celé Evropy. Jednou stáhnout a pak funguje i bez signálu. Data z OpenStreetMap (ODbL).</div>
-    <div class="mapastav" id="mapaStav"></div>
-    <div class="btnrow" style="margin:0">
-      <button class="btn primary" id="mapaStahni"><svg class="ic"><use href="#i-save"/></svg>Stáhnout mapu</button>
-      <button class="btn small" id="mapaSmaz" hidden>Smazat</button>
-    </div>
-    <div class="mapapruh" id="mapaPruh" hidden><i></i></div>
-
     <div class="sechd"><svg class="ic"><use href="#i-book"/></svg>Vlastní data míst</div>
     <div class="meta" style="margin:0 2px 10px">CSV se sloupci z „vse-dohromady-v3" nahradí vestavěných 580 míst. Poznámky a hodnocení zůstanou.</div>
     <div class="btnrow" style="margin:0">
       <label class="btn small" style="cursor:pointer"><svg class="ic"><use href="#i-book"/></svg>Načíst CSV<input id="csvIn" type="file" accept=".csv" hidden></label>
       <button class="btn small" id="dataReset">Vrátit vestavěná data</button>
     </div>
+
+    <!-- Živé části: místo v telefonu, připomínka výpravy a zdroje dat.
+         Plní je views/nastaveni/nastaveni.js při každém otevření. -->
+    <div id="nastaveniInner"></div>
     <div style="height:20px"></div>
   </div>
 </section>

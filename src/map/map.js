@@ -11,15 +11,15 @@ import { S, store, prefs, savePrefs, emit } from '../core/store.js'
 import { visible, pocetAktivnich } from '../core/filters.js'
 import { aktivujZalozku } from '../core/router.js'
 import { pinIcon } from './markers.js'
-import { token } from '../core/barvy.js'
 import { drawPlanLine } from './planLine.js'
+import vanObr from '../assets/van.webp'
 import { zajistiPodklad, nastavRezim, hlasStavDlazdic } from './podklad.js'
 
 /** @type {L.Map} */
 export let mapa
 /** @type {L.LayerGroup} */
 let vrstva
-/** @type {L.CircleMarker|null} */
+/** @type {L.Marker|null} */
 let markerPolohy = null
 /** @type {L.TileLayer|null} dlaždice z OSM – jen když si je uživatel zapne */
 let dlazdice = null
@@ -208,16 +208,22 @@ export function priblizNaFiltr(mista) {
   mapa.flyToBounds(L.latLngBounds(mista.map((p) => [p.lat, p.lon])).pad(0.2), { duration: 0.9 })
 }
 
-/** Puntík s aktuální polohou. */
+/**
+ * Kde právě jsme – ilustrace dodávky, ne zelený puntík.
+ *
+ * Je to tatáž kresba, jaká stojí uprostřed trasy plánu (`planLine.js`), takže
+ * se nic nestahuje navíc. Puntík tu byl do srpna 2026; na malované mapě
+ * vypadal jako cizí prvek z jiné aplikace.
+ */
 export function zobrazPolohu() {
   if (!S.userPos) return
   if (markerPolohy) markerPolohy.remove()
-  markerPolohy = L.circleMarker([S.userPos.lat, S.userPos.lon], {
-    radius: 9,
-    color: token('--text', '#2F3D2C'),
-    weight: 3,
-    fillColor: token('--akcent', '#5E6E4D'),
-    fillOpacity: 1,
+  markerPolohy = L.marker([S.userPos.lat, S.userPos.lon], {
+    interactive: false,
+    keyboard: false,
+    // Nulová velikost a kotva v nule: obrázek si polohu i rozměr řeší v CSS,
+    // stejně jako dodávka na trase.
+    icon: L.divIcon({ className: 'poloha', iconSize: [0, 0], iconAnchor: [0, 0], html: `<img src="${vanObr}" alt="">` }),
   }).addTo(mapa)
 }
 

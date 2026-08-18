@@ -18,27 +18,26 @@
  * nimi stejně není vidět, jen by prosvítalo na okrajích při načítání. */
 #map.dlazdice{background-image:none;background-color:var(--bg2)}
 
-/* ---------- kresby (stromy a hory) ---------- */
-/* Značka má nulovou velikost a obrázek z ní visí patou na kotvě. Díky tomu
- * se dá měnit velikost jednou proměnnou `--kv` na kontejneru mapy: kdyby
- * velikost určoval `iconSize`, musela by se při každém zoomu přestavět
- * všech sto osmdesát značek. */
-.kresba{position:relative}
-.kresba img{position:absolute;bottom:0;left:0;transform:translateX(-50%);
-  height:calc(var(--kv,38px) * var(--ks,1));width:auto;pointer-events:none;
-  opacity:.92;filter:saturate(.92)}
-/* Hory jsou kulisa, ne strom – kreslí se širší a o kus níž, aby seděly
- * na terénu a nepůsobily jako vystřižený obrázek postavený na hranu. */
-.kresba.hora img{height:calc(var(--kv,38px) * var(--ks,1) * 1.35);opacity:.88}
+/* ---------- reliéf terénu ---------- */
+/* Jeden obrázek přes celou Evropu: stínování spočítané z výškopisu
+ * (`scripts/make-relief.mjs`). Nese informaci v průhlednosti, ne v barvě,
+ * takže se skládá úplně obyčejně nad khaki souší i nad tmavou krajinou
+ * a nepotřebuje režim prolnutí, který by na ploše přes celou obrazovku
+ * měnil cestu vykreslování.
+ *
+ * KRESBY STROMŮ A HOR TU BÝVALY a už tu nejsou – dnes je kreslí MapLibre
+ * jako symboly na GPU, viz `map/vektory.js`. Sto deset značek s filtrem
+ * se překreslovalo při každém posunu mapy. */
+.relief{opacity:.92}
 
-/* Akvarely jsou malované na světlý papír, takže na tmavé mapě svítí jako
- * nalepené výstřižky. Ztlumení je vrací do krajiny. Blok je dvakrát a s `@media`
- * ze stejného důvodu jako v `tokens.css` – jinak by se ruční volba vzhledu
- * neprosadila, nebo by naopak systémová volba přebila světlý režim. */
+/* Na tmavé mapě jsou přisvícené svahy krémové, takže by svítily. Blok je
+ * dvakrát a s `@media` ze stejného důvodu jako v `tokens.css` – jinak by se
+ * ruční volba vzhledu neprosadila, nebo by naopak systémová volba přebila
+ * světlý režim. */
 @media (prefers-color-scheme:dark){
-  :root:not([data-motiv="svetly"]) .kresba img{filter:saturate(.7) brightness(.62)}
+  :root:not([data-motiv="svetly"]) .relief{opacity:.62}
 }
-:root[data-motiv="tmavy"] .kresba img{filter:saturate(.7) brightness(.62)}
+:root[data-motiv="tmavy"] .relief{opacity:.62}
 
 /* ---------- názvy zemí a měst ---------- */
 /* Obrys z barvy papíru je čitelnější než stín: mapa pod nimi je světlá

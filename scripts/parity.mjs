@@ -298,17 +298,24 @@ await zkus('„Moje poloha“ najde souřadnice', async () => {
   await page.waitForTimeout(300)
   await page.click('#fabLoc')
   await page.waitForTimeout(2000)
-  // circleMarker se kreslí jako <path> s výplní --akcent. Barva se nehledá
-  // podle zapsaného hexu, ale zjistí se ze stránky: jinak by kontrola padala
-  // při každé změně palety a v tmavém režimu by nesedla nikdy. Navíc takhle
-  // ověří i to, že se JavaScript a CSS na barvě shodly.
-  const barva = await page.evaluate(() =>
-    getComputedStyle(document.documentElement).getPropertyValue('--akcent').trim()
-  )
-  const znacka = await page.locator(`#map path[fill="${barva}"]`).count()
+  // Poloha byla do srpna 2026 zelený puntík (`circleMarker`, tedy `<path>`
+  // s výplní `--akcent`). Dnes je to ilustrace dodávky – tatáž, jaká stojí
+  // uprostřed trasy plánu. Hledá se proto značka, ne barva; hlášku
+  // „Poloha nalezena“ musí mapa vydat pořád stejně.
+  const znacka = await page.locator('#map .poloha img').count()
+  const sirka = await page.evaluate(() => {
+    const el = document.querySelector('#map .poloha img')
+    return el ? Math.round(el.getBoundingClientRect().width) : 0
+  })
   const h = await page.evaluate(() => window.__hlasky || [])
   const nalezena = h.some((x) => /poloha nalezena/i.test(x))
-  return { ok: znacka > 0 && nalezena, dukaz: `${znacka}× puntík (${barva}) · hlášky: ${h.length ? h.join(' | ') : 'žádné'}` }
+  // Šířka se kontroluje kvůli tomu, že Leaflet má na obrázky v `marker-pane`
+  // vlastní pravidlo se silnější specificitou; kdyby naše prohrálo, kreslila
+  // by se dodávka v původních 756 px, tedy přes celou obrazovku.
+  return {
+    ok: znacka === 1 && sirka > 20 && sirka < 90 && nalezena,
+    dukaz: `${znacka}× dodávka, ${sirka} px · hlášky: ${h.length ? h.join(' | ') : 'žádné'}`,
+  }
 })
 
 // Nálady se přestěhovaly z Domů na Objevuj a jsou z nich pilulky – v předloze
@@ -501,10 +508,10 @@ await zkus('obnova vrátí všechno zpátky', async () => {
   await page.evaluate(() => document.getElementById('introGo')?.click())
   await page.waitForTimeout(300)
 
-  // Zálohy, obnova a CSV se přestěhovaly z panelu Filtry do Profilu: panel
-  // Filtry odpovídá na „co chci vidět", Profil na „moje data". Cesta vede
-  // kolečkem v hlavičce, ne přes plovoucí knoflík filtrů.
-  await page.click('#profilOpen')
+  // Zálohy, obnova a CSV se přestěhovaly z panelu Filtry do Nastavení: panel
+  // Filtry odpovídá na „co chci vidět", Nastavení na „jak to má fungovat".
+  // Cesta vede ozubeným kolečkem v hlavičce, ne přes knoflík filtrů.
+  await page.click('#nastaveniOpen')
   await page.waitForTimeout(400)
   await page.setInputFiles('#impIn', { name: 'z.json', mimeType: 'application/json', buffer: Buffer.from(zaloha) })
   await page.waitForTimeout(1200)
@@ -540,10 +547,10 @@ await zkus('CSV se naimportuje a vymění data', async () => {
 })
 
 await zkus('„Vrátit vestavěná data“ obnoví 580 míst', async () => {
-  // Import CSV přepne na Domů, aby byla nová data hned vidět, takže se Profil
-  // musí otevřít znovu. Dřív tenhle krok nebyl potřeba: správa dat byla
-  // v panelu Filtry, který na přepnutí záložky nereaguje.
-  await page.click('#profilOpen')
+  // Import CSV přepne na Domů, aby byla nová data hned vidět, takže se
+  // Nastavení musí otevřít znovu. Dřív tenhle krok nebyl potřeba: správa dat
+  // byla v panelu Filtry, který na přepnutí záložky nereaguje.
+  await page.click('#nastaveniOpen')
   await page.waitForTimeout(400)
   page.once('dialog', (d) => d.accept())
   await page.click('#dataReset')

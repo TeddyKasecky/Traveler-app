@@ -35,32 +35,6 @@ function cisla() {
   }
 }
 
-/**
- * Doplní hlášku „poslední záloha před …".
- *
- * Přepočítává se při každém otevření Profilu, ne jednou při startu – aplikace
- * bývá otevřená celý den a údaj by zestárnul. Po týdnu se zvýrazní: záloha je
- * jediná cesta, jak si data přenést do jiného telefonu, a na cestě poznámek
- * rychle přibývá.
- */
-function obnovInfoOZaloze() {
-  const el = document.getElementById('zalohaInfo')
-  if (!el) return
-
-  const kdy = prefs.posledniZaloha || 0
-  const dni = kdy ? Math.floor((Date.now() - kdy) / 86400000) : -1
-  el.textContent =
-    dni < 0
-      ? 'Zálohu jsi ještě nestahovala.'
-      : dni === 0
-        ? 'Záloha stažená dnes.'
-        : dni === 1
-          ? 'Poslední záloha včera.'
-          : `Poslední záloha před ${dni} dny.`
-  el.style.color = dni < 0 || dni >= 7 ? 'var(--clay)' : ''
-  el.style.fontWeight = dni < 0 || dni >= 7 ? '800' : ''
-}
-
 /** Jedna dlaždice s číslem. */
 const dlazdice = (hodnota, popis) => `<div class="pstat"><b>${hodnota}</b><span>${esc(popis)}</span></div>`
 
@@ -105,8 +79,6 @@ export function renderProfil() {
   // Jméno se ukládá při odchodu z políčka, ne při každém písmenu: savePrefs()
   // převádí celé předvolby na text a při psaní by to na mobilu sekalo. Stejný
   // důvod má saveOdlozene() u poznámek.
-  obnovInfoOZaloze()
-
   document.getElementById('profilJmeno').onblur = (e) => {
     const nove = e.target.value.trim()
     if (nove === (prefs.userName || '')) return

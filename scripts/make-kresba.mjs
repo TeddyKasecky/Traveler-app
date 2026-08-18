@@ -357,7 +357,10 @@ async function kresby() {
         const zaklad = list.rady[r]
         const poradi = list.rady.filter((x, i) => x === zaklad && i <= r).length
         const cislo = (poradi - 1) * SLOUPCU + c + 1
-        const jmeno = `${list.predpona ? `${list.predpona}-` : ''}${zaklad}-${cislo}`
+        // Předpona `kresba-` není ozdoba: podle ní pozná `vite.config.js`,
+        // že tenhle obrázek nepatří do předukládané cache. Kresby jsou jen
+        // pro staženou mapu a bez toho by je při instalaci stahoval každý.
+        const jmeno = `kresba-${list.predpona ? `${list.predpona}-` : ''}${zaklad}-${cislo}`
 
         const orez = await sharp(px, { raw: { width: w, height: h, channels: 4 } })
           .extract(obdelnik)

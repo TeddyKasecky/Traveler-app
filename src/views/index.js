@@ -16,6 +16,7 @@ import { renderDisc } from './discover/discover.js'
 import { renderList } from './list/list.js'
 import { renderPlan } from './plan/plan.js'
 import { renderProfil } from './profil/profil.js'
+import { renderNastaveni } from './nastaveni/nastaveni.js'
 import { renderMapaDole } from './mapa/mapa.js'
 import { poPrepnutiNaMapu } from '../map/map.js'
 
@@ -29,8 +30,10 @@ export function registrujZalozky() {
     disc: { panel: 'panelDisc', render: () => renderDisc() },
     list: { panel: 'panelList', render: () => renderList() },
     plan: { panel: 'panelPlan', render: () => renderPlan() },
-    // Profil nemá tlačítko ve spodní liště – otevírá se kolečkem v hlavičce.
-    // Jako záložka je zaregistrovaný proto, aby fungovala adresa i tlačítko zpět.
+    // Profil ani Nastavení nemají tlačítko ve spodní liště – otevírají se
+    // kolečky v hlavičce. Jako záložky jsou zaregistrované proto, aby fungovala
+    // adresa i tlačítko zpět.
     profil: { panel: 'panelProfil', render: () => renderProfil() },
+    nastaveni: { panel: 'panelNastaveni', render: () => renderNastaveni() },
   })
 }

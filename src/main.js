@@ -27,7 +27,7 @@ import { initVyberMista, otevriVyber } from './components/vyberMista.js'
 import { initIntro } from './components/intro.js'
 import { initAddForm } from './components/addForm.js'
 import { initPorovnani } from './views/porovnani/porovnani.js'
-import { initMapaKeStazeni } from './views/profil/mapaKeStazeni.js'
+import { initMapaKeStazeni } from './views/nastaveni/mapaKeStazeni.js'
 
 import { registrujOverlay } from './core/router.js'
 import { registrujZalozky } from './views/index.js'
@@ -85,8 +85,11 @@ document.getElementById('podkladBtn').onclick = () => {
   toast(prepniPodklad() ? 'Offline mapa – funguje bez signálu' : 'Online mapa z OpenStreetMap')
 }
 
-// Profil nemá tlačítko ve spodní liště, otevírá se z hlavičky.
+// Profil ani Nastavení nemají tlačítko ve spodní liště – ta má pět položek
+// roztažených na stejnou šířku a šestá se na úzkém telefonu nevejde čitelně.
+// Otevírají se kolečky v hlavičce, zleva profil a nastavení.
 document.getElementById('profilOpen').onclick = () => aktivujZalozku('profil')
+document.getElementById('nastaveniOpen').onclick = () => aktivujZalozku('nastaveni')
 
 /* ---------- kdo na co reaguje ---------- */
 
