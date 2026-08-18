@@ -14,7 +14,7 @@ import { zjistiPolohu } from './core/geo.js'
 import { initMotiv } from './core/motiv.js'
 import { vlozSprite } from './icons/sprite.js'
 
-import { initMapa, draw, goTo, zobrazPolohu, prepniPodklad, mapa } from './map/map.js'
+import { initMapa, draw, goTo, zobrazPolohu, prepniPodklad, mapa, vybiraSeMista, prepniVKosiku } from './map/map.js'
 import { prebarviPodklad } from './map/podklad.js'
 import { initChipy } from './components/chip.js'
 import { initFilterPanel, fillSelects, srovnejPocty, stahniZalohu } from './components/filterPanel.js'
@@ -122,8 +122,13 @@ on('motivZmenen', () => {
   draw()
 })
 
-/** Klik na špendlík nebo skok z jiné obrazovky otevře detail. */
-on('otevriDetail', ({ p, focus }) => openDetail(p, focus))
+/** Klik na špendlík nebo skok z jiné obrazovky otevře detail.
+ *  V režimu výběru míst (skládání plánu z mapy) špendlík místo toho
+ *  přidává do košíku – detail by výběr po každém ťuknutí přerušil. */
+on('otevriDetail', ({ p, focus }) => {
+  if (vybiraSeMista()) return prepniVKosiku(p.id)
+  openDetail(p, focus)
+})
 
 /** Klik na souseda na mini-mapě. */
 on('skoc', (p) => goTo(p))

@@ -235,6 +235,141 @@ export function zobrazPolohu() {
   }).addTo(mapa)
 }
 
+/* ================= výběr míst do plánu ================= */
+
+/** @type {{aktivni: boolean, kosik: Set<string>, listka: HTMLElement|null, cb: Function|null}} */
+const vyberMist = { aktivni: false, kosik: new Set(), listka: null, cb: null }
+
+/** Probíhá výběr míst? Čte to obsluha kliku na špendlík v main.js. */
+export const vybiraSeMista = () => vyberMist.aktivni
+
+/** Je místo v košíku? Špendlík se podle toho zvýrazní (markers.js). */
+export const jeVKosiku = (id) => vyberMist.aktivni && vyberMist.kosik.has(id)
+
+/**
+ * Přidá/odebere místo z košíku. Volá to obsluha `otevriDetail` v main.js –
+ * špendlík v režimu výběru neotvírá detail, ten by výběr pořád přerušoval.
+ * @param {string} id
+ */
+export function prepniVKosiku(id) {
+  if (!vyberMist.aktivni) return
+  vyberMist.kosik.has(id) ? vyberMist.kosik.delete(id) : vyberMist.kosik.add(id)
+  const l = vyberMist.listka
+  if (l) {
+    const n = vyberMist.kosik.size
+    l.querySelector('span').textContent = n
+      ? `Vybráno ${n} ${n === 1 ? 'místo' : n < 5 ? 'místa' : 'míst'}`
+      : 'Ťukej na špendlíky, skládám ti plán'
+    l.querySelector('[data-act="hotovo"]').disabled = !n
+  }
+  draw()
+}
+
+/**
+ * Zapne režim výběru míst: ťuknutí na špendlík přidává do košíku místo
+ * otevírání detailu, dole svítí lišta s počtem a „Vytvořit plán".
+ *
+ * @param {(ids: string[]) => void} cb  dostane vybraná id v pořadí ťukání
+ */
+export function zapniVyberMist(cb) {
+  vypniVyberMist()
+  vyberMist.aktivni = true
+  vyberMist.cb = cb
+  aktivujZalozku('map')
+
+  const listka = document.createElement('div')
+  listka.className = 'vyberbod-listka'
+  listka.innerHTML = `<span>Ťukej na špendlíky, skládám ti plán</span>
+    <button class="btn small" data-act="zrusit">Zrušit</button>
+    <button class="btn small primary" data-act="hotovo" disabled>Vytvořit plán</button>`
+  document.body.appendChild(listka)
+  vyberMist.listka = listka
+
+  listka.onclick = (e) => {
+    const act = e.target.closest('[data-act]')
+    if (!act) return
+    const ids = [...vyberMist.kosik]
+    const hotovo = act.dataset.act === 'hotovo' && ids.length
+    const zavolej = vyberMist.cb
+    vypniVyberMist()
+    if (hotovo && zavolej) zavolej(ids)
+  }
+  draw()
+}
+
+/** Vypne režim výběru a uklidí lištu i košík. */
+export function vypniVyberMist() {
+  const bezelo = vyberMist.aktivni
+  vyberMist.aktivni = false
+  vyberMist.kosik.clear()
+  if (vyberMist.listka) vyberMist.listka.remove()
+  vyberMist.listka = null
+  vyberMist.cb = null
+  if (bezelo) draw()
+}
+
+/* ================= výběr bodu ================= */
+
+/** @type {{marker: L.CircleMarker|null, listka: HTMLElement|null, cb: Function|null, klik: Function|null}} */
+const vyberBodu = { marker: null, listka: null, cb: null, klik: null }
+
+/**
+ * Výběr bodu ťuknutím do mapy – pro vlastní místa v plánu.
+ *
+ * Mapa nezná views, tohle je obecná služba: přepni se na mapu, ťukni, potvrď.
+ * Kdo volá, dostane souřadnice; zrušení jen uklidí. Místo `confirm()` je
+ * viditelná lišta – člověk potřebuje vidět mapu se špendlíkem, když se
+ * rozhoduje.
+ *
+ * @param {(lat: number, lon: number) => void} cb
+ */
+export function vyberBod(cb) {
+  zrusVyberBodu()
+  vyberBodu.cb = cb
+  aktivujZalozku('map')
+
+  const listka = document.createElement('div')
+  listka.className = 'vyberbod-listka'
+  listka.innerHTML = `<span>Ťukni do mapy, kam bod patří</span>
+    <button class="btn small" data-act="zrusit">Zrušit</button>
+    <button class="btn small primary" data-act="potvrdit" disabled>Převzít</button>`
+  document.body.appendChild(listka)
+  vyberBodu.listka = listka
+
+  const klik = (e) => {
+    if (vyberBodu.marker) vyberBodu.marker.setLatLng(e.latlng)
+    else
+      vyberBodu.marker = L.circleMarker(e.latlng, {
+        radius: 9,
+        color: token('--rust', '#C86A43'),
+        weight: 3,
+        fillColor: token('--paper', '#FAF5EC'),
+        fillOpacity: 1,
+      }).addTo(mapa)
+    listka.querySelector('[data-act="potvrdit"]').disabled = false
+  }
+  mapa.on('click', klik)
+  vyberBodu.klik = klik
+
+  listka.onclick = (e) => {
+    const act = e.target.closest('[data-act]')
+    if (!act) return
+    const poloha = vyberBodu.marker ? vyberBodu.marker.getLatLng() : null
+    const hotovo = act.dataset.act === 'potvrdit' && poloha
+    const zavolej = vyberBodu.cb
+    zrusVyberBodu()
+    if (hotovo && zavolej) zavolej(+poloha.lat.toFixed(5), +poloha.lng.toFixed(5))
+  }
+}
+
+/** Uklidí výběr bodu – špendlík, lištu i odběr kliků. */
+function zrusVyberBodu() {
+  if (vyberBodu.klik) mapa.off('click', vyberBodu.klik)
+  if (vyberBodu.marker) vyberBodu.marker.remove()
+  if (vyberBodu.listka) vyberBodu.listka.remove()
+  vyberBodu.marker = vyberBodu.listka = vyberBodu.cb = vyberBodu.klik = null
+}
+
 /**
  * Co se dodělá, až se na mapu opravdu přepne.
  *

@@ -387,6 +387,11 @@ await kontrola('GPX je mezi nimi', () => page.locator('#planGpx').count(), 1)
 await page.click('#backdrop', { position: { x: 190, y: 40 } })
 await page.waitForTimeout(400)
 
+// Přehled plánu: čísla jedné výpravy; srovnání je nadstavba (jen když jsou
+// aspoň dvě výpravy, což tady není – kontroluje se tedy základ).
+await kontrola('přehled má výběr výpravy', () => page.locator('#prehVyber').count(), 1)
+await kontrola('přehled má čtyři skupiny čísel', () => page.locator('.preh-skupina').count(), 4)
+
 // Vlastní bloky: přidat seznam, položku, odškrtnout; vlastní místo pozná
 // vložené souřadnice v několika tvarech.
 await page.click('#planSegment button[data-seg="plan"]')
@@ -484,6 +489,37 @@ await page.waitForTimeout(300)
 await page.click('#tabs button[data-tab="plan"]')
 await page.waitForTimeout(400)
 
+// Výběr míst z mapy: košík → nová výprava. Ťuká se přes emit, protože
+// špendlík je malý cíl; podstata (režim přepne klik na přidání) se tím
+// ověří stejně.
+await page.click('#tabs button[data-tab="map"]')
+await page.waitForTimeout(400)
+await page.click('#fabPlus')
+await page.waitForTimeout(250)
+await kontrola('„+" nabízí výběr míst z mapy', () => page.locator('#plusVybrat').count(), 1)
+await page.click('#plusVybrat')
+await page.waitForTimeout(400)
+await kontrola('lišta výběru svítí', () => page.locator('.vyberbod-listka').count(), 1)
+await page.evaluate(() => document.querySelector('.badge-pin').closest('.leaflet-marker-icon').dispatchEvent(new Event('click', { bubbles: true })))
+await page.waitForTimeout(400)
+await kontrola('ťuknutí přidalo do košíku', () =>
+  page.locator('.vyberbod-listka span').innerText().then((t) => t.includes('Vybráno 1')))
+page.once('dialog', (d) => d.accept())
+await page.click('.vyberbod-listka [data-act="hotovo"]')
+await page.waitForTimeout(600)
+await kontrola('z košíku vznikla nová výprava', () =>
+  page.evaluate(() => {
+    const v = JSON.parse(localStorage.getItem('vandrbuch:v1'))
+    return v.plan.length === 1 && v.vypravy.length === 1
+  }))
+await kontrola('a skočilo se do Plánu', () => page.evaluate(() => location.hash), '#plan')
+// Vrátit se k jediné výpravě: smazat tu novou (aktivuje se odložená).
+await page.evaluate(() => document.getElementById('planVice').click())
+await page.waitForTimeout(300)
+page.once('dialog', (d) => d.accept())
+await page.evaluate(() => document.getElementById('planSmaz').click())
+await page.waitForTimeout(500)
+
 // uklidit po sobě, ať další kontroly počítají s prázdným plánem
 await page.evaluate(() => document.getElementById('planVice').click())
 await page.waitForTimeout(300)
@@ -510,7 +546,7 @@ await kontrola('prázdná výprava nabízí průvodce', () => page.locator('#vyp
 await kontrola('bez uložených míst je hláška', () => page.locator('#mapUlozene .mapdolu-prazdno').count(), 1)
 await page.click('#fabPlus')
 await page.waitForTimeout(250)
-await kontrola('„+" otevře nabídku', () => page.locator('#plusMenu button').count(), 3)
+await kontrola('„+" otevře nabídku', () => page.locator('#plusMenu button').count(), 4)
 await page.click('#fabPlus')
 await page.waitForTimeout(250)
 await kontrola('druhé ťuknutí nabídku zavře', () => page.locator('#plusMenu[hidden]').count(), 1)

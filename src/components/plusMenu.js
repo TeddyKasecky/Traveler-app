@@ -21,6 +21,9 @@ import { registrujOverlay } from '../core/router.js'
 import { draw } from '../map/map.js'
 import { otevriFormular } from './addForm.js'
 import { openWizard } from './wizard.js'
+import { zapniVyberMist } from '../map/map.js'
+import { novaVyprava } from '../views/plan/vypravy.js'
+import { aktivujZalozku } from '../core/router.js'
 import { otevriVyber } from './vyberMista.js'
 import { toast } from './toast.js'
 
@@ -43,6 +46,7 @@ function otevriPlus() {
 export function initPlusMenu() {
   nabidka().innerHTML = [
     { id: 'plusZastavka', ikona: 'i-route', popisek: 'Přidat zastávku' },
+    { id: 'plusVybrat', ikona: 'i-pinme', popisek: 'Vybrat místa z mapy' },
     { id: 'plusMisto', ikona: 'i-plus', popisek: 'Přidat místo' },
     { id: 'plusVylet', ikona: 'i-wand', popisek: 'Naplánovat výlet' },
   ]
@@ -58,6 +62,21 @@ export function initPlusMenu() {
       save()
       draw()
       toast(`${p.n.split(/\s[–(]/)[0]} přidáno do plánu`)
+    })
+  }
+  document.getElementById('plusVybrat').onclick = () => {
+    zavriPlus()
+    // Ťukání na špendlíky skládá košík; z něj vznikne NOVÁ výprava, aktivní
+    // plán zůstane netknutý – teprve tím se výběr propíše do karty Plán.
+    zapniVyberMist((ids) => {
+      const nazev = prompt('Jak se bude nová výprava jmenovat?', 'Výlet z mapy')
+      if (nazev === null) return
+      if (!novaVyprava(nazev)) return
+      store.plan = ids
+      if (!save()) return
+      draw()
+      toast(`Výprava založená: ${ids.length} ${ids.length === 1 ? 'místo' : ids.length < 5 ? 'místa' : 'míst'}`)
+      aktivujZalozku('plan')
     })
   }
   document.getElementById('plusMisto').onclick = () => {

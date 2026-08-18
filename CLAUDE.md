@@ -62,8 +62,8 @@ npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
 
-npm run smoke            # proklikání v prohlížeči, 142 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 128 kontrol
+npm run smoke            # proklikání v prohlížeči, 167 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 153 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
@@ -71,6 +71,7 @@ npm run check-dny        # dělení na dny, výpravy, automatické dělení, 46 
 npm run check-filters    # 134 kombinací filtrů
 npm run check-handlers   # napojení tlačítek, 61/61
 npm run check-form       # že formulář vyrábí platná místa, 18/18
+npm run check-ikony      # jedna věc = jedno jméno = jedna ikona, 8 bodů
 npm run check-images     # existence odkazů na fotky (síť)
 npm run perf             # rychlost startu při zpomaleném procesoru
 node scripts/perf-mapa.mjs  # plynulost posunu a přiblížení stažené mapy
@@ -108,7 +109,7 @@ Runtime závislosti jsou **dvě** a obě vědomě:
 | `src/main.js` | vstupní bod — jen poskládá díly a zaregistruje odběry událostí, žádná logika |
 | `src/core/` | čistá logika bez DOM: `store.js` (stav + pub/sub), `router.js`, `filters.js`, `search.js`, `geo.js`, `csv.js`, `storage.js` (localStorage), `fotoDb.js` (IndexedDB), `html.js`, `motiv.js` (světlý/tmavý), `barvy.js` (čtení tokenů do JS) |
 | `src/data/` | `places.json` (580 míst), `places-nova.json` (přihrádka), číselníky `categories.js`/`collections.js`/`moods.js`, `validate.js`, `schema.md`, `basemap.json` (obrysy zemí), `mesta.json` (985 měst), `relief.json` (meze evropské mřížky) |
-| `src/views/` | obrazovky Domů, Mapa (spodní část), Objevuj, Seznam, Plán, Detail, Profil, Nastavení, Porovnání + registr `index.js` |
+| `src/views/` | obrazovky Domů, Mapa (spodní část), Objevuj, Seznam, Plán (`plan/` má i cestu, archiv, achievementy, přehled a bloky), Detail, Profil, Nastavení, Porovnání + registr `index.js` |
 | `src/components/` | díly použité na víc obrazovkách: `vzory.js` (11 stavebních dílů rozvržení), `vypravaKarta.js`, `vyberMista.js`, `plusMenu.js`, karta, filtry, sheet, wizard, formulář, toast |
 | `src/map/` | Leaflet: `map.js`, `markers.js`, `planLine.js`, `detailMap.js`, `podklad.js` (offline mapa), `vektory.js` (plochy a kresby v MapLibre), `kresby.js` (kde kresby stojí — z masky), `vbm.js` + `vbmWorker.js` (čtení staženého balíku) |
 | `src/styles/` | CSS po dílech, pořadí určuje `index.css`; barvy a rozměry jen z `tokens.css` |
@@ -173,7 +174,8 @@ pro oba stejně.
 Druhé kolo redesignu přestavělo rozvržení všech obrazovek podle mockupů ve složce
 `grafika/`. **Každá obrazovka odpovídá na jednu otázku** a to určuje, co na ní smí být:
 Domů „co dnes", Mapa „kde to je", Objevuj „nevím, kam chci", Seznam „vím, co chci",
-Plán „jak to pojedeme", Profil „kdo jsem a co mám za sebou", Nastavení „jak to má fungovat".
+Plán „jak to pojedeme" (karty Cesta · Přehled · Plán), Profil „kdo jsem a co mám
+za sebou", Nastavení „jak to má fungovat".
 
 Obrazovky se skládají z jedenácti společných dílů ve `src/components/vzory.js`
 (hero pás, popisek sekce, řádek, karusel, dlaždice, pilulky, segment, panel statistik,
@@ -207,6 +209,30 @@ Co se kam přestěhovalo a proč, je v [VZHLED.md](VZHLED.md) v části
   jsou čisté funkce délky úseků → délky dnů. Zápis jde přes `nastavDny()`, které odmítne
   rozdělení, jehož součet nesedí na počet zastávek. **Před přepsáním ručního dělení se
   vždycky ukáže náhled a musí se potvrdit.**
+
+## Plán, cesty a bloky (srpen 2026)
+
+Plán má tři karty: **Cesta** (probíhající cesta – odznačování, pauzy, plánové
+achievementy, archiv po letech), **Přehled** (čísla vybrané výpravy, srovnání
+s druhou jako zapínatelná nadstavba) a **Plán** (editor: tažení za prstem
+i celých dnů, sbalení dne, vlastní bloky).
+
+- **Nové klíče ve `store`**: `cesta` (probíhající, čas se počítá ze začátku
+  a pauz, nikde se netiká), `cesty` (archiv, souhrn se počítá při ukončení),
+  `bloky` (klíčované názvem výpravy), `achievementy` (získaná id). Platí
+  „přidat vedle, nikdy nepřepisovat, žádný zápis při startu".
+- **Cesta je otisk plánu** z okamžiku vyjetí (`zastavky`, `dny` jako délky) –
+  plán se dá za jízdy upravovat a cesta se nerozbije.
+- **Achievementy**: definice je datová, uložená jsou jen id získaných.
+  Id se NIKDY nemění – stejné pravidlo jako u id míst. Profilové v Profilu,
+  plánové generuje `planoveAchievementy()` (vždy aspoň 20 na plán).
+- **Bloky**: poznámka, zaškrtávací seznam, vlastní místo (odkaz/GPS/mapa),
+  odkaz, rozpočet. Vlastní místo se vplétá do trasy v `map/planLine.js`.
+- **Mapa umí dvě služby pro views**: `vyberBod(cb)` (ťuknutí → souřadnice)
+  a `zapniVyberMist(cb)` (košík špendlíků → nová výprava přes „+" na mapě).
+- **Testovací úklid ve smoke**: localStorage se nesmí čistit přepsáním –
+  aplikace při odchodu ze stránky dopisuje store z paměti (pagehide → save())
+  a přepsaný záznam vrátí. Uklízí se přes UI, nebo až po reloadu.
 
 ## Známé vlastnosti (neopravovat bez vyžádání)
 

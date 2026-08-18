@@ -6,6 +6,7 @@ import L from 'leaflet'
 import { S, store } from '../core/store.js'
 import { KAT } from '../data/categories.js'
 import { IC } from '../icons/sprite.js'
+import { jeVKosiku } from './map.js'
 
 /**
  * Ikona špendlíku pro místo.
@@ -35,6 +36,8 @@ export function pinIcon(p, idx, tise = false) {
     'badge-pin' +
     (visited ? ' visited' : '') +
     (store.plan.includes(p.id) ? ' inplan' : '') +
+    // V režimu výběru míst se vybrané zvýrazní jako „v košíku".
+    (jeVKosiku(p.id) ? ' vkosiku' : '') +
     (S.hiId === p.id ? ' hi' : '')
 
   return L.divIcon({

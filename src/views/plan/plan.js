@@ -25,7 +25,7 @@ import { IC } from '../../icons/sprite.js'
 import { toast } from '../../components/toast.js'
 import { sekce, segment, statpanel, ikonBtn } from '../../components/vzory.js'
 import { otevriVyber } from '../../components/vyberMista.js'
-import { goTo, draw, mapa, priblizNaFiltr } from '../../map/map.js'
+import { goTo, draw, mapa, priblizNaFiltr, vyberBod } from '../../map/map.js'
 import { aktivujZalozku } from '../../core/router.js'
 import { stahniSoubor } from '../../core/csv.js'
 import { dnyPlanu, pridejDen, presunDoDne, zrusDny, rozdelPodleHodin, rozdelNaPocet, nastavDny } from './dny.js'
@@ -33,6 +33,7 @@ import { gpxZPlanu, nazevSouboru } from './gpx.js'
 import { seznamVyprav, prepniVypravu, novaVyprava, prejmenujVypravu, smazAktivniVypravu, BEZ_NAZVU } from './vypravy.js'
 import { cestaHtml, napojCestu, jedeSe } from './cesta.js'
 import { blokyDneHtml, pridatBlokHtml, napojBloky, rozpocetCelkem } from './bloky.js'
+import { prehledPlanuHtml, napojPrehledPlanu } from './prehled.js'
 
 /** Kolik zastávek unese odkaz do Google Maps. */
 const MAX_DO_NAVIGACE = 10
@@ -143,6 +144,7 @@ export function renderPlan() {
 
   napoj(wrap, items)
   if (dil === 'cesta') napojCestu(wrap, renderPlan)
+  if (dil === 'prehled') napojPrehledPlanu(wrap, renderPlan)
   if (dil === 'plan') {
     // Překresluje se přes draw(), ne jen renderPlan(): vlastní místa mění
     // trasu i špendlíky na mapě a ta by jinak zůstala stará.
@@ -202,6 +204,7 @@ function prehled(items, dny) {
     sekce('Moje výpravy', { akce: 'Nová výprava', akceId: 'vypNova' }) +
     `<div class="vypravy">${seznamHtml}</div>` +
     (items.length ? pruhPrubehu(items) : '') +
+    prehledPlanuHtml() +
     sekce('Trasa a přehled') +
     (items.length
       ? `<div class="trasakarta">
