@@ -54,25 +54,24 @@ body:not([data-tab='map']) #mapDolu{display:none}
 #mapDolu{position:fixed;left:0;right:0;bottom:0;z-index:1100}
 /* Karta leží nad plochou papíru, která ji zespodu podebírá – v předloze je
  * u ní vidět kus mapy po stranách. Proto `z-index`, ne pořadí v toku. */
-#vypravaKarta{position:relative;z-index:2;margin:0 14px}
+#vypravaKarta{position:relative;z-index:2;margin:0 14px 10px}
 
-/* ---------- sbalení spodku ---------- */
-/* Karta výpravy a uložená místa zabíraly zhruba polovinu obrazovky Mapy
- * natrvalo. Úchyt je stejné gesto jako u vysouvacího detailu (`#sheet .grip`),
- * jen ťukací. Hit box je schválně vysoký 26 px, i když čárka má 6 – na proužek
- * široký jako tužka se palcem netrefí nikdo. */
-#mapGrip{position:relative;z-index:3;display:block;width:100%;height:26px;border:0;background:none;padding:0}
-#mapGrip::before{content:"";display:block;width:52px;height:6px;margin:10px auto 0;
-  border-radius:99px;background:var(--plocha);box-shadow:var(--stin-2)}
-#mapGrip:active::before{background:var(--plocha2)}
+/* ---------- sbalení karty výpravy ---------- */
+/* Karta se ukáže jen při prvním otevření Mapy, pak je sbalená a zbude po ní
+ * bublina. Sbalit ji jde šipkou v rohu i stažením prstem dolů. */
+#mapDolu.bezKarty #vypravaKarta{display:none}
 
-/* Sbalený stav: zbude bublina nad „+“. `padding-bottom` musí zůstat – bez něj
- * by se `#mapDolu` smrsklo na nulu a „+“ (`bottom:100%`) by spadlo na lištu
- * záložek. */
-#mapDolu.sbaleno{padding-bottom:calc(env(safe-area-inset-bottom) + 96px)}
-#mapDolu.sbaleno #mapGrip,
-#mapDolu.sbaleno #vypravaKarta,
-#mapDolu.sbaleno #mapUlozene{display:none}
+/* Šipka do rohu karty. Kreslí ji `views/mapa/mapa.js`, ne sdílená
+ * `vypravaKarta()` – ta samá karta je i na Domů a tam se sbalit nesmí. */
+.vk-sbal{position:absolute;top:9px;right:9px;z-index:4;width:30px;height:30px;border-radius:50%;
+  border:0;background:var(--plocha2);display:grid;place-items:center;
+  transition:transform .16s var(--pop),background .18s}
+.vk-sbal svg.ic{font-size:16px;color:var(--text2);stroke:var(--text2)}
+.vk-sbal:active{transform:var(--stisk);background:var(--obrys-silny)}
+/* `position` je kotva pro absolutně umístěnou šipku, `touch-action` zařídí,
+ * že svislé tažení po kartě neposouvá stránku, ale sbaluje kartu. */
+#vypravaKarta .vkarta{position:relative;touch-action:pan-x}
+#vypravaKarta .vkarta.tahne{transition:none}
 
 #mapBublina{position:absolute;right:14px;bottom:100%;margin-bottom:80px;z-index:3;
   width:46px;height:46px;border-radius:50%;border:var(--line);background:var(--plocha);
@@ -85,11 +84,43 @@ body:not([data-tab='map']) #mapDolu{display:none}
   color:var(--na-zvyrazneni);border-radius:var(--r-pill);font-size:.62rem;font-weight:800;
   min-width:19px;height:19px;display:grid;place-items:center}
 #mapBublina .badge[hidden]{display:none}
-#mapUlozene{position:relative;background:var(--paper);margin-top:-38px;
-  padding:50px 14px calc(env(safe-area-inset-bottom) + 96px)}
-#mapUlozene .sekce{margin-top:0}
+
+/* ---------- uložená místa jako vytahovací plát ---------- */
+/* Dole zůstane jen proužek s úchytem a počtem, takže mapa má maximum.
+ * Tažením za proužek nahoru se rozbalí seznam, dolů se vrátí; ťuknutí dělá
+ * totéž pro toho, kdo tažení nezkusí. Stav je jen v paměti – při každém
+ * spuštění se začíná dole. */
+#mapUlozene{position:relative;background:var(--paper);
+  border-radius:var(--r-l) var(--r-l) 0 0;box-shadow:var(--stin-panel);
+  padding:0 0 calc(env(safe-area-inset-bottom) + 86px)}
+
+.ulozene-uchyt{display:flex;align-items:center;gap:10px;width:100%;height:44px;
+  padding:0 16px;border:0;background:none;font:inherit;touch-action:none;cursor:grab}
+/* Čárka úchytu leží nad textem, ne vedle něj – proužek je nízký a vedle textu
+ * by na ni nezbylo místo. Proto `position:absolute` a ne další sloupec. */
+.ulozene-carka{position:absolute;left:50%;top:7px;transform:translateX(-50%);
+  width:44px;height:5px;border-radius:99px;background:var(--obrys-silny)}
+.ulozene-nazev{font-size:.66rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;
+  color:var(--text2);margin-top:6px}
+.ulozene-pocet{margin-top:6px;min-width:20px;height:20px;padding:0 6px;border-radius:var(--r-pill);
+  background:var(--plocha2);color:var(--text2);font-size:.66rem;font-weight:800;
+  display:grid;place-items:center}
+.ulozene-sip{margin:6px 0 0 auto;font-size:16px;color:var(--text3);transition:transform .22s var(--pop)}
+
+/* Plát se otevírá `max-height`, ne `height`: obsah je pokaždé jinak vysoký
+ * (nula až dvanáct řádků) a pevná výška by u krátkého seznamu nechala díru. */
+.ulozene-obsah{max-height:0;overflow:hidden;padding:0 14px;
+  transition:max-height .28s var(--pop),padding .28s var(--pop)}
+#mapDolu.ulozeneNahore .ulozene-obsah{max-height:44svh;overflow-y:auto;padding:0 14px 6px}
+#mapDolu.ulozeneNahore .ulozene-sip{transform:rotate(180deg)}
+/* Odkaz na Seznam je až pod karuselem, ne v hlavičce: v proužku je na něj
+ * málo místa a vedle úchytu by se do něj trefoval palec omylem. */
+.ulozene-vse{display:flex;gap:6px;align-items:center;justify-content:center;width:100%;
+  margin-top:8px;padding:9px;border:0;background:none;font:inherit;font-size:.76rem;
+  font-weight:700;color:var(--akcent)}
+.ulozene-vse svg.ic{color:var(--akcent)}
 .mapdolu-prazdno{display:flex;gap:9px;align-items:center;font-size:.78rem;font-weight:600;
-  color:var(--text2);padding:2px 2px 6px}
+  color:var(--text2);padding:2px 2px 10px}
 .mapdolu-prazdno svg.ic{font-size:18px;color:var(--text3);flex:0 0 auto}
 
 /* ---------- karta výpravy ---------- */

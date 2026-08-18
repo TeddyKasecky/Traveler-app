@@ -54,15 +54,25 @@
 <div id="mapDolu">
   <button id="fabPlus" title="Přidat"><svg class="ic"><use href="#i-plus"/></svg></button>
   <div id="plusMenu" hidden></div>
-  <!-- Sbalení spodku, ať je vidět co nejvíc mapy. Úchyt nahoře je stejné
-       gesto jako u vysouvacího detailu; bublina ho vrátí zpátky. Volba se
-       pamatuje v prefs.mapaSbaleno. -->
-  <button id="mapGrip" title="Skrýt výpravu a uložená místa" aria-label="Skrýt výpravu a uložená místa"></button>
-  <button id="mapBublina" title="Zobrazit výpravu a uložená místa" hidden>
+  <!-- Bublina, kterou se vrátí sbalená karta výpravy. Karta se ukáže jen při
+       úplně prvním otevření Mapy (prefs.vypravaPredstavena), pak je sbalená –
+       mapa má být co největší. -->
+  <button id="mapBublina" title="Zobrazit naši výpravu" hidden>
     <svg class="ic"><use href="#i-route"/></svg><span class="badge" id="mapBublinaN" hidden></span>
   </button>
   <div id="vypravaKarta"></div>
-  <div id="mapUlozene"></div>
+  <!-- Uložená místa jsou vytahovací plát: dole zůstane proužek s úchytem
+       a počtem, tažením nahoru (nebo ťuknutím) se rozbalí seznam.
+       Proužek je staticky tady, obsah plní views/mapa/mapa.js. -->
+  <div id="mapUlozene">
+    <button class="ulozene-uchyt" id="ulozeneUchyt" aria-expanded="false">
+      <span class="ulozene-carka"></span>
+      <span class="ulozene-nazev">Uložená místa</span>
+      <span class="ulozene-pocet" id="ulozenePocet">0</span>
+      <svg class="ic ulozene-sip"><use href="#i-up"/></svg>
+    </button>
+    <div class="ulozene-obsah" id="ulozeneObsah"></div>
+  </div>
 </div>
 
 <section class="panel" id="panelHome"><div class="inner" id="homeInner"></div></section>

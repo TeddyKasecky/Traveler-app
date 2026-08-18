@@ -62,8 +62,8 @@ npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
 
-npm run smoke            # proklikání v prohlížeči, 121 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 109 kontrol
+npm run smoke            # proklikání v prohlížeči, 130 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 118 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
@@ -174,6 +174,13 @@ Co se kam přestěhovalo a proč, je v [VZHLED.md](VZHLED.md) v části
   musí existovat od začátku — překreslení by obsluhu smazalo.
 - **Chrome mapy se schovává přes `body[data-tab]`**, ne seznamem `hidden` v JavaScriptu.
 - **Karta výpravy je na dvou obrazovkách naráz**, takže má třídy, ne `id`.
+  Sbalit se dá jen na Mapě a šipku na to kreslí `views/mapa/mapa.js` až po
+  vložení karty — kdyby ji kreslila sdílená `vypravaKarta()`, objevila by se
+  i na Domů.
+- **Spodek Mapy má dvě nezávislé věci.** Karta výpravy se ukáže jen při prvním
+  otevření Mapy (`prefs.vypravaPredstavena`), pak je sbalená v bublině; uložená
+  místa jsou vytahovací plát a dole po nich zůstane proužek s počtem. Obojí je
+  během používání **jen v paměti** — mapa má po startu vždycky maximum místa.
 - **Výpravy** (`store.vypravy`, `store.vypravaNazev`) fungují stejně jako dny: přidat
   vedle, nikdy nepřepisovat, žádná migrace. Hlídá to `npm run check-dny`.
 - **Automatické dělení na dny** (`rozdelPodleHodin`, `rozdelNaPocet` v `views/plan/dny.js`)

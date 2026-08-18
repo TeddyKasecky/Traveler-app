@@ -93,7 +93,7 @@ každá obrazovka odpovídá na jednu otázku. Podrobně ve [`VZHLED.md`](VZHLED
 | **Plán za jízdy** | odškrtávání zastávek, pruh průběhu, automatické dělení na dny, export GPX |
 | **Domů** | průběh výpravy, nejblíž odsud, naše nejlepší, zemí místo oblastí |
 
-Kontroly: `validate` · `check-uloziste` 13/13 · `smoke` 121/121 · `smoke:single` 109/109 ·
+Kontroly: `validate` · `check-uloziste` 13/13 · `smoke` 130/130 · `smoke:single` 118/118 ·
 `check-tokeny` 7/7 · `check-dny` 46/46 · `check-filters` 134 kombinací ·
 `check-handlers` 61/61 · `parity` 26/26 · `check-form`.
 

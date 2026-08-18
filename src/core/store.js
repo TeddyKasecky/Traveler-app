@@ -197,13 +197,19 @@ export const prefs = nacti(PREFK, {
    */
   podklad: 'dlazdice',
   /**
-   * Je spodek obrazovky Mapa (karta výpravy a uložená místa) sbalený?
+   * Viděl už uživatel kartu výpravy na Mapě?
    *
-   * Výchozí `false`, tedy rozbalený: kdo appku otevře poprvé, má vidět, že tam
-   * něco je. Kdo si to sbalí, najde to příště sbalené – proto to bydlí
-   * v předvolbách a ne jen v paměti.
+   * Karta se ukáže **jen při úplně prvním otevření Mapy**, aby se vědělo, že
+   * existuje. Pak už Mapa startuje vždycky se sbalenou kartou a bublinou –
+   * mapa má být co největší. Vytažení během používání se schválně nepamatuje;
+   * je to jednorázové nahlédnutí, ne nastavení.
+   *
+   * Zapisuje se až při otevření Mapy, ne při startu aplikace.
+   *
+   * (Nahradilo `mapaSbaleno` ze 17. 8. 2026, které sbalovalo kartu i uložená
+   * místa naráz. Uložená hodnota nikomu nevadí, jen se přestala číst.)
    */
-  mapaSbaleno: false,
+  vypravaPredstavena: false,
 })
 export const savePrefs = () => zapis(PREFK, prefs)
 

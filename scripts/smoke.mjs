@@ -145,6 +145,9 @@ await kontrola('Domů je aktivní', () => page.locator('#panelHome.show').count(
 // „Možná dnes" a řada čísel.
 await kontrola('hero pás s pozdravem', () => page.locator('#homeInner .heropas-obr').count(), 1)
 await kontrola('karta výpravy na Domů', () => page.locator('#homeInner .vkarta').count(), 1)
+// Sbalit se karta dá jen na Mapě. Šipku tam kreslí `views/mapa/mapa.js`, ne
+// sdílená `vypravaKarta()` — kdyby ji kreslila ta, objevila by se i tady.
+await kontrola('na Domů se karta sbalit nedá', () => page.locator('#homeInner .vk-sbal').count(), 0)
 await kontrola('karusel „Možná dnes"', () => page.locator('#homeInner .fotokarta').count().then((n) => n > 0))
 await kontrola('statistika míst', () => page.locator('#homeInner .cislo b').first().innerText(), '580')
 // Přehled 32 bikeparků odešel do kolekce „Na kolo". Ceny se ale ztratit
@@ -376,26 +379,51 @@ await page.click('#fabPlus')
 await page.waitForTimeout(250)
 await kontrola('druhé ťuknutí nabídku zavře', () => page.locator('#plusMenu[hidden]').count(), 1)
 
-// sbalení spodku: karta a uložená místa braly skoro třetinu obrazovky natrvalo
+// Spodek Mapy: karta výpravy a uložená místa braly skoro třetinu obrazovky
+// natrvalo. Karta se ukáže jen při PRVNÍM otevření Mapy, uložená místa jsou
+// vytahovací plát a dole po nich zůstane jen proužek s počtem.
 const spodek = () => page.locator('#mapDolu').evaluate((e) => Math.round(e.getBoundingClientRect().height))
-const spodekRozbaleny = await spodek()
-await page.click('#mapGrip')
-await page.waitForTimeout(300)
-await kontrola('sbalení schová kartu výpravy', () => page.locator('#vypravaKarta').isVisible(), false)
-await kontrola('sbalení schová uložená místa', () => page.locator('#mapUlozene').isVisible(), false)
-await kontrola('sbalené zbude bublina', () => page.locator('#mapBublina').isVisible(), true)
-await kontrola('sbalením se získá aspoň 200 px mapy', async () => spodekRozbaleny - (await spodek()) >= 200, true)
-// „+" visí na `bottom:100%` spodku, takže po sbalení nesmí spadnout na lištu záložek
-await kontrola('„+" zůstal nad lištou záložek', async () => {
+// „+" visí na `bottom:100%` spodku, takže se posouvá s jeho výškou. V žádné
+// kombinaci nesmí spadnout na lištu záložek — to je tady nejsnáz rozbitelná věc.
+const plusNadListou = async () => {
   const f = await page.locator('#fabPlus').boundingBox()
   const t = await page.locator('#tabs').boundingBox()
   return f.y + f.height <= t.y + 2
-}, true)
-await kontrola('sbalení se uložilo do předvoleb', () =>
-  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs')).mapaSbaleno), true)
+}
+
+await kontrola('při prvním otevření je karta výpravy vidět', () => page.locator('#vypravaKarta').isVisible(), true)
+await kontrola('první otevření se zapsalo do předvoleb', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs')).vypravaPredstavena), true)
+await kontrola('karta má šipku na sbalení', () => page.locator('#vkSbal').isVisible(), true)
+await kontrola('„+" je nad lištou záložek', plusNadListou, true)
+const sKartou = await spodek()
+
+await page.click('#vkSbal')
+await page.waitForTimeout(300)
+await kontrola('šipka kartu sbalí', () => page.locator('#vypravaKarta').isVisible(), false)
+await kontrola('sbalené zbude bublina', () => page.locator('#mapBublina').isVisible(), true)
+await kontrola('sbalením se získá aspoň 150 px mapy', async () => sKartou - (await spodek()) >= 150, true)
+await kontrola('„+" je nad lištou i bez karty', plusNadListou, true)
 await page.click('#mapBublina')
 await page.waitForTimeout(300)
 await kontrola('bublina kartu vrátí', () => page.locator('#vypravaKarta').isVisible(), true)
+await page.click('#vkSbal')
+await page.waitForTimeout(300)
+
+// Plát uložených míst
+await kontrola('proužek uložených míst zůstává vidět', () => page.locator('#ulozeneUchyt').isVisible(), true)
+await kontrola('proužek nese počet', () => page.locator('#ulozenePocet').innerText(), '0')
+await kontrola('seznam je dole schovaný', () =>
+  page.locator('#ulozeneObsah').evaluate((e) => e.getBoundingClientRect().height < 2), true)
+await page.click('#ulozeneUchyt')
+await page.waitForTimeout(500)
+await kontrola('ťuknutí plát vytáhne', () =>
+  page.locator('#ulozeneObsah').evaluate((e) => e.getBoundingClientRect().height > 20), true)
+await kontrola('„+" je nad lištou i s vytaženým plátem', plusNadListou, true)
+await page.click('#ulozeneUchyt')
+await page.waitForTimeout(500)
+await kontrola('druhé ťuknutí plát vrátí', () =>
+  page.locator('#ulozeneObsah').evaluate((e) => e.getBoundingClientRect().height < 2), true)
 
 // Rychlé filtry nad mapou se projeví hned, bez potvrzování. Od srpna 2026
 // filtrují „moje věci" (uložená, Musíme!, v plánu, byli jsme), ne kategorie —
