@@ -33,15 +33,21 @@ function pluginServiceWorker() {
     generateBundle(_, bundle) {
       // Soubory z public/ v bundle nejsou, Vite je jen kopíruje – doplnit ručně.
       //
-      // Filtruje se ze tří důvodů, každý z nich by shodil celé offline:
+      // Filtruje se ze čtyř důvodů, každý z nich by něco shodil:
       //   - složky: `cache.addAll` na složce selže a s ním instalace workeru,
       //   - tečkové soubory: nejsou k ničemu,
       //   - podtržítko: `_headers` a `_redirects` si hostingy berou jako svoji
-      //     konfiguraci a z nasazeného webu je mažou, takže by vrátily 404.
+      //     konfiguraci a z nasazeného webu je mažou, takže by vrátily 404,
+      //   - `.vbm`: stažená mapa Evropy má přes 13 MB a stahuje se **na
+      //     vyžádání** z Profilu do IndexedDB. Kdyby byla v předukládaném
+      //     seznamu, stáhla by se každému hned při instalaci – přesně to,
+      //     čemu se vyhýbáme.
       const publicDir = path.join(ROOT, 'public')
       const zPublic = fs
         .readdirSync(publicDir, { withFileTypes: true })
-        .filter((d) => d.isFile() && !d.name.startsWith('.') && !d.name.startsWith('_'))
+        .filter(
+          (d) => d.isFile() && !d.name.startsWith('.') && !d.name.startsWith('_') && !d.name.endsWith('.vbm')
+        )
         .map((d) => `./${d.name}`)
 
       // Seřazeno schválně. `Object.keys(bundle)` nevrací pokaždé stejné pořadí –

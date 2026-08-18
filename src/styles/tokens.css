@@ -95,6 +95,14 @@
    * v aplikaci nesdílejí – mapa je jediné místo, kde tyhle plochy jsou.  */
   --mapa-more:#C6DAE1; --mapa-sous:#E7E0C3; --mapa-voda:#9DC2CD;
   --mapa-hranice:rgba(255,252,246,.78); --mapa-popisek:#4C5B40;
+  /* Pokryv krajiny z vektorových dlaždic (OpenStreetMap přes Protomaps).
+   * Odstíny drží akvarelovou paletu: les nejsytější, louka o tón světlejší,
+   * pole do žlutozelena, křoví mezi loukou a holou půdou, skála do okrova,
+   * ledovec skoro papír. Rozdíly jsou schválně malé – je to podmalba,
+   * ne barevná legenda. */
+  --mapa-les:#B7C6A2; --mapa-louka:#D2D9B4; --mapa-pole:#DFDDB6;
+  --mapa-krovi:#CFD2A9; --mapa-hola:#DCD0AE; --mapa-led:#F0EDE2;
+  --mapa-mesto:#DED5C0; --mapa-silnice:#C9A96B;
 
   --line:1px solid var(--obrys); --r:20px;
   --r-s:12px; --r-l:26px; --r-pill:999px;
@@ -151,6 +159,9 @@
     --zaves:rgba(0,0,0,.62);
 
     --mapa-more:#16242B; --mapa-sous:#212C1E; --mapa-voda:#2F5260;
+    --mapa-les:#28351F; --mapa-louka:#2E3A24; --mapa-pole:#333D26;
+    --mapa-krovi:#2C3822; --mapa-hola:#38392A; --mapa-led:#3E4638;
+    --mapa-mesto:#333A2C; --mapa-silnice:#7A6538;
     --mapa-hranice:rgba(237,231,216,.30); --mapa-popisek:#A9BBA1;
 
     --rust:#E09068; --moss:#9DBC8A; --pine:#79AD9B; --sky:#8FB8C9;
@@ -191,6 +202,9 @@
   --zaves:rgba(0,0,0,.62);
 
   --mapa-more:#16242B; --mapa-sous:#212C1E; --mapa-voda:#2F5260;
+    --mapa-les:#28351F; --mapa-louka:#2E3A24; --mapa-pole:#333D26;
+    --mapa-krovi:#2C3822; --mapa-hola:#38392A; --mapa-led:#3E4638;
+    --mapa-mesto:#333A2C; --mapa-silnice:#7A6538;
   --mapa-hranice:rgba(237,231,216,.30); --mapa-popisek:#A9BBA1;
 
   --rust:#E09068; --moss:#9DBC8A; --pine:#79AD9B; --sky:#8FB8C9;

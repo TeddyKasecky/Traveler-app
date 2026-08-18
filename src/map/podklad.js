@@ -30,6 +30,7 @@
 import L from 'leaflet'
 import { esc } from '../core/html.js'
 import { STATY } from '../data/staty.js'
+import { nactiMapu } from '../core/mapaDb.js'
 
 /* Kresby se importují jmenovitě, ne `import.meta.glob`: obě varianty buildu
  * (hostovaná i jednosouborová) si je pak přeloží stejně jako ostatní obrázky
@@ -91,6 +92,14 @@ let mestaLine = null
 let statyVrstva = null
 /** @type {L.LayerGroup|null} */
 let kresbyVrstva = null
+/**
+ * Vrstva MapLibre s vektorovými dlaždicemi, nebo null.
+ *
+ * Null znamená, že mapa není stažená nebo prohlížeč neumí WebGL – pak kreslí
+ * staré plátno z `basemap.json`. Obojí schválně: plátno je jediné, co funguje
+ * i v jednosouborové variantě, kam se deset megabajtů dlaždic nedá zabalit.
+ */
+let vektory = null
 
 /** Všechny kotvy kreseb. Do mapy jde jen to, co je ve výřezu. */
 let kotvy = []
@@ -225,6 +234,15 @@ function srovnejPodleZoomu() {
 
   el.style.setProperty('--kv', `${VELIKOST[Math.min(Math.max(z, KRESBY_OD), KRESBY_DO)]}px`)
 
+  // Vektorová mapa jen v malovaném režimu. Pod dlaždicemi zůstává staré
+  // plátno – to je levné a je tam kvůli tomu, aby při chybějící dlaždici
+  // nevznikla v mapě díra.
+  const vektoryMaji = !dlazdice && !!vektory
+  prepni(vektory, vektoryMaji)
+  // Když kreslí vektory, plátno se schová: leželo by pod neprůhledným
+  // podkladem a jen by se zbytečně překreslovalo při každém posunu.
+  prepni(plochy, !vektoryMaji)
+
   prepni(statyVrstva, !dlazdice && z <= ZOOM_STATY)
 
   const mestaMaji = !dlazdice && z >= ZOOM_MESTA
@@ -245,6 +263,52 @@ function prepni(vrstva, maByt) {
 
 /** Je podklad už postavený? */
 export const jeZapnuta = () => !!plochy
+
+/** Kreslí se právě vektorová mapa? Čte to Profil i kontroly. */
+export const jsouVektory = () => !!vektory
+
+/**
+ * Zkusí postavit vektorovou mapu ze staženého balíku.
+ *
+ * Tiše se vzdá, když mapa není stažená nebo prohlížeč neumí WebGL – v obou
+ * případech zůstane plátno z `basemap.json`, které funguje vždycky. Moduly
+ * MapLibre se natahují až tady dynamickým importem, aby si je nestahoval
+ * každý, kdo mapu staženou nemá.
+ *
+ * @param {L.Map} mapa
+ */
+async function zkusVektory(mapa) {
+  try {
+    const blob = await nactiMapu()
+    if (!blob) return
+    const { otevriBalik } = await import('./vbm.js')
+    await otevriBalik(blob)
+    const { postavVektory } = await import('./vektory.js')
+    vektory = postavVektory(mapa, PANE_PLOCHY)
+  } catch (e) {
+    console.warn('Vektorová mapa nenaběhla, kreslí se záložní podklad:', e)
+    vektory = null
+  }
+}
+
+/**
+ * Postaví nebo zboří vektorovou mapu, když se stáhla nebo smazala.
+ * Volá to Profil, aby se nemuselo restartovat.
+ *
+ * @param {L.Map} mapa
+ */
+export async function obnovVektory(mapa) {
+  if (vektory) {
+    if (mapaRef && mapaRef.hasLayer(vektory)) mapaRef.removeLayer(vektory)
+    const { zahodVektory } = await import('./vektory.js')
+    zahodVektory()
+    vektory = null
+  }
+  const { zavriBalik } = await import('./vbm.js')
+  zavriBalik()
+  await zkusVektory(mapa || mapaRef)
+  srovnejPodleZoomu()
+}
 
 /**
  * Postaví malovaný podklad. Opakované volání nic nedělá.
@@ -278,6 +342,7 @@ export function zajistiPodklad(mapa) {
     kotvy = kresba.default.kotvy
 
     plochy = postavPlochy(mapa, data).addTo(mapa)
+    await zkusVektory(mapa)
     statyVrstva = postavStaty()
     kresbyVrstva = L.layerGroup()
     // Města se postaví, až se poprvé přiblíží. Sto devadesát dva značek naráz
@@ -323,6 +388,12 @@ export function nastavRezim(dlazdiceZapnute) {
  */
 export function prebarviPodklad() {
   if (!plochy || !mapaRef) return
+
+  // Vektorová mapa si barvy taky zapekla do stylu a musí se přestavět.
+  if (vektory) {
+    import('./vektory.js').then(({ prebarviVektory }) => prebarviVektory(mapaRef.getContainer()))
+  }
+
   const c = barvy(mapaRef.getContainer())
   for (const kus of plochy.getLayers()) {
     const o = kus.options

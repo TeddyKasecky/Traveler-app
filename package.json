@@ -26,10 +26,13 @@
     "slouc": "node scripts/slouc.mjs"
   },
   "dependencies": {
-    "leaflet": "1.9.4"
+    "@maplibre/maplibre-gl-leaflet": "^0.1.4",
+    "leaflet": "1.9.4",
+    "maplibre-gl": "^6.4.0"
   },
   "devDependencies": {
     "playwright-core": "^1.62.1",
+    "pmtiles": "^4.5.0",
     "sharp": "^0.35.3",
     "vite": "^7.1.12",
     "vite-plugin-singlefile": "^2.3.0"

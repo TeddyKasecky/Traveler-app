@@ -25,6 +25,9 @@ const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
 const TYPY = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript',
+  // Modulový worker MapLibre. Se špatným typem ho prohlížeč odmítne a mapa
+  // pak mlčky nenačte jedinou dlaždici.
+  '.mjs': 'text/javascript',
   '.css': 'text/css',
   '.json': 'application/json',
   '.webmanifest': 'application/manifest+json',
