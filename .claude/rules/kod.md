@@ -39,7 +39,7 @@ src/views/        obrazovky, jedna složka na obrazovku
 src/components/   díly použité na víc obrazovkách
 src/map/          všechno kolem Leafletu
 src/styles/       CSS po dílech, pořadí určuje index.css
-src/icons/        sprite.svg (45 symbolů) + vkládání
+src/icons/        sprite.svg (59 symbolů) + vkládání
 src/pwa/          šablona service workeru + registrace  → viz nasazeni.md
 ```
 
@@ -95,9 +95,16 @@ router nesmí znát obrazovky.
 - `draw()` staví špendlíky znovu (stavy se mohly změnit), posun mapy jen doplňuje
   a odebírá. Špendlík přidaný posunem **nesmí nabíhat animací** — `pinIcon(p, i, true)`.
 - **Počítadlo míst ukazuje všechna filtrovaná místa**, ne jen vykreslená.
-- Malovaná offline mapa leží v samostatných pane pod dlaždicemi a nepřepíná se sama,
+- Offline mapa leží v samostatných pane pod dlaždicemi a nepřepíná se sama,
   viz `src/map/podklad.js`. Přepíná se pilulkou vlevo nahoře (`prefs.podklad`);
   plochy zemí jsou v mapě i online, aby bez signálu nevznikla díra.
+- **Kresby krajiny nejsou prvky stránky.** Kreslí je MapLibre jako symboly na GPU
+  (`src/map/vektory.js`) a jen se staženým balíkem. Sto deset značek s CSS filtrem,
+  které tu byly do srpna 2026, prohlížeč překresloval při každém posunu mapy —
+  medián snímku spadl ze 667 ms na 17. Do DOM je nevracej.
+- **Balík dlaždic se rozbaluje ve vlastním vlákně** (`src/map/vbmWorker.js`).
+  Obsluha protokolu, kterou volá MapLibre, běží na hlavním vlákně, takže
+  rozbalení gzipu tam znamenalo jedno škubnutí na dlaždici.
 
 ## CSS
 
@@ -112,9 +119,9 @@ router nesmí znát obrazovky.
 - `npm run check-tokeny` hlídá barvy natvrdo, párování světlý/tmavý a kontrast —
   po zásahu do CSS ho pusť. `check-css` je odstavené, viz `PARITA.md` §10 Q14.
 - Když kreslení potřebuje barvu v JavaScriptu (plátno), přečti si ji z CSS přes
-  `getComputedStyle`, ne natvrdo — vzor je v `src/map/offlineMap.js`.
+  `getComputedStyle`, ne natvrdo — vzor je v `src/map/podklad.js` a `vektory.js`.
 
 ## Ikony
 
-Symboly v `src/icons/sprite.svg`, 58 kusů, jména `i-neco`. Vkládají se `IC('i-van')`
+Symboly v `src/icons/sprite.svg`, 59 kusů, jména `i-neco`. Vkládají se `IC('i-van')`
 nebo `<svg class="ic"><use href="#i-van"/></svg>`. Nová ikona = symbol do sprite.svg.
