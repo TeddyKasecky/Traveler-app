@@ -54,6 +54,8 @@ import adresaWorkeru from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import '@maplibre/maplibre-gl-leaflet'
 import L from 'leaflet'
 import { PROTOKOL, obsluhaProtokolu, zoomMax } from './vbm.js'
+import { prefs } from '../core/store.js'
+import { nactiMasky, poskladej, ROZTEC } from './kresby.js'
 
 /*
  * Sto dvacet kreseb se tu bere globem, ne jmenovitě.
@@ -88,8 +90,18 @@ let vrstva = null
 
 /** Kresby načtené jako obrázky. Klíč je jméno bez přípony. */
 let obrazky = null
-/** Hotová sbírka kreseb ke kreslení. Staví se jednou, přežije výměnu stylu. */
-let kresby = null
+/** Značky sídel. Staví se jednou, přežijí výměnu stylu. */
+let sidla = null
+/** Kresby krajiny pro právě připravený výřez. Přežijí výměnu stylu. */
+let krajina = null
+/**
+ * Pro jaký výřez a přiblížení je `krajina` postavená.
+ *
+ * Podle toho se pozná, kdy se má přepočítat. Kdyby se počítalo při každém
+ * posunu, mapa by při tažení přeblikávala — a přitom se skoro nic nemění,
+ * protože výřez se připravuje o polovinu větší, než je vidět.
+ */
+let pripraveno = null
 
 /**
  * Je zapnutý tmavý režim? Pozná se podle jasu papíru – token `--bg` je
@@ -164,26 +176,56 @@ async function nactiObrazky() {
 }
 
 /**
- * Ztlumí kresbu pro tmavý režim.
+ * Kolik barvy podkladu se přimíchá do kresby.
  *
- * Akvarely jsou malované na světlý papír, takže na tmavé mapě svítí jako
- * nalepené výstřižky. Dřív to řešil CSS filtr `saturate(.7) brightness(.62)`,
- * jenže filtr na stovce prvků znamenal překreslení při každém posunu. Tady se
- * to spočítá jednou, po bodech, a do mapy jde hotový obrázek.
+ * Kresby jsou proti tlumené mapě o kus živější a bez tohohle leží **na** mapě,
+ * ne **v** ní — vypadají jako nalepené výstřižky. Deset procent barvy lesní
+ * plochy stačí, aby sedly do papíru, a přitom jim zůstane inkoust i tvar.
+ * Víc už z hor dělá mlhu; vyzkoušeno na náhledech.
  */
-function ztlum(zdroj) {
+const SLADENI = 0.1
+
+/**
+ * Sladí kresbu s podkladem a v tmavém režimu ji ztlumí.
+ *
+ * Akvarely jsou malované na světlý papír, takže na tmavé mapě svítí. Dřív to
+ * řešil CSS filtr `saturate(.7) brightness(.62)`, jenže filtr na stovce prvků
+ * znamenal překreslení při každém posunu. Tady se to spočítá jednou, po bodech,
+ * a do mapy jde hotový obrázek.
+ *
+ * Míchá se k barvě, kterou má **zrovna teď** lesní plocha — ve světlém režimu
+ * ke světlé, v tmavém k tmavé. Kdyby se to zapeklo do souborů při výrobě,
+ * musely by být dvě sady.
+ */
+function uprav(zdroj, tmavy, cil) {
   const out = new ImageData(zdroj.width, zdroj.height)
   const a = zdroj.data
   const b = out.data
   for (let i = 0; i < a.length; i += 4) {
-    // Šeď podle vnímaného jasu, pak zpátky k barvě na 70 % a ztmavit na 62 %.
-    const sed = 0.299 * a[i] + 0.587 * a[i + 1] + 0.114 * a[i + 2]
-    b[i] = (sed + (a[i] - sed) * 0.7) * 0.62
-    b[i + 1] = (sed + (a[i + 1] - sed) * 0.7) * 0.62
-    b[i + 2] = (sed + (a[i + 2] - sed) * 0.7) * 0.62
+    let r = a[i]
+    let g = a[i + 1]
+    let m = a[i + 2]
+    if (tmavy) {
+      // Šeď podle vnímaného jasu, pak zpátky k barvě na 70 % a ztmavit na 62 %.
+      const sed = 0.299 * r + 0.587 * g + 0.114 * m
+      r = (sed + (r - sed) * 0.7) * 0.62
+      g = (sed + (g - sed) * 0.7) * 0.62
+      m = (sed + (m - sed) * 0.7) * 0.62
+    }
+    b[i] = r * (1 - SLADENI) + cil[0] * SLADENI
+    b[i + 1] = g * (1 - SLADENI) + cil[1] * SLADENI
+    b[i + 2] = m * (1 - SLADENI) + cil[2] * SLADENI
     b[i + 3] = a[i + 3]
   }
   return out
+}
+
+/** Rozebere CSS barvu na tři složky. Zvládne `#rrggbb` i `rgb(...)`. */
+function slozky(barva) {
+  const hex = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(barva.trim())
+  if (hex) return [parseInt(hex[1], 16), parseInt(hex[2], 16), parseInt(hex[3], 16)]
+  const rgb = barva.match(/\d+/g)
+  return rgb && rgb.length >= 3 ? rgb.slice(0, 3).map(Number) : [183, 198, 162]
 }
 
 /**
@@ -196,55 +238,22 @@ function ztlum(zdroj) {
 const která = (kolik, v) => 1 + Math.min(kolik - 1, Math.floor(v * kolik))
 
 /**
- * Postaví sbírku kreseb.
+ * Postaví značky sídel.
+ *
+ * Sídla zůstávají seznamem, ne maskou: je jich devět set osmdesát pět, mají
+ * jméno a pořadí podle velikosti, a to se do obrázku nevejde. Kresby krajiny
+ * naopak seznam nepotřebují — skládají se z masky, viz `map/kresby.js`.
  *
  * Jméno obrázku se počítá **tady, ne výrazem ve stylu**: výraz by ho musel
  * skládat pro každý bod při každém kreslení, kdežto takhle je to jednou
  * a MapLibre jen čte hotovou vlastnost.
  *
- * @param {{body: Array}} lesy
- * @param {{body: Array}} hory
- * @param {Array} mesta
+ * @param {Array} mesta  [lat, lon, jméno, min_zoom, pořadí podle velikosti]
  */
-function sbirkaKreseb(lesy, hory, mesta) {
-  const prvky = []
-
-  // Lesy: [lat, lon, jehličnatý 0/1, velikost]
-  for (const [lat, lon, jehl, v] of lesy.body) {
-    const zaklad = jehl ? 'jehl' : 'list'
-    // Zrcadlená varianta u poloviny bodů – jinak je opakování vidět.
-    const zrcadlo = v * 16 - Math.floor(v * 16) > 0.5 ? 'z' : ''
-    prvky.push({
-      type: 'Feature',
-      properties: {
-        ik: `${zaklad}-${která(16, v)}${zrcadlo}`,
-        im: `maly-${zaklad}-${která(4, v)}${zrcadlo}`,
-        v: +(0.85 + v * 0.3).toFixed(2),
-        s: -lat,
-      },
-      geometry: { type: 'Point', coordinates: [lon, lat] },
-    })
-  }
-
-  // Hory: [lat, lon, druh 0–3, velikost]
-  const DRUHY = ['kopec', 'hrbet', 'skala', 'snih']
-  for (const [lat, lon, druh, v] of hory.body) {
-    prvky.push({
-      type: 'Feature',
-      properties: {
-        ik: `${DRUHY[druh]}-${která(4, v)}`,
-        im: `maly-teren-${druh + 1}`,
-        v: +(0.9 + v * 0.35).toFixed(2),
-        s: -lat,
-      },
-      geometry: { type: 'Point', coordinates: [lon, lat] },
-    })
-  }
-
-  // Sídla: [lat, lon, jméno, min_zoom, pořadí podle velikosti]
+function sbirkaSidel(mesta) {
   const sidla = []
   for (const [lat, lon, jmeno, mz, rank] of mesta) {
-    const v = ((Math.abs(Math.round(lat * 1000) * 31 + Math.round(lon * 1000) * 17) % 1000) / 1000)
+    const v = (Math.abs(Math.round(lat * 1000) * 31 + Math.round(lon * 1000) * 17) % 1000) / 1000
     // Čím větší sídlo, tím honosnější značka – tak to dělaly staré mapy.
     // Nejmenší sídla dostanou jednou za osm mlýn, most nebo zříceninu:
     // jsou to okrasy, které mapě dodají to, čím je mapa v KCD zajímavá.
@@ -262,11 +271,7 @@ function sbirkaKreseb(lesy, hory, mesta) {
       geometry: { type: 'Point', coordinates: [lon, lat] },
     })
   }
-
-  return {
-    krajina: { type: 'FeatureCollection', features: prvky },
-    sidla: { type: 'FeatureCollection', features: sidla },
-  }
+  return { type: 'FeatureCollection', features: sidla }
 }
 
 /** Zrovna se vkládají obrázky? Viz komentář u `vlozObrazky()`. */
@@ -280,14 +285,16 @@ let vkladameObrazky = false
  * obrázků, dokud nedošel zásobník – a mapa se přitom tvářila, že se jen dlouho
  * načítá. Odběr je proto jednorázový (`once`) a tohle je druhá pojistka.
  */
-function vlozObrazky(m, tmavy) {
+function vlozObrazky(m, el) {
   if (!obrazky || vkladameObrazky) return
   vkladameObrazky = true
+  const tmavy = jeTmavy(el)
+  const cil = slozky(barvy(el).les)
   try {
     for (const [jmeno, data] of obrazky) {
       try {
         if (m.hasImage(jmeno)) m.removeImage(jmeno)
-        m.addImage(jmeno, tmavy ? ztlum(data) : data)
+        m.addImage(jmeno, uprav(data, tmavy, cil))
       } catch (e) {
         console.warn(`kresbu ${jmeno} se nepodařilo vložit:`, e)
       }
@@ -311,6 +318,7 @@ function vlozObrazky(m, tmavy) {
  */
 function styl(el) {
   const c = barvy(el)
+  const PRAZDNO = { type: 'FeatureCollection', features: [] }
 
   /** Výplň podle druhu pokryvu. `match` je výraz MapLibre, ne náš kód. */
   const pokryv = [
@@ -358,14 +366,9 @@ function styl(el) {
         minzoom: 0,
         maxzoom: zoomMax(),
       },
-      [ZDROJ_KRESBY]: {
-        type: 'geojson',
-        data: (kresby && kresby.krajina) || { type: 'FeatureCollection', features: [] },
-      },
-      sidla: {
-        type: 'geojson',
-        data: (kresby && kresby.sidla) || { type: 'FeatureCollection', features: [] },
-      },
+      // Kresby krajiny se doplní hned po postavení stylu, viz `prepocitej()`.
+      [ZDROJ_KRESBY]: { type: 'geojson', data: krajina || PRAZDNO },
+      sidla: { type: 'geojson', data: sidla || PRAZDNO },
     },
     layers: [
       /*
@@ -436,11 +439,21 @@ function styl(el) {
         },
       },
       /*
-       * Kresby krajiny. `icon-allow-overlap: false` je tu to podstatné:
-       * hustotu neurčuje ani počet bodů, ani přiblížení, ale to, co se na
-       * obrazovku vejde bez překryvu. V lese je proto stromů plno, u okraje
-       * řídnou a při oddálení se samy proředí – přesně tak vypadá kreslená
-       * mapa. Bez toho by se při oddálení slily do zelené kaše.
+       * Kresby krajiny. Tady jsou tři věci, na kterých stojí, jestli to
+       * vypadá jako mapa, nebo jako nálepky nalepené na mapu:
+       *
+       * `icon-allow-overlap: true` — kresby se **mají** překrývat. Do srpna
+       * 2026 tu bylo `false` a MapLibre zahazoval všechno, co se dotýkalo:
+       * z lesa byla řídká síť oddělených stromů. Vypnuté srážky jsou navíc
+       * levnější, protože počítání srážek je nejdražší část kreslení symbolů.
+       *
+       * `icon-ignore-placement: true` — kresba ani nezabírá místo ostatním.
+       * Bez toho by sice mohla překrývat, ale sousedku by pořád vytlačila.
+       *
+       * `symbol-z-order: 'viewport-y'` — kresba níž na obrazovce se kreslí
+       * později, takže překryje tu za sebou. Z řad stromů tím vznikne les
+       * s hloubkou a z řady štítů pohoří. Pozor: kdyby byl nastavený
+       * `symbol-sort-key`, MapLibre by řadil podle něj a tohle ignoroval.
        */
       {
         id: 'kresby',
@@ -450,10 +463,9 @@ function styl(el) {
         layout: {
           'icon-image': kteryObrazek,
           'icon-anchor': 'bottom',
-          'icon-allow-overlap': false,
-          'icon-padding': 1,
-          // Jižnější kresba se kreslí později, tedy překrývá tu za sebou.
-          'symbol-sort-key': ['get', 's'],
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+          'symbol-z-order': 'viewport-y',
           'icon-size': velikost([
             [4, 0.07],
             [6, 0.14],
@@ -461,7 +473,7 @@ function styl(el) {
             [10, 0.34],
           ]),
         },
-        paint: { 'icon-opacity': 0.94 },
+        paint: { 'icon-opacity': 0.9 },
       },
       /*
        * Sídla zvlášť, aby se kreslila nad kresbami krajiny a řídla podle
@@ -553,8 +565,8 @@ export function postavVektory(mapa, pane) {
       if (!m) return
       // Jednorázově, ne `on`: `addImage()` sám vyvolá `styledata`, takže by
       // se obsluha volala ze sebe, dokud nedojde zásobník.
-      if (m.isStyleLoaded()) vlozObrazky(m, jeTmavy(el))
-      else m.once('styledata', () => vlozObrazky(m, jeTmavy(el)))
+      if (m.isStyleLoaded()) vlozObrazky(m, el)
+      else m.once('styledata', () => vlozObrazky(m, el))
       pripravKresby(m, el)
     })
     return vrstva
@@ -573,18 +585,17 @@ export function postavVektory(mapa, pane) {
  */
 async function pripravKresby(m, el) {
   try {
-    const [lesy, hory, mesta] = await Promise.all([
-      import('../data/kresby-lesy.json'),
-      import('../data/kresby-hory.json'),
-      import('../data/mesta.json'),
-    ])
-    await nactiObrazky()
-    vlozObrazky(m, jeTmavy(el))
-    kresby = sbirkaKreseb(lesy.default, hory.default, mesta.default.mesta)
-    const k = m.getSource(ZDROJ_KRESBY)
+    const [mesta] = await Promise.all([import('../data/mesta.json'), nactiMasky(), nactiObrazky()])
+    vlozObrazky(m, el)
+
+    sidla = sbirkaSidel(mesta.default.mesta)
     const s = m.getSource('sidla')
-    if (k) k.setData(kresby.krajina)
-    if (s) s.setData(kresby.sidla)
+    if (s) s.setData(sidla)
+
+    prepocitej(m, true)
+    // Po dojetí mapy se zkontroluje, jestli výřez nevyjel z připraveného
+    // pásma. Vlastní přepočet se skoro nikdy nespustí, viz `prepocitej()`.
+    m.on('moveend', () => prepocitej(m))
   } catch (e) {
     console.warn('Kresby krajiny se nenačetly:', e)
   }
@@ -618,7 +629,7 @@ export function prebarviVektory(el) {
     // navíc v druhé, ztlumené variantě. Čeká se na nový styl; vkládat je
     // do rozdělaného by MapLibre zahodil spolu se starým.
     m.setStyle(styl(el))
-    m.once('styledata', () => vlozObrazky(m, jeTmavy(el)))
+    m.once('styledata', () => vlozObrazky(m, el))
   } catch {
     // Když se styl nepovede vyměnit, mapa zůstane ve staré paletě.
     // Je to ošklivé, ale pořád lepší než prázdná obrazovka.
@@ -628,4 +639,68 @@ export function prebarviVektory(el) {
 /** Zahodí vrstvu, aby šla postavit znovu (po smazání nebo stažení mapy). */
 export function zahodVektory() {
   vrstva = null
+  krajina = null
+  pripraveno = null
+}
+
+/**
+ * Přepočítá kresby krajiny pro aktuální výřez.
+ *
+ * NEPOČÍTÁ SE PŘI KAŽDÉM POSUNU. Výřez se připravuje o polovinu větší, než je
+ * vidět, takže se běžným tažením nevyjede — a dokud se nevyjede a nezmění
+ * přiblížení, není co dělat. Bez toho by mapa při tažení přeblikávala,
+ * protože každá výměna dat znamená, že si MapLibre zdroj znovu rozřeže.
+ *
+ * @param {any} m  mapa MapLibre
+ * @param {boolean} [vzdy]  přepočítat, i když se nic nezměnilo (změna volby)
+ */
+export function prepocitej(m, vzdy = false) {
+  if (!m || !m.getSource) return
+  const zdroj = m.getSource(ZDROJ_KRESBY)
+  if (!zdroj) return
+
+  const cil = ROZTEC[prefs.kresby === 'stridme' ? 'stridme' : 'huste']
+  if (prefs.kresby === 'vypnute') {
+    if (krajina && krajina.features.length === 0 && !vzdy) return
+    krajina = { type: 'FeatureCollection', features: [] }
+    pripraveno = null
+    zdroj.setData(krajina)
+    return
+  }
+
+  // `maplibre-gl-leaflet` drží mapu o stupeň níž (kreslí na dvojnásobné
+  // dlaždici), takže přiblížení Leafletu je o jedničku výš.
+  const zoom = m.getZoom() + 1
+  const b = m.getBounds()
+  const vyrez = { jih: b.getSouth(), sever: b.getNorth(), zapad: b.getWest(), vychod: b.getEast() }
+
+  if (!vzdy && pripraveno && Math.abs(pripraveno.zoom - zoom) < 0.01 && vejdeSe(vyrez, pripraveno.pasmo)) return
+
+  // Připravené pásmo: výřez roztažený na obě strany o polovinu.
+  const dLat = (vyrez.sever - vyrez.jih) / 2
+  const dLon = (vyrez.vychod - vyrez.zapad) / 2
+  const pasmo = {
+    jih: vyrez.jih - dLat,
+    sever: vyrez.sever + dLat,
+    zapad: vyrez.zapad - dLon,
+    vychod: vyrez.vychod + dLon,
+  }
+
+  krajina = poskladej(pasmo, zoom, cil)
+  pripraveno = { zoom, pasmo }
+  zdroj.setData(krajina)
+}
+
+/** Vejde se výřez celý do pásma? */
+function vejdeSe(v, p) {
+  return v.jih >= p.jih && v.sever <= p.sever && v.zapad >= p.zapad && v.vychod <= p.vychod
+}
+
+/**
+ * Přepne hustotu kreseb. Volá to Nastavení, aby se nemuselo restartovat.
+ */
+export function obnovKresby() {
+  if (!vrstva) return
+  const m = vrstva.getMaplibreMap && vrstva.getMaplibreMap()
+  if (m) prepocitej(m, true)
 }

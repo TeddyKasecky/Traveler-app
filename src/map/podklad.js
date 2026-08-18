@@ -256,6 +256,17 @@ export const jeZapnuta = () => !!plochy
 export const jsouVektory = () => !!vektory
 
 /**
+ * Přepočítá kresby krajiny po změně hustoty v Nastavení.
+ *
+ * Jde přes tenhle modul, aby Nastavení nemuselo vědět o `vektory.js` — ten se
+ * natahuje dynamicky a bez stažené mapy vůbec neexistuje.
+ */
+export function obnovKresbyVMape() {
+  if (!vektory) return
+  import('./vektory.js').then(({ obnovKresby }) => obnovKresby())
+}
+
+/**
  * Zkusí postavit vektorovou mapu ze staženého balíku.
  *
  * Tiše se vzdá, když mapa není stažená, když si ji uživatel v Nastavení vypnul

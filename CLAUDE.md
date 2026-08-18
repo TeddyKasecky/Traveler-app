@@ -62,8 +62,8 @@ npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
 
-npm run smoke            # proklikání v prohlížeči, 139 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 126 kontrol
+npm run smoke            # proklikání v prohlížeči, 142 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 128 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
@@ -107,10 +107,10 @@ Runtime závislosti jsou **dvě** a obě vědomě:
 |---|---|
 | `src/main.js` | vstupní bod — jen poskládá díly a zaregistruje odběry událostí, žádná logika |
 | `src/core/` | čistá logika bez DOM: `store.js` (stav + pub/sub), `router.js`, `filters.js`, `search.js`, `geo.js`, `csv.js`, `storage.js` (localStorage), `fotoDb.js` (IndexedDB), `html.js`, `motiv.js` (světlý/tmavý), `barvy.js` (čtení tokenů do JS) |
-| `src/data/` | `places.json` (580 míst), `places-nova.json` (přihrádka), číselníky `categories.js`/`collections.js`/`moods.js`, `validate.js`, `schema.md`, `basemap.json` (obrysy zemí), `mesta.json` (985 měst), `kresby-lesy.json` a `kresby-hory.json` (kam se sázejí kresby), `relief.json` (meze stínování) |
+| `src/data/` | `places.json` (580 míst), `places-nova.json` (přihrádka), číselníky `categories.js`/`collections.js`/`moods.js`, `validate.js`, `schema.md`, `basemap.json` (obrysy zemí), `mesta.json` (985 měst), `relief.json` (meze evropské mřížky) |
 | `src/views/` | obrazovky Domů, Mapa (spodní část), Objevuj, Seznam, Plán, Detail, Profil, Nastavení, Porovnání + registr `index.js` |
 | `src/components/` | díly použité na víc obrazovkách: `vzory.js` (11 stavebních dílů rozvržení), `vypravaKarta.js`, `vyberMista.js`, `plusMenu.js`, karta, filtry, sheet, wizard, formulář, toast |
-| `src/map/` | Leaflet: `map.js`, `markers.js`, `planLine.js`, `detailMap.js`, `podklad.js` (offline mapa), `vektory.js` (kresby a plochy v MapLibre), `vbm.js` + `vbmWorker.js` (čtení staženého balíku) |
+| `src/map/` | Leaflet: `map.js`, `markers.js`, `planLine.js`, `detailMap.js`, `podklad.js` (offline mapa), `vektory.js` (plochy a kresby v MapLibre), `kresby.js` (kde kresby stojí — z masky), `vbm.js` + `vbmWorker.js` (čtení staženého balíku) |
 | `src/styles/` | CSS po dílech, pořadí určuje `index.css`; barvy a rozměry jen z `tokens.css` |
 | `src/pwa/` | `sw.js` (šablona service workeru) a `register.js` |
 | `scripts/` | 24 ověřovacích a přípravných skriptů, viz [.claude/rules/kontroly.md](.claude/rules/kontroly.md) |
@@ -228,8 +228,19 @@ Co se kam přestěhovalo a proč, je v [VZHLED.md](VZHLED.md) v části
   variantě. Rozcestník je v `map/podklad.js`.
 - **Kresby stromů a hor nejsou prvky stránky.** Do srpna 2026 to bylo sto deset
   Leafletových značek s CSS filtrem, které prohlížeč překresloval při každém posunu.
-  Dnes je kreslí MapLibre jako symboly na GPU a **jen se staženou mapou**; hustotu
-  si řídí sama srážkami. Bez stažení tam kresby nejsou vůbec, a je to tak správně.
+  Dnes je kreslí MapLibre jako symboly na GPU a **jen se staženou mapou**. Bez
+  stažení tam kresby nejsou vůbec, a je to tak správně.
+- **Kresby se mají překrývat.** `icon-allow-overlap: true` a
+  `symbol-z-order: 'viewport-y'` v `map/vektory.js` — bez toho MapLibre zahazuje
+  všechno, co se dotýká, a z lesa je řídká síť oddělených stromů. Vypnuté srážky
+  jsou navíc levnější. `symbol-sort-key` se nesmí vrátit: přebil by `viewport-y`.
+- **Kde kresby stojí, není seznam, ale maska.** `src/assets/kresby-lesy.png`
+  a `kresby-hory.png` — obrázek, kde buňka (~3 km) nese druh porostu nebo hřebene.
+  Body se z ní sypou až v prohlížeči podle přiblížení a volby v Nastavení
+  (`map/kresby.js`), takže hustotu neurčují data. Seznam by při téhle hustotě
+  vážil přes deset megabajtů, maska váží dvě stě kilobajtů.
+- **Hustota kreseb je v Nastavení** (`prefs.kresby`: vypnuté, střídmé, husté;
+  výchozí husté). Mění jen cílovou rozteč, takže je to okamžité.
 - **Stínování terénu je jeden obrázek** (`src/assets/relief-evropa.webp`, ~1 MB)
   přes `L.ImageOverlay`, ne vrstva MapLibre — díky tomu ho má i zjednodušená mapa.
   Do jednosouborové varianty se nebalí. Vyrábí ho `scripts/make-relief.mjs`.

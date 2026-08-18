@@ -20,7 +20,9 @@
 
 import { prefs, savePrefs } from '../../core/store.js'
 import { IC } from '../../icons/sprite.js'
+import { segment } from '../../components/vzory.js'
 import { toast } from '../../components/toast.js'
+import { jsouVektory, obnovKresbyVMape } from '../../map/podklad.js'
 import { srovnejStavMapy } from './mapaKeStazeni.js'
 
 /** Kolik místa aplikace zabírá. Vrací null, když to prohlížeč neumí říct. */
@@ -68,7 +70,26 @@ export async function renderNastaveni() {
 
   obnovInfoOZaloze()
 
+  // Kresby jsou jen na stažené malované mapě, takže bez ní se přepínač
+  // ukáže zašedlý – slibovat něco, co se nemá odkud vzít, je horší než to
+  // nenabídnout.
+  const kresbyJdou = jsouVektory()
+
   wrap.innerHTML = `
+    <div class="sechd">${IC('i-strom')}Kresby krajiny</div>
+    <div class="meta" style="margin:0 2px 10px">Stromy a hory kreslené do mapy. Stojí na skutečných lesích a skutečných hřebenech.${kresbyJdou ? '' : ' <b>Napřed je potřeba stáhnout malovanou mapu.</b>'}</div>
+    <div class="volbakresby${kresbyJdou ? '' : ' nejde'}">
+      ${segment(
+        [
+          { id: 'vypnute', popisek: 'Vypnuté' },
+          { id: 'stridme', popisek: 'Střídmé' },
+          { id: 'huste', popisek: 'Husté' },
+        ],
+        prefs.kresby || 'huste',
+        'kresbySeg'
+      )}
+    </div>
+
     <div class="sechd">${IC('i-globe')}Místo v telefonu</div>
     <div class="meta" id="mistoInfo" style="margin:0 2px 10px">Počítá se…</div>
 
@@ -82,6 +103,19 @@ export async function renderNastaveni() {
     <div class="meta" style="margin:0 2px 4px">Vandrbuch je statická aplikace bez serveru. Poznámky, hodnocení a fotky nikam neodcházejí – jsou jen v tomhle telefonu.</div>
     <div class="meta" style="margin:0 2px 10px">Podklad malované mapy: <b>OpenStreetMap</b> přes Protomaps (ODbL) · obrysy zemí <b>Natural Earth</b> (public domain) · stínování terénu z výškopisu <b>elevation-tiles-prod</b> (SRTM, GMTED) · online dlaždice <b>OpenStreetMap</b>.</div>
   `
+
+  // Obsluha se věší při každém otevření – `#nastaveniInner` se překresluje,
+  // takže tu na rozdíl od statických částí nehrozí, že se ztratí.
+  for (const b of document.querySelectorAll('#kresbySeg button')) {
+    b.onclick = () => {
+      if (!kresbyJdou) return
+      prefs.kresby = b.dataset.seg
+      if (!savePrefs()) return
+      for (const x of document.querySelectorAll('#kresbySeg button')) x.classList.toggle('on', x === b)
+      obnovKresbyVMape()
+      toast(b.dataset.seg === 'vypnute' ? 'Kresby vypnuté' : `Kresby ${b.dataset.seg === 'huste' ? 'husté' : 'střídmé'}`)
+    }
+  }
 
   document.getElementById('vypravaZnovu').onclick = () => {
     prefs.vypravaPredstavena = false

@@ -48,6 +48,12 @@
  * nemá odkud vzít, je horší než to nenabídnout. */
 .volba:disabled{opacity:.5;box-shadow:var(--stin-1)}
 
+/* ---------- hustota kreseb krajiny ---------- */
+/* Kresby jsou jen na stažené malované mapě. Bez ní se přepínač ukáže
+ * zašedlý — nabízet volbu, která nemá co přepnout, mate víc, než pomůže. */
+.volbakresby{margin:0 0 4px}
+.volbakresby.nejde{opacity:.5;pointer-events:none}
+
 /* ---------- stažení malované mapy ---------- */
 /* Pruh průběhu tu je proto, že jde o megabajty. Bez něj by stahování
  * na pomalé síti vypadalo jako zaseknutá aplikace. */

@@ -102,6 +102,14 @@ router nesmí znát obrazovky.
   (`src/map/vektory.js`) a jen se staženým balíkem. Sto deset značek s CSS filtrem,
   které tu byly do srpna 2026, prohlížeč překresloval při každém posunu mapy —
   medián snímku spadl ze 667 ms na 17. Do DOM je nevracej.
+- **Kresby se mají překrývat** (`icon-allow-overlap: true`,
+  `symbol-z-order: 'viewport-y'`). Bez toho MapLibre zahazuje všechno, co se
+  dotýká, a z lesa je řídká síť. `symbol-sort-key` se nesmí vrátit — přebil by
+  řazení podle obrazovky.
+- **Kde kresby stojí, se počítá z masky až za běhu** (`src/map/kresby.js`), ne
+  ze seznamu souřadnic. Přepočítává se jen při změně přiblížení nebo když výřez
+  vyjede z pásma připraveného o polovinu dál; kdyby se počítalo při každém
+  posunu, mapa by přeblikávala.
 - **Balík dlaždic se rozbaluje ve vlastním vlákně** (`src/map/vbmWorker.js`).
   Obsluha protokolu, kterou volá MapLibre, běží na hlavním vlákně, takže
   rozbalení gzipu tam znamenalo jedno škubnutí na dlaždici.

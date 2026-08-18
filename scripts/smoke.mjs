@@ -215,6 +215,11 @@ await kontrola('bez balíku nejde malovanou zvolit', () =>
   page.locator('.volba[data-offline="stazena"]').isDisabled(), true)
 await kontrola('Nastavení hlásí místo v telefonu', () =>
   page.locator('#mistoInfo').innerText().then((t) => t.length > 10), true)
+// Hustota kreseb: tři stupně a bez stažené mapy zašedlé, protože kresby
+// jsou jen na ní.
+await kontrola('přepínač hustoty kreseb má tři stupně', () => page.locator('#kresbySeg button').count(), 3)
+await kontrola('bez mapy jsou kresby nedostupné', () =>
+  page.locator('.volbakresby.nejde').count(), 1)
 // Bez stažené mapy musí nastoupit záložní plátno z basemap.json – jinak by
 // offline mapa byla prázdná. Totéž platí pro prohlížeč bez WebGL
 // a pro jednosouborovou variantu, kam se dlaždice zabalit nedají.

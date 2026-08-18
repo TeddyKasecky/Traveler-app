@@ -48,7 +48,7 @@ dočítá z disku. Pojmenování s podtržítkem na začátku se ale vyfiltruje.
 **Výjimka: všechno kolem stažené mapy.** Z předukládaného seznamu je schválně
 vyřazený balík `public/mapa-evropa.vbm` (3,7 MB, stahuje se na vyžádání
 z Nastavení do IndexedDB) **a k tomu z bundle všechno, co je jen pro něj**:
-MapLibre i s jeho workerem, čtečka balíku, 120 kreseb a souřadnice lesů a hor.
+MapLibre i s jeho workerem, čtečka balíku, 120 kreseb a masky lesů a hor.
 Dohromady přes čtyři megabajty, které jsou k ničemu každému, kdo si mapu
 nestáhne. Filtr je v `vite.config.js` a pozná to podle jména souboru
 (`assets/kresba*`, `kresby-*`, `vektory*`, `vbm*`, `maplibre-*`).

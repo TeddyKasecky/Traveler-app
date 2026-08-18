@@ -32,6 +32,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
+import { MEZE, ZOOM, STRANA, MRIZKA, latDlazdice, lonDlazdice, metryNaBod } from './mrizka.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const ASSETS = path.join(ROOT, 'src', 'assets')
@@ -40,18 +41,6 @@ const DATA = path.join(ROOT, 'src', 'data')
 /** Kde leží veřejný archiv výškopisu. */
 const ZDROJ = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium'
 
-/** Stejný výřez, jaký má balík mapy i `make-basemap.mjs`. */
-const MEZE = { minLat: 33, maxLat: 72, minLon: -26, maxLon: 46 }
-
-/**
- * Přiblížení, ze kterého se výškopis bere.
- *
- * Šestka dává dlaždici na ~600 km, tedy bod na ~1,5 km. Na stínování celého
- * kontinentu to bohatě stačí – jde o tvar pohoří, ne o jednotlivé kopce –
- * a je to 182 dlaždic místo sedmi set.
- */
-const ZOOM = 6
-const STRANA = 256
 /** Kolik dlaždic se tahá naráz. */
 const NARAZ = 16
 
@@ -106,33 +95,9 @@ const zapisovat = process.argv.includes('--zapis')
 
 /* ================= dlaždice ================= */
 
-const naX = (lon, z) => Math.floor(((lon + 180) / 360) * 2 ** z)
-function naY(lat, z) {
-  const r = (lat * Math.PI) / 180
-  return Math.floor(((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * 2 ** z)
-}
-/** Zeměpisná šířka horního okraje dlaždice. */
-function latDlazdice(y, z) {
-  const n = Math.PI - (2 * Math.PI * y) / 2 ** z
-  return (180 / Math.PI) * Math.atan(Math.sinh(n))
-}
-
-const x0 = naX(MEZE.minLon, ZOOM)
-const x1 = naX(MEZE.maxLon, ZOOM)
-const y0 = naY(MEZE.maxLat, ZOOM)
-const y1 = naY(MEZE.minLat, ZOOM)
-const sloupcu = x1 - x0 + 1
-const radku = y1 - y0 + 1
-const W = sloupcu * STRANA
-const H = radku * STRANA
-
+const { x0, x1, y0, y1, sloupcu, radku, W, H } = MRIZKA
 /** Skutečné meze složeného obrázku – ne MEZE, ale okraje dlaždic. */
-const MEZE_OBRAZKU = {
-  sever: latDlazdice(y0, ZOOM),
-  jih: latDlazdice(y1 + 1, ZOOM),
-  zapad: (x0 / 2 ** ZOOM) * 360 - 180,
-  vychod: (((x1 + 1) / 2 ** ZOOM) * 360 - 180),
-}
+const MEZE_OBRAZKU = MRIZKA.meze
 
 console.log('\nStínování terénu Evropy\n')
 console.log(`  dlaždic   ${sloupcu} × ${radku} = ${sloupcu * radku} (zoom ${ZOOM})`)
@@ -199,17 +164,6 @@ if (fs.existsSync(CACHE) && fs.statSync(CACHE).size === vysky.byteLength) {
 
 /* ================= stínování ================= */
 
-/**
- * Velikost bodu v metrech pro daný řádek.
- *
- * V Mercatoru se poledník k pólu roztahuje, takže bod na severu pokrývá
- * podstatně menší území. Bez přepočtu by Skandinávie vypadala jako Himálaj.
- */
-function metryNaBod(radek) {
-  const lat = latDlazdice(y0 + radek / STRANA, ZOOM)
-  return (156543.03392 * Math.cos((lat * Math.PI) / 180)) / 2 ** ZOOM
-}
-
 const px = new Uint8Array(W * H * 4)
 
 for (let y = 1; y < H - 1; y++) {
@@ -262,77 +216,123 @@ const obrazek = sharp(Buffer.from(px.buffer), { raw: { width: W, height: H, chan
   .blur(0.7)
   .webp({ quality: 55, alphaQuality: KVALITA_ALFY, effort: 6 })
 
-/* ================= kotvy hor ================= */
+/* ================= maska hor ================= */
 
 /**
- * Strana čtverce, ve kterém se hledá vrchol, v bodech rastru.
- *
- * Bod je ~1,5 km, takže 14 bodů je zhruba 20 km – hustota malované mapy.
- * Z každého čtverce se bere **jeho nejvyšší bod**, ne bod uprostřed: hřeben
- * pak dostane řetěz kopců jdoucí po hřebeni, a přesně tak se hory na starých
- * mapách kreslí. (Napoprvé jsem hledal maximum přesně v bodě sítě a z celé
- * Evropy vyšlo osmdesát sedm kopců.)
+ * Od jaké výšky se vůbec kreslí. Pod tím je krajina, ne hory.
+ * Prahy jsou tak, jak vyšly z pohledu na Alpy a na Vysočinu.
  */
-const OKO = 14
-/** Od jaké výšky se vůbec kreslí. Pod tím je krajina, ne hory. */
 const OD_METRU = 220
-/** O kolik musí vrchol převyšovat průměr čtverce, aby stál za kresbu. */
-const PREVYSENI = 55
+/** O kolik musí bod převyšovat okolí, aby se počítal za hřeben. */
+const PREVYSENI = 45
+/** Poloměr okna, ve kterém se počítá „okolí“. 6 bodů ≈ 9 km. */
+const OKOLI = 6
 
-/** Stabilní hash řetězce → 0..1. */
-function hash(s) {
-  let v = 2166136261
-  for (let i = 0; i < s.length; i++) {
-    v ^= s.charCodeAt(i)
-    v = Math.imul(v, 16777619)
-  }
-  return ((v >>> 0) % 100000) / 100000
-}
+/**
+ * Maska hor: pro každou buňku 0 = nic, 1 = kopec, 2 = hřbet, 3 = skalnatý
+ * vrchol, 4 = zasněžený.
+ *
+ * HLEDAJÍ SE HŘEBENY, NE JEDNOTLIVÉ VRCHOLY. Do srpna 2026 se bral nejvyšší
+ * bod každého čtverce 20 × 20 km, takže z Alp vyšla řada osamocených štítů
+ * rozesetých po mapě. Hřeben je jiná věc: bod, který je **maximem napříč
+ * svahem** – tedy vyšší než oba sousedi aspoň v jednom ze čtyř směrů. Body
+ * na hřebeni pak jdou souvisle za sebou a s překrýváním z nich vznikne
+ * pohoří, ne kopečky.
+ *
+ * Samotné „je vyšší než sousedi“ by ale označilo i každou vlnku v rovině,
+ * proto musí bod zároveň převyšovat průměr svého okolí.
+ */
+const maskaHor = new Uint8Array(W * H)
+let hrebenu = 0
 
-const hory = []
-for (let by = 0; by + OKO <= H; by += OKO) {
-  for (let bx = 0; bx + OKO <= W; bx += OKO) {
-    let max = -32768
-    let mx = 0
-    let my = 0
+for (let y = OKOLI; y < H - OKOLI; y++) {
+  for (let x = OKOLI; x < W - OKOLI; x++) {
+    const i = y * W + x
+    const v = vysky[i]
+    if (v < OD_METRU) continue
+
+    // Maximum napříč svahem aspoň v jednom ze čtyř směrů.
+    const hreben =
+      (v >= vysky[i - 1] && v > vysky[i + 1]) ||
+      (v >= vysky[i - W] && v > vysky[i + W]) ||
+      (v >= vysky[i - W - 1] && v > vysky[i + W + 1]) ||
+      (v >= vysky[i - W + 1] && v > vysky[i + W - 1])
+    if (!hreben) continue
+
+    // Převýšení nad okolím. Vzorkuje se po dvou bodech – na hrubém rastru
+    // je to k nerozeznání a je to čtvrtinová práce.
     let soucet = 0
-    for (let y = by; y < by + OKO; y++) {
-      for (let x = bx; x < bx + OKO; x++) {
-        const v = vysky[y * W + x]
-        soucet += v
-        if (v > max) {
-          max = v
-          mx = x
-          my = y
-        }
+    let n = 0
+    for (let dy = -OKOLI; dy <= OKOLI; dy += 2) {
+      for (let dx = -OKOLI; dx <= OKOLI; dx += 2) {
+        soucet += vysky[(y + dy) * W + x + dx]
+        n++
       }
     }
-    if (max < OD_METRU) continue
-    if (max - soucet / (OKO * OKO) < PREVYSENI) continue
+    if (v - soucet / n < PREVYSENI) continue
 
-    const lat = latDlazdice(y0 + my / STRANA, ZOOM)
-    const lon = ((x0 + mx / STRANA) / 2 ** ZOOM) * 360 - 180
-    if (lat < MEZE.minLat || lat > MEZE.maxLat || lon < MEZE.minLon || lon > MEZE.maxLon) continue
-
-    // Druh kresby podle nadmořské výšky – od oblého kopce po zasněžený štít.
-    const druh = max >= 2000 ? 3 : max >= 1100 ? 2 : max >= 550 ? 1 : 0
-    hory.push([+lat.toFixed(3), +lon.toFixed(3), druh, +hash(`${mx},${my}`).toFixed(2)])
+    maskaHor[i] = v >= 2000 ? 4 : v >= 1100 ? 3 : v >= 550 ? 2 : 1
+    hrebenu++
   }
 }
 
-// Od severu k jihu, ať se kresby překrývají tak, že bližší je nahoře.
-hory.sort((a, b) => b[0] - a[0])
+/**
+ * Zmenší masku na velikost, ve které se ukládá.
+ *
+ * Bere se **maximum bloku, ne průměr**: maska nese druh, ne intenzitu, a
+ * průměrováním by z kopce a skály vznikl hřbet. Maximum zároveň zaručí, že
+ * se tenký hřeben zmenšením neztratí.
+ */
+function zmensiMasku(zdroj, sirka, vyska, krok) {
+  const w = Math.floor(sirka / krok)
+  const h = Math.floor(vyska / krok)
+  const out = new Uint8Array(w * h)
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let max = 0
+      for (let dy = 0; dy < krok; dy++) {
+        for (let dx = 0; dx < krok; dx++) {
+          const v = zdroj[(y * krok + dy) * sirka + x * krok + dx]
+          if (v > max) max = v
+        }
+      }
+      out[y * w + x] = max
+    }
+  }
+  return { data: out, w, h }
+}
 
-const poDruhu = [0, 0, 0, 0]
-for (const h of hory) poDruhu[h[2]]++
+/** Kolik bodů rastru padne na jednu buňku masky. Dva → buňka ~3 km. */
+const KROK_MASKY = Number(process.env.KROK_MASKY || 2)
+const maska = zmensiMasku(maskaHor, W, H, KROK_MASKY)
+
+const poDruhu = [0, 0, 0, 0, 0]
+for (const v of maska.data) poDruhu[v]++
 
 console.log('Hotovo:')
-console.log(`  kotev hor        ${hory.length.toLocaleString('cs-CZ')}`)
-console.log(`    kopce ${poDruhu[0]} · hřbety ${poDruhu[1]} · skalnaté ${poDruhu[2]} · zasněžené ${poDruhu[3]}`)
+console.log(`  hřebenových bodů ${hrebenu.toLocaleString('cs-CZ')}`)
+console.log(`  maska hor        ${maska.w} × ${maska.h}`)
+console.log(
+  `    kopce ${poDruhu[1].toLocaleString('cs-CZ')} · hřbety ${poDruhu[2].toLocaleString('cs-CZ')} · ` +
+    `skalnaté ${poDruhu[3].toLocaleString('cs-CZ')} · zasněžené ${poDruhu[4].toLocaleString('cs-CZ')}`
+)
+
+/**
+ * Maska se ukládá jako PNG s paletou.
+ *
+ * Je v ní pět hodnot, takže se to zabalí skoro na nic – a prohlížeč ji umí
+ * přečíst tímtéž způsobem jako kresby, přes `createImageBitmap` a plátno.
+ * Jméno musí začínat `kresby-`, podle toho ji `vite.config.js` vyřazuje
+ * z předukládané cache.
+ */
+const maskaObrazek = sharp(Buffer.from(maska.data), { raw: { width: maska.w, height: maska.h, channels: 1 } })
+  .png({ compressionLevel: 9, palette: true, colours: 8 })
 
 if (!zapisovat) {
   const zkouska = await obrazek.toBuffer()
+  const zkouskaMasky = await maskaObrazek.toBuffer()
   console.log(`  reliéf           ${SIRKA_VEN} × ${vyskaVen}, ${(zkouska.length / 1048576).toFixed(2)} MB`)
+  console.log(`  maska hor        ${(zkouskaMasky.length / 1024).toFixed(0)} kB`)
   console.log('\n  (jen měření – spusť s --zapis, ať se to opravdu uloží)')
   process.exit(0)
 }
@@ -356,13 +356,6 @@ fs.writeFileSync(
 )
 console.log(`  → ${path.relative(ROOT, meta)}`)
 
-const horySoubor = path.join(DATA, 'kresby-hory.json')
-fs.writeFileSync(
-  horySoubor,
-  JSON.stringify({
-    _o: 'generuje scripts/make-relief.mjs z výškopisu; [lat, lon, druh 0–3, velikost]',
-    body: hory,
-  }) + '\n',
-  'utf8'
-)
-console.log(`  → ${path.relative(ROOT, horySoubor)}  ${(fs.statSync(horySoubor).size / 1024).toFixed(0)} kB`)
+const maskaSoubor = path.join(ASSETS, 'kresby-hory.png')
+await maskaObrazek.toFile(maskaSoubor)
+console.log(`  → ${path.relative(ROOT, maskaSoubor)}  ${(fs.statSync(maskaSoubor).size / 1024).toFixed(0)} kB`)

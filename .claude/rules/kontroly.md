@@ -28,7 +28,7 @@ bez vyžádání. Místo nich je 24 samostatných spustitelných `.mjs` skriptů
 | `check-handlers.mjs` | `npm run check-handlers` | napojení tlačítek za běhu, 61/61 |
 | `check-form.mjs` | `npm run check-form` | že formulář vyrábí platná místa, 18/18 |
 | `check-images.mjs` | `npm run check-images` | existenci odkazů na fotky — **chodí na síť** |
-| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 139 / 126 kontrol |
+| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 142 / 128 kontrol |
 | `parity.mjs` | `npm run parity` | kontrolní seznam z `PARITA.md`, 26 bodů |
 | `perf.mjs` | `npm run perf` | rychlost startu při zpomaleném procesoru |
 | `perf-mapa.mjs` | ručně | plynulost posunu a přiblížení **stažené** malované mapy |
@@ -39,6 +39,7 @@ bez vyžádání. Místo nich je 24 samostatných spustitelných `.mjs` skriptů
 | `make-kresba.mjs` | ručně | papír a 120 kreseb z pěti listů v `grafika/terén/` |
 | `make-relief.mjs` | ručně | stínování terénu z výškopisu — **chodí na síť** |
 | `mvt.mjs` | — | není kontrola: čtení a filtrování vektorových dlaždic pro `make-mapa.mjs` |
+| `mrizka.mjs` | — | není kontrola: definice evropské mřížky, sdílená reliéfem a oběma maskami |
 
 `nove-styly.mjs` není kontrola, ale sdílený seznam CSS prvků, které v originále protějšek
 nemají. Používá ho `check-css-parity.mjs` i `parity.mjs` — když měl každý svůj, přidání

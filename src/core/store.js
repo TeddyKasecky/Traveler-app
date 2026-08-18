@@ -206,6 +206,13 @@ export const prefs = nacti(PREFK, {
    */
   offlineMapa: 'stazena',
   /**
+   * Hustota kreseb krajiny na malované mapě: 'vypnute', 'stridme', 'huste'.
+   *
+   * Mění se tím jen cílová rozteč, se kterou se kresby sypou z masky
+   * (`map/kresby.js`), takže je to okamžité a nic se nedostahuje.
+   */
+  kresby: 'huste',
+  /**
    * Viděl už uživatel kartu výpravy na Mapě?
    *
    * Karta se ukáže **jen při úplně prvním otevření Mapy**, aby se vědělo, že

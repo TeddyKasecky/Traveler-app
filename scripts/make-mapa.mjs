@@ -50,8 +50,10 @@ import path from 'node:path'
 import zlib from 'node:zlib'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
+import sharp from 'sharp'
 import { PMTiles, FetchSource } from 'pmtiles'
 import { filtrujVrstvy, vrstva, naGeo, uvnitr } from './mvt.mjs'
+import { MEZE, ZOOM, STRANA, MRIZKA, naX, naY, latDlazdice } from './mrizka.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const CIL = path.join(ROOT, 'public', 'mapa-evropa.vbm')
@@ -62,20 +64,16 @@ const SEZNAM = 'https://build-metadata.protomaps.dev/builds.json'
 const BUILDY = 'https://build.protomaps.com'
 
 /**
- * Evropa i s kusem okolí. Stejný obdélník, jaký používá `make-basemap.mjs`,
- * ať spolu obě mapy sedí.
- */
-const MEZE = { minLat: 33, maxLat: 72, minLon: -26, maxLon: 46 }
-
-/**
  * Do kterého přiblížení se bere.
  *
  * Malovaná mapa se kreslí zhruba mezi 4 a 8; vektorové dlaždice se dají
  * roztáhnout i nad svoje maximum, takže šestka obslouží i sedmičku a osmičku.
- * Každý další stupeň velikost zhruba zečtyřnásobí – proto je to konstanta
- * nahoře a ne někde v kódu.
+ * Každý další stupeň velikost zhruba zečtyřnásobí.
+ *
+ * Je to `ZOOM` ze sdílené mřížky: z těchto dlaždic se bere i maska lesů,
+ * takže se ta dvě čísla nesmějí rozejít.
  */
-const ZOOM_MAX = Number(process.env.ZOOM_MAX || 6)
+const ZOOM_MAX = ZOOM
 
 /** Kolik dlaždic se tahá naráz. Víc = rychleji, ale server to nemá rád. */
 const NARAZ = 24
@@ -86,15 +84,6 @@ const NECHAT = new Set(['earth', 'landcover', 'water', 'roads', 'boundaries'])
 const zapisovat = process.argv.includes('--zapis')
 
 /* ================= dlaždice a meze ================= */
-
-/** Číslo dlaždice ve směru x pro daný poledník. */
-const naX = (lon, z) => Math.floor(((lon + 180) / 360) * 2 ** z)
-
-/** Číslo dlaždice ve směru y pro danou rovnoběžku (Mercator). */
-function naY(lat, z) {
-  const r = (lat * Math.PI) / 180
-  return Math.floor(((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * 2 ** z)
-}
 
 /** Všechny dlaždice, které Evropa protíná, od nuly do ZOOM_MAX. */
 function seznamDlazdic() {
@@ -159,37 +148,46 @@ function mestaZDlazdice(mvt, z, x, y, sber) {
   }
 }
 
-/* ================= kresby lesů ================= */
+/* ================= maska lesů ================= */
+
+/** Kolik bodů rastru padne na jednu buňku masky. Musí sedět s `make-relief.mjs`. */
+const KROK_MASKY = Number(process.env.KROK_MASKY || 2)
+const MASKA_W = Math.floor(MRIZKA.W / KROK_MASKY)
+const MASKA_H = Math.floor(MRIZKA.H / KROK_MASKY)
+/** Kolik buněk masky připadá na jednu dlaždici v každém směru. */
+const BUNEK_NA_DLAZDICI = STRANA / KROK_MASKY
 
 /**
- * Rozteč sítě, do které se sypou stromy, v dlaždicových jednotkách.
+ * Maska lesů: pro každou buňku 0 = nic, 1 = listnatý, 2 = jehličnatý.
  *
- * Dlaždice má 4096 jednotek a na zoomu 6 je široká zhruba 600 km, takže
- * 140 jednotek ≈ 20 km. Je to schválně v jednotkách dlaždice, ne v kilometrech:
- * mapa je v Mercatoru, takže konstantní rozteč v jednotkách znamená konstantní
- * hustotu **na obrazovce** – a o vzhled tady jde, ne o hektary.
+ * PROČ MASKA A NE SEZNAM SOUŘADNIC. Do srpna 2026 se sem sypala řídká síť
+ * bodů po ~20 km a ukládala se jako seznam. Seznam ale stojí 22 bajtů na bod,
+ * takže hustší síť by balík roztrhla: po 5 km by to bylo půl milionu bodů
+ * a přes deset megabajtů. Maska je obrázek s pěti hodnotami, takže se zabalí
+ * na stovku kilobajtů — a hustotu si pak volí aplikace podle přiblížení,
+ * protože body se z masky skládají až v prohlížeči.
  */
-const ROZTEC = 140
+const maskaLesu = new Uint8Array(MASKA_W * MASKA_H)
 
 /**
- * Nasype kresby stromů do skutečných lesů z vrstvy `landcover`.
+ * Vyplní do masky les z jedné dlaždice.
  *
  * Lesů je v dlaždici jeden prvek s desítkami prstenců, takže „jeden strom na
- * polygon“ by nedal nic. Sype se proto síť bodů a nechají se ty, které padnou
- * dovnitř – dírami (mýtinami) se prochází sudým počtem průsečíků, takže se
- * řeší samy.
+ * polygon“ by nedal nic. Testuje se proto každá buňka masky, která do dlaždice
+ * padne — dírami (mýtinami) se prochází sudým počtem průsečíků, takže se řeší
+ * samy.
  *
- * Jehličnany na sever a do výšek, listnáče na jih: podle šířky, protože pokryv
- * krajiny druh stromu nenese. Není to botanika, je to kresba.
+ * Jehličnany na sever, listnáče na jih: podle šířky, protože pokryv krajiny
+ * druh stromu nenese. Není to botanika, je to kresba.
  */
-function lesyZDlazdice(mvt, z, x, y, out) {
+function lesDoMasky(mvt, x, y) {
   const v = vrstva(mvt, 'landcover')
-  if (!v) return
+  if (!v) return 0
   const les = v.prvky.find((p) => p.vlastnosti.kind === 'forest')
-  if (!les) return
+  if (!les) return 0
 
-  // Obdélníkové obaly prstenců – bez nich by každý bod zkoušel všech ~2000
-  // vrcholů a skript by běžel v minutách místo v sekundách.
+  // Obdélníkové obaly prstenců – bez nich by každá buňka zkoušela všech
+  // ~2000 vrcholů a skript by běžel v hodinách místo v minutách.
   const obaly = les.kusy.map((r) => {
     let a = Infinity
     let b = -Infinity
@@ -204,32 +202,39 @@ function lesyZDlazdice(mvt, z, x, y, out) {
     return { a, b, c, d }
   })
 
-  for (let px = ROZTEC / 2; px < v.extent; px += ROZTEC) {
-    for (let py = ROZTEC / 2; py < v.extent; py += ROZTEC) {
-      const klic = `${z}/${x}/${y}/${px}/${py}`
-      // Rozházení uvnitř oka sítě, ať to není mřížka.
-      const jx = px + (hash(klic + 'x') - 0.5) * ROZTEC * 0.8
-      const jy = py + (hash(klic + 'y') - 0.5) * ROZTEC * 0.8
+  const mx0 = (x - MRIZKA.x0) * BUNEK_NA_DLAZDICI
+  const my0 = (y - MRIZKA.y0) * BUNEK_NA_DLAZDICI
+  let vyplneno = 0
+
+  for (let by = 0; by < BUNEK_NA_DLAZDICI; by++) {
+    const my = my0 + by
+    if (my < 0 || my >= MASKA_H) continue
+    // Zeměpisná šířka závisí jen na řádku, tak se počítá jednou za řádek.
+    const lat = latDlazdice(MRIZKA.y0 + ((my + 0.5) * KROK_MASKY) / STRANA)
+    if (lat < MEZE.minLat || lat > MEZE.maxLat) continue
+    // Nad 55° převládají jehličnany, na jihu listnáče; mezi tím se to plynule
+    // překlápí, ať nevznikne vodorovná hranice.
+    const podilJehl = Math.min(0.92, Math.max(0.12, (lat - 40) / 20))
+    const ly = ((by + 0.5) / BUNEK_NA_DLAZDICI) * v.extent
+
+    for (let bx = 0; bx < BUNEK_NA_DLAZDICI; bx++) {
+      const mx = mx0 + bx
+      if (mx < 0 || mx >= MASKA_W) continue
+      const lx = ((bx + 0.5) / BUNEK_NA_DLAZDICI) * v.extent
 
       let je = false
       for (let i = 0; i < les.kusy.length; i++) {
         const o = obaly[i]
-        if (jx < o.a || jx > o.b || jy < o.c || jy > o.d) continue
-        if (uvnitr(jx, jy, les.kusy[i])) je = !je
+        if (lx < o.a || lx > o.b || ly < o.c || ly > o.d) continue
+        if (uvnitr(lx, ly, les.kusy[i])) je = !je
       }
       if (!je) continue
 
-      const [lat, lon] = naGeo(jx, jy, z, x, y, v.extent)
-      if (lat < MEZE.minLat || lat > MEZE.maxLat || lon < MEZE.minLon || lon > MEZE.maxLon) continue
-
-      // Nad 55° severní šířky převládají jehličnany, na jihu listnáče.
-      // Mezi tím se to plynule překlápí, ať nevznikne vodorovná hranice.
-      const jehlicnaty = hash(klic + 'd') < Math.min(0.92, Math.max(0.12, (lat - 40) / 20))
-      // Tři desetinná místa ≈ 110 m. Kresba lesa přesnější polohu nepotřebuje
-      // a čtvrté místo by soubor zvětšilo o pětinu pro nic.
-      out.push([+lat.toFixed(3), +lon.toFixed(3), jehlicnaty ? 1 : 0, +hash(klic + 'v').toFixed(2)])
+      maskaLesu[my * MASKA_W + mx] = hash(`${mx},${my}`) < podilJehl ? 2 : 1
+      vyplneno++
     }
   }
+  return vyplneno
 }
 
 /* ================= sestavení ================= */
@@ -272,8 +277,8 @@ let usetreno = 0
 
 /** klíč → záznam města */
 const mesta = new Map()
-/** [lat, lon, druh, velikost] */
-const lesy = []
+/** Kolik buněk masky vyšlo jako les. Jen pro výpis. */
+let lesnichBunek = 0
 
 let hotovo = 0
 for (let i = 0; i < dlazdice.length; i += NARAZ) {
@@ -296,7 +301,7 @@ for (let i = 0; i < dlazdice.length; i += NARAZ) {
     // Nižší zoomy nesou totéž jen zhruba, takže by to jen přidávalo duplicity.
     if (z === ZOOM_MAX) {
       mestaZDlazdice(syrove, z, x, y, mesta)
-      lesyZDlazdice(syrove, z, x, y, lesy)
+      lesnichBunek += lesDoMasky(syrove, x, y)
     }
 
     const orezane = filtrujVrstvy(syrove, NECHAT)
@@ -357,7 +362,7 @@ console.log(`  ušetřeno opakováním   ${mb(usetreno)}`)
 console.log(`  rejstřík              ${kb(rejstrikBin.length)}`)
 console.log(`  CELKEM BALÍK          ${mb(balik.length)}`)
 console.log(`  měst                  ${mestaVen.length.toLocaleString('cs-CZ')}`)
-console.log(`  kreseb lesů           ${lesy.length.toLocaleString('cs-CZ')}`)
+console.log(`  maska lesů            ${MASKA_W} × ${MASKA_H}, z toho les ${lesnichBunek.toLocaleString('cs-CZ')} buněk`)
 
 if (!zapisovat) {
   console.log('\n  (jen měření – spusť s --zapis, ať se to opravdu uloží)')
@@ -376,13 +381,8 @@ fs.writeFileSync(
 )
 console.log(`  → ${path.relative(ROOT, mestaSoubor)}  ${kb(fs.statSync(mestaSoubor).size)}`)
 
-const lesySoubor = path.join(DATA, 'kresby-lesy.json')
-fs.writeFileSync(
-  lesySoubor,
-  JSON.stringify({
-    _o: 'generuje scripts/make-mapa.mjs z vrstvy landcover; [lat, lon, jehličnatý 0/1, velikost]',
-    body: lesy,
-  }) + '\n',
-  'utf8'
-)
-console.log(`  → ${path.relative(ROOT, lesySoubor)}  ${kb(fs.statSync(lesySoubor).size)}`)
+const maskaSoubor = path.join(ROOT, 'src', 'assets', 'kresby-lesy.png')
+await sharp(Buffer.from(maskaLesu), { raw: { width: MASKA_W, height: MASKA_H, channels: 1 } })
+  .png({ compressionLevel: 9, palette: true, colours: 8 })
+  .toFile(maskaSoubor)
+console.log(`  → ${path.relative(ROOT, maskaSoubor)}  ${kb(fs.statSync(maskaSoubor).size)}`)

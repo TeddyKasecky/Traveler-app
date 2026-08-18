@@ -192,33 +192,72 @@ takže je prohlížeč překresloval při každém posunu mapy, a s krajinou pod
 neměly nic společného — strom stál klidně uprostřed pole.
 
 Dnes je kreslí **MapLibre jako `symbol` vrstvu**, tedy na GPU, a stojí tam, kde
-opravdu něco je:
+opravdu něco je. Vzhled drží čtyři věci a každá z nich řeší jednu konkrétní
+vadu, kvůli které to dřív vypadalo jako **nálepky nalepené na mapu**:
+
+**1. Překrývají se.** `icon-allow-overlap: true` a `icon-ignore-placement: true`.
+Do 18. srpna 2026 tu bylo `false` a MapLibre zahazoval všechno, co se dotýkalo —
+z lesa byla řídká síť oddělených stromů. Vypnuté srážky jsou navíc **levnější**,
+protože počítání srážek je nejdražší část kreslení symbolů.
+
+**2. Řadí se podle obrazovky.** `symbol-z-order: 'viewport-y'` — kresba níž na
+obrazovce se kreslí později, takže překryje tu za sebou. Z řad stromů tím vznikne
+les s hloubkou a z řady štítů pohoří. Pozor: kdyby byl nastavený
+`symbol-sort-key`, MapLibre by řadil podle něj a tohle ignoroval.
+
+**3. Nemají podstavec.** Každá kresba měla na listu vlastní ostrůvek trávy
+s kamenem — světlý flek s ostrým okrajem, a právě ten křičel „jsem výstřižek".
+`make-kresba.mjs` proto spodních 30 % výšky plynule vytrácí do průhledna
+(u sídel jen 18 %, ves potřebuje stát na zemi). Koruny sousedních kreseb se tím
+slijí do jedné masy.
+
+**4. Jsou sladěné s paletou.** Do obrázku se při vkládání přimíchá 10 % barvy
+`--mapa-les` a krytí je 0,9. Míchá se k barvě, kterou má lesní plocha **zrovna
+teď** — ve světlém režimu ke světlé, v tmavém k tmavé; kdyby se to zapeklo do
+souborů, musely by být dvě sady. V tmavém režimu se navíc kresba odbarví na
+70 % a ztmaví na 62 % (tytéž hodnoty, jaké dřív měl CSS filtr).
+
+### Kde stojí: maska, ne seznam
+
+Rozmístění se do srpna 2026 vyrábělo při buildu jako **seznam bodů** — 30 tisíc
+lesů a 12 tisíc hor, dohromady 953 kB. Bylo to řídké a hustší to jít nemohlo:
+bod stojí 22 bajtů, takže rozteč po 5 km by znamenala půl milionu bodů a přes
+deset megabajtů.
+
+Dnes je to **maska**: obrázek, kde jedna buňka (~3 km) nese hodnotu podle toho,
+co tam roste. Dva soubory po sto kilobajtech místo skoro megabajtu — a hlavně
+přestalo platit, že hustotu určují data. Určuje ji **přiblížení a volba
+v Nastavení**, protože body se z masky sypou až podle toho, co je zrovna vidět
+(`src/map/kresby.js`). Do mapy tak jde vždycky jen několik set kreseb.
 
 | | |
 |---|---|
-| lesy | z vrstvy `landcover`, `kind == 'forest'` — 30 712 bodů |
-| hory | z výškopisu, nejvyšší bod každého čtverce 20 × 20 km — 12 527 bodů |
-| sídla | z vrstvy `places`, značka podle velikosti sídla |
+| lesy | `kresby-lesy.png` z vrstvy `landcover`, `kind == 'forest'` — 655 tisíc buněk |
+| hory | `kresby-hory.png` z výškopisu, **hřebeny** — 176 tisíc buněk |
+| sídla | zůstávají seznamem: mají jméno a pořadí, a to se do obrázku nevejde |
 
-- **Hustotu neurčuje počet bodů ani přiblížení, ale srážky.**
-  `icon-allow-overlap: false` znamená, že se vejde jen to, co se vejde bez
-  překryvu: v lese je stromů plno, u okraje řídnou, při oddálení se samy
-  proředí. Přesně tak se chová kreslená mapa; bez toho by se při oddálení
-  slily do zelené kaše.
-- **Dvě úrovně podrobnosti.** Pod sedmým přiblížením se kreslí jednodušší
-  kresby z přehledového listu — při patnácti pixelech drží tvar líp než
-  podrobná kresba, ze které je stejně jen skvrna.
-- **Tmavý režim bez CSS filtru.** Ztlumená sada se spočítá jednou v prohlížeči
-  (odbarvit na 70 %, ztmavit na 62 % — tytéž hodnoty, jaké dřív měl filtr)
-  a vloží se přes `addImage()`.
-- Kresby jsou z pěti listů v `grafika/terén/`, rozřezané skriptem
-  `scripts/make-kresba.mjs` na 120 souborů. **Mřížka se nehledá napevno**:
-  přehledový list má obsah posazený níž, než kam by padlo dělení 4 × 4, a řez
-  by stromům uřízl paty. Řady i sloupce se proto hledají podle prázdných pruhů.
-  Kolem kreseb byl po klíčování křiklavě žlutý a červený lem; odstraňuje se
-  úzkým pásmem (sytost nad 0,75, jas nad 200, modrá pod 120 — nejtmavší barva
-  ilustrace je střecha #A6714B a ta se pod hranici nedostane). Skript ukládá
-  vedle sady **kontrolní list** do `grafika/`, ať je vidět, co střih udělal.
+**Hory se hledají jako hřebeny, ne jako vrcholy.** Dřív se bral nejvyšší bod
+čtverce 20 × 20 km, takže z Alp vyšla řada osamocených štítů. Hřeben je bod,
+který je maximem **napříč svahem** — vyšší než oba sousedi aspoň v jednom ze
+čtyř směrů — a zároveň převyšuje okolí. Body na hřebeni jdou souvisle za sebou
+a s překrýváním z nich vznikne pohoří.
+
+Mřížka masek je stejná jako u stínování terénu (`scripts/mrizka.mjs`), takže
+všechno leží přesně na sobě. Je v Mercatoru: konstantní krok v buňkách znamená
+konstantní hustotu **na obrazovce**, což je to, o co jde.
+
+**Dvě úrovně podrobnosti.** Pod sedmým přiblížením se kreslí jednodušší kresby
+z přehledového listu — při patnácti pixelech drží tvar líp než podrobná kresba,
+ze které je stejně jen skvrna.
+
+Kresby jsou z pěti listů v `grafika/terén/`, rozřezané skriptem
+`scripts/make-kresba.mjs` na 120 souborů. **Mřížka se nehledá napevno**:
+přehledový list má obsah posazený níž, než kam by padlo dělení 4 × 4, a řez by
+stromům uřízl paty. Řady i sloupce se proto hledají podle prázdných pruhů.
+Kolem kreseb byl po klíčování křiklavě žlutý a červený lem; odstraňuje se úzkým
+pásmem (sytost nad 0,75, jas nad 200, modrá pod 120 — nejtmavší barva ilustrace
+je střecha #A6714B a ta se pod hranici nedostane). Skript ukládá vedle sady
+**kontrolní list** do `grafika/`, ať je vidět, co střih udělal.
 
 ## Ikony a sada piktogramů
 

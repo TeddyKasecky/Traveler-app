@@ -226,6 +226,41 @@ function naDil(od, do_, kolik) {
 }
 
 /**
+ * Vytratí spodek kresby do ztracena.
+ *
+ * TOHLE JE TA VĚC, KVŮLI KTERÉ KRESBY VYPADALY JAKO NÁLEPKY. Každá má na
+ * listu vlastní ostrůvek trávy s kamenem — světlý podstavec s ostrým okrajem.
+ * Na mapě jich pak bylo vidět sto a každý křičel „jsem výstřižek nalepený
+ * na mapu". Když se spodek plynule vytratí, koruny sousedních kreseb se slijí
+ * do jedné lesní masy a podstavce zmizí.
+ *
+ * Sídla dostávají mírnější náběh: ves potřebuje stát na zemi, kdežto strom
+ * má splynout s lesem vedle sebe.
+ *
+ * @param {Buffer} png
+ * @param {number} podil  jakou část výšky zabere náběh
+ */
+async function doZtracena(png, podil) {
+  const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+  const { width: w, height: h } = info
+  const pasmo = Math.max(1, h * podil)
+  for (let y = h - Math.ceil(pasmo); y < h; y++) {
+    // Druhá mocnina, ne přímka: náběh pak začne nenápadně a zrychlí se ke
+    // spodnímu okraji, takže není vidět, kde začíná.
+    const k = Math.pow(Math.max(0, (h - y) / pasmo), 2)
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4 + 3
+      data[i] = Math.round(data[i] * k)
+    }
+  }
+  return sharp(data, { raw: { width: w, height: h, channels: 4 } }).png().toBuffer()
+}
+
+/** Kolik spodku se vytratí. Sídla míň – potřebují stát na zemi. */
+const NABEH = { sidlo: 0.18, ostatni: 0.3 }
+const JE_SIDLO = new Set(['osada', 'ves', 'hrad', 'stavba', 'sidlo'])
+
+/**
  * Najde v buňce kresbu a vrátí její obdélník.
  *
  * Nebere se prostě obal všeho neprůhledného: po klíčování zbývají v prázdné
@@ -362,11 +397,12 @@ async function kresby() {
         // pro staženou mapu a bez toho by je při instalaci stahoval každý.
         const jmeno = `kresba-${list.predpona ? `${list.predpona}-` : ''}${zaklad}-${cislo}`
 
-        const orez = await sharp(px, { raw: { width: w, height: h, channels: 4 } })
+        const orezany = await sharp(px, { raw: { width: w, height: h, channels: 4 } })
           .extract(obdelnik)
           .resize({ height: VYSKA, withoutEnlargement: true })
           .png()
           .toBuffer()
+        const orez = await doZtracena(orezany, JE_SIDLO.has(zaklad) ? NABEH.sidlo : NABEH.ostatni)
 
         await sharp(orez).webp({ quality: 84, alphaQuality: 92 }).toFile(path.join(KRESBY, `${jmeno}.webp`))
         hotove.push(jmeno)
