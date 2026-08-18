@@ -336,7 +336,9 @@ await page.waitForTimeout(400)
 await page.click('#tabs button[data-tab="plan"]')
 await page.waitForTimeout(300)
 await kontrola('prázdný plán má hlášku', () => page.locator('#planWrap .empty').count(), 1)
-await kontrola('segment Přehled · Plán · Mapa', () => page.locator('#planSegment button').count(), 3)
+await kontrola('segment Cesta · Přehled · Plán', () => page.locator('#planSegment button').count(), 3)
+// Bez rozjeté cesty se začíná Přehledem; karta Cesta vysvětlí, že se nejede.
+await kontrola('začíná se Přehledem', () => page.locator('#planSegment button.on').innerText(), 'Přehled')
 // I bez jediné zastávky má člověk jednu výpravu – tu bezejmennou, kterou měl
 // odjakživa. Kdyby se seznam ukázal prázdný, vypadalo by to, že se něco ztratilo.
 await kontrola('výprava je v seznamu i prázdná', () => page.locator('.vypravaradek').count(), 1)
@@ -383,6 +385,49 @@ await kontrola('GPX je mezi nimi', () => page.locator('#planGpx').count(), 1)
 // Klik nahoru, ne doprostřed: nabídka je od přibytí GPX vyšší a střed ztmavení
 // je pod ní. Doprostřed by se klik trefil do nabídky, ne mimo ni.
 await page.click('#backdrop', { position: { x: 190, y: 40 } })
+await page.waitForTimeout(400)
+
+// Aktuální cesta: vyjet → odznačit → ukončit → archiv. Bez GPS, jen
+// odznačování; čas se počítá ze začátku a pauz, nikde se netiká.
+await page.click('#planSegment button[data-seg="cesta"]')
+await page.waitForTimeout(400)
+await kontrola('bez cesty nabízí Vyjet', () => page.locator('#cestaVyjed').count(), 1)
+await page.click('#cestaVyjed')
+await page.waitForTimeout(500)
+await kontrola('cesta se rozjela', () =>
+  page.evaluate(() => !!JSON.parse(localStorage.getItem('vandrbuch:v1')).cesta))
+await kontrola('zastávka jde odznačit', () => page.locator('.cesta-fajfka').count(), 1)
+await page.click('.cesta-fajfka')
+await page.waitForTimeout(500)
+await kontrola('odznačení se zapsalo', () =>
+  page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('vandrbuch:v1')).cesta.odznacene).length), 1)
+await kontrola('odznačené je i navštívené', () =>
+  page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('vandrbuch:v1')).stav).filter((x) => x === 'visited').length), 1)
+page.once('dialog', (d) => d.accept())
+await page.click('#cestaKonec')
+await page.waitForTimeout(600)
+await kontrola('cesta skončila v archivu', () =>
+  page.evaluate(() => {
+    const v = JSON.parse(localStorage.getItem('vandrbuch:v1'))
+    return !v.cesta && v.cesty.length === 1 && v.cesty[0].navstiveno === 1
+  }))
+// Uklidit stav navštíveného místa po zkoušce cesty. Reload níž zahodí stav
+// modulů, takže se musí vrátit i „první otevření Mapy" – karta výpravy po
+// něm držela jen v paměti a kontroly na Mapě s prvním otevřením počítají.
+await page.evaluate(() => {
+  const v = JSON.parse(localStorage.getItem('vandrbuch:v1'))
+  v.stav = {}
+  v.cesty = []
+  localStorage.setItem('vandrbuch:v1', JSON.stringify(v))
+  const p = JSON.parse(localStorage.getItem('vandrbuch:prefs') || '{}')
+  delete p.vypravaPredstavena
+  localStorage.setItem('vandrbuch:prefs', JSON.stringify(p))
+})
+await page.reload({ waitUntil: 'load' })
+await page.waitForTimeout(900)
+await page.evaluate(() => document.getElementById('introGo')?.click())
+await page.waitForTimeout(300)
+await page.click('#tabs button[data-tab="plan"]')
 await page.waitForTimeout(400)
 
 // uklidit po sobě, ať další kontroly počítají s prázdným plánem

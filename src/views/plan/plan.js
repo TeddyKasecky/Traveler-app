@@ -31,6 +31,7 @@ import { stahniSoubor } from '../../core/csv.js'
 import { dnyPlanu, pridejDen, presunDoDne, zrusDny, rozdelPodleHodin, rozdelNaPocet, nastavDny } from './dny.js'
 import { gpxZPlanu, nazevSouboru } from './gpx.js'
 import { seznamVyprav, prepniVypravu, novaVyprava, prejmenujVypravu, smazAktivniVypravu, BEZ_NAZVU } from './vypravy.js'
+import { cestaHtml, napojCestu, jedeSe } from './cesta.js'
 
 /** Kolik zastávek unese odkaz do Google Maps. */
 const MAX_DO_NAVIGACE = 10
@@ -39,8 +40,12 @@ const KLIKATOST = 1.35
 /** Průměrná rychlost pro odhad času za volantem. */
 const KMH = 62
 
-/** Který díl segmentu je vidět. Jen v paměti – po restartu se začíná Přehledem. */
-let dil = 'prehled'
+/**
+ * Který díl segmentu je vidět. Jen v paměti; po restartu se začíná Aktuální
+ * cestou, když se zrovna jede – kdo je na cestě, chce odznačovat, ne plánovat.
+ */
+let dil = ''
+const vychoziDil = () => (jedeSe() ? 'cesta' : 'prehled')
 /** Která zastávka má rozbalené ovládání pod sebou. */
 let rozbaleno = ''
 
@@ -100,7 +105,7 @@ function fmtCas(hrs) {
   return m ? `${h} h ${m} min` : `${h} h`
 }
 
-const sklonuj = (n, a, b, c) => (n === 1 ? a : n < 5 ? b : c)
+export const sklonuj = (n, a, b, c) => (n === 1 ? a : n < 5 ? b : c)
 
 /* ================= vykreslení ================= */
 
@@ -115,21 +120,26 @@ export function renderPlan() {
   pc.hidden = !items.length
   pc.textContent = items.length
 
+  if (!dil) dil = vychoziDil()
+
   wrap.innerHTML =
     hlava(items, dny) +
     segment(
       [
+        // Tečka u Aktuální cesty říká „něco běží" – jinak by se na rozjetou
+        // cestu dalo zapomenout v jiném dílu.
+        { id: 'cesta', popisek: jedeSe() ? 'Cesta ·' : 'Cesta' },
         { id: 'prehled', popisek: 'Přehled' },
         { id: 'plan', popisek: 'Plán' },
-        { id: 'mapa', popisek: 'Mapa' },
       ],
       dil,
       'planSegment'
     ) +
-    (dil === 'prehled' ? prehled(items, dny) : dil === 'plan' ? itinerar(items, dny) : mapaDil(items)) +
-    lista(items)
+    (dil === 'cesta' ? cestaHtml() : dil === 'prehled' ? prehled(items, dny) : itinerar(items, dny)) +
+    (dil === 'cesta' ? '' : lista(items))
 
   napoj(wrap, items)
+  if (dil === 'cesta') napojCestu(wrap, renderPlan)
 }
 
 /** Hlavička: název výpravy a co obnáší. */
@@ -186,6 +196,7 @@ function prehled(items, dny) {
             { ikona: 'i-kalendar', popisek: 'Rozděleno na', hodnota: `${dny.length} ${sklonuj(dny.length, 'den', 'dny', 'dní')}` },
             { ikona: 'i-globe', popisek: 'Zemí na trase', hodnota: String(zemi) },
           ])}
+          <button class="btn small" id="planNaMapu">${IC('i-map')}Ukázat na mapě</button>
           ${items.length > 2 ? `<button class="btn zvyrazneny" id="planOpt">${IC('i-sparkles')}Optimalizovat trasu</button>` : ''}
           ${items.length > 2 ? rozdeleni() : ''}
         </div>`
@@ -318,19 +329,6 @@ function zastavka(p, poradi, predchozi, denIdx, poctDnu, posledniVeDni, uplnePos
       <button class="btn small" data-act="rm">${IC('i-x')}Odebrat</button>
     </div>
   </div>`
-}
-
-/* ---------- Mapa ---------- */
-
-function mapaDil(items) {
-  if (!items.length) return prazdno()
-  return (
-    sekce('Trasa na mapě', { pozn: `${items.length} ${sklonuj(items.length, 'zastávka', 'zastávky', 'zastávek')}` }) +
-    `<div class="empty" style="padding:26px 24px">${IC('i-route')}Trasa se kreslí na hlavní mapě – okrovou čarou přes všechny zastávky.
-      <div class="btnrow" style="justify-content:center;margin-bottom:0">
-        <button class="btn small primary" id="planNaMapu">${IC('i-map')}Ukázat na mapě</button>
-      </div></div>`
-  )
 }
 
 /* ---------- spodní lišta ---------- */

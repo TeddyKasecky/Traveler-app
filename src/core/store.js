@@ -70,6 +70,28 @@ export const store = nacti(KEY, {
   vypravy: [],
   /** Název aktivní výpravy. Prázdný = „Náš plán“. Viz views/plan/vypravy.js. */
   vypravaNazev: '',
+  /**
+   * Probíhající cesta, nebo null. Viz views/plan/cesta.js.
+   *
+   * Čas se NIKDE NETIKÁ – počítá se vždy znovu z `zacatek` a součtu pauz,
+   * takže přežije zavření aplikace i restart telefonu. `zastavky` je otisk
+   * plánu v okamžiku vyjetí: úprava plánu za jízdy cestu nerozbije.
+   *
+   *   { nazev, zacatek, zastavky: [id], dny: [délky], pauzy: [{od, do}],
+   *     pauzaOd: null|ms, odznacene: {id: ms}, poznamky: {id: text},
+   *     poznamka: '', ziskane: [id achievementů] }
+   */
+  cesta: null,
+  /** Ukončené cesty, nejnovější první. Souhrny počítá `ukonciCestu()`. */
+  cesty: [],
+  /**
+   * Vlastní bloky v plánech: poznámky, zaškrtávací seznamy, vlastní místa,
+   * odkazy a rozpočty. Viz views/plan/bloky.js. Klíčované názvem výpravy,
+   * protože výpravy vlastní id nemají a název je jejich klíč i jinde.
+   */
+  bloky: {},
+  /** Získané profilové achievementy: { [id]: ms }. Viz plan/achievementy.js. */
+  achievementy: {},
   prio: {},
   dataOverride: null,
   seen: false,

@@ -18,6 +18,8 @@ import vanObr from '../assets/van.webp'
 
 /** @type {L.Polyline|null} */
 let cara = null
+/** @type {L.Polyline|null} čára ujeté části během Aktuální cesty */
+let ujeta = null
 /** @type {L.Marker|null} */
 let dodavka = null
 
@@ -58,18 +60,41 @@ export function drawPlanLine(mapa) {
     cara.remove()
     cara = null
   }
+  if (ujeta) {
+    ujeta.remove()
+    ujeta = null
+  }
   if (dodavka) {
     dodavka.remove()
     dodavka = null
   }
 
-  const body = store.plan.map((id) => S.byId[id]).filter(Boolean)
+  // Za jízdy se kreslí otisk cesty, ne živý plán – plán se dá upravovat
+  // i s rozjetou cestou a trasa na mapě má ukazovat to, co se opravdu jede.
+  const jedeSe = !!store.cesta
+  const zdrojIds = jedeSe ? store.cesta.zastavky : store.plan
+  const body = zdrojIds.map((id) => S.byId[id]).filter(Boolean)
   if (body.length < 2) return
 
   cara = L.polyline(
     body.map((p) => [p.lat, p.lon]),
-    { color: token('--zvyrazneni', '#E1B152'), weight: 4.5, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }
+    { color: token('--zvyrazneni', '#E1B152'), weight: 4.5, opacity: jedeSe ? 0.5 : 0.95, lineCap: 'round', lineJoin: 'round' }
   ).addTo(mapa)
+
+  // Ujetá část: plnou žlutou mezi odznačenými zastávkami v pořadí odznačení.
+  // Bez GPS je to poctivá aproximace – spojnice míst, kde jsme opravdu byli.
+  if (jedeSe) {
+    const poradi = Object.entries(store.cesta.odznacene)
+      .sort((a, b) => a[1] - b[1])
+      .map(([id]) => S.byId[id])
+      .filter(Boolean)
+    if (poradi.length >= 2) {
+      ujeta = L.polyline(
+        poradi.map((p) => [p.lat, p.lon]),
+        { color: token('--sun', '#A87C24'), weight: 5.5, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }
+      ).addTo(mapa)
+    }
+  }
 
   dodavka = L.marker(stredTrasy(body), {
     interactive: false,
