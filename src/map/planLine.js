@@ -12,6 +12,7 @@
 
 import L from 'leaflet'
 import { S, store } from '../core/store.js'
+import { esc } from '../core/html.js'
 import { dkm } from '../core/geo.js'
 import { token } from '../core/barvy.js'
 import vanObr from '../assets/van.webp'
@@ -22,6 +23,21 @@ let cara = null
 let ujeta = null
 /** @type {L.Marker|null} */
 let dodavka = null
+/** @type {L.LayerGroup|null} špendlíky vlastních míst z bloků plánu */
+let vlastni = null
+
+/**
+ * Vlastní místa aktivní výpravy (bloky typu `misto` se souřadnicemi).
+ *
+ * Čtou se přímo ze `store.bloky` – jsou to data, ne view, takže mapa smí.
+ * Vrací je v pořadí dnů, aby se daly vplést do trasy za zastávky svého dne.
+ */
+function vlastniMista() {
+  const klic = store.vypravaNazev || 'Náš plán'
+  return ((store.bloky || {})[klic] || []).filter(
+    (b) => b.typ === 'misto' && Number.isFinite(b.lat) && Number.isFinite(b.lon)
+  )
+}
 
 /**
  * Bod na lomené čáře v polovině její délky.
@@ -73,7 +89,43 @@ export function drawPlanLine(mapa) {
   // i s rozjetou cestou a trasa na mapě má ukazovat to, co se opravdu jede.
   const jedeSe = !!store.cesta
   const zdrojIds = jedeSe ? store.cesta.zastavky : store.plan
-  const body = zdrojIds.map((id) => S.byId[id]).filter(Boolean)
+  const zastavky = zdrojIds.map((id) => S.byId[id]).filter(Boolean)
+
+  // Vlastní místa z bloků se počítají do trasy: za zastávky svého dne,
+  // bez dne na konec. Za jízdy se do otisku nepletou – trasa cesty je otisk.
+  const mista = jedeSe ? [] : vlastniMista()
+  const delky = (store.planDny || []).length ? store.planDny : [zastavky.length]
+  const body = []
+  let od = 0
+  delky.forEach((delka, i) => {
+    body.push(...zastavky.slice(od, od + delka))
+    od += delka
+    body.push(...mista.filter((m) => m.den === i + 1).map((m) => ({ lat: m.lat, lon: m.lon })))
+  })
+  body.push(...zastavky.slice(od))
+  body.push(...mista.filter((m) => m.den == null).map((m) => ({ lat: m.lat, lon: m.lon })))
+
+  if (vlastni) {
+    vlastni.remove()
+    vlastni = null
+  }
+  if (mista.length) {
+    vlastni = L.layerGroup(
+      mista.map((m) =>
+        L.marker([m.lat, m.lon], {
+          interactive: false,
+          keyboard: false,
+          icon: L.divIcon({
+            className: '',
+            iconSize: [22, 22],
+            iconAnchor: [11, 20],
+            html: `<div class="vlastnipin" title="${esc(m.nazev || 'Vlastní místo')}">${'★'}</div>`,
+          }),
+        })
+      )
+    ).addTo(mapa)
+  }
+
   if (body.length < 2) return
 
   cara = L.polyline(

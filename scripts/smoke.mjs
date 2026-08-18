@@ -387,6 +387,51 @@ await kontrola('GPX je mezi nimi', () => page.locator('#planGpx').count(), 1)
 await page.click('#backdrop', { position: { x: 190, y: 40 } })
 await page.waitForTimeout(400)
 
+// Vlastní bloky: přidat seznam, položku, odškrtnout; vlastní místo pozná
+// vložené souřadnice v několika tvarech.
+await page.click('#planSegment button[data-seg="plan"]')
+await page.waitForTimeout(400)
+await kontrola('nabídka bloků má pět typů', () => page.locator('[data-blok-novy]').count(), 5)
+await page.click('[data-blok-novy="seznam"]')
+await page.waitForTimeout(400)
+await kontrola('seznam se přidal', () => page.locator('.blok').count(), 1)
+await page.click('[data-act="pridat-polozku"]')
+await page.waitForTimeout(300)
+await page.locator('.blok-polozka input').first().fill('Spacáky')
+await page.waitForTimeout(600)
+await page.click('[data-act="odskrtnout"]')
+await page.waitForTimeout(400)
+await kontrola('položka jde odškrtnout', () => page.locator('.blok-fajfka.on').count(), 1)
+await kontrola('blok se uložil', () =>
+  page.evaluate(() => {
+    const b = JSON.parse(localStorage.getItem('vandrbuch:v1')).bloky
+    const bloky = b[Object.keys(b)[0]] || []
+    return bloky.length === 1 && bloky[0].polozky.length === 1 && !!bloky[0].polozky[0].hotovo
+  }))
+await page.click('[data-blok-novy="misto"]')
+await page.waitForTimeout(400)
+await page.locator('[data-pole="vlozeno"]').fill('https://www.google.com/maps/@50.0755,14.4378,12z')
+await page.click('[data-act="prevzit"]')
+await page.waitForTimeout(400)
+await kontrola('místo pozná odkaz z Google Maps', () =>
+  page.evaluate(() => {
+    const b = JSON.parse(localStorage.getItem('vandrbuch:v1')).bloky
+    const misto = (b[Object.keys(b)[0]] || []).find((x) => x.typ === 'misto')
+    return misto && Math.abs(misto.lat - 50.0755) < 1e-4 && Math.abs(misto.lon - 14.4378) < 1e-4
+  }))
+await kontrola('vlastní místo má špendlík na mapě', () =>
+  page.evaluate(() => document.querySelectorAll('.vlastnipin').length), 1)
+// Uklidit bloky SMAZÁNÍM PŘES UI, ne přepsáním localStorage: aplikace při
+// odchodu ze stránky dopisuje store z paměti (pagehide → save()), takže by
+// přepsaný záznam hned zase přepsala zpátky tím starým.
+page.once('dialog', (d) => d.accept())
+await page.locator('.blok-smaz').first().click()
+await page.waitForTimeout(400)
+page.once('dialog', (d) => d.accept())
+await page.locator('.blok-smaz').first().click()
+await page.waitForTimeout(400)
+await kontrola('bloky uklizené', () => page.locator('.blok').count(), 0)
+
 // Aktuální cesta: vyjet → odznačit → ukončit → archiv. Bez GPS, jen
 // odznačování; čas se počítá ze začátku a pauz, nikde se netiká.
 await page.click('#planSegment button[data-seg="cesta"]')

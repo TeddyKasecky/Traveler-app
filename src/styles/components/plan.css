@@ -205,7 +205,7 @@
 .achv-mriz{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 8px}
 .achv{font-size:.7rem;font-weight:700;border:1px solid var(--obrys);border-radius:var(--r-pill);
   padding:5px 10px;background:var(--plocha);color:var(--text3)}
-.achv.ma{background:var(--moss);border-color:var(--moss);color:#fff}
+.achv.ma{background:var(--moss);border-color:var(--moss);color:var(--na-akcentu)}
 .achv-pocet{margin-left:auto;font-size:.66rem;color:var(--text3);font-weight:700}
 
 /* ---------- archiv ukončených cest ---------- */
@@ -231,3 +231,70 @@
 .archiv-tagy{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0}
 .archiv-poznamka{margin:8px 0 2px;font-family:var(--f-disp);font-size:.9rem;line-height:1.45;
   font-weight:600;color:var(--text2)}
+
+/* ---------- vlastní bloky ---------- */
+.blok{border:var(--line);border-radius:var(--r-s);background:var(--plocha);box-shadow:var(--stin-1);
+  padding:10px 12px;margin:0 0 8px}
+.blok-hlava{display:flex;align-items:center;gap:7px;font-size:.66rem;font-weight:800;
+  letter-spacing:.8px;text-transform:uppercase;color:var(--text3);margin-bottom:7px}
+.blok-hlava svg.ic{font-size:14px;color:var(--akcent)}
+.blok-smaz{margin-left:auto;border:0;background:none;padding:4px;color:var(--text3)}
+.blok-smaz svg.ic{font-size:13px}
+.blok-nadpis,.blok-text{width:100%;border:var(--line);border-radius:var(--r-s);background:var(--bg);
+  padding:8px 10px;font:inherit;font-size:.84rem;color:var(--text);margin-bottom:6px}
+.blok-text{resize:vertical}
+.blok-nadpis:focus,.blok-text:focus{outline:0;box-shadow:0 0 0 2px var(--akcent)}
+.blok-polozka{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.blok-polozka input{flex:1;min-width:0;border:var(--line);border-radius:var(--r-s);background:var(--bg);
+  padding:7px 9px;font:inherit;font-size:.82rem;color:var(--text)}
+.blok-castka{flex:0 0 72px!important;text-align:right}
+.blok-fajfka{flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:2px solid var(--obrys-silny);
+  background:var(--bg);display:grid;place-items:center}
+.blok-fajfka svg.ic{font-size:12px;stroke:transparent;color:transparent}
+.blok-fajfka.on{background:var(--akcent);border-color:var(--akcent)}
+.blok-fajfka.on svg.ic{stroke:var(--na-akcentu);color:var(--na-akcentu)}
+.blok-mensi{border:0;background:none;padding:4px;color:var(--text3)}
+.blok-mensi svg.ic{font-size:12px}
+.blok-suma{font-size:.82rem;margin:2px 2px 8px;color:var(--text2)}
+.blok-gps{display:flex;gap:6px;align-items:center;margin:2px 0 6px}
+.blok-gps svg.ic{font-size:13px;color:var(--rust)}
+.blok-gpsrucne{display:flex;gap:6px}
+.blok-gpsrucne input{flex:1;min-width:0;border:var(--line);border-radius:var(--r-s);background:var(--bg);
+  padding:7px 9px;font:inherit;font-size:.82rem;color:var(--text)}
+.blok-odkaz{display:inline-flex;gap:6px;align-items:center;font-size:.8rem;font-weight:700;color:var(--akcent)}
+.blok-odkaz svg.ic{font-size:13px}
+.blok-pridat{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
+
+/* ---------- tažení a sbalování ---------- */
+/* Tažená karta jede za prstem, sousedi uhýbají přes transform s přechodem –
+ * bez překreslování, které by tažení sekalo. */
+.zastavka.tahne,.denhd.tahne{position:relative;z-index:20;box-shadow:var(--stin-panel);transition:none}
+.itinerar .zastavka,.itinerar .denhd{transition:transform .18s var(--pop)}
+.den-uchyt{cursor:grab}
+.den-sbal{margin-left:auto;border:0;background:none;padding:4px;color:var(--text3);
+  transition:transform .2s var(--pop)}
+.den-sbal svg.ic{font-size:14px}
+.denhd.sbaleny .den-sbal{transform:rotate(-90deg)}
+
+/* ---------- seznamy a vlastní místa v Aktuální cestě ---------- */
+.cesta-seznam{border:var(--line);border-radius:var(--r-s);background:var(--plocha);box-shadow:var(--stin-1);
+  padding:10px 12px;margin-bottom:8px}
+.cesta-seznam > b{display:block;font-size:.85rem;margin-bottom:7px}
+.cesta-radek-seznamu{display:flex;gap:9px;align-items:center;width:100%;border:0;background:none;
+  padding:6px 2px;font:inherit;font-size:.86rem;color:var(--text);text-align:left}
+.cesta-radek-seznamu svg.ic{flex:0 0 auto;font-size:15px;stroke:var(--obrys-silny);color:transparent;
+  border:2px solid var(--obrys-silny);border-radius:50%;width:22px;height:22px;padding:2px}
+.cesta-radek-seznamu.ma svg.ic{stroke:var(--na-akcentu);background:var(--akcent);border-color:var(--akcent)}
+.cesta-radek-seznamu.ma span{text-decoration:line-through;color:var(--text3)}
+.cesta-zastavka.vlastni .cesta-telo b{color:var(--rust)}
+
+/* Špendlík vlastního místa – rezavá hvězda na mapě. */
+.vlastnipin{width:22px;height:22px;border-radius:50%;background:var(--rust);color:var(--na-akcentu);
+  display:grid;place-items:center;font-size:12px;border:1.5px solid var(--plocha);
+  box-shadow:var(--stin-1)}
+
+/* Lišta výběru bodu na mapě. Nad spodkem mapy, pod hlavičkou. */
+.vyberbod-listka{position:fixed;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom) + 88px);
+  z-index:1250;display:flex;gap:8px;align-items:center;background:var(--plocha);border:var(--line);
+  border-radius:var(--r-s);box-shadow:var(--stin-panel);padding:10px 12px;font-size:.8rem;font-weight:700}
+.vyberbod-listka span{flex:1}

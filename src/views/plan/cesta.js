@@ -25,6 +25,7 @@ import { toast } from '../../components/toast.js'
 import { draw } from '../../map/map.js'
 import { planoveAchievementy, pripisPlanove, pripisProfilove } from './achievementy.js'
 import { archivHtml, napojArchiv } from './archiv.js'
+import { bloky, blok } from './bloky.js'
 
 /** Formát času cesty: dny a hodiny, pod hodinu minuty. */
 export function fmtDoba(ms) {
@@ -184,6 +185,8 @@ export function cestaHtml() {
       )
       .join('')}
 
+    ${blokyNaCeste()}
+
     <div class="sekce"><span class="sekce-text">Poznámka z cesty</span></div>
     <textarea class="cesta-poznamka" id="cestaPoznamka" rows="3"
       placeholder="Co si z cesty chceme pamatovat…">${esc(c.poznamka || '')}</textarea>
@@ -196,6 +199,48 @@ export function cestaHtml() {
 
     ${achievementyCesty(c)}
     ${archivHtml()}`
+}
+
+/**
+ * Bloky, které mají na cestě co dělat: zaškrtávací seznamy a vlastní místa.
+ * Odškrtává se přímo na bloku (`hotovo`), takže to vidí i editor plánu.
+ */
+function blokyNaCeste() {
+  const seznamy = bloky().filter((b) => b.typ === 'seznam' && (b.polozky || []).length)
+  const mista = bloky().filter((b) => b.typ === 'misto' && Number.isFinite(b.lat))
+  if (!seznamy.length && !mista.length) return ''
+
+  const seznamyHtml = seznamy
+    .map(
+      (b) => `
+      <div class="cesta-seznam" data-blok="${b.id}">
+        <b>${esc(b.nadpis || 'Seznam')}</b>
+        ${(b.polozky || [])
+          .map(
+            (p, i) => `<button class="cesta-radek-seznamu${p.hotovo ? ' ma' : ''}" data-blok="${b.id}" data-i="${i}">
+              ${IC('i-check')}<span>${esc(p.text || '…')}</span></button>`
+          )
+          .join('')}
+      </div>`
+    )
+    .join('')
+
+  const mistaHtml = mista
+    .map(
+      (b) => `
+      <div class="cesta-zastavka vlastni${b.hotovo ? ' hotova' : ''}">
+        <button class="cesta-fajfka" data-vlastni="${b.id}" title="${b.hotovo ? 'Byli jsme tu' : 'Odznačit'}">${IC('i-check')}</button>
+        <div class="cesta-telo">
+          <b>★ ${esc(b.nazev || 'Vlastní místo')}</b>
+          <span class="meta">${b.lat.toFixed(4)}, ${b.lon.toFixed(4)}${b.den ? ` · ${b.den}. den` : ''}</span>
+        </div>
+      </div>`
+    )
+    .join('')
+
+  return `
+    ${mista.length ? `<div class="sekce"><span class="sekce-text">Vlastní místa</span></div>${mistaHtml}` : ''}
+    ${seznamy.length ? `<div class="sekce"><span class="sekce-text">Seznamy</span></div>${seznamyHtml}` : ''}`
 }
 
 /**
