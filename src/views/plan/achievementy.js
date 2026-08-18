@@ -377,6 +377,12 @@ export function planoveAchievementy(zastavky, dny) {
     splneno: (c) => Date.now() - c.zacatek >= 2 * 86400000,
   })
   out.push({
+    id: 'tri-dny-na-ceste',
+    nazev: 'Třetí svítání',
+    popis: 'Být na cestě aspoň 72 hodin',
+    splneno: (c) => Date.now() - c.zacatek >= 3 * 86400000,
+  })
+  out.push({
     id: 'pauza-mistri',
     nazev: 'Umění pauzy',
     popis: 'Dát si na cestě pauzu',

@@ -455,9 +455,12 @@ await kontrola('odznačené je i navštívené', () =>
   page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('vandrbuch:v1')).stav).filter((x) => x === 'visited').length), 1)
 // Achievementy: plánové se generují z obsahu plánu a pro každý jich musí
 // být aspoň dvacet – i pro tenhle miniaturní jednozastávkový.
+// Počítá se JEN v kartě Plánu: panely se nezahazují, jen schovávají, takže
+// stránkové `.achv` by přičetlo i padesát profilových z dřív vykresleného
+// Profilu – a kontrola by prošla, i kdyby generátor vracel jediný kus.
 await kontrola('plánové achievementy: aspoň 20', () =>
-  page.locator('.achv').count().then((n) => n >= 20))
-await kontrola('něco už je získané', () => page.locator('.achv.ma').count().then((n) => n >= 1))
+  page.locator('#planWrap .achv').count().then((n) => n >= 20))
+await kontrola('něco už je získané', () => page.locator('#planWrap .achv.ma').count().then((n) => n >= 1))
 page.once('dialog', (d) => d.accept())
 await page.click('#cestaKonec')
 await page.waitForTimeout(600)
