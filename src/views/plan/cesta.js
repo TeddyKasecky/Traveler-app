@@ -23,6 +23,8 @@ import { dnyPlanu } from './dny.js'
 import { BEZ_NAZVU } from './vypravy.js'
 import { toast } from '../../components/toast.js'
 import { draw } from '../../map/map.js'
+import { planoveAchievementy, pripisPlanove, pripisProfilove } from './achievementy.js'
+import { archivHtml, napojArchiv } from './archiv.js'
 
 /** Formát času cesty: dny a hodiny, pod hodinu minuty. */
 export function fmtDoba(ms) {
@@ -190,7 +192,28 @@ export function cestaHtml() {
       <button class="btn" id="cestaPauza">${IC(c.pauzaOd ? 'i-route' : 'i-clock')}${c.pauzaOd ? 'Pokračovat' : 'Pauza'}</button>
       <button class="btn primary" id="cestaKonec">${IC('i-flag')}Ukončit cestu</button>
       <button class="btn small nebezpecne" id="cestaZrusit">Zrušit</button>
-    </div>`
+    </div>
+
+    ${achievementyCesty(c)}
+    ${archivHtml()}`
+}
+
+/**
+ * Achievementy téhle cesty. Získané se připisují při každém vykreslení –
+ * vykreslení je jediný okamžik, kdy se na ně někdo dívá, a připsání je
+ * levné (pár čistých funkcí nad otiskem cesty).
+ */
+function achievementyCesty(c) {
+  const nove = pripisPlanove(c)
+  if (nove.length) toast(`🏅 ${nove[nove.length - 1].nazev}`)
+  const definice = planoveAchievementy(c.zastavky, c.dny)
+  const ziskane = new Set(c.ziskane || [])
+  return `
+    <div class="sekce"><span class="sekce-text">Achievementy cesty</span>
+      <span class="sekce-pozn">${ziskane.size} z ${definice.length}</span></div>
+    <div class="achv-mriz">${definice
+      .map((a) => `<span class="achv${ziskane.has(a.id) ? ' ma' : ''}" title="${esc(a.popis)}">${esc(a.nazev)}</span>`)
+      .join('')}</div>`
 }
 
 /** Jedna zastávka s fajfkou a poznámkou. */
@@ -221,7 +244,8 @@ function prazdnaCesta() {
              <button class="btn primary" id="cestaVyjed">${IC('i-van')}Vyjet</button>`
           : `<p>Nejdřív je potřeba plán: v kartě Plán si poskládej zastávky, pak se odsud vyjíždí.</p>`
       }
-    </div>`
+    </div>
+    ${archivHtml()}`
 }
 
 /**
@@ -286,11 +310,16 @@ export function napojCestu(wrap, prekresli) {
       const hotovo = c ? Object.keys(c.odznacene).length : 0
       if (!confirm(`Ukončit cestu? ${hotovo ? `Odznačeno ${hotovo} zastávek, ` : ''}cesta se uloží do ukončených.`)) return
       if (ukonciCestu()) {
+        // Ukončená cesta se může propsat do profilových achievementů
+        // (první cesta, týden na kolech…), tak se rovnou připíšou.
+        pripisProfilove()
         toast('Cesta uložená do ukončených')
         draw()
         prekresli()
       }
     }
+
+  napojArchiv(wrap, prekresli)
 
   const zrusit = wrap.querySelector('#cestaZrusit')
   if (zrusit)

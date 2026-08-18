@@ -403,6 +403,11 @@ await kontrola('odznačení se zapsalo', () =>
   page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('vandrbuch:v1')).cesta.odznacene).length), 1)
 await kontrola('odznačené je i navštívené', () =>
   page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('vandrbuch:v1')).stav).filter((x) => x === 'visited').length), 1)
+// Achievementy: plánové se generují z obsahu plánu a pro každý jich musí
+// být aspoň dvacet – i pro tenhle miniaturní jednozastávkový.
+await kontrola('plánové achievementy: aspoň 20', () =>
+  page.locator('.achv').count().then((n) => n >= 20))
+await kontrola('něco už je získané', () => page.locator('.achv.ma').count().then((n) => n >= 1))
 page.once('dialog', (d) => d.accept())
 await page.click('#cestaKonec')
 await page.waitForTimeout(600)
@@ -411,6 +416,9 @@ await kontrola('cesta skončila v archivu', () =>
     const v = JSON.parse(localStorage.getItem('vandrbuch:v1'))
     return !v.cesta && v.cesty.length === 1 && v.cesty[0].navstiveno === 1
   }))
+await kontrola('archiv je vidět po letech', () => page.locator('.archiv-rok').count(), 1)
+await kontrola('profilový achievement za první cestu', () =>
+  page.evaluate(() => !!JSON.parse(localStorage.getItem('vandrbuch:v1')).achievementy['prvni-cesta']))
 // Uklidit stav navštíveného místa po zkoušce cesty. Reload níž zahodí stav
 // modulů, takže se musí vrátit i „první otevření Mapy" – karta výpravy po
 // něm držela jen v paměti a kontroly na Mapě s prvním otevřením počítají.
@@ -418,6 +426,7 @@ await page.evaluate(() => {
   const v = JSON.parse(localStorage.getItem('vandrbuch:v1'))
   v.stav = {}
   v.cesty = []
+  v.achievementy = {}
   localStorage.setItem('vandrbuch:v1', JSON.stringify(v))
   const p = JSON.parse(localStorage.getItem('vandrbuch:prefs') || '{}')
   delete p.vypravaPredstavena

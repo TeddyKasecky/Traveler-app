@@ -20,6 +20,7 @@ import { IC } from '../../icons/sprite.js'
 import { toast } from '../../components/toast.js'
 import { vyberAutaHtml, napojVyberAuta } from '../../components/vyberAuta.js'
 import { zobrazPolohu } from '../../map/map.js'
+import { PROFILOVE, pripisProfilove } from '../plan/achievementy.js'
 
 /** Spočítá, co se dá říct o uživatelských datech. */
 function cisla() {
@@ -35,6 +36,32 @@ function cisla() {
     plaminku: Object.keys(store.prio).length,
     zemi: new Set(S.places.filter((p) => store.stav[p.id] === 'visited').map((p) => p.z)).size,
   }
+}
+
+/**
+ * Profilové achievementy: získané barevně, ostatní zašedle s průběhem.
+ *
+ * Připisují se při každém otevření Profilu – vyhodnocení je pár čistých
+ * funkcí nad úložištěm a Profil je jediné místo, kde se na ně kouká.
+ */
+function achievementyProfilu() {
+  pripisProfilove()
+  const ziskanych = PROFILOVE.filter((a) => store.achievementy[a.id]).length
+  return `
+    <div class="sechd">${IC('i-spark')}Achievementy <span class="achv-pocet">${ziskanych} z ${PROFILOVE.length}</span></div>
+    <div class="achv-mriz profil">${PROFILOVE.map((a) => {
+      const ma = !!store.achievementy[a.id]
+      let prubeh = ''
+      if (!ma && a.prubeh) {
+        try {
+          const [je, cil] = a.prubeh()
+          if (je > 0) prubeh = ` · ${je}/${cil}`
+        } catch {
+          /* rozbitý průběh achievement jen nesvítí */
+        }
+      }
+      return `<span class="achv${ma ? ' ma' : ''}" title="${esc(a.popis)}">${esc(a.nazev)}${prubeh}</span>`
+    }).join('')}</div>`
 }
 
 /** Jedna dlaždice s číslem. */
@@ -75,6 +102,8 @@ export function renderProfil() {
       <input id="profilJmeno" type="text" placeholder="Jak ti máme říkat?" value="${esc(prefs.userName || '')}" maxlength="24">
     </div>
     <div class="meta" style="margin:6px 2px 0">Použije se v pozdravu na Domů. Nikam se neposílá.</div>
+
+    ${achievementyProfilu()}
 
     <div class="sechd">${IC('i-van')}Čím jezdíme</div>
     <div class="meta" style="margin:0 2px 10px">Vybrané auto jezdí po mapě na místě tvé polohy.</div>

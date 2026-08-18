@@ -196,3 +196,38 @@
 .cesta-prazdno svg.ic{font-size:34px;color:var(--akcent);margin-bottom:8px}
 .cesta-prazdno h3{margin:0 0 6px;font-family:var(--f-disp);font-weight:700;color:var(--text)}
 .cesta-prazdno p{margin:0 auto 14px;font-size:.86rem;line-height:1.45;max-width:20rem}
+
+/* ---------- achievementy ---------- */
+/* Pilulky, ne karty: je jich přes čtyřicet a karty by z toho udělaly
+ * nekonečnou stěnu. Získané mechově, ostatní zašedle s tím, co chybí
+ * v title. Až budou vlastní obrázky, vymění se span za img – definice
+ * s tím počítá (pole `obr`). */
+.achv-mriz{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 8px}
+.achv{font-size:.7rem;font-weight:700;border:1px solid var(--obrys);border-radius:var(--r-pill);
+  padding:5px 10px;background:var(--plocha);color:var(--text3)}
+.achv.ma{background:var(--moss);border-color:var(--moss);color:#fff}
+.achv-pocet{margin-left:auto;font-size:.66rem;color:var(--text3);font-weight:700}
+
+/* ---------- archiv ukončených cest ---------- */
+.archiv-rok{display:flex;align-items:center;gap:10px;width:100%;border:var(--line);
+  border-radius:var(--r-s);background:var(--plocha2);padding:9px 13px;font:inherit;
+  font-weight:800;color:var(--text);margin:4px 0 8px}
+.archiv-rok span{color:var(--text2);font-size:.74rem;font-weight:700}
+.archiv-rok svg.ic{margin-left:auto;font-size:15px;color:var(--text3);transition:transform .2s var(--pop)}
+.archiv-rok.on svg.ic{transform:rotate(180deg)}
+.archiv-cesta{border:var(--line);border-radius:var(--r-s);background:var(--plocha);
+  box-shadow:var(--stin-1);margin-bottom:8px;overflow:hidden}
+.archiv-hlava{display:flex;align-items:center;gap:10px;width:100%;padding:11px 13px;
+  border:0;background:none;font:inherit;text-align:left;color:var(--text)}
+.archiv-hlava b{display:block;font-size:.92rem}
+.archiv-hlava svg.ic{margin-left:auto;font-size:15px;color:var(--text3);transition:transform .2s var(--pop)}
+.archiv-cesta.on .archiv-hlava svg.ic{transform:rotate(180deg)}
+.archiv-detail{padding:0 13px 12px;border-top:1px dashed var(--obrys)}
+.archiv-cisla{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0 8px}
+.archiv-cisla b{display:block;font-family:var(--f-disp);font-weight:700;font-size:1.05rem}
+.archiv-cisla span{font-size:.62rem;font-weight:700;color:var(--text3);letter-spacing:.3px}
+.archiv-radka{display:flex;gap:7px;align-items:center;margin:5px 0}
+.archiv-radka svg.ic{font-size:14px;color:var(--akcent);flex:0 0 auto}
+.archiv-tagy{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0}
+.archiv-poznamka{margin:8px 0 2px;font-family:var(--f-disp);font-size:.9rem;line-height:1.45;
+  font-weight:600;color:var(--text2)}
