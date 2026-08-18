@@ -27,6 +27,7 @@ import { initVyberMista, otevriVyber } from './components/vyberMista.js'
 import { initIntro } from './components/intro.js'
 import { initAddForm } from './components/addForm.js'
 import { initPorovnani } from './views/porovnani/porovnani.js'
+import { initMapaKeStazeni } from './views/profil/mapaKeStazeni.js'
 
 import { registrujOverlay } from './core/router.js'
 import { registrujZalozky } from './views/index.js'
@@ -58,6 +59,8 @@ initPlusMenu()
 // Sbalování spodku Mapy. Úchyt i bublina jsou staticky v index.html, takže
 // se obsluha věší jednou tady, ne v renderMapaDole().
 initMapaDole()
+// Stažení malované mapy v Profilu – ovládání je taky staticky v index.html.
+initMapaKeStazeni()
 // Až za panely: registrace overlaye určuje, co zavře tlačítko zpět jako první.
 initAddForm()
 // Porovnání se otevírá z detailu, takže musí být nad ním.

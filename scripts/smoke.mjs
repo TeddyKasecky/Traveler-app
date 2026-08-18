@@ -189,6 +189,15 @@ await kontrola('Profil má čísla', () => page.locator('#profilInner .pstat').c
 // panel Filtry odpovídá na „co chci vidět", Profil na „moje data".
 await kontrola('Profil má zálohu a obnovu', () => page.locator('#panelProfil #expBtn, #panelProfil #impIn').count(), 2)
 await kontrola('Profil má přepínač vzhledu', () => page.locator('#panelProfil .motivbtn').count(), 3)
+// Malovaná mapa Evropy má skoro 10 MB, takže není v instalaci a stahuje se
+// odsud. Test ji nestahuje – ověřuje jen, že se nabízí a hlásí správný stav.
+await kontrola('Profil nabízí stažení mapy', () => page.locator('#mapaStahni').isVisible(), true)
+await kontrola('bez stažení hlásí, že mapa není', () =>
+  page.locator('#mapaStav').innerText().then((t) => /nesta/i.test(t)), true)
+// Bez stažené mapy musí nastoupit záložní plátno z basemap.json – jinak by
+// offline mapa byla prázdná. Totéž platí pro prohlížeč bez WebGL
+// a pro jednosouborovou variantu, kam se 10 MB dlaždic zabalit nedá.
+await kontrola('bez mapy se kreslí záložní podklad', () => page.locator('.maplibregl-canvas').count(), 0)
 await kontrola('Profil má správu vlastních dat', () => page.locator('#panelProfil #csvIn, #panelProfil #dataReset').count(), 2)
 await kontrola('v panelu Filtry už zálohy nejsou', () => page.locator('#filters #expBtn').count(), 0)
 await page.goBack()

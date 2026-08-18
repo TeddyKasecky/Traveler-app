@@ -117,6 +117,36 @@ hero zabírá polovinu výšky displeje (`52svh`) a v širokém poměru by z pan
 `object-fit:cover` ukázal jen svislý pruh. Výřez se ze zdroje bere na 0,62 volného
 místa: od horního okraje je v těch akvarelech jen prázdná obloha.
 
+## Malovaná mapa z vektorových dlaždic
+
+Od srpna 2026 kreslí malovanou mapu **MapLibre uvnitř Leafletu**
+(`src/map/vektory.js`), ne jen plátno s obrysy. Důvod je věcný: Natural Earth
+nemá **žádnou** vrstvu pokryvu krajiny — prošel jsem všech 206 jeho vektorových
+vrstev — takže plocha mezi hranicemi byla jedna khaki barva. Protomaps staví
+podklad z OpenStreetMap a vrstvu `landcover` má.
+
+Vzhled drží tři věci:
+
+- **Barvy jen z tokenů.** Styl se skládá v JS a čte je přes `getComputedStyle`,
+  takže tmavý režim funguje i tady. Nové tokeny: `--mapa-les`, `--mapa-louka`,
+  `--mapa-pole`, `--mapa-krovi`, `--mapa-hola`, `--mapa-led`, `--mapa-mesto`,
+  `--mapa-silnice`.
+- **Žádné neprůhledné pozadí.** MapLibre schválně nekreslí vrstvu moře — pod
+  mapou leží zrno papíru z CSS a teprve tím vypadá krajina malovaně. Kdyby tam
+  bylo pozadí, papír by zmizel.
+- **Zrno přes souš** (`fill-pattern`). Šedý šum s průhledností, generovaný
+  v kódu z pevného semínka, aby vypadal pokaždé stejně. V tmavém režimu
+  zesvětluje místo ztmavování.
+
+Popisky měst a zemí zůstávají **Leafletové** — MapLibre by na text potřeboval
+vygenerované SDF fonty Playfair Display i s českou diakritikou, tedy stovky kB
+navíc a jinou sazbu než zbytek aplikace.
+
+**Pozor na worker.** MapLibre si adresu svého workeru skládá za běhu jako
+sourozední soubor vedle sebe. Když ho Vite zabalí do chunku, ten soubor tam
+nikdo nepoloží a mapa **mlčky** nenačte jedinou dlaždici — bez chyby v konzoli.
+Řeší to `?worker&url` a `setWorkerUrl()` v `vektory.js`.
+
 ## Ikony a sada piktogramů
 
 Značka má **vlastní sadu 24 piktogramů** na listu

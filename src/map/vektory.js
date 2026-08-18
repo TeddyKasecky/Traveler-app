@@ -49,8 +49,78 @@ import { PROTOKOL, obsluhaProtokolu, zoomMax } from './vbm.js'
 /** Jméno zdroje ve stylu. Na hodnotě nezáleží, jen se na něj odkazují vrstvy. */
 const ZDROJ = 'vandrbuch'
 
+/** Jméno obrázku se zrnem, na které se odkazuje `fill-pattern`. */
+const ZRNO = 'zrno'
+/** Strana dlaždice zrna. Mocnina dvou kvůli opakování v textuře. */
+const ZRNO_STRANA = 64
+
+/**
+ * Vyrobí dlaždici zrna.
+ *
+ * Šedý šum s průhledností, ne barva – položí se přes barvy krajiny a jen je
+ * rozmyje, takže plochy nevypadají jako vyplněné polygony. Dělá se v kódu,
+ * aby se nic nestahovalo; v tmavém režimu se zesvětluje místo ztmavování,
+ * jinak by tmavá krajina jen zčernala.
+ *
+ * @param {boolean} tmavy
+ * @returns {{width: number, height: number, data: Uint8Array}}
+ */
+function zrnoObrazek(tmavy) {
+  const n = ZRNO_STRANA
+  const data = new Uint8Array(n * n * 4)
+  // Pevný generátor: zrno musí být pokaždé stejné, jinak by mapa při každém
+  // přebarvení vypadala jinak. Math.random() by tohle porušil.
+  let seed = 20260818
+  const nahoda = () => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff
+    return seed / 0x7fffffff
+  }
+  for (let i = 0; i < n * n; i++) {
+    const v = nahoda()
+    const svetlo = tmavy ? 255 : 0
+    // Většina bodů je průhledná, jen menšina nese skvrnku – jinak by z toho
+    // byl rovnoměrný filtr a ne zrno.
+    const alfa = v > 0.72 ? Math.round((v - 0.72) * 150) : 0
+    data[i * 4] = svetlo
+    data[i * 4 + 1] = svetlo
+    data[i * 4 + 2] = svetlo
+    data[i * 4 + 3] = alfa
+  }
+  return { width: n, height: n, data }
+}
+
+/**
+ * Doplní zrno do mapy. Musí se to udělat po každé výměně stylu – obrázky
+ * ve stylu nepřežijí `setStyle()`.
+ *
+ * @param {any} m  mapa MapLibre
+ * @param {boolean} tmavy
+ */
+function pridejZrno(m, tmavy) {
+  try {
+    if (m.hasImage(ZRNO)) m.removeImage(ZRNO)
+    m.addImage(ZRNO, zrnoObrazek(tmavy))
+  } catch (e) {
+    // Bez zrna mapa vypadá plošeji, ale kreslí – to je pořád lepší než pád.
+    console.warn('Zrno se nepodařilo přidat:', e)
+  }
+}
+
 /** Je protokol `vbm://` už zaregistrovaný? Podruhé by MapLibre zaprotestoval. */
 let protokolHotov = false
+
+/**
+ * Je zapnutý tmavý režim? Pozná se podle jasu papíru – token `--bg` je
+ * v tmavém režimu tmavý. Ptát se na `data-motiv` nestačí: při volbě „podle
+ * systému" tam žádná hodnota není.
+ */
+function jeTmavy(el) {
+  const bg = getComputedStyle(el).getPropertyValue('--bg').trim()
+  const m = /#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(bg)
+  if (!m) return false
+  const jas = (parseInt(m[1], 16) + parseInt(m[2], 16) + parseInt(m[3], 16)) / 3
+  return jas < 128
+}
 
 /** Přečte barvu z CSS. Záloha je tam pro případ, že token zmizí. */
 function barvy(el) {
@@ -113,14 +183,21 @@ function styl(el) {
       },
     },
     layers: [
-      // Moře je pozadí celé mapy; souš se na něj položí.
-      { id: 'more', type: 'background', paint: { 'background-color': c.more } },
+      /*
+       * Pozadí se schválně NEKRESLÍ.
+       *
+       * Kdyby tu byla neprůhledná vrstva moře, zakryla by zrno papíru, které
+       * leží pod mapou v CSS (`#map{background-image:papir.webp}`) – a právě
+       * tím zrnem celá mapa vypadá malovaně, ne jako vyplněné polygony. Takhle
+       * plátno MapLibre zůstane průhledné a moře je papír s barvou z CSS,
+       * přesně jako u starého plátna.
+       */
       {
         id: 'sous',
         type: 'fill',
         source: ZDROJ,
         'source-layer': 'earth',
-        paint: { 'fill-color': c.sous, 'fill-opacity': 0.9 },
+        paint: { 'fill-color': c.sous, 'fill-opacity': 0.82 },
       },
       {
         id: 'pokryv',
@@ -160,6 +237,19 @@ function styl(el) {
           'line-opacity': 0.75,
           'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.4, 8, 1.8],
         },
+      },
+      /*
+       * Zrno přes celou souš. Tohle je to „podvymalování": šedý šum s alfou
+       * položený přes barvy krajiny, takže plochy nejsou ploché, ale rozmyté
+       * jako akvarel na papíře. Obrázek se vyrábí v kódu (`zrnoObrazek()`),
+       * takže se nic nestahuje a v tmavém režimu se přepočítá.
+       */
+      {
+        id: 'zrno',
+        type: 'fill',
+        source: ZDROJ,
+        'source-layer': 'earth',
+        paint: { 'fill-pattern': ZRNO, 'fill-opacity': 0.5 },
       },
       // Hranice bílou tečkovanou čárou, jak je má předloha – ne tmavou linkou.
       {
@@ -202,11 +292,21 @@ export function postavVektory(mapa, pane) {
   }
 
   try {
+    const el = mapa.getContainer()
     vrstva = L.maplibreGL({
-      style: styl(mapa.getContainer()),
+      style: styl(el),
       pane,
       interactive: false,
       attributionControl: false,
+    })
+    // Mapa MapLibre vzniká až při přidání do Leafletu, takže se zrno doplňuje
+    // odsud – dřív by nebylo do čeho.
+    vrstva.on('add', () => {
+      const m = vrstva.getMaplibreMap && vrstva.getMaplibreMap()
+      if (!m) return
+      const doplnit = () => pridejZrno(m, jeTmavy(el))
+      if (m.isStyleLoaded()) doplnit()
+      m.on('styledata', doplnit)
     })
     return vrstva
   } catch (e) {
@@ -239,6 +339,8 @@ export function prebarviVektory(el) {
   if (!m) return
   try {
     m.setStyle(styl(el))
+    // `setStyle()` zahodí i obrázky, takže se zrno musí přidat znovu.
+    pridejZrno(m, jeTmavy(el))
   } catch {
     // Když se styl nepovede vyměnit, mapa zůstane ve staré paletě.
     // Je to ošklivé, ale pořád lepší než prázdná obrazovka.

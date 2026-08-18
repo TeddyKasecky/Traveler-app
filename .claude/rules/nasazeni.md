@@ -45,6 +45,11 @@ Ze seznamu k uložení se filtrují tři věci a **každá z nich by shodila cel
 Nové soubory v `public/` se do cache přidají samy, protože je Vite jen kopíruje a plugin je
 dočítá z disku. Pojmenování s podtržítkem na začátku se ale vyfiltruje.
 
+**Výjimka `.vbm`.** Balík malované mapy Evropy (`public/mapa-evropa.vbm`, skoro
+10 MB) je z předukládaného seznamu vyřazený schválně — stahuje se na vyžádání
+z Profilu do IndexedDB. Kdyby v seznamu byl, stáhl by se každému hned při
+instalaci a aplikace by z 1,3 MB narostla na jedenáct.
+
 **Podklad offline mapy** (`src/data/basemap.json`) je samostatný kus, který se dotahuje až
 při prvním selhání dlaždice. Do předukládaného seznamu se dostane sám, protože ten se skládá
 ze všech souborů balíčku — a musí tam být, jinak by se bez signálu nedal stáhnout a celá

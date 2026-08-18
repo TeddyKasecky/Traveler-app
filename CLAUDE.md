@@ -62,8 +62,8 @@ npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
 
-npm run smoke            # proklikání v prohlížeči, 130 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 118 kontrol
+npm run smoke            # proklikání v prohlížeči, 133 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 121 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
@@ -78,6 +78,8 @@ node scripts/screenshots.mjs --baseline   # základna před zásahem
 node scripts/screenshots.mjs && node scripts/compare-screens.mjs   # co se změnilo
 node scripts/make-kat-fota.mjs     # zástupné ilustrace kategorií z grafika/
 node scripts/make-basemap.mjs   # přegeneruje obrysy zemí z Natural Earth (ručně, zřídka)
+node scripts/make-mapa.mjs      # změří výřez Evropy z planety Protomaps
+node scripts/make-mapa.mjs --zapis   # …a zapíše ho do public/mapa-evropa.vbm
 node scripts/make-kresba.mjs    # papír, malované stromy a hory a jejich kotvy
 ```
 
@@ -87,7 +89,16 @@ něco v `src/data/`. Vyžaduje jednorázové `git config core.hooksPath .githook
 ## Architektura
 
 Jeden soubor = jedna zodpovědnost. Žádný framework, žádná knihovna na vzhled.
-Jediná runtime závislost je Leaflet 1.9.4 (přišpendlená přesná verze, bez `^`).
+Runtime závislosti jsou **dvě** a obě vědomě:
+
+- **Leaflet 1.9.4** (přišpendlená přesná verze, bez `^`) — nese celou mapu.
+- **MapLibre GL** + `@maplibre/maplibre-gl-leaflet` — kreslí malovanou offline
+  mapu z vektorových dlaždic. Je to **výjimka z pravidla „jen Leaflet"**,
+  odsouhlasená v srpnu 2026: bez ní by v mapě nebyly lesy, louky ani pole,
+  protože Natural Earth žádný pokryv krajiny nemá. Natahuje se **dynamickým
+  importem**, takže skončí ve vlastním chunku a stáhne si ji jen ten, kdo si
+  mapu do telefonu opravdu stáhne. Do jednosouborové varianty se nebalí vůbec
+  (`import.meta.env.SINGLE_FILE` v `map/podklad.js`).
 
 | Kde | Co |
 |---|---|
@@ -200,6 +211,14 @@ Co se kam přestěhovalo a proč, je v [VZHLED.md](VZHLED.md) v části
 - **Přepínač podkladu mapy**: výchozí je online mapa z OpenStreetMap, malovaná mapa
   je offline varianta (`prefs.podklad`, pilulka vlevo nahoře). Plochy zemí leží pod
   dlaždicemi i online, aby bez signálu nevznikla díra.
+- **Malovaná mapa má dvě cesty kreslení a to je schválně.** Když je stažený balík
+  `mapa-evropa.vbm` a prohlížeč umí WebGL, kreslí ji MapLibre z vektorových dlaždic
+  (lesy, louky, pole, voda, silnice). Jinak nastoupí staré plátno z `basemap.json` —
+  jen obrysy, ale funguje vždycky: bez WebGL, bez stažené mapy i v jednosouborové
+  variantě. Rozcestník je v `map/podklad.js`.
+- **Balík mapy se nepředukládá do cache.** Má skoro 10 MB a stahuje se na vyžádání
+  z Profilu do IndexedDB (`core/mapaDb.js`, vlastní databáze `vandrbuch-mapa`, ne ta
+  s fotkami). `vite.config.js` proto `.vbm` ze seznamu vyřazuje.
 - **318 míst nemá `img`** a zobrazuje se u nich akvarel podle kategorie
   (`src/assets/kategorie/`); kreslená pohlednice z `postcard.js` zůstává pod ním jako
   záchrana, když se obrázek nenačte. Je to záměr, ne nedodělek — fotky nedoplňuj náhodně.

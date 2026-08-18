@@ -132,6 +132,17 @@
     </div>
     <div class="meta" id="zalohaInfo" style="margin-top:7px"></div>
 
+    <!-- Malovaná mapa Evropy. Má skoro deset megabajtů, takže není součástí
+         instalace a stahuje se odsud na vyžádání do IndexedDB. -->
+    <div class="sechd"><svg class="ic"><use href="#i-map"/></svg>Malovaná mapa do telefonu</div>
+    <div class="meta" style="margin:0 2px 10px">Lesy, louky, pole, řeky a silnice celé Evropy. Jednou stáhnout a pak funguje i bez signálu. Data z OpenStreetMap (ODbL).</div>
+    <div class="mapastav" id="mapaStav"></div>
+    <div class="btnrow" style="margin:0">
+      <button class="btn primary" id="mapaStahni"><svg class="ic"><use href="#i-save"/></svg>Stáhnout mapu</button>
+      <button class="btn small" id="mapaSmaz" hidden>Smazat</button>
+    </div>
+    <div class="mapapruh" id="mapaPruh" hidden><i></i></div>
+
     <div class="sechd"><svg class="ic"><use href="#i-book"/></svg>Vlastní data míst</div>
     <div class="meta" style="margin:0 2px 10px">CSV se sloupci z „vse-dohromady-v3" nahradí vestavěných 580 míst. Poznámky a hodnocení zůstanou.</div>
     <div class="btnrow" style="margin:0">

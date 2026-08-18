@@ -278,6 +278,11 @@ export const jsouVektory = () => !!vektory
  * @param {L.Map} mapa
  */
 async function zkusVektory(mapa) {
+  // V jednosouborové variantě se ani nezkouší. Balík dlaždic má skoro 10 MB
+  // a do jednoho souboru se zabalit nedá, takže by se MapLibre (další megabajt)
+  // natáhl úplně zbytečně. Konstanta je nahrazená při buildu, takže se z něj
+  // celá větev i s importem vyhodí.
+  if (import.meta.env.SINGLE_FILE) return
   try {
     const blob = await nactiMapu()
     if (!blob) return
