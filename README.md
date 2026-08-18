@@ -21,7 +21,8 @@ adresu. Nová adresa je pro něj úplně jiný web, takže si data sám nepřene
 1. Otevřít **starou** aplikaci (dnešní `index.html`)
 2. Filtry → **Záloha poznámek** → uloží se soubor `vandrbuch-zaloha-….json`
 3. Nainstalovat novou aplikaci do telefonu (kapitola 3)
-4. V **nainstalované** aplikaci: Filtry → **Obnovit zálohu** → vybrat ten soubor
+4. V **nainstalované** aplikaci: ozubené kolečko vpravo nahoře → **Nastavení** →
+   **Obnovit ze zálohy** → vybrat ten soubor
 5. Zkontrolovat, že sedí poznámky, hvězdičky, plamínky, plán i fotky
 
 **Na iPhonu pozor:** aplikace přidaná na plochu má vlastní úložiště, oddělené od
@@ -233,15 +234,22 @@ zůstane stejný a prohlížeč ho zbytečně nepřeinstaluje.
 
 ### Mapa bez signálu
 
-`src/map/offlineMap.js` kreslí zjednodušený podklad – pobřeží, hranice, jezera, řeky
-a města. Leží **pod** dlaždicemi, takže se nic nepřepíná: kde dlaždice jsou, překryjí
-ho; kde chybí, prosvítá. Díra uprostřed jinak funkční mapy se tím vyplní taky.
+Offline mapa umí dvě podoby a přepíná se mezi nimi v **Nastavení**.
 
-Data jsou v `src/data/basemap.json` (~390 kB, po kompresi ~90 kB) a v repozitáři.
-Přegenerovat je jde příkazem `node scripts/make-basemap.mjs`, který si stáhne podklady
-z Natural Earth (public domain) a zjednoduší je. Běžně to není potřeba.
+**Zjednodušená** je rovnou v aplikaci a funguje hned: obrysy zemí, jezera, řeky,
+985 měst a **stínování terénu**, takže hory mají tvar. Leží pod dlaždicemi
+z OpenStreetMap, takže se nic nepřepíná – kde dlaždice jsou, překryjí ji; kde
+chybí, prosvítá, a díra uprostřed jinak funkční mapy se tím vyplní taky.
 
-Do aplikace se podklad dotahuje až při prvním selhání dlaždice, takže start nezdržuje.
+**Malovaná** se musí jednou stáhnout (3,7 MB, Nastavení → Offline mapa →
+Stáhnout mapu) a uloží se do telefonu. K obrysům přidá lesy, louky, pole, řeky,
+silnice a kreslenou krajinu – stromy stojí na skutečných lesích a hory na
+skutečných horách. Bez signálu pak funguje úplně stejně jako s ním.
+
+Data: obrysy z Natural Earth (public domain, `src/data/basemap.json`), zbytek
+z OpenStreetMap přes Protomaps (ODbL) a výškopis z `elevation-tiles-prod`.
+Přegenerovat je jde skripty `make-basemap.mjs`, `make-mapa.mjs` a
+`make-relief.mjs`; běžně to není potřeba.
 
 ### Dvě varianty jednoho zdroje
 

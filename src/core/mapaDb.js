@@ -3,7 +3,7 @@
  *
  * Balík má přes deset megabajtů, takže nemůže být součástí instalace – aplikace
  * má jinak 1,3 MB a nikdo nechce stahovat třicetinásobek jen proto, že si někdy
- * možná zapne offline mapu. Stahuje se proto na vyžádání z Profilu.
+ * možná zapne offline mapu. Stahuje se proto na vyžádání z Nastavení.
  *
  * VLASTNÍ DATABÁZE, ne sklad vedle fotek. Fotky bydlí v `vandrbuch` verze 1
  * (`core/fotoDb.js`) a přidat tam sklad znamená zvednout verzi – jenže dokud
@@ -90,7 +90,7 @@ export async function ulozMapu(blob) {
 }
 
 /**
- * Smaže staženou mapu. Používá se v Profilu, když si člověk chce uvolnit místo.
+ * Smaže staženou mapu. Používá se v Nastavení, když si člověk chce uvolnit místo.
  * @returns {Promise<boolean>}
  */
 export async function smazMapu() {

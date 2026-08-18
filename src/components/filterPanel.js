@@ -1,10 +1,10 @@
 /**
  * Panel filtrů.
  *
- * Zálohy, obnova, CSV a přepínač vzhledu se přestěhovaly do Profilu: panel
- * Filtry odpovídá na otázku „co chci vidět", Profil na „moje data". Obsluha
- * ale zůstala tady, protože se věší při startu na prvky, které jsou staticky
- * v `index.html` – ať už leží kdekoli.
+ * Zálohy, obnova, CSV a přepínač vzhledu se přestěhovaly do Nastavení: panel
+ * Filtry odpovídá na otázku „co chci vidět", Nastavení na „jak to má fungovat".
+ * Obsluha ale zůstala tady, protože se věší při startu na prvky, které jsou
+ * staticky v `index.html` – ať už leží kdekoli.
  */
 
 import {

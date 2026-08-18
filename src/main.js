@@ -59,7 +59,7 @@ initPlusMenu()
 // Sbalování spodku Mapy. Úchyt i bublina jsou staticky v index.html, takže
 // se obsluha věší jednou tady, ne v renderMapaDole().
 initMapaDole()
-// Stažení malované mapy v Profilu – ovládání je taky staticky v index.html.
+// Stažení malované mapy v Nastavení – ovládání je taky staticky v index.html.
 initMapaKeStazeni()
 // Až za panely: registrace overlaye určuje, co zavře tlačítko zpět jako první.
 initAddForm()
