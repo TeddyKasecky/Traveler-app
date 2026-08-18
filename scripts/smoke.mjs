@@ -538,6 +538,26 @@ if (!SINGLE) {
   console.log('\n  offline zkouška:')
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => true))
   await kontrola('service worker běží', () => page.evaluate(() => !!navigator.serviceWorker.controller || navigator.serviceWorker.ready.then(() => true)))
+
+  /*
+   * Do předukládané cache nesmí spadnout nic kolem stažené malované mapy:
+   * MapLibre s workerem, čtečka balíku, sto dvacet kreseb a souřadnice lesů
+   * a hor. Je toho přes čtyři megabajty a jsou k ničemu každému, kdo si mapu
+   * nestáhne — uloží se až při prvním použití.
+   *
+   * Filtr ve `vite.config.js` pozná ty soubory podle jména, což je křehké:
+   * stačí přejmenovat chunk a instalace tiše naroste o čtyři megabajty.
+   * Odsud se to pozná hned.
+   */
+  await kontrola('do cache nejde nic kolem stažené mapy', () =>
+    page
+      .evaluate(async () => {
+        const text = await (await fetch('./sw.js')).text()
+        const seznam = JSON.parse(text.match(/const PRECACHE = (\[[\s\S]*?\n\])/)[1])
+        return seznam.filter((f) => /(kresba|kresby-|vektory|vbm|maplibre-)/.test(f))
+      })
+      .then((x) => x.length), 0)
+
   await page.waitForTimeout(1500) // ať stihne naplnit cache
 
   await page.context().setOffline(true)

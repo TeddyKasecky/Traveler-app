@@ -134,18 +134,91 @@ Vzhled drží tři věci:
 - **Žádné neprůhledné pozadí.** MapLibre schválně nekreslí vrstvu moře — pod
   mapou leží zrno papíru z CSS a teprve tím vypadá krajina malovaně. Kdyby tam
   bylo pozadí, papír by zmizel.
-- **Zrno přes souš** (`fill-pattern`). Šedý šum s průhledností, generovaný
-  v kódu z pevného semínka, aby vypadal pokaždé stejně. V tmavém režimu
-  zesvětluje místo ztmavování.
+- **Stínování terénu a kresby krajiny**, viz obě kapitoly níž.
+
+Vrstva `zrno` (`fill-pattern` přes celou souš) tu byla do 18. srpna 2026 a je
+pryč: byl to nejdražší druh výplně přes celou obrazovku každý snímek, a zrno
+papíru z CSS pod mapou prosvítá i bez ní, protože výplně mají krytí 0,82 a 0,62.
 
 Popisky měst a zemí zůstávají **Leafletové** — MapLibre by na text potřeboval
 vygenerované SDF fonty Playfair Display i s českou diakritikou, tedy stovky kB
-navíc a jinou sazbu než zbytek aplikace.
+navíc a jinou sazbu než zbytek aplikace. Kresby jsou naopak obrázky, ne text,
+takže na ně se žádné písmo nepotřebuje.
 
 **Pozor na worker.** MapLibre si adresu svého workeru skládá za běhu jako
 sourozední soubor vedle sebe. Když ho Vite zabalí do chunku, ten soubor tam
 nikdo nepoloží a mapa **mlčky** nenačte jedinou dlaždici — bez chyby v konzoli.
 Řeší to `?worker&url` a `setWorkerUrl()` v `vektory.js`.
+
+**Práce na pixelech je tady všechno.** `pixelRatio` je zastropované na 1,5:
+MapLibre kreslí ve výchozím stavu v plné hustotě displeje a `maplibre-gl-leaflet`
+k tomu dělá plátno o pětinu větší, než je mapa, takže na telefonu s trojnásobnou
+hustotou šlo o **třináctinásobek** pixelů proti CSS — a překresluje se to při
+každém posunu. Akvarelová mapa je záměrně měkká, takže rozdíl mezi 1,5 a 3 na ní
+není poznat. Kdo by chtěl mapu ostřejší, sáhne sem; kdo si stěžuje, že seká,
+taky sem.
+
+## Stínování terénu
+
+Krajina měla barvu, ale ne tvar: Alpy byly zelená skvrna, protože pokryv krajiny
+o výšce nic neříká. Od srpna 2026 leží nad plochami **jeden obrázek se
+stínováním terénu** (`src/assets/relief-evropa.webp`, 1792 × 1664, ~1 MB),
+spočítaný z výškopisu `elevation-tiles-prod` skriptem `scripts/make-relief.mjs`.
+
+- **Nese informaci v průhlednosti, ne v barvě.** Ve stínu je teplá tmavá barva,
+  na osvětlených svazích krémová, a obojí má proměnnou alfu. Skládá se proto
+  úplně obyčejně nad světlou i tmavou krajinou a nepotřebuje `mix-blend-mode`,
+  který by na ploše přes celou obrazovku měnil cestu vykreslování. Stejný trik
+  jako `papir.webp`.
+- **Je to `L.ImageOverlay`, ne vrstva MapLibre.** Jedna cesta pro obojí:
+  reliéf má i zjednodušená mapa, tedy i ten, kdo si nic nestáhl, i prohlížeč
+  bez WebGL.
+- **Převýšení svahu 10×.** Bod rastru je ~1,5 km, takže i Alpy stoupají
+  numericky mírně — tisíc metrů na patnáct kilometrů jsou necelé čtyři stupně.
+  Bez převýšení nebylo stínování na khaki podkladu skoro vidět. Každý malovaný
+  atlas dělá totéž.
+- **Mrtvá zóna 0,07.** Výškopis má i na rovině šum pár metrů a gama ho zesílí
+  spolu se vším ostatním; bez mrtvé zóny vypadalo Polabí jako zmačkaný papír.
+- V tmavém režimu se ztlumí na 62 % krytí (`.relief` v `podklad.css`) — krémové
+  přisvícené svahy by jinak svítily.
+- **Do jednosouborové varianty se nebalí**, tam je `assetsInlineLimit` bez
+  omezení a megabajt by se vložil do HTML jako base64.
+
+## Kresby krajiny
+
+Do srpna 2026 to bylo sto deset Leafletových značek s obrázkem stromu nebo hory,
+rozsypaných na pravidelné síti. Bylo to znát dvakrát: každá měla CSS filtr,
+takže je prohlížeč překresloval při každém posunu mapy, a s krajinou pod sebou
+neměly nic společného — strom stál klidně uprostřed pole.
+
+Dnes je kreslí **MapLibre jako `symbol` vrstvu**, tedy na GPU, a stojí tam, kde
+opravdu něco je:
+
+| | |
+|---|---|
+| lesy | z vrstvy `landcover`, `kind == 'forest'` — 30 712 bodů |
+| hory | z výškopisu, nejvyšší bod každého čtverce 20 × 20 km — 12 527 bodů |
+| sídla | z vrstvy `places`, značka podle velikosti sídla |
+
+- **Hustotu neurčuje počet bodů ani přiblížení, ale srážky.**
+  `icon-allow-overlap: false` znamená, že se vejde jen to, co se vejde bez
+  překryvu: v lese je stromů plno, u okraje řídnou, při oddálení se samy
+  proředí. Přesně tak se chová kreslená mapa; bez toho by se při oddálení
+  slily do zelené kaše.
+- **Dvě úrovně podrobnosti.** Pod sedmým přiblížením se kreslí jednodušší
+  kresby z přehledového listu — při patnácti pixelech drží tvar líp než
+  podrobná kresba, ze které je stejně jen skvrna.
+- **Tmavý režim bez CSS filtru.** Ztlumená sada se spočítá jednou v prohlížeči
+  (odbarvit na 70 %, ztmavit na 62 % — tytéž hodnoty, jaké dřív měl filtr)
+  a vloží se přes `addImage()`.
+- Kresby jsou z pěti listů v `grafika/terén/`, rozřezané skriptem
+  `scripts/make-kresba.mjs` na 120 souborů. **Mřížka se nehledá napevno**:
+  přehledový list má obsah posazený níž, než kam by padlo dělení 4 × 4, a řez
+  by stromům uřízl paty. Řady i sloupce se proto hledají podle prázdných pruhů.
+  Kolem kreseb byl po klíčování křiklavě žlutý a červený lem; odstraňuje se
+  úzkým pásmem (sytost nad 0,75, jas nad 200, modrá pod 120 — nejtmavší barva
+  ilustrace je střecha #A6714B a ta se pod hranici nedostane). Skript ukládá
+  vedle sady **kontrolní list** do `grafika/`, ať je vidět, co střih udělal.
 
 ## Ikony a sada piktogramů
 

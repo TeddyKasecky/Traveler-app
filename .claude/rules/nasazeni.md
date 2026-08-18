@@ -45,10 +45,26 @@ Ze seznamu k uložení se filtrují tři věci a **každá z nich by shodila cel
 Nové soubory v `public/` se do cache přidají samy, protože je Vite jen kopíruje a plugin je
 dočítá z disku. Pojmenování s podtržítkem na začátku se ale vyfiltruje.
 
-**Výjimka `.vbm`.** Balík malované mapy Evropy (`public/mapa-evropa.vbm`, skoro
-10 MB) je z předukládaného seznamu vyřazený schválně — stahuje se na vyžádání
-z Profilu do IndexedDB. Kdyby v seznamu byl, stáhl by se každému hned při
-instalaci a aplikace by z 1,3 MB narostla na jedenáct.
+**Výjimka: všechno kolem stažené mapy.** Z předukládaného seznamu je schválně
+vyřazený balík `public/mapa-evropa.vbm` (3,7 MB, stahuje se na vyžádání
+z Nastavení do IndexedDB) **a k tomu z bundle všechno, co je jen pro něj**:
+MapLibre i s jeho workerem, čtečka balíku, 120 kreseb a souřadnice lesů a hor.
+Dohromady přes čtyři megabajty, které jsou k ničemu každému, kdo si mapu
+nestáhne. Filtr je v `vite.config.js` a pozná to podle jména souboru
+(`assets/kresba*`, `kresby-*`, `vektory*`, `vbm*`, `maplibre-*`).
+
+**Neztratí se to.** Service worker od srpna 2026 ukládá i to, co si aplikace
+vyžádá až za běhu, takže se kresby uloží při prvním zapnutí malované mapy.
+Stahovat mapu se stejně musí online, takže se to vždycky stihne dřív, než dojde
+signál.
+
+Je to křehké: přejmenovaný chunk by tiše vrátil čtyři megabajty do instalace.
+Proto `vite.config.js` při buildu vypisuje, kolik se předukládá a kolik se
+vynechalo, a `smoke` má na to kontrolu. Dnes: **43 souborů, 3,3 MB na disku,
+~2,4 MB přes síť** (z toho megabajt je stínování terénu).
+
+**Stínování terénu** (`src/assets/relief-evropa.webp`) v předukládaném seznamu
+naopak **je** — má ho i zjednodušená mapa, tedy i ten, kdo si nic nestáhl.
 
 **Podklad offline mapy** (`src/data/basemap.json`) je samostatný kus, který se dotahuje až
 při prvním selhání dlaždice. Do předukládaného seznamu se dostane sám, protože ten se skládá

@@ -186,8 +186,14 @@ function ztlum(zdroj) {
   return out
 }
 
-/** Stabilní volba z pole podle čísla 0–1. */
-const zVolby = (pole, v) => pole[Math.min(pole.length - 1, Math.floor(v * pole.length))]
+/**
+ * Pořadové číslo kresby 1…`kolik` podle čísla 0–1.
+ *
+ * Strop tam musí být: uložená velikost je zaokrouhlená na dvě desetinná místa,
+ * takže z 0,997 se stane rovná jedna a `1 + floor(1 × 4)` je pět. Chybějící
+ * kresbu MapLibre jen zahlásí do konzole a nakreslí prázdno.
+ */
+const která = (kolik, v) => 1 + Math.min(kolik - 1, Math.floor(v * kolik))
 
 /**
  * Postaví sbírku kreseb.
@@ -206,14 +212,13 @@ function sbirkaKreseb(lesy, hory, mesta) {
   // Lesy: [lat, lon, jehličnatý 0/1, velikost]
   for (const [lat, lon, jehl, v] of lesy.body) {
     const zaklad = jehl ? 'jehl' : 'list'
-    const cislo = 1 + Math.floor(v * 16)
     // Zrcadlená varianta u poloviny bodů – jinak je opakování vidět.
     const zrcadlo = v * 16 - Math.floor(v * 16) > 0.5 ? 'z' : ''
     prvky.push({
       type: 'Feature',
       properties: {
-        ik: `${zaklad}-${Math.min(16, cislo)}${zrcadlo}`,
-        im: `maly-${zaklad}-${1 + Math.floor(v * 4)}${zrcadlo}`,
+        ik: `${zaklad}-${která(16, v)}${zrcadlo}`,
+        im: `maly-${zaklad}-${která(4, v)}${zrcadlo}`,
         v: +(0.85 + v * 0.3).toFixed(2),
         s: -lat,
       },
@@ -227,7 +232,7 @@ function sbirkaKreseb(lesy, hory, mesta) {
     prvky.push({
       type: 'Feature',
       properties: {
-        ik: `${DRUHY[druh]}-${1 + Math.floor(v * 4)}`,
+        ik: `${DRUHY[druh]}-${která(4, v)}`,
         im: `maly-teren-${druh + 1}`,
         v: +(0.9 + v * 0.35).toFixed(2),
         s: -lat,
@@ -247,7 +252,7 @@ function sbirkaKreseb(lesy, hory, mesta) {
     sidla.push({
       type: 'Feature',
       properties: {
-        ik: `${zaklad}-${1 + Math.floor(v * 4)}`,
+        ik: `${zaklad}-${která(4, v)}`,
         im: `maly-sidlo-${zaklad === 'hrad' ? 3 : zaklad === 'ves' ? 2 : zaklad === 'stavba' ? 4 : 1}`,
         v: +(0.9 + v * 0.25).toFixed(2),
         // Velká sídla se kreslí přednostně: při srážce vyhraje nižší klíč.
@@ -264,16 +269,31 @@ function sbirkaKreseb(lesy, hory, mesta) {
   }
 }
 
-/** Vloží kresby do mapy. Po výměně stylu se musí zopakovat – obrázky ji nepřežijí. */
+/** Zrovna se vkládají obrázky? Viz komentář u `vlozObrazky()`. */
+let vkladameObrazky = false
+
+/**
+ * Vloží kresby do mapy. Po výměně stylu se musí zopakovat – obrázky ji nepřežijí.
+ *
+ * POJISTKA PROTI ZACYKLENÍ: `addImage()` sám vyvolá událost `styledata`. Když
+ * na ní tahle funkce visela, volala se ze sebe pro každý ze sto dvaceti
+ * obrázků, dokud nedošel zásobník – a mapa se přitom tvářila, že se jen dlouho
+ * načítá. Odběr je proto jednorázový (`once`) a tohle je druhá pojistka.
+ */
 function vlozObrazky(m, tmavy) {
-  if (!obrazky) return
-  for (const [jmeno, data] of obrazky) {
-    try {
-      if (m.hasImage(jmeno)) m.removeImage(jmeno)
-      m.addImage(jmeno, tmavy ? ztlum(data) : data)
-    } catch (e) {
-      console.warn(`kresbu ${jmeno} se nepodařilo vložit:`, e)
+  if (!obrazky || vkladameObrazky) return
+  vkladameObrazky = true
+  try {
+    for (const [jmeno, data] of obrazky) {
+      try {
+        if (m.hasImage(jmeno)) m.removeImage(jmeno)
+        m.addImage(jmeno, tmavy ? ztlum(data) : data)
+      } catch (e) {
+        console.warn(`kresbu ${jmeno} se nepodařilo vložit:`, e)
+      }
     }
+  } finally {
+    vkladameObrazky = false
   }
 }
 
@@ -308,6 +328,23 @@ function styl(el) {
 
   /** Která kresba: pod sedmičkou jednodušší z přehledového listu. */
   const kteryObrazek = ['step', ['zoom'], ['get', 'im'], ZOOM_PODROBNE, ['get', 'ik']]
+
+  /**
+   * Velikost kresby podle přiblížení, rozkolísaná vlastností `v`.
+   *
+   * Násobení musí být **uvnitř** jednotlivých zastávek, ne kolem celého
+   * výrazu: MapLibre `['zoom']` připouští jen jako přímý vstup `interpolate`
+   * nebo `step`. Napsané naopak (`['*', ['interpolate', …], ['get','v']]`)
+   * projde jako JavaScript, ale validátor stylu **celou vrstvu odmítne**
+   * a kresby se prostě nekreslí – bez jediného slova, když člověk nekouká
+   * do konzole.
+   */
+  const velikost = (zastavky) => [
+    'interpolate',
+    ['linear'],
+    ['zoom'],
+    ...zastavky.flatMap(([z, k]) => [z, ['*', k, ['get', 'v']]]),
+  ]
 
   // `glyphs` se schválně neuvádí vůbec (ani jako undefined – validátor stylu
   // by protestoval). Popisky kreslí Leaflet, takže MapLibre žádné písmo
@@ -417,11 +454,12 @@ function styl(el) {
           'icon-padding': 1,
           // Jižnější kresba se kreslí později, tedy překrývá tu za sebou.
           'symbol-sort-key': ['get', 's'],
-          'icon-size': [
-            '*',
-            ['interpolate', ['linear'], ['zoom'], 4, 0.07, 6, 0.14, 8, 0.26, 10, 0.34],
-            ['get', 'v'],
-          ],
+          'icon-size': velikost([
+            [4, 0.07],
+            [6, 0.14],
+            [8, 0.26],
+            [10, 0.34],
+          ]),
         },
         paint: { 'icon-opacity': 0.94 },
       },
@@ -442,11 +480,11 @@ function styl(el) {
           'icon-allow-overlap': false,
           'icon-padding': 2,
           'symbol-sort-key': ['get', 's'],
-          'icon-size': [
-            '*',
-            ['interpolate', ['linear'], ['zoom'], 5, 0.1, 7, 0.2, 10, 0.32],
-            ['get', 'v'],
-          ],
+          'icon-size': velikost([
+            [5, 0.1],
+            [7, 0.2],
+            [10, 0.32],
+          ]),
         },
       },
     ],
@@ -513,9 +551,10 @@ export function postavVektory(mapa, pane) {
     vrstva.on('add', () => {
       const m = vrstva.getMaplibreMap && vrstva.getMaplibreMap()
       if (!m) return
-      const doplnit = () => vlozObrazky(m, jeTmavy(el))
-      if (m.isStyleLoaded()) doplnit()
-      m.on('styledata', doplnit)
+      // Jednorázově, ne `on`: `addImage()` sám vyvolá `styledata`, takže by
+      // se obsluha volala ze sebe, dokud nedojde zásobník.
+      if (m.isStyleLoaded()) vlozObrazky(m, jeTmavy(el))
+      else m.once('styledata', () => vlozObrazky(m, jeTmavy(el)))
       pripravKresby(m, el)
     })
     return vrstva
@@ -576,9 +615,10 @@ export function prebarviVektory(el) {
   try {
     // `styl()` si data kreseb vezme z `kresby`, takže se po výměně nemusí
     // nastavovat znovu. Obrázky ale výměnu nepřežijí a musí se vložit znovu –
-    // navíc v druhé, ztlumené variantě.
+    // navíc v druhé, ztlumené variantě. Čeká se na nový styl; vkládat je
+    // do rozdělaného by MapLibre zahodil spolu se starým.
     m.setStyle(styl(el))
-    vlozObrazky(m, jeTmavy(el))
+    m.once('styledata', () => vlozObrazky(m, jeTmavy(el)))
   } catch {
     // Když se styl nepovede vyměnit, mapa zůstane ve staré paletě.
     // Je to ošklivé, ale pořád lepší než prázdná obrazovka.

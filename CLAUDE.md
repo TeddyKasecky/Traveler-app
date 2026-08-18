@@ -62,8 +62,8 @@ npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
 
-npm run smoke            # proklikání v prohlížeči, 133 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 121 kontrol
+npm run smoke            # proklikání v prohlížeči, 139 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 126 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
@@ -73,6 +73,7 @@ npm run check-handlers   # napojení tlačítek, 61/61
 npm run check-form       # že formulář vyrábí platná místa, 18/18
 npm run check-images     # existence odkazů na fotky (síť)
 npm run perf             # rychlost startu při zpomaleném procesoru
+node scripts/perf-mapa.mjs  # plynulost posunu a přiblížení stažené mapy
 
 node scripts/screenshots.mjs --baseline   # základna před zásahem
 node scripts/screenshots.mjs && node scripts/compare-screens.mjs   # co se změnilo
@@ -80,7 +81,9 @@ node scripts/make-kat-fota.mjs     # zástupné ilustrace kategorií z grafika/
 node scripts/make-basemap.mjs   # přegeneruje obrysy zemí z Natural Earth (ručně, zřídka)
 node scripts/make-mapa.mjs      # změří výřez Evropy z planety Protomaps
 node scripts/make-mapa.mjs --zapis   # …a zapíše ho do public/mapa-evropa.vbm
-node scripts/make-kresba.mjs    # papír, malované stromy a hory a jejich kotvy
+node scripts/make-kresba.mjs    # papír a 120 kreseb z pěti listů v grafika/terén/
+node scripts/make-relief.mjs         # změří stínování terénu z výškopisu
+node scripts/make-relief.mjs --zapis  # …a zapíše ho do src/assets/relief-evropa.webp
 ```
 
 Pre-commit hook (`.githooks/pre-commit`) pustí `validate-data.mjs`, ale jen když se změnilo
@@ -104,13 +107,13 @@ Runtime závislosti jsou **dvě** a obě vědomě:
 |---|---|
 | `src/main.js` | vstupní bod — jen poskládá díly a zaregistruje odběry událostí, žádná logika |
 | `src/core/` | čistá logika bez DOM: `store.js` (stav + pub/sub), `router.js`, `filters.js`, `search.js`, `geo.js`, `csv.js`, `storage.js` (localStorage), `fotoDb.js` (IndexedDB), `html.js`, `motiv.js` (světlý/tmavý), `barvy.js` (čtení tokenů do JS) |
-| `src/data/` | `places.json` (580 míst), `places-nova.json` (přihrádka), číselníky `categories.js`/`collections.js`/`moods.js`, `validate.js`, `schema.md`, `basemap.json` (podklad offline mapy) |
-| `src/views/` | obrazovky Domů, Mapa (spodní část), Objevuj, Seznam, Plán, Detail, Profil, Porovnání + registr `index.js` |
+| `src/data/` | `places.json` (580 míst), `places-nova.json` (přihrádka), číselníky `categories.js`/`collections.js`/`moods.js`, `validate.js`, `schema.md`, `basemap.json` (obrysy zemí), `mesta.json` (985 měst), `kresby-lesy.json` a `kresby-hory.json` (kam se sázejí kresby), `relief.json` (meze stínování) |
+| `src/views/` | obrazovky Domů, Mapa (spodní část), Objevuj, Seznam, Plán, Detail, Profil, Nastavení, Porovnání + registr `index.js` |
 | `src/components/` | díly použité na víc obrazovkách: `vzory.js` (11 stavebních dílů rozvržení), `vypravaKarta.js`, `vyberMista.js`, `plusMenu.js`, karta, filtry, sheet, wizard, formulář, toast |
-| `src/map/` | Leaflet: `map.js`, `markers.js`, `planLine.js`, `detailMap.js`, `podklad.js` (malovaná offline mapa) |
+| `src/map/` | Leaflet: `map.js`, `markers.js`, `planLine.js`, `detailMap.js`, `podklad.js` (offline mapa), `vektory.js` (kresby a plochy v MapLibre), `vbm.js` + `vbmWorker.js` (čtení staženého balíku) |
 | `src/styles/` | CSS po dílech, pořadí určuje `index.css`; barvy a rozměry jen z `tokens.css` |
 | `src/pwa/` | `sw.js` (šablona service workeru) a `register.js` |
-| `scripts/` | 21 ověřovacích skriptů, viz [.claude/rules/kontroly.md](.claude/rules/kontroly.md) |
+| `scripts/` | 24 ověřovacích a přípravných skriptů, viz [.claude/rules/kontroly.md](.claude/rules/kontroly.md) |
 | `reference/` | bajtově shodná kopie původní aplikace — jen ke čtení |
 
 **Moduly se nevolají napřímo — oznamují si změny událostmi** přes `on()`/`emit()` ze
@@ -135,7 +138,7 @@ _Odvozeno ze skutečného kódu — žádný linter to nevynucuje._
 - Parametry typované JSDoc anotacemi (`@param {Record<string, any>} p`), ne TypeScriptem.
 - CSS: barvy a rozměry výhradně přes proměnné z `tokens.css`, nikdy natvrdo. Nová barva
   patří do sémantické vrstvy **a do obou tmavých bloků** — viz [VZHLED.md](VZHLED.md).
-- Ikony jsou symboly v `src/icons/sprite.svg` (58 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
+- Ikony jsou symboly v `src/icons/sprite.svg` (59 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
 
 Podrobná pravidla podle oblasti (auto-scoped podle cesty):
 [.claude/rules/database.md](.claude/rules/database.md) ·
@@ -170,7 +173,7 @@ pro oba stejně.
 Druhé kolo redesignu přestavělo rozvržení všech obrazovek podle mockupů ve složce
 `grafika/`. **Každá obrazovka odpovídá na jednu otázku** a to určuje, co na ní smí být:
 Domů „co dnes", Mapa „kde to je", Objevuj „nevím, kam chci", Seznam „vím, co chci",
-Plán „jak to pojedeme", Profil „kdo jsem a moje data".
+Plán „jak to pojedeme", Profil „kdo jsem a co mám za sebou", Nastavení „jak to má fungovat".
 
 Obrazovky se skládají z jedenácti společných dílů ve `src/components/vzory.js`
 (hero pás, popisek sekce, řádek, karusel, dlaždice, pilulky, segment, panel statistik,
@@ -180,6 +183,12 @@ z vlastního HTML — kdyby si je psala každá zvlášť, do měsíce by se roz
 Co se kam přestěhovalo a proč, je v [VZHLED.md](VZHLED.md) v části
 „Rozvržení podle předloh". Nejdůležitější pro práci s kódem:
 
+- **Profil × Nastavení.** Profil odpovídá na „kdo jsem a co mám za sebou" — avatar,
+  jméno, pruh a čísla. Nastavení na „jak to má fungovat" — vzhled, offline mapa,
+  zálohy, CSV, místo v telefonu, zdroje dat. Otevírají se dvěma kolečky vpravo
+  nahoře, zleva profil a nastavení. Obsah Nastavení je **staticky v `index.html`**,
+  protože se na něj věší obsluha při startu; `renderNastaveni()` obnovuje jen
+  živé části (`#nastaveniInner`, stav mapy, datum zálohy).
 - **Statické lišty patří do `index.html`**, ne do `render*()`. Prvky s obsluhou navěšenou
   při startu (`#q`, `#qMapa`, `#fReg`, `#planNav`, `#expBtn`, `.motivbtn`, `#csvIn`)
   musí existovat od začátku — překreslení by obsluhu smazalo.
@@ -211,14 +220,27 @@ Co se kam přestěhovalo a proč, je v [VZHLED.md](VZHLED.md) v části
 - **Přepínač podkladu mapy**: výchozí je online mapa z OpenStreetMap, malovaná mapa
   je offline varianta (`prefs.podklad`, pilulka vlevo nahoře). Plochy zemí leží pod
   dlaždicemi i online, aby bez signálu nevznikla díra.
-- **Malovaná mapa má dvě cesty kreslení a to je schválně.** Když je stažený balík
-  `mapa-evropa.vbm` a prohlížeč umí WebGL, kreslí ji MapLibre z vektorových dlaždic
-  (lesy, louky, pole, voda, silnice). Jinak nastoupí staré plátno z `basemap.json` —
-  jen obrysy, ale funguje vždycky: bez WebGL, bez stažené mapy i v jednosouborové
+- **Offline mapa má dvě cesty kreslení a to je schválně.** Když je stažený balík
+  `mapa-evropa.vbm`, prohlížeč umí WebGL a v Nastavení je zvolená malovaná, kreslí
+  ji MapLibre z vektorových dlaždic (lesy, louky, pole, voda, silnice a kresby
+  krajiny). Jinak nastoupí zjednodušená: plátno s obrysy z `basemap.json`, města
+  a reliéf. Funguje vždycky — bez WebGL, bez stažené mapy i v jednosouborové
   variantě. Rozcestník je v `map/podklad.js`.
-- **Balík mapy se nepředukládá do cache.** Má skoro 10 MB a stahuje se na vyžádání
-  z Profilu do IndexedDB (`core/mapaDb.js`, vlastní databáze `vandrbuch-mapa`, ne ta
-  s fotkami). `vite.config.js` proto `.vbm` ze seznamu vyřazuje.
+- **Kresby stromů a hor nejsou prvky stránky.** Do srpna 2026 to bylo sto deset
+  Leafletových značek s CSS filtrem, které prohlížeč překresloval při každém posunu.
+  Dnes je kreslí MapLibre jako symboly na GPU a **jen se staženou mapou**; hustotu
+  si řídí sama srážkami. Bez stažení tam kresby nejsou vůbec, a je to tak správně.
+- **Stínování terénu je jeden obrázek** (`src/assets/relief-evropa.webp`, ~1 MB)
+  přes `L.ImageOverlay`, ne vrstva MapLibre — díky tomu ho má i zjednodušená mapa.
+  Do jednosouborové varianty se nebalí. Vyrábí ho `scripts/make-relief.mjs`.
+- **Balík mapy má značku `VBM2`.** Starší `VBM1` aplikace odmítne a Nastavení
+  napíše, že je zastaralá. Bez toho by mapa tiše spadla na obrysy.
+- **Do předukládané cache nejde nic kolem stažené mapy.** Balík `.vbm` (3,7 MB) se
+  stahuje na vyžádání z Nastavení do IndexedDB (`core/mapaDb.js`, vlastní databáze
+  `vandrbuch-mapa`, ne ta s fotkami). Z bundle navíc vypadává MapLibre, 120 kreseb
+  a souřadnice lesů a hor — přes 4 MB, které jsou k ničemu každému, kdo si mapu
+  nestáhne. Neztratí se: service worker od srpna 2026 **ukládá i to, co se stáhne
+  až za běhu**. Filtr je v `vite.config.js` podle jména souboru a hlídá ho `smoke`.
 - **318 míst nemá `img`** a zobrazuje se u nich akvarel podle kategorie
   (`src/assets/kategorie/`); kreslená pohlednice z `postcard.js` zůstává pod ním jako
   záchrana, když se obrázek nenačte. Je to záměr, ne nedodělek — fotky nedoplňuj náhodně.

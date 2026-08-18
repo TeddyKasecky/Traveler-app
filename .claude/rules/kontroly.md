@@ -11,7 +11,7 @@ _Zjištěno auditem: 13 souborů v `scripts/`, `package.json:7-24`, `PARITA.md`,
 `.githooks/pre-commit`._
 
 **Není tu žádný test framework** — chybí Jest, Vitest, `tests/` i `npm test`. Nezaváděj je
-bez vyžádání. Místo nich je 21 samostatných spustitelných `.mjs` skriptů; každý vypíše
+bez vyžádání. Místo nich je 24 samostatných spustitelných `.mjs` skriptů; každý vypíše
 `X / Y` a skončí kódem 1 při chybě.
 
 ## Co který skript ověřuje
@@ -28,14 +28,17 @@ bez vyžádání. Místo nich je 21 samostatných spustitelných `.mjs` skriptů
 | `check-handlers.mjs` | `npm run check-handlers` | napojení tlačítek za běhu, 61/61 |
 | `check-form.mjs` | `npm run check-form` | že formulář vyrábí platná místa, 18/18 |
 | `check-images.mjs` | `npm run check-images` | existenci odkazů na fotky — **chodí na síť** |
-| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 133 / 121 kontrol |
+| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 139 / 126 kontrol |
 | `parity.mjs` | `npm run parity` | kontrolní seznam z `PARITA.md`, 26 bodů |
 | `perf.mjs` | `npm run perf` | rychlost startu při zpomaleném procesoru |
+| `perf-mapa.mjs` | ručně | plynulost posunu a přiblížení **stažené** malované mapy |
 | `screenshots.mjs` + `compare-screens.mjs` | ručně | 8 obrazovek proti základně, i v tmavém režimu |
 | `slouc.mjs` | `npm run slouc` | přesune přihrádku do hlavního souboru |
 | `make-icons.mjs`, `fetch-fonts.mjs` | ručně | jednorázoví pomocníci (ikony PWA, stažení fontů) |
 | `make-basemap.mjs` | ručně | přegeneruje `src/data/basemap.json` z Natural Earth — **chodí na síť** |
-| `make-kresba.mjs` | ručně | papír, malované stromy a hory a jejich kotvy pro offline mapu |
+| `make-kresba.mjs` | ručně | papír a 120 kreseb z pěti listů v `grafika/terén/` |
+| `make-relief.mjs` | ručně | stínování terénu z výškopisu — **chodí na síť** |
+| `mvt.mjs` | — | není kontrola: čtení a filtrování vektorových dlaždic pro `make-mapa.mjs` |
 
 `nove-styly.mjs` není kontrola, ale sdílený seznam CSS prvků, které v originále protějšek
 nemají. Používá ho `check-css-parity.mjs` i `parity.mjs` — když měl každý svůj, přidání
@@ -65,6 +68,7 @@ Chromium se schválně nestahuje. Skripty proti `dist/` potřebují napřed `npm
 | `src/data/**` | `npm run validate` (hook to udělá sám) |
 | `src/core/storage.js`, `store.js`, `fotoDb.js` | `npm run check-uloziste` |
 | `src/map/**`, nový CSS soubor | `npm run smoke`, `npm run check-tokeny`, `npm run parity` |
+| `src/map/vektory.js`, `vbm.js` | k tomu `node scripts/perf-mapa.mjs` — bez měření je „zrychlili jsme to" jen dojem |
 | CSS, `tokens.css` | `npm run check-tokeny` |
 | `store.plan`, dny v plánu, výpravy, záloha | `npm run check-dny` |
 | filtry, hledání | `npm run check-filters` |
