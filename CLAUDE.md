@@ -62,12 +62,12 @@ npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
 
-npm run smoke            # proklikání v prohlížeči, 167 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 153 kontrol
+npm run smoke            # proklikání v prohlížeči, 177 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 163 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
-npm run check-dny        # dělení na dny, výpravy, automatické dělení, 46 bodů
+npm run check-dny        # dny, výpravy, složky a záloha, 74 bodů
 npm run check-filters    # 134 kombinací filtrů
 npm run check-handlers   # napojení tlačítek, 61/61
 npm run check-form       # že formulář vyrábí platná místa, 18/18
@@ -139,7 +139,7 @@ _Odvozeno ze skutečného kódu — žádný linter to nevynucuje._
 - Parametry typované JSDoc anotacemi (`@param {Record<string, any>} p`), ne TypeScriptem.
 - CSS: barvy a rozměry výhradně přes proměnné z `tokens.css`, nikdy natvrdo. Nová barva
   patří do sémantické vrstvy **a do obou tmavých bloků** — viz [VZHLED.md](VZHLED.md).
-- Ikony jsou symboly v `src/icons/sprite.svg` (59 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
+- Ikony jsou symboly v `src/icons/sprite.svg` (60 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
 
 Podrobná pravidla podle oblasti (auto-scoped podle cesty):
 [.claude/rules/database.md](.claude/rules/database.md) ·
@@ -174,7 +174,7 @@ pro oba stejně.
 Druhé kolo redesignu přestavělo rozvržení všech obrazovek podle mockupů ve složce
 `grafika/`. **Každá obrazovka odpovídá na jednu otázku** a to určuje, co na ní smí být:
 Domů „co dnes", Mapa „kde to je", Objevuj „nevím, kam chci", Seznam „vím, co chci",
-Plán „jak to pojedeme" (karty Cesta · Přehled · Plán), Profil „kdo jsem a co mám
+Plán „jak to pojedeme" (karty Na cestě · Výpravy · Itinerář), Profil „kdo jsem a co mám
 za sebou", Nastavení „jak to má fungovat".
 
 Obrazovky se skládají z jedenácti společných dílů ve `src/components/vzory.js`
@@ -203,8 +203,9 @@ Co se kam přestěhovalo a proč, je v [VZHLED.md](VZHLED.md) v části
   otevření Mapy (`prefs.vypravaPredstavena`), pak je sbalená v bublině; uložená
   místa jsou vytahovací plát a dole po nich zůstane proužek s počtem. Obojí je
   během používání **jen v paměti** — mapa má po startu vždycky maximum místa.
-- **Výpravy** (`store.vypravy`, `store.vypravaNazev`) fungují stejně jako dny: přidat
-  vedle, nikdy nepřepisovat, žádná migrace. Hlídá to `npm run check-dny`.
+- **Výpravy** (`store.vypravy`, `store.vypravaNazev`, složky `store.slozky`
+  a `store.vypravaSlozka`) fungují stejně jako dny: přidat vedle, nikdy
+  nepřepisovat, žádná migrace. Hlídá to `npm run check-dny`.
 - **Automatické dělení na dny** (`rozdelPodleHodin`, `rozdelNaPocet` v `views/plan/dny.js`)
   jsou čisté funkce délky úseků → délky dnů. Zápis jde přes `nastavDny()`, které odmítne
   rozdělení, jehož součet nesedí na počet zastávek. **Před přepsáním ručního dělení se
@@ -212,15 +213,25 @@ Co se kam přestěhovalo a proč, je v [VZHLED.md](VZHLED.md) v části
 
 ## Plán, cesty a bloky (srpen 2026)
 
-Plán má tři karty: **Cesta** (probíhající cesta – odznačování, pauzy, plánové
-achievementy, archiv po letech), **Přehled** (čísla vybrané výpravy, srovnání
-s druhou jako zapínatelná nadstavba) a **Plán** (editor: tažení za prstem
-i celých dnů, sbalení dne, vlastní bloky).
+Plán má tři karty (přejmenováno v srpnu 2026): **Na cestě** (probíhající
+cesta – odznačování, pauzy, plánové achievementy, archiv po letech),
+**Výpravy** (knihovna: sbalitelné složky, akce na řádku, tažení dlouhým
+podržením, žádný věčně vybraný plán) a **Itinerář** (všechno o otevřené
+výpravě: tažení za prstem i celých dnů, sbalení dne, vlastní bloky, Vyjet,
+dole čísla výpravy se srovnáním – dřívější karta Přehled zanikla).
+Výběr plánu je jedině v knihovně; ťuknutí výpravu otevře v Itineráři
+(datově je to dnešní aktivní výprava, pojem se už nikam nepíše).
 
 - **Nové klíče ve `store`**: `cesta` (probíhající, čas se počítá ze začátku
   a pauz, nikde se netiká), `cesty` (archiv, souhrn se počítá při ukončení),
-  `bloky` (klíčované názvem výpravy), `achievementy` (získaná id). Platí
+  `bloky` (klíčované názvem výpravy), `achievementy` (získaná id), `slozky`
+  (názvy složek v pořadí) a `vypravaSlozka`. Složka je pole `slozka` přímo
+  na záznamu výpravy, ne mapa podle názvu – název je křehká identita. Platí
   „přidat vedle, nikdy nepřepisovat, žádný zápis při startu".
+- **Přejmenování výpravy stěhuje bloky** (`prejmenuj` ve `vypravy.js`) –
+  `store.bloky` klíčuje názvem a bez stěhování by osiřely. Fantomová prázdná
+  bezejmenná výprava se v seznamech nevypisuje, dokud žádná jiná není;
+  Itinerář ji ale dál edituje a první zastávkou se zhmotní.
 - **Cesta je otisk plánu** z okamžiku vyjetí (`zastavky`, `dny` jako délky) –
   plán se dá za jízdy upravovat a cesta se nerozbije.
 - **Achievementy**: definice je datová, uložená jsou jen id získaných.
@@ -281,8 +292,10 @@ i celých dnů, sbalení dne, vlastní bloky).
 - **318 míst nemá `img`** a zobrazuje se u nich akvarel podle kategorie
   (`src/assets/kategorie/`); kreslená pohlednice z `postcard.js` zůstává pod ním jako
   záchrana, když se obrázek nenačte. Je to záměr, ne nedodělek — fotky nedoplňuj náhodně.
-- **Záloha nese `prio`, `planDny`, `vypravy` i `vypravaNazev`** (N2 hotové). Staré zálohy
-  tyhle klíče nemají a obnova je přeskočí.
+- **Záloha nese `prio`, `planDny`, `vypravy`, `vypravaNazev` a od srpna 2026
+  i `cesta`, `cesty`, `bloky`, `achievementy`, `slozky` a `vypravaSlozka`**.
+  Staré zálohy tyhle klíče nemají a obnova je přeskočí; rozjetou cestu
+  v telefonu obnova nepřepíše a archiv slučuje podle času vyjetí.
 - **Badge u filtrů nepočítá filtr `fire`** („Musíme!") (N1). Nové filtry `ulozene`
   a `vPlanu` se do něj naopak počítají.
 - **Výplně ikon nejdou přes CSS.** Ikony se vkládají jako `<use>` a do stromu instance
