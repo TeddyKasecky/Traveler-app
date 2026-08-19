@@ -359,3 +359,9 @@
 /* ---------- akce nad itinerářem ---------- */
 .itiakce{margin:2px 0 12px}
 .itiakce .btn.primary{flex:1}
+
+/* ---------- tažení v knihovně ---------- */
+/* pointer-events:none – zvednutý prvek nesmí stínit elementFromPoint. */
+.vypravaradek.tahne,.slozka-radek.tahne{position:relative;z-index:60;box-shadow:var(--stin-3);
+  pointer-events:none;transition:none;opacity:.94}
+.drop-cil{outline:2px dashed var(--akcent);outline-offset:2px}

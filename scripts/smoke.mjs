@@ -385,6 +385,37 @@ await page.waitForTimeout(300)
 await kontrola('složka jde sbalit', () => page.locator('.slozka-obsah').count(), 0)
 await page.click('.slozka-radek')
 await page.waitForTimeout(300)
+
+// Tažení dlouhým podržením (druhá cesta vedle pilulek): řádek výpravy nad
+// hlavičku druhé složky, pak přeskládání složek tažením hlavičky.
+page.once('dialog', (d) => d.accept('Alpy'))
+await page.click('#slozkaNova')
+await page.waitForTimeout(400)
+{
+  const radek = await page.locator('.slozka-obsah .vypravaradek').boundingBox()
+  const alpy = await page.locator('.slozka-radek[data-slozka="Alpy"]').boundingBox()
+  await page.mouse.move(radek.x + radek.width / 2, radek.y + radek.height / 2)
+  await page.mouse.down()
+  await page.waitForTimeout(500)
+  await page.mouse.move(alpy.x + alpy.width / 2, alpy.y + alpy.height / 2, { steps: 6 })
+  await page.mouse.up()
+  await page.waitForTimeout(500)
+}
+await kontrola('tažení přesunulo výpravu do druhé složky', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).vypravaSlozka), 'Alpy')
+{
+  const balkan = await page.locator('.slozka-radek[data-slozka="Balkán"]').boundingBox()
+  const alpy = await page.locator('.slozka-radek[data-slozka="Alpy"]').boundingBox()
+  await page.mouse.move(alpy.x + 60, alpy.y + alpy.height / 2)
+  await page.mouse.down()
+  await page.waitForTimeout(500)
+  await page.mouse.move(balkan.x + 60, balkan.y + balkan.height / 2, { steps: 6 })
+  await page.mouse.up()
+  await page.waitForTimeout(500)
+}
+await kontrola('tažení hlavičky přeskládá složky', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).slozky.join(',')), 'Alpy,Balkán')
+
 await page.click('.slozka-obsah .vypravaradek')
 await page.waitForTimeout(500)
 await kontrola('ťuknutí na výpravu otevře Itinerář', () => page.locator('#planSegment button.on').innerText(), 'Itinerář')

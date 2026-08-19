@@ -157,7 +157,10 @@ export function renderPlan() {
 
   napoj(wrap, items)
   if (dil === 'cesta') napojCestu(wrap, renderPlan)
-  if (dil === 'vypravy') napojKnihovnu(wrap)
+  if (dil === 'vypravy') {
+    napojKnihovnu(wrap)
+    napojTahaniKnihovny(wrap)
+  }
   if (dil === 'itinerar') {
     napojCislaPlanu(wrap, renderPlan)
     // Překresluje se přes draw(), ne jen renderPlan(): vlastní místa mění
@@ -288,7 +291,7 @@ function knihovna() {
     if (s.slozka) {
       casti.push(hlavickaSlozky(s))
       if (!sbaleneSlozky.has(s.slozka))
-        casti.push(`<div class="slozka-obsah">${s.vypravy.map(radekVypravy).join('')}</div>`)
+        casti.push(`<div class="slozka-obsah" data-slozka="${esc(s.slozka)}">${s.vypravy.map(radekVypravy).join('')}</div>`)
     } else {
       const kus = s.vypravy.map(radekVypravy).join('')
       casti.push(maSlozky ? `<div class="sekce"><span class="sekce-text">Nezařazené</span></div>${kus}` : kus)
@@ -397,6 +400,164 @@ function napojKnihovnu(wrap) {
       novaSlozka(n)
       renderPlan()
     }
+}
+
+/**
+ * Tažení v knihovně – dlouhé podržení (srpen 2026).
+ *
+ * Řádek výpravy se po ~0,35 s podržení zvedne a jde za prstem; puštění nad
+ * složkou (hlavičkou i obsahem, klidně sbalenou) výpravu přesune přes
+ * `presunVypravu`. Hlavička složky se tažením řadí – přeskládá `store.slozky`.
+ * Rychlé třídění přes pilulky v akcích řádku zůstává, tažení je druhá cesta.
+ *
+ * BEZ `touch-action: none` na řádcích – ty musí dál rolovat seznam. Posun
+ * stránky se blokuje až PO zvednutí nepasivním `touchmove` s preventDefault;
+ * pohyb před zvednutím dlouhé podržení zruší a nechá prst rolovat. Zvednutý
+ * prvek má `pointer-events: none`, aby `elementFromPoint` viděl cíl pod ním.
+ */
+function napojTahaniKnihovny(wrap) {
+  const rolovac = document.querySelector('#panelPlan .inner')
+  const zrusCil = () => {
+    for (const el of wrap.querySelectorAll('.drop-cil')) el.classList.remove('drop-cil')
+  }
+
+  /** Dlouhé podržení: zvedni → behem(ev, dy) → poloz(ev | null při zrušení). */
+  const dlouze = (el, { smiZacit, zvedni, behem, poloz }) => {
+    el.onpointerdown = (e) => {
+      if (e.button) return
+      if (smiZacit && !smiZacit(e)) return
+      const y0 = e.clientY
+      const x0 = e.clientX
+      let zvednuto = false
+      let posledniY = y0
+      let rafId = 0
+      const blokujScroll = (te) => te.preventDefault()
+
+      const krokRolovani = () => {
+        const OKRAJ = 70
+        let dy = 0
+        if (posledniY < OKRAJ + 60) dy = -Math.ceil((OKRAJ + 60 - posledniY) / 6)
+        else if (posledniY > window.innerHeight - OKRAJ) dy = Math.ceil((posledniY - (window.innerHeight - OKRAJ)) / 6)
+        if (dy && rolovac) rolovac.scrollTop += dy
+        rafId = requestAnimationFrame(krokRolovani)
+      }
+
+      const timer = setTimeout(() => {
+        zvednuto = true
+        el.setPointerCapture(e.pointerId)
+        el.addEventListener('touchmove', blokujScroll, { passive: false })
+        rafId = requestAnimationFrame(krokRolovani)
+        zvedni()
+      }, 350)
+
+      const uklid = () => {
+        clearTimeout(timer)
+        cancelAnimationFrame(rafId)
+        el.onpointermove = null
+        el.onpointerup = null
+        el.onpointercancel = null
+        el.removeEventListener('touchmove', blokujScroll)
+      }
+
+      el.onpointermove = (ev) => {
+        if (!zvednuto) {
+          // Pohyb před zvednutím = rolování; tažení se nekoná.
+          if (Math.abs(ev.clientY - y0) > 8 || Math.abs(ev.clientX - x0) > 8) uklid()
+          return
+        }
+        posledniY = ev.clientY
+        behem(ev, ev.clientY - y0)
+      }
+      el.onpointerup = (ev) => {
+        const bylo = zvednuto
+        uklid()
+        if (!bylo) return
+        poloz(ev)
+        // Klik po tažení by řádek otevřel nebo složku sbalil – spolknout
+        // (stejná mechanika jako v components/tah.js).
+        const spolkni = (c) => {
+          c.stopImmediatePropagation()
+          c.preventDefault()
+        }
+        el.addEventListener('click', spolkni, { capture: true, once: true })
+        setTimeout(() => el.removeEventListener('click', spolkni, { capture: true }), 350)
+      }
+      el.onpointercancel = () => {
+        const bylo = zvednuto
+        uklid()
+        if (bylo) poloz(null)
+      }
+    }
+  }
+
+  /** Kam by teď výprava spadla: složka pod prstem, '' = mezi nezařazené. */
+  const najdiCil = (x, y) => {
+    const pod = document.elementFromPoint(x, y)
+    if (!pod) return null
+    const hlava = pod.closest('.slozka-radek')
+    if (hlava) return { nazev: hlava.dataset.slozka, el: hlava }
+    const obsah = pod.closest('.slozka-obsah')
+    if (obsah) return { nazev: obsah.dataset.slozka, el: obsah }
+    const oblast = pod.closest('#planWrap .vypravy')
+    if (oblast) return { nazev: '', el: oblast }
+    return null
+  }
+
+  for (const r of wrap.querySelectorAll('.vypravaradek[data-vyprava]')) {
+    dlouze(r, {
+      smiZacit: (e) => !e.target.closest('button'),
+      zvedni: () => r.classList.add('tahne'),
+      behem: (ev, dy) => {
+        r.style.transform = `translateY(${dy}px)`
+        zrusCil()
+        const cil = najdiCil(ev.clientX, ev.clientY)
+        if (cil && cil.el !== r) cil.el.classList.add('drop-cil')
+      },
+      poloz: (ev) => {
+        // Cíl se hledá PŘED úklidem: shozením .tahne se řádku vrátí
+        // pointer-events a cestou zpátky by ho elementFromPoint chytil
+        // místo složky pod prstem.
+        const cil = ev && najdiCil(ev.clientX, ev.clientY)
+        r.classList.remove('tahne')
+        r.style.transform = ''
+        zrusCil()
+        const i = Number(r.dataset.vyprava)
+        if (cil) presunVypravu(i, cil.nazev)
+        renderPlan()
+      },
+    })
+  }
+
+  for (const h of wrap.querySelectorAll('.slozka-radek')) {
+    dlouze(h, {
+      smiZacit: (e) => !e.target.closest('button'),
+      zvedni: () => h.classList.add('tahne'),
+      behem: (ev, dy) => {
+        h.style.transform = `translateY(${dy}px)`
+        zrusCil()
+        const pod = document.elementFromPoint(ev.clientX, ev.clientY)
+        const cil = pod && pod.closest('.slozka-radek')
+        if (cil && cil !== h) cil.classList.add('drop-cil')
+      },
+      poloz: (ev) => {
+        // Cíl před úklidem – stejný důvod jako u řádku výpravy.
+        const pod = ev && document.elementFromPoint(ev.clientX, ev.clientY)
+        const cil = pod && pod.closest('.slozka-radek')
+        h.classList.remove('tahne')
+        h.style.transform = ''
+        zrusCil()
+        if (!cil || cil === h) return renderPlan()
+        const sez = store.slozky || []
+        const od = sez.indexOf(h.dataset.slozka)
+        const kam = sez.indexOf(cil.dataset.slozka)
+        if (od < 0 || kam < 0) return renderPlan()
+        sez.splice(od, 1)
+        sez.splice(kam, 0, h.dataset.slozka)
+        save()
+        renderPlan()
+      },
+    })
+  }
 }
 
 /* ---------- Itinerář (karta) ---------- */
