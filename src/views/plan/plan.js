@@ -34,7 +34,7 @@ import { otevriVyber } from '../../components/vyberMista.js'
 import { goTo, draw, mapa, priblizNaFiltr, vyberBod } from '../../map/map.js'
 import { aktivujZalozku } from '../../core/router.js'
 import { stahniSoubor } from '../../core/csv.js'
-import { dnyPlanu, pridejDen, presunDoDne, zrusDny, rozdelPodleHodin, rozdelNaPocet, nastavDny } from './dny.js'
+import { dnyPlanu, pridejDen, presunDoDne, zrusDny, nastavDny } from './dny.js'
 import { gpxZPlanu, nazevSouboru } from './gpx.js'
 import {
   seznamVyprav, seznamSlozek, prepniVypravu, novaVyprava, novaSlozka, prejmenujSlozku,
@@ -93,16 +93,6 @@ export function planStats(items) {
   for (let i = 1; i < items.length; i++) d += dkm(items[i - 1], items[i])
   const road = d * KLIKATOST
   return { air: d, road, hrs: road / KMH }
-}
-
-/**
- * Čas jízdy na každou zastávku, v hodinách. `useky[0]` je 0 – na první
- * zastávku se nikam nejede. Vstup pro automatické dělení na dny.
- * @param {Array<Record<string, any>>} items
- * @returns {number[]}
- */
-function useky(items) {
-  return items.map((p, i) => (i === 0 ? 0 : (dkm(items[i - 1], p) * KLIKATOST) / KMH))
 }
 
 /**
@@ -624,17 +614,6 @@ function akceItinerare(items) {
   </div>`
 }
 
-/** Tlačítka na automatické rozdělení trasy na dny. */
-function rozdeleni() {
-  return `<div class="rozdeleni">
-    <span>Rozdělit na dny</span>
-    <div class="btnrow" style="margin:0">
-      <button class="btn small" id="planDnyHodiny">${IC('i-clock')}podle hodin</button>
-      <button class="btn small" id="planDnyPocet">${IC('i-kalendar')}podle počtu dní</button>
-    </div>
-  </div>`
-}
-
 /** Prázdná výprava. Nabídne obojí, čím se dá začít. */
 function prazdno() {
   return `<div class="empty">${IC('i-van')}Ve výpravě zatím nejsou žádné zastávky.
@@ -700,8 +679,7 @@ function itinerar(items, dny) {
           <button class="btn small" id="planDen">${IC('i-kalendar')}Přidat den</button>
           ${vicDnu ? `<button class="btn small" id="planBezDnu">Zrušit dny</button>` : ''}
         </div>`
-      : '') +
-    (items.length > 2 ? rozdeleni() : '')
+      : '')
   )
 }
 
@@ -819,12 +797,6 @@ function napoj(wrap, items) {
       draw()
     }
 
-  const dnyHodiny = document.getElementById('planDnyHodiny')
-  if (dnyHodiny) dnyHodiny.onclick = () => rozdelDny('hodiny', items)
-
-  const dnyPocet = document.getElementById('planDnyPocet')
-  if (dnyPocet) dnyPocet.onclick = () => rozdelDny('pocet', items)
-
   const bezDnu = document.getElementById('planBezDnu')
   if (bezDnu)
     bezDnu.onclick = () => {
@@ -883,105 +855,160 @@ function posun(id, smer) {
 }
 
 /**
- * Tahání za úchyt – zastávky i celé sbalené dny.
+ * Tažení v itineráři – zastávky jednotlivě, dny jako celé skupiny.
  *
  * Ukazatelové události, ne HTML5 drag-and-drop: ten na mobilu nefunguje.
- * Tažená položka jde za prstem, sousedi se před ní ROZESTUPUJÍ (transform,
- * žádné překreslování během tažení), takže je pořád vidět, kam spadne.
- * U okraje obrazovky se seznam sám roluje – bez toho se na telefonu nedá
- * přesunout nic přes půl seznamu.
+ * Tažené jde za prstem, sousedi se ROZESTUPUJÍ (transform, žádné
+ * překreslování během tažení). U okraje obrazovky se seznam sám roluje.
  *
- * Přesouvá se jen `store.plan`; dělení na dny zůstává jak bylo – délky dnů
- * se počítají z počtů, takže zastávka po přesunu spadne do dne podle pozice.
- * Přesun CELÉHO dne přeskládá úsek `store.plan` i pořadí délek v `planDny`
- * a zapisuje přes `nastavDny()`, které odmítne rozdělení s nesedícím součtem.
+ * DVOJÍ AKTIVACE (srpen 2026): úchyt „⋮" zvedá OKAMŽITĚ – je malý, ale bez
+ * čekání. Dlouhé podržení (~0,35 s) kdekoli na řádku nebo hlavičce dne zvedá
+ * taky – velká plocha pro palec. Krátký tah mimo úchyt dál roluje stránku;
+ * posun se blokuje až po zvednutí nepasivním touchmove (vzor z knihovny).
+ *
+ * DEN SE TÁHNE CELÝ: hlavička + zastávky + bloky jako jedna skupina, ostatní
+ * dny uhýbají o výšku celé skupiny. Dřív se táhly jen hlavičky mezi sebou
+ * a obsah stál na místě – vypadalo to rozbitě. Zápis dělení jde výhradně
+ * přes `nastavDny()`, které odmítne rozdělení s nesedícím součtem.
  */
 function napojTahani(wrap) {
   const seznam = wrap.querySelector('#itinerar')
   if (!seznam) return
   const rolovac = document.querySelector('#panelPlan .inner')
+  const MEZERA = 8
 
-  /** Společná mechanika: prvek jde za prstem, sousedi uhýbají. */
-  const tahni = (uchyt, el, radky, poDrop) => {
-    uchyt.style.touchAction = 'none'
-    uchyt.onpointerdown = (e) => {
-      if (e.button) return
-      e.preventDefault()
-      uchyt.setPointerCapture(e.pointerId)
+  /** Svislý posun, který na prvku zrovna je (z uhýbání sousedů). */
+  const aplikovanyPosun = (el) => {
+    const m = /translateY\((-?[\d.]+)px\)/.exec(el.style.transform || '')
+    return m ? Number(m[1]) : 0
+  }
 
-      const y0 = e.clientY
-      const vyska = el.offsetHeight + 8 // 8 = mezera mezi kartami
-      const start = radky.indexOf(el)
-      let cil = start
-      let rafId = 0
-      let posledniY = y0
-      el.classList.add('tahne')
+  /**
+   * Jádro tažení nad skupinami. Skupina = { prvky: [el, …] } – zastávka je
+   * skupina o jednom prvku, den o hlavičce a celém obsahu.
+   */
+  const zahaj = (drzak, e, skupiny, ja, poDrop, poUklidu) => {
+    const y0 = e.clientY
+    let posledniY = y0
+    let rafId = 0
+    const vyska = ja.prvky.reduce((a, p) => a + p.offsetHeight + MEZERA, 0)
+    const start = skupiny.indexOf(ja)
+    let cil = start
+    for (const p of ja.prvky) p.classList.add('tahne')
 
-      const prekresliPosuny = () => {
-        for (let i = 0; i < radky.length; i++) {
-          const r = radky[i]
-          if (r === el) continue
-          // Sousedi mezi startem a cílem uhnou o výšku tažené položky.
-          let posun = 0
-          if (start < cil && i > start && i <= cil) posun = -vyska
-          else if (start > cil && i >= cil && i < start) posun = vyska
-          r.style.transform = posun ? `translateY(${posun}px)` : ''
-        }
-      }
+    const prekresliPosuny = () => {
+      skupiny.forEach((sk, i) => {
+        if (sk === ja) return
+        let posun = 0
+        if (start < cil && i > start && i <= cil) posun = -vyska
+        else if (start > cil && i >= cil && i < start) posun = vyska
+        for (const p of sk.prvky) p.style.transform = posun ? `translateY(${posun}px)` : ''
+      })
+    }
 
-      const krokRolovani = () => {
-        // Autoscroll u okrajů: rychlost roste s blízkostí k okraji.
-        const OKRAJ = 70
-        let dy = 0
-        if (posledniY < OKRAJ + 60) dy = -Math.ceil((OKRAJ + 60 - posledniY) / 6)
-        else if (posledniY > window.innerHeight - OKRAJ) dy = Math.ceil((posledniY - (window.innerHeight - OKRAJ)) / 6)
-        if (dy && rolovac) rolovac.scrollTop += dy
-        rafId = requestAnimationFrame(krokRolovani)
-      }
+    const krokRolovani = () => {
+      // Autoscroll u okrajů: rychlost roste s blízkostí k okraji.
+      const OKRAJ = 70
+      let dy = 0
+      if (posledniY < OKRAJ + 60) dy = -Math.ceil((OKRAJ + 60 - posledniY) / 6)
+      else if (posledniY > window.innerHeight - OKRAJ) dy = Math.ceil((posledniY - (window.innerHeight - OKRAJ)) / 6)
+      if (dy && rolovac) rolovac.scrollTop += dy
       rafId = requestAnimationFrame(krokRolovani)
+    }
+    rafId = requestAnimationFrame(krokRolovani)
 
-      uchyt.onpointermove = (ev) => {
-        posledniY = ev.clientY
-        el.style.transform = `translateY(${ev.clientY - y0}px)`
-        // Cíl podle středů OSTATNÍCH řádků v jejich PŮVODNÍ poloze – uhnuté
-        // transformy se do getBoundingClientRect promítají, proto se posun
-        // odečítá zpátky.
-        let novy = 0
-        for (const r of radky) {
-          if (r === el) continue
-          const rect = r.getBoundingClientRect()
-          const posunuty = r.style.transform ? (r.style.transform.includes('-') ? vyska : -vyska) : 0
-          if (ev.clientY > rect.top + posunuty + rect.height / 2) novy++
+    drzak.onpointermove = (ev) => {
+      posledniY = ev.clientY
+      for (const p of ja.prvky) p.style.transform = `translateY(${ev.clientY - y0}px)`
+      // Cíl podle středů OSTATNÍCH skupin v PŮVODNÍ poloze – uhnutí se odečítá.
+      let novy = 0
+      for (const sk of skupiny) {
+        if (sk === ja) continue
+        const prvni = sk.prvky[0].getBoundingClientRect()
+        const posledni = sk.prvky[sk.prvky.length - 1].getBoundingClientRect()
+        const stred = (prvni.top + posledni.bottom) / 2 - aplikovanyPosun(sk.prvky[0])
+        if (ev.clientY > stred) novy++
+      }
+      cil = Math.max(0, Math.min(skupiny.length - 1, novy))
+      prekresliPosuny()
+    }
+
+    const konec = (spolknoutKlik) => {
+      drzak.onpointermove = null
+      drzak.onpointerup = null
+      drzak.onpointercancel = null
+      cancelAnimationFrame(rafId)
+      if (poUklidu) poUklidu()
+      for (const p of ja.prvky) p.classList.remove('tahne')
+      for (const sk of skupiny) for (const p of sk.prvky) p.style.transform = ''
+      if (spolknoutKlik) {
+        // Klik po tažení by ťukl do tlačítka pod prstem – spolknout
+        // (stejná mechanika jako v components/tah.js).
+        const spolkni = (c) => {
+          c.stopImmediatePropagation()
+          c.preventDefault()
         }
-        cil = Math.max(0, Math.min(radky.length - 1, novy))
-        prekresliPosuny()
+        drzak.addEventListener('click', spolkni, { capture: true, once: true })
+        setTimeout(() => drzak.removeEventListener('click', spolkni, { capture: true }), 350)
       }
+      if (cil !== start) poDrop(start, cil)
+    }
+    drzak.onpointerup = () => konec(true)
+    drzak.onpointercancel = () => konec(false)
+  }
 
-      const konec = () => {
-        uchyt.onpointermove = null
-        uchyt.onpointerup = null
-        uchyt.onpointercancel = null
-        cancelAnimationFrame(rafId)
-        el.classList.remove('tahne')
-        el.style.transform = ''
-        for (const r of radky) r.style.transform = ''
-        if (cil !== start) poDrop(start, cil)
+  /**
+   * Dvojí aktivace: úchyt zvedá hned, dlouhé podržení plochy taky.
+   * Plocha nesmí mít touch-action:none – krátký tah musí dál rolovat.
+   */
+  const pripoj = (skupiny, ja, uchyt, plocha, poDrop) => {
+    if (uchyt) {
+      uchyt.style.touchAction = 'none'
+      uchyt.onpointerdown = (e) => {
+        if (e.button) return
+        e.preventDefault()
+        uchyt.setPointerCapture(e.pointerId)
+        zahaj(uchyt, e, skupiny, ja, poDrop)
       }
-      uchyt.onpointerup = konec
-      uchyt.onpointercancel = konec
+    }
+    plocha.onpointerdown = (e) => {
+      if (e.button || e.target.closest('button') || e.target.closest('[data-uchyt], [data-uchyt-dne]')) return
+      const x0 = e.clientX
+      const y0 = e.clientY
+      let zvednuto = false
+      const blokujScroll = (te) => te.preventDefault()
+      const timer = setTimeout(() => {
+        zvednuto = true
+        plocha.setPointerCapture(e.pointerId)
+        plocha.addEventListener('touchmove', blokujScroll, { passive: false })
+        zahaj(plocha, e, skupiny, ja, poDrop, () => plocha.removeEventListener('touchmove', blokujScroll))
+      }, 350)
+      const zrus = () => {
+        clearTimeout(timer)
+        if (zvednuto) return
+        plocha.onpointermove = null
+        plocha.onpointerup = null
+        plocha.onpointercancel = null
+      }
+      // Pohyb před zvednutím = rolování; tažení se nekoná.
+      plocha.onpointermove = (ev) => {
+        if (!zvednuto && (Math.abs(ev.clientY - y0) > 8 || Math.abs(ev.clientX - x0) > 8)) zrus()
+      }
+      plocha.onpointerup = zrus
+      plocha.onpointercancel = zrus
     }
   }
 
   // Zastávky: tahá se mezi VŠEMI zastávkami napříč dny.
   const zastavky = [...seznam.querySelectorAll('.zastavka')]
-  for (const el of zastavky) {
-    const uchyt = el.querySelector('[data-uchyt]')
-    if (!uchyt) continue
-    tahni(uchyt, el, zastavky, (start, cil) => {
+  const zastavkySkupiny = zastavky.map((el) => ({ prvky: [el] }))
+  zastavkySkupiny.forEach((sk, idx) => {
+    const el = zastavky[idx]
+    pripoj(zastavkySkupiny, sk, el.querySelector('[data-uchyt]'), el, (start, cil) => {
       const id = el.dataset.id
       const kde = store.plan.indexOf(id)
       // Cíl je index mezi VYKRESLENÝMI zastávkami; sbalené dny se nekreslí,
-      // takže se přepočítá na index v plánu podle id sousedа.
+      // takže se přepočítá na index v plánu podle id souseda.
       const cilId = zastavky[cil].dataset.id
       const kam = store.plan.indexOf(cilId)
       if (kde < 0 || kam < 0 || kde === kam) return
@@ -990,14 +1017,19 @@ function napojTahani(wrap) {
       save()
       draw()
     })
-  }
+  })
 
-  // Sbalené dny: tahá se hlavička, přesouvá se celý úsek plánu i s délkou.
-  const hlavicky = [...seznam.querySelectorAll('.denhd')]
-  for (const el of hlavicky) {
-    const uchyt = el.querySelector('[data-uchyt-dne]')
-    if (!uchyt) continue
-    tahni(uchyt, el, hlavicky, (start, cil) => {
+  // Dny: skupina je hlavička + všechno pod ní až po další hlavičku.
+  const dnySkupiny = []
+  let aktualni = null
+  for (const dite of [...seznam.children]) {
+    if (dite.classList.contains('denhd')) {
+      aktualni = { prvky: [dite], hlava: dite }
+      dnySkupiny.push(aktualni)
+    } else if (aktualni) aktualni.prvky.push(dite)
+  }
+  for (const sk of dnySkupiny) {
+    pripoj(dnySkupiny, sk, sk.hlava.querySelector('[data-uchyt-dne]'), sk.hlava, (start, cil) => {
       const dny = dnyPlanu()
       if (start === cil || !dny[start] || !dny[cil]) return
       const poradiDnu = dny.map((_, i) => i)
@@ -1013,73 +1045,6 @@ function napojTahani(wrap) {
       draw()
     })
   }
-}
-
-/**
- * Rozdělí trasu na dny automaticky./**
- * Rozdělí trasu na dny automaticky.
- *
- * PŘED ZÁPISEM SE UKÁŽE, CO Z TOHO VYJDE. Ruční dělení je práce, kterou by
- * jedno ťuknutí smazalo — a `store.planDny` jsou uživatelská data. Potvrzení
- * proto není zdvořilost, ale pojistka.
- *
- * @param {'hodiny'|'pocet'} zpusob
- * @param {Array<Record<string, any>>} items
- */
-async function rozdelDny(zpusob, items) {
-  if (items.length < 3) return
-  const u = useky(items)
-
-  let delky
-  if (zpusob === 'hodiny') {
-    const zadano = await zadej({ nadpis: 'Rozdělit podle hodin', text: 'Kolik hodin denně chceme nejvýš jet?', vychozi: '4' })
-    if (zadano === null) return
-    const limit = Number(String(zadano).replace(',', '.'))
-    if (!(limit > 0)) {
-      toast('To není počet hodin')
-      return
-    }
-    delky = rozdelPodleHodin(u, limit)
-    if (!delky.length) {
-      toast(`Do ${limit} h denně se celá trasa vejde za jeden den`)
-      return
-    }
-  } else {
-    const zadano = await zadej({ nadpis: 'Rozdělit na dny', text: 'Na kolik dní to rozdělit?', vychozi: String(Math.max(2, dnyPlanu().length)) })
-    if (zadano === null) return
-    const pocet = Math.floor(Number(zadano))
-    if (!(pocet > 1)) {
-      toast('Dní musí být aspoň dva')
-      return
-    }
-    delky = rozdelNaPocet(u, pocet)
-    if (!delky.length) {
-      toast('Na tolik dní to rozdělit nejde')
-      return
-    }
-  }
-
-  // Náhled: kolik zastávek a kolik za volantem připadne na každý den.
-  let od = 0
-  const nahled = delky
-    .map((d, i) => {
-      const den = items.slice(od, od + d)
-      // Úsek na první zastávku dne se počítá do něj – je to cesta, která ten
-      // den opravdu čeká.
-      const hodin = u.slice(od, od + d).reduce((a, b) => a + b, 0)
-      od += d
-      return `Den ${i + 1}: ${den.length} ${sklonuj(den.length, 'zastávka', 'zastávky', 'zastávek')} · ${fmtCas(hodin)}`
-    })
-    .join('\n')
-
-  if (!(await potvrd({ nadpis: 'Rozdělit takhle?', text: `${nahled}\n\nDosavadní rozdělení na dny se přepíše.`, ano: 'Rozdělit' }))) return
-
-  if (!nastavDny(delky)) {
-    toast('Rozdělení nesedělo na počet zastávek, nic jsem neměnila')
-    return
-  }
-  draw()
-  toast(`Rozděleno na ${delky.length} ${sklonuj(delky.length, 'den', 'dny', 'dní')}`)
 }
 
 /** Hladové řazení: začni u nejbližšího místa a pak vždy skoč na nejbližší další. */
@@ -1125,7 +1090,6 @@ function prepniMenu() {
     <button id="planDoSlozky">${IC('i-slozka')}Přesunout do složky</button>
     <button id="planShare">${IC('i-copy')}Kopírovat plán</button>
     ${store.plan.length > 1 ? `<button id="planOtoc">${IC('i-route')}Otočit pořadí</button>` : ''}
-    ${(store.planDny || []).length > 1 ? `<button id="planDupDen">${IC('i-kalendar')}Duplikovat poslední den</button>` : ''}
     <button id="planClear">${IC('i-trash')}Vyprázdnit zastávky</button>
     <button id="planSmaz">${IC('i-x')}Smazat celou výpravu</button>`
   m.hidden = false
@@ -1170,18 +1134,6 @@ function prepniMenu() {
       save()
       draw()
       toast('Pořadí otočené')
-    }
-
-  const dup = document.getElementById('planDupDen')
-  if (dup)
-    dup.onclick = () => {
-      // „Duplikovat den" kopíruje jen strukturu (prázdný den stejné velikosti
-      // nedává smysl) – zastávky zůstávají jednou, den se přidá prázdný za
-      // poslední a zastávky se do něj přesouvají. Kopírovat tatáž místa
-      // dvakrát plán neumí ani jinde: `store.plan` je množina zastávek.
-      pridejDen()
-      draw()
-      toast('Přidán den na konec')
     }
 
   document.getElementById('planPrejmenuj').onclick = async () => {

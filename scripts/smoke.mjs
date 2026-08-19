@@ -368,6 +368,40 @@ await kontrola('počítadlo nad záložkou Plán', () => page.locator('#planCoun
 // Vyjíždí se z otevřeného plánu, jako se v navigaci spouští otevřená trasa.
 await kontrola('Itinerář nabízí Vyjet', () => page.locator('#planVyjet').count(), 1)
 
+// Dny: „Přidat den" přidá prázdný den (dřív od druhého kliknutí tiché nic),
+// prázdný den jde táhnout za úchyt jako celá skupina, „Zrušit dny" uklidí.
+await page.click('#planPridat')
+await page.waitForTimeout(500)
+await page.locator('#vmBody .radek').nth(1).click()
+await page.waitForTimeout(600)
+await page.click('#planDen')
+await page.waitForTimeout(500)
+await kontrola('Přidat den přidá prázdný den', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).planDny.join(',')), '2,0')
+await kontrola('prázdný den má hlavičku', () => page.locator('.denhd').count(), 2)
+{
+  const uchyt = await page.locator('.denhd[data-den="2"] [data-uchyt-dne]').boundingBox()
+  const prvni = await page.locator('.denhd[data-den="1"]').boundingBox()
+  await page.mouse.move(uchyt.x + uchyt.width / 2, uchyt.y + uchyt.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(prvni.x + 100, prvni.y + 2, { steps: 6 })
+  await page.mouse.up()
+  await page.waitForTimeout(500)
+}
+await kontrola('prázdný den jde přetáhnout nahoru', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).planDny.join(',')), '0,2')
+await page.click('#planBezDnu')
+await page.waitForTimeout(400)
+await kontrola('Zrušit dny uklidí dělení', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).planDny.length), 0)
+// Druhou zastávku zase odebrat, ať další kontroly počítají s jednou.
+await page.locator('.zastavka').nth(1).locator('[data-act="vice"]').click()
+await page.waitForTimeout(300)
+await page.locator('.zastavka').nth(1).locator('[data-act="rm"]').click()
+await page.waitForTimeout(500)
+await kontrola('zastávka jde odebrat', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).plan.length), 1)
+
 // Knihovna: výprava v seznamu, složky, sbalování, otevření řádkem
 await page.click('#planSegment button[data-seg="vypravy"]')
 await page.waitForTimeout(400)

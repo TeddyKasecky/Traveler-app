@@ -367,3 +367,8 @@
 .vypravaradek.tahne,.slozka-radek.tahne{position:relative;z-index:60;box-shadow:var(--stin-3);
   pointer-events:none;transition:none;opacity:.94}
 .drop-cil{outline:2px dashed var(--akcent);outline-offset:2px}
+
+/* Tažení dne jako skupiny: uhýbají i bloky, tažené se nepřechoduje. */
+.itinerar .blok{transition:transform .18s var(--pop)}
+.itinerar .blok.tahne{transition:none}
+.itinerar .pridatzastavku{transition:transform .18s var(--pop)}

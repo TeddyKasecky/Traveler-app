@@ -21,7 +21,7 @@
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} }
 
 const { store } = await import('../src/core/store.js')
-const { dnyPlanu, presunDoDne, zrusDny, rozdelPodleHodin, rozdelNaPocet, nastavDny } =
+const { dnyPlanu, pridejDen, presunDoDne, zrusDny, nastavDny } =
   await import('../src/views/plan/dny.js')
 const { zalohaData, obnovZalohu } = await import('../src/core/csv.js')
 
@@ -372,49 +372,43 @@ pripravV(['a'], [], [], 'Alpy')
   t('stará záloha bez nových klíčů je nesmaže', store.cesty.length === 1 && (store.bloky.Alpy || []).length === 1)
 }
 
-/* ================= automatické dělení na dny ================= */
-/* Sahá na `planDny`, tedy na uživatelská data. Nejdůležitější je, že se
- * NIKDY neztratí zastávka: součet délek dnů musí vždycky sedět na délku plánu. */
+/* ================= prázdné dny a přidání dne ================= */
+/* Od srpna 2026 je nula platná délka dne. Dřív se prázdný den nedal ani
+ * zapsat (uloz ho filtroval) a „Přidat den" bylo od druhého kliknutí tiché
+ * nic – přesně když poslední den zbyl s jedinou zastávkou. */
 
-console.log('\nAutomatické dělení na dny:')
+console.log('\nPrázdné dny a přidání dne:')
 
-// `useky[i]` = hodin jízdy na i-tou zastávku; první je vždycky 0.
+priprav(['a', 'b', 'c'], [2, 1])
 {
-  const u = [0, 1, 1, 1, 1, 1]
-  const d = rozdelPodleHodin(u, 2)
-  t('podle hodin: součet sedí na počet zastávek', d.reduce((a, b) => a + b, 0) === u.length)
-  t('podle hodin: žádný den nepřekročí limit', d.every((_, i) => {
-    const od = d.slice(0, i).reduce((a, b) => a + b, 0)
-    return u.slice(od, od + d[i]).reduce((a, b) => a + b, 0) <= 2
-  }))
-  t('podle hodin: vzniklo víc dní', d.length > 1)
+  pridejDen()
+  t('přidání dne přidá prázdný den', jako(store.planDny) === jako([2, 1, 0]))
+  t('prázdný den je vidět v rozdělení', jako(dnyPlanu()) === jako([['a', 'b'], ['c'], []]))
+  pridejDen()
+  t('jde přidat i druhý prázdný den', jako(store.planDny) === jako([2, 1, 0, 0]))
+  t('žádná zastávka se nepřidáním neztratila', dnyPlanu().flat().length === 3)
 }
+
+priprav(['a'], [])
 {
-  // Jeden úsek delší než celý limit musí dostat vlastní den, ne zacyklit.
-  const u = [0, 9, 0.2, 0.2]
-  const d = rozdelPodleHodin(u, 3)
-  t('podle hodin: dlouhý úsek nezacyklí', d.reduce((a, b) => a + b, 0) === u.length)
+  pridejDen()
+  t('den jde přidat i k jediné zastávce', jako(dnyPlanu()) === jako([['a'], []]))
 }
+
+priprav(['a', 'b'], [1, 1, 0])
 {
-  const u = [0, 0.2, 0.2, 0.2]
-  t('podle hodin: co se vejde do dne, se nedělí', rozdelPodleHodin(u, 8).length === 0)
+  presunDoDne('b', 1)
+  t('šipka přesune zastávku do prázdného dne', jako(dnyPlanu()) === jako([['a'], [], ['b']]))
+  presunDoDne('a', 1)
+  t('vyprázdněný den zůstává', jako(dnyPlanu()) === jako([[], ['a'], ['b']]))
 }
-{
-  const u = [0, 1, 5, 1, 1]
-  const d = rozdelNaPocet(u, 2)
-  t('podle počtu: součet sedí na počet zastávek', d.reduce((a, b) => a + b, 0) === u.length)
-  t('podle počtu: vyšly přesně dva dny', d.length === 2)
-  t('podle počtu: žádný den není prázdný', d.every((x) => x > 0))
-}
-{
-  const u = [0, 1, 1]
-  t('podle počtu: víc dní než zastávek nevyrobí prázdné dny', rozdelNaPocet(u, 9).every((x) => x > 0))
-}
+
 {
   priprav(['a', 'b', 'c', 'd'], [])
   t('nastavDny zapíše sedící rozdělení', nastavDny([2, 2]) && jako(store.planDny) === jako([2, 2]))
   const predtim = jako(store.planDny)
   t('nastavDny odmítne nesedící součet', nastavDny([2, 5]) === false && jako(store.planDny) === predtim)
+  t('nastavDny snese prázdný den', nastavDny([2, 0, 2]) && jako(dnyPlanu()) === jako([['a', 'b'], [], ['c', 'd']]))
   t('žádná zastávka se dělením neztratila', jako(dnyPlanu().flat()) === jako(store.plan))
 }
 
