@@ -41,7 +41,10 @@ import {
   smazSlozku, presunVypravu, prejmenuj, smaz, duplikuj, BEZ_NAZVU,
 } from './vypravy.js'
 import { cestaHtml, napojCestu, jedeSe, vyjed } from './cesta.js'
-import { blokyDneHtml, pridatBlokHtml, napojBloky, rozpocetCelkem } from './bloky.js'
+import {
+  blokyDneHtml, pridatBlokHtml, napojBloky, rozpocetCelkem, blokHtml, blok, bloky,
+  vsechnyBody, pridejBod, hledejAdresu, rozpoznejSouradnice, DRUHY,
+} from './bloky.js'
 import { cislaPlanuHtml, napojCislaPlanu } from './prehled.js'
 
 /** Kolik zastávek unese odkaz do Google Maps. */
@@ -646,30 +649,44 @@ function itinerar(items, dny) {
             <span class="uchyt den-uchyt" data-uchyt-dne title="Táhni pro přesun celého dne">${IC('i-vice')}</span>
             ${IC('i-kalendar')}<b>Den ${di + 1}</b>
             <span>${mista.length} ${sklonuj(mista.length, 'zastávka', 'zastávky', 'zastávek')}${mista.length > 1 ? ` · ${fmtKm(sd.road)} · ${fmtCas(hodin)}` : ''}${hodin > 4 ? ' ⚠' : ''}</span>
+            ${sbaleny ? '' : `<button class="ikonbtn" data-act="pridat-na-zacatek" data-den="${di + 1}" title="Přidat bod na začátek dne">${IC('i-plus')}</button>`}
             <button class="den-sbal" data-act="sbal-den" data-den="${di + 1}" title="${sbaleny ? 'Rozbalit den' : 'Sbalit den'}">${IC('i-down')}</button>
           </div>`
         : ''
 
+      const zacatekBody = sbaleny
+        ? ''
+        : vsechnyBody().filter((m) => !m.po && m.den === di + 1).map(bodRadek).join('')
       const zastavkyHtml = sbaleny
         ? ''
         : mista
             .map((p, i) => {
               poradi++
               const posledniVeDni = i === mista.length - 1
-              return zastavka(p, poradi, i === 0 ? null : mista[i - 1], di, dny.length, posledniVeDni, poradi === items.length)
+              return (
+                zastavka(p, poradi, i === 0 ? null : mista[i - 1], di, dny.length, posledniVeDni, poradi === items.length) +
+                vsechnyBody().filter((m) => m.po === p.id).map(bodRadek).join('')
+              )
             })
             .join('')
       if (sbaleny) poradi += mista.length
 
-      return hlavicka + zastavkyHtml + (sbaleny ? '' : blokyDneHtml(vicDnu ? di + 1 : null))
+      const pridatBod = sbaleny
+        ? ''
+        : `<button class="pridatbod" data-den="${di + 1}" data-po="${mista.length ? mista[mista.length - 1].id : ''}">${IC('i-plus')}Přidat bod – start, nocleh, vlastní místo…</button>`
+
+      return hlavicka + zacatekBody + zastavkyHtml + pridatBod + (sbaleny ? '' : blokyDneHtml(vicDnu ? di + 1 : null))
     })
     .join('')
+
+  // Historické body bez kotvy (po i den prázdné) patří na konec plánu.
+  const zbyleBody = vsechnyBody().filter((m) => !m.po && m.den == null).map(bodRadek).join('')
 
   const rozpocet = rozpocetCelkem()
 
   return (
     sekce('Itinerář – dny a zastávky', { pozn: items.length > 1 ? 'Táhni za úchyt' : '' }) +
-    `<div class="itinerar" id="itinerar">${telo}</div>
+    `<div class="itinerar" id="itinerar">${telo}${zbyleBody}</div>
     ${vicDnu ? blokyDneHtml(null) : ''}
     <button class="pridatzastavku" id="planPridat">${IC('i-plus')}Přidat zastávku</button>
     ${pridatBlokHtml()}
@@ -681,6 +698,96 @@ function itinerar(items, dny) {
         </div>`
       : '')
   )
+}
+
+/**
+ * Bod trasy v itineráři – řádek ve stylu zastávky, bez fotky. Ťuknutí na
+ * „…" rozbalí kartu bloku s úpravami (druh, poloha, poznámka, smazání).
+ */
+function bodRadek(b) {
+  const d = DRUHY[b.druh] || DRUHY.vlastni
+  const ma = Number.isFinite(b.lat) && Number.isFinite(b.lon)
+  return `<div class="zastavka bod${rozbaleno === b.id ? ' otevrena' : ''}${b.hotovo ? ' hotova' : ''}" data-bod="${b.id}">
+    <div class="zastavka-radek">
+      <span class="uchyt" data-uchyt title="Táhni pro změnu pořadí">${IC('i-vice')}</span>
+      <span class="bod-znak">${IC(d.ikona)}</span>
+      <div class="zastavka-text">
+        <h3>${esc(b.nazev || d.popisek)}</h3>
+        <div class="zastavka-pod">${d.popisek}${ma ? '' : ' <span class="tecka">•</span> bez polohy'}</div>
+        ${b.poznamka ? `<div class="zastavka-meta">${esc(b.poznamka)}</div>` : ''}
+      </div>
+      <button class="zastavka-vice" data-act="bod-upravit" title="Upravit bod">${IC('i-vice')}</button>
+    </div>
+    ${rozbaleno === b.id ? blokHtml(b) : ''}
+  </div>`
+}
+
+/**
+ * Průvodce založením bodu: druh → název → poloha. Jednoduchá cesta jsou tři
+ * ťuknutí (druh, odklepnout název, mapa); podrobnosti se doladí v kartě bodu.
+ * @param {number} den  číslo dne od 1
+ * @param {string|null} po  id zastávky, za kterou bod patří (konec dne)
+ */
+async function pridejBodPruvodce(den, po) {
+  const druh = await vyberZeSeznamu({
+    nadpis: 'Jaký bod přidat?',
+    polozky: Object.entries(DRUHY).map(([id, d]) => ({ id, popisek: d.popisek, ikona: d.ikona })),
+  })
+  if (druh === null) return
+  const nazev = await zadej({ nadpis: 'Název bodu', vychozi: DRUHY[druh].popisek, placeholder: 'třeba Kemp u splavu' })
+  if (nazev === null) return
+
+  const zaloz = (lat, lon) => {
+    const id = pridejBod({ druh, nazev: nazev.trim(), lat, lon, den: po ? null : den, po })
+    if (lat == null) rozbaleno = id
+    toast(lat == null ? 'Bod přidaný – poloha se doplní v jeho kartě' : 'Bod přidaný do itineráře')
+    draw()
+  }
+
+  const zpusob = await vyberZeSeznamu({
+    nadpis: 'Kde to je?',
+    polozky: [
+      { id: 'odkaz', popisek: 'Vložit odkaz nebo souřadnice', ikona: 'i-copy', meta: 'Google, Mapy.cz, GPS' },
+      { id: 'adresa', popisek: 'Najít adresu', ikona: 'i-hledat', meta: 'jen online' },
+      { id: 'mapa', popisek: 'Ťuknout do mapy', ikona: 'i-map' },
+      { id: 'pozdeji', popisek: 'Zatím bez polohy', ikona: 'i-clock' },
+    ],
+  })
+  if (zpusob === null) return
+  if (zpusob === 'pozdeji') return zaloz(null, null)
+  if (zpusob === 'odkaz') {
+    const text = await zadej({ nadpis: 'Odkaz nebo souřadnice', placeholder: 'https://maps.app… nebo 46.138, 12.435' })
+    if (text === null) return
+    const gps = rozpoznejSouradnice(text)
+    if (!gps) {
+      toast('Souřadnice se nepodařilo rozpoznat – doplň je v kartě bodu')
+      return zaloz(null, null)
+    }
+    return zaloz(gps.lat, gps.lon)
+  }
+  if (zpusob === 'adresa') {
+    const dotaz = await zadej({ nadpis: 'Hledat adresu', placeholder: 'Riva del Garda, kemp…' })
+    if (dotaz === null || !dotaz.trim()) return
+    let vysledky
+    try {
+      vysledky = await hledejAdresu(dotaz)
+    } catch {
+      toast('Hledání adresy potřebuje internet')
+      return zaloz(null, null)
+    }
+    if (!vysledky.length) {
+      toast('Adresa se nenašla – zkus to jinak, nebo ťukni do mapy')
+      return zaloz(null, null)
+    }
+    const vyber = await vyberZeSeznamu({
+      nadpis: 'Který z nich?',
+      polozky: vysledky.map((v, i) => ({ id: String(i), popisek: v.popisek, ikona: 'i-pinme' })),
+    })
+    if (vyber === null) return zaloz(null, null)
+    const v = vysledky[Number(vyber)]
+    return zaloz(v.lat, v.lon)
+  }
+  if (zpusob === 'mapa') return vyberBod((lat, lon) => zaloz(lat, lon))
 }
 
 /**
@@ -779,6 +886,26 @@ function napoj(wrap, items) {
         draw()
         toast(`${p.n.split(/\s[–(]/)[0]} přidáno do plánu`)
       })
+
+  for (const b of wrap.querySelectorAll('.pridatbod'))
+    b.onclick = () => pridejBodPruvodce(Number(b.dataset.den), b.dataset.po || null)
+
+  // Malé „+“ v hlavičce dne: bod na jeho začátek, ne za poslední zastávku.
+  for (const b of wrap.querySelectorAll('[data-act="pridat-na-zacatek"]'))
+    b.onclick = (e) => {
+      e.stopPropagation()
+      pridejBodPruvodce(Number(b.dataset.den), null)
+    }
+
+  for (const r of wrap.querySelectorAll('[data-bod]')) {
+    const uprav = r.querySelector('[data-act="bod-upravit"]')
+    if (uprav)
+      uprav.onclick = (e) => {
+        e.stopPropagation()
+        rozbaleno = rozbaleno === r.dataset.bod ? '' : r.dataset.bod
+        renderPlan()
+      }
+  }
 
   const naMapu = document.getElementById('planNaMapu')
   if (naMapu)
@@ -999,20 +1126,50 @@ function napojTahani(wrap) {
     }
   }
 
-  // Zastávky: tahá se mezi VŠEMI zastávkami napříč dny.
-  const zastavky = [...seznam.querySelectorAll('.zastavka')]
-  const zastavkySkupiny = zastavky.map((el) => ({ prvky: [el] }))
-  zastavkySkupiny.forEach((sk, idx) => {
-    const el = zastavky[idx]
-    pripoj(zastavkySkupiny, sk, el.querySelector('[data-uchyt]'), el, (start, cil) => {
+  // Zastávky a body trasy: jeden smíšený seznam napříč dny. Kotva puštění
+  // je nejbližší ZASTÁVKA nad novou polohou – bod si podle ní přepíše `po`,
+  // zastávka se za ni zařadí ve `store.plan`.
+  const radky = [...seznam.querySelectorAll('.zastavka')]
+  const radkySkupiny = radky.map((el) => ({ prvky: [el] }))
+  radkySkupiny.forEach((sk, idx) => {
+    const el = radky[idx]
+    pripoj(radkySkupiny, sk, el.querySelector('[data-uchyt]'), el, (start, cil) => {
+      const ostatni = radky.filter((r) => r !== el)
+      let z = Math.min(cil, ostatni.length) - 1
+      while (z >= 0 && !ostatni[z].dataset.id) z--
+      const kotva = z >= 0 ? ostatni[z].dataset.id : null
+
+      if (el.dataset.bod) {
+        const b = blok(el.dataset.bod)
+        if (!b) return
+        if (kotva) {
+          b.po = kotva
+          b.den = null
+        } else {
+          b.po = null
+          b.den = 1
+        }
+        // Mezi body u stejné kotvy rozhoduje pořadí v poli – přesunutý jde
+        // na konec, takže dosedne tam, kam ho člověk pustil.
+        const vsech = bloky()
+        const kde = vsech.findIndex((x) => x.id === b.id)
+        if (kde >= 0) vsech.push(vsech.splice(kde, 1)[0])
+        save()
+        draw()
+        return
+      }
+
       const id = el.dataset.id
       const kde = store.plan.indexOf(id)
-      // Cíl je index mezi VYKRESLENÝMI zastávkami; sbalené dny se nekreslí,
-      // takže se přepočítá na index v plánu podle id souseda.
-      const cilId = zastavky[cil].dataset.id
-      const kam = store.plan.indexOf(cilId)
-      if (kde < 0 || kam < 0 || kde === kam) return
+      if (kde < 0) return
+      let kam = kotva ? store.plan.indexOf(kotva) + 1 : 0
+      if (kam < 0) return
       store.plan.splice(kde, 1)
+      if (kam > kde) kam--
+      if (kam === kde) {
+        store.plan.splice(kam, 0, id)
+        return
+      }
       store.plan.splice(kam, 0, id)
       save()
       draw()

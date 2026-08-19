@@ -91,19 +91,27 @@ export function drawPlanLine(mapa) {
   const zdrojIds = jedeSe ? store.cesta.zastavky : store.plan
   const zastavky = zdrojIds.map((id) => S.byId[id]).filter(Boolean)
 
-  // Vlastní místa z bloků se počítají do trasy: za zastávky svého dne,
-  // bez dne na konec. Za jízdy se do otisku nepletou – trasa cesty je otisk.
+  // Body trasy z bloků: bod s `po` hned za svou zastávkou, bod se `den`
+  // na začátek dne, historické bez obojího na konec plánu. Za jízdy se do
+  // otisku nepletou – trasa cesty je otisk.
   const mista = jedeSe ? [] : vlastniMista()
+  const poZastavce = (id) => mista.filter((m) => m.po === id)
   const delky = (store.planDny || []).length ? store.planDny : [zastavky.length]
   const body = []
   let od = 0
   delky.forEach((delka, i) => {
-    body.push(...zastavky.slice(od, od + delka))
+    for (const m of mista) if (!m.po && m.den === i + 1) body.push(m)
+    for (const z of zastavky.slice(od, od + delka)) {
+      body.push(z)
+      body.push(...poZastavce(z.id))
+    }
     od += delka
-    body.push(...mista.filter((m) => m.den === i + 1).map((m) => ({ lat: m.lat, lon: m.lon })))
   })
-  body.push(...zastavky.slice(od))
-  body.push(...mista.filter((m) => m.den == null).map((m) => ({ lat: m.lat, lon: m.lon })))
+  for (const z of zastavky.slice(od)) {
+    body.push(z)
+    body.push(...poZastavce(z.id))
+  }
+  for (const m of mista) if (!m.po && m.den == null) body.push(m)
 
   if (vlastni) {
     vlastni.remove()
@@ -119,7 +127,11 @@ export function drawPlanLine(mapa) {
             className: '',
             iconSize: [22, 22],
             iconAnchor: [11, 20],
-            html: `<div class="vlastnipin" title="${esc(m.nazev || 'Vlastní místo')}">${'★'}</div>`,
+            // Znak podle druhu bodu. Mapa nesmí importovat views, takže je
+            // výčet druhů podruhé tady – start/nocleh/cíl/vlastní.
+            html: `<div class="vlastnipin ${esc(m.druh || 'vlastni')}" title="${esc(m.nazev || 'Vlastní místo')}">${
+              { start: '▶', nocleh: '⌂', cil: '⚑' }[m.druh] || '★'
+            }</div>`,
           }),
         })
       )

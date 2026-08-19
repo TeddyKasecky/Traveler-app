@@ -288,10 +288,23 @@
 .cesta-radek-seznamu.ma span{text-decoration:line-through;color:var(--text3)}
 .cesta-zastavka.vlastni .cesta-telo b{color:var(--rust)}
 
-/* Špendlík vlastního místa – rezavá hvězda na mapě. */
+/* Špendlík bodu trasy – barva podle druhu (start/nocleh/cíl/vlastní). */
 .vlastnipin{width:22px;height:22px;border-radius:50%;background:var(--rust);color:var(--na-akcentu);
   display:grid;place-items:center;font-size:12px;border:1.5px solid var(--plocha);
   box-shadow:var(--stin-1)}
+.vlastnipin.start{background:var(--moss)}
+.vlastnipin.nocleh{background:var(--night);color:var(--text-inv)}
+.vlastnipin.cil{background:var(--sun)}
+
+/* Bod trasy v itineráři – řádek jako zastávka, ale bez fotky. */
+.zastavka.bod .bod-znak{flex:0 0 auto;width:44px;height:44px;border-radius:var(--r-s);
+  display:grid;place-items:center;background:var(--plocha2);color:var(--text2)}
+.zastavka.bod .bod-znak svg.ic{font-size:19px}
+.zastavka.bod.hotova .bod-znak{background:var(--plocha-zelena);color:var(--akcent)}
+.pridatbod{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;
+  border:1.5px dashed var(--obrys-silny);border-radius:var(--r-s);padding:9px 12px;margin:6px 0;
+  font:inherit;font-size:.8rem;font-weight:700;color:var(--text2)}
+.pridatbod svg.ic{font-size:15px;color:var(--text3)}
 
 /* Lišta výběru bodu na mapě. Nad spodkem mapy, pod hlavičkou. */
 .vyberbod-listka{position:fixed;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom) + 88px);

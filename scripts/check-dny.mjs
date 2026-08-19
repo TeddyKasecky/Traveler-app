@@ -24,6 +24,8 @@ const { store } = await import('../src/core/store.js')
 const { dnyPlanu, pridejDen, presunDoDne, zrusDny, nastavDny } =
   await import('../src/views/plan/dny.js')
 const { zalohaData, obnovZalohu } = await import('../src/core/csv.js')
+const { rozpoznejSouradnice, pridejBod, vsechnyBody, DRUHY } =
+  await import('../src/views/plan/body.js')
 
 const barvy = process.stdout.isTTY && !process.env.NO_COLOR
 const zeleny = (s) => (barvy ? `[32m${s}[0m` : s)
@@ -410,6 +412,49 @@ priprav(['a', 'b'], [1, 1, 0])
   t('nastavDny odmítne nesedící součet', nastavDny([2, 5]) === false && jako(store.planDny) === predtim)
   t('nastavDny snese prázdný den', nastavDny([2, 0, 2]) && jako(dnyPlanu()) === jako([['a', 'b'], [], ['c', 'd']]))
   t('žádná zastávka se dělením neztratila', jako(dnyPlanu().flat()) === jako(store.plan))
+}
+
+/* ================= body trasy (bloky typu misto) ================= */
+/* Srpen 2026: vlastní místo je plnohodnotný bod trasy s polem `druh`
+ * a kotvou `po` (id zastávky, hned ZA kterou stojí). Historické bloky bez
+ * těchhle polí (po i den prázdné) musí zůstat na konci plánu, jinak by se
+ * po aktualizaci tiše přesunuly. */
+
+console.log('\nBody trasy (bloky misto)\n')
+
+t('Google Maps @lat,lon', (() => {
+  const g = rozpoznejSouradnice('https://www.google.com/maps/@50.0755,14.4378,12z')
+  return g && Math.abs(g.lat - 50.0755) < 1e-4 && Math.abs(g.lon - 14.4378) < 1e-4
+})())
+
+t('Mapy.cz x je délka, y je šířka', (() => {
+  const g = rozpoznejSouradnice('https://mapy.cz/turisticka?x=14.4378&y=50.0755')
+  return g && Math.abs(g.lat - 50.0755) < 1e-4 && Math.abs(g.lon - 14.4378) < 1e-4
+})())
+
+t('DMS se znaménkem podle S/W', (() => {
+  const g = rozpoznejSouradnice(`50°5'12.3"N 14°25'8"E`)
+  return g && Math.abs(g.lat - 50.0868) < 1e-3 && Math.abs(g.lon - 14.4189) < 1e-3
+})())
+
+t('nesmyslný text nedá souřadnice', rozpoznejSouradnice('někde v horách') === null)
+
+t('druhy bodu mají čtyři položky', Object.keys(DRUHY).join(',') === 'start,nocleh,cil,vlastni')
+
+priprav(['a', 'b', 'c'], [2, 1])
+{
+  store.vypravaNazev = 'Zkouška bodů'
+  store.bloky = {}
+  const id1 = pridejBod({ druh: 'start', nazev: 'PoznatelnyStart', lat: 50, lon: 14, po: 'a' })
+  const id2 = pridejBod({ druh: 'nocleh', nazev: 'Nocleh', den: 2, po: null })
+  const id3 = pridejBod({ druh: 'vlastni', nazev: 'Historický', po: null, den: null })
+  t('bod za zastávkou má den null', vsechnyBody().find((b) => b.id === id1).den === null)
+  t('bod na začátek dne má po null', vsechnyBody().find((b) => b.id === id2).po === null)
+  t('historický bod (bez po i dne) je vidět jen v den:null', vsechnyBody().find((b) => b.id === id3).po == null && vsechnyBody().find((b) => b.id === id3).den == null)
+  t('id bodů jsou unikátní', new Set([id1, id2, id3]).size === 3)
+  // blokyDneHtml() v bloky.js filtruje b.typ !== 'misto' – vykreslování se
+  // testuje v prohlížeči (smoke.mjs), tenhle soubor je čistý Node bez IC.
+  t('vsechnyBody vrací jen typ misto', vsechnyBody().every((b) => b.typ === 'misto'))
 }
 
 console.log(`\n${ok}/${ok + chyb} kontrol prošlo`)

@@ -534,9 +534,9 @@ await kontrola('srovnání se nabízí až od dvou výprav', () => page.locator(
 await kontrola('v číslech výpravy není doslovné „null"', () =>
   page.evaluate(() => [...document.querySelectorAll('.preh-radek')].every((r) => !r.textContent.includes('null'))))
 
-// Vlastní bloky: přidat seznam, položku, odškrtnout; vlastní místo pozná
-// vložené souřadnice v několika tvarech.
-await kontrola('nabídka bloků má pět typů', () => page.locator('[data-blok-novy]').count(), 5)
+// Vlastní bloky: přidat seznam, položku, odškrtnout. „Vlastní místo“ tu od
+// srpna 2026 není – bod trasy se zakládá přes „+ Přidat bod“ (dál v testu).
+await kontrola('nabídka bloků má čtyři typy', () => page.locator('[data-blok-novy]').count(), 4)
 await page.click('[data-blok-novy="seznam"]')
 await page.waitForTimeout(400)
 await kontrola('seznam se přidal', () => page.locator('.blok').count(), 1)
@@ -553,31 +553,50 @@ await kontrola('blok se uložil', () =>
     const bloky = b[Object.keys(b)[0]] || []
     return bloky.length === 1 && bloky[0].polozky.length === 1 && !!bloky[0].polozky[0].hotovo
   }))
-await page.click('[data-blok-novy="misto"]')
+// Uklidit SMAZÁNÍM PŘES UI, ne přepsáním localStorage: aplikace při odchodu
+// ze stránky dopisuje store z paměti (pagehide → save()), přepsaný záznam
+// by se hned vrátil zpátky.
+await page.locator('.blok-smaz').first().click()
+await page.waitForTimeout(300)
+await page.click('#dialogAno')
 await page.waitForTimeout(400)
-await page.locator('[data-pole="vlozeno"]').fill('https://www.google.com/maps/@50.0755,14.4378,12z')
-await page.click('[data-act="prevzit"]')
+await kontrola('blok uklizený', () => page.locator('.blok').count(), 0)
+
+// Body trasy (start/nocleh/cíl/vlastní): průvodce druh → název → poloha.
+// Malé „+“ v hlavičce dne zakládá na jeho ZAČÁTEK, velké tlačítko na konci
+// dne za poslední zastávku – ověřují se obě cesty.
+await kontrola('konec dne nabízí Přidat bod', () => page.locator('.pridatbod').count(), 1)
+await page.click('.pridatbod')
 await page.waitForTimeout(400)
-await kontrola('místo pozná odkaz z Google Maps', () =>
+await kontrola('průvodce nabízí čtyři druhy bodu', () => page.locator('#dialog .dialog-volba').count(), 4)
+await page.click('.dialog-volba[data-i="0"]') // start
+await page.waitForTimeout(400)
+await page.click('#dialogAno') // ponechat výchozí název „Start“
+await page.waitForTimeout(400)
+await kontrola('krok polohy nabízí čtyři cesty', () => page.locator('#dialog .dialog-volba').count(), 4)
+await page.click('.dialog-volba[data-i="0"]') // vložit odkaz/souřadnice
+await page.waitForTimeout(400)
+await page.locator('#dialogVstup').fill('50.0755, 14.4378')
+await page.click('#dialogAno')
+await page.waitForTimeout(500)
+await kontrola('bod je v itineráři', () => page.locator('.zastavka.bod').count(), 1)
+await kontrola('bod má špendlík na mapě podle druhu', () =>
+  page.evaluate(() => document.querySelectorAll('.vlastnipin.start').length), 1)
+await kontrola('bod má souřadnice ze vloženého textu', () =>
   page.evaluate(() => {
     const b = JSON.parse(localStorage.getItem('vandrbuch:v1')).bloky
-    const misto = (b[Object.keys(b)[0]] || []).find((x) => x.typ === 'misto')
-    return misto && Math.abs(misto.lat - 50.0755) < 1e-4 && Math.abs(misto.lon - 14.4378) < 1e-4
+    const bod = (b[Object.keys(b)[0]] || []).find((x) => x.typ === 'misto')
+    return bod && Math.abs(bod.lat - 50.0755) < 1e-4 && Math.abs(bod.lon - 14.4378) < 1e-4
   }))
-await kontrola('vlastní místo má špendlík na mapě', () =>
-  page.evaluate(() => document.querySelectorAll('.vlastnipin').length), 1)
-// Uklidit bloky SMAZÁNÍM PŘES UI, ne přepsáním localStorage: aplikace při
-// odchodu ze stránky dopisuje store z paměti (pagehide → save()), takže by
-// přepsaný záznam hned zase přepsala zpátky tím starým.
-await page.locator('.blok-smaz').first().click()
+// Rozbalená karta bodu umí i přepnout druh a smazat se stejně jako blok.
+await page.click('.zastavka.bod [data-act="bod-upravit"]')
+await page.waitForTimeout(300)
+await kontrola('karta bodu nabízí čtyři druhy', () => page.locator('.zastavka.bod .vyprava-slozky .slozka-pill').count(), 4)
+await page.click('.blok-smaz')
 await page.waitForTimeout(300)
 await page.click('#dialogAno')
 await page.waitForTimeout(400)
-await page.locator('.blok-smaz').first().click()
-await page.waitForTimeout(300)
-await page.click('#dialogAno')
-await page.waitForTimeout(400)
-await kontrola('bloky uklizené', () => page.locator('.blok').count(), 0)
+await kontrola('bod jde smazat', () => page.locator('.zastavka.bod').count(), 0)
 
 // Aktuální cesta: vyjet → odznačit → ukončit → archiv. Bez GPS, jen
 // odznačování; čas se počítá ze začátku a pauz, nikde se netiká.
