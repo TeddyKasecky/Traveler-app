@@ -110,8 +110,11 @@ v předukládaném seznamu — bez něj by offline mapa tiše nefungovala.
 
 ## Push = produkce
 
-**Každý `git push` na `main` web sám přestaví a nasadí.** Commituj volně, ale
-**před pushem se vždy zeptej.** Napřed projeď aspoň `npm run validate` a `npm run smoke`.
+**Každý `git push` na `main` web sám přestaví a nasadí.** Push do `main` jde
+jen podle postupu v `CLAUDE.md` sekci „Git workflow (autonomní, bez PR)" —
+osobní větev, fetch, merge/rebase `main` do ní, kontrolní skripty, bezpečnostní
+tag, teprve pak merge a push. Napřed vždycky projeď aspoň `npm run validate`
+a `npm run smoke`; pokud něco selže, do `main` se nepokračuje.
 
 Repozitář je **veřejný** — kód i seznam míst si může přečíst kdokoli. Poznámky, hodnocení
 a vlastní fotky v něm nejsou, ty zůstávají v localStorage telefonu. Do repozitáře nepatří

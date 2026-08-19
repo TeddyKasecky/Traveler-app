@@ -37,8 +37,8 @@ záměrně**; `check-css` je proto odstavené a nahradilo ho `check-tokeny`.
   verze do ní doplní až `vite.config.js` při buildu (`__PRECACHE__`, `__VERSION__`).
   `dist/sw.js` je generovaný — nikdy ho needituj.
 - **`git push` na `main` = nasazení do produkce.** Cloudflare projekt `traveler-app` staví
-  a nasazuje každý push automaticky. Commituj volně, **před pushem se vždy zeptej.**
-  Na projektu pracují dva lidé — viz „Spolupráce ve dvou" níž, než pushneš do `main`.
+  a nasazuje každý push automaticky. Pracuj a pushuj samostatně, bez ptaní — postup je
+  v sekci „Git workflow (autonomní, bez PR)" níž. Na `main` se nikdy nepracuje přímo.
 - **Žádný linter ani formatter není nastavený** — `.eslintrc`, `.prettierrc`, `.editorconfig`
   ani tsconfig v repu nejsou. Styl níž vynucuje jen review. Nevymýšlej `npm run lint`,
   `npm run format` ani `npm test`, neexistují.
@@ -150,22 +150,42 @@ Podrobná pravidla podle oblasti (auto-scoped podle cesty):
 Návody pro člověka: [README.md](README.md), schéma dat [src/data/schema.md](src/data/schema.md),
 výklad vzhledu [VZHLED.md](VZHLED.md).
 
-## Spolupráce ve dvou
+## Git workflow (autonomní, bez PR)
 
-Na repozitáři pracují dva lidé, každý ve vlastní session Claude Code — pravidla platí
-pro oba stejně.
+Na repozitáři pracují dva lidé, každý ve vlastní session Claude Code, oba přes AI
+coding asistenta. **AI dělá commity, merge i push do `main` plně sama, bez ptaní
+a bez Pull Requestů** — tahle sekce popisuje jak, aby to bylo bezpečné i bez lidské
+kontroly každého kroku.
 
-- **Netriviální práci vždy na vlastní větvi**, ne rovnou do `main`. Před začátkem
-  `git pull`/`fetch`, ať se nepracuje na zastaralém stavu.
-- **Před pushem do `main` se domluvit s tou druhou osobou** mimo git (zpráva, hovor) —
-  push je okamžité nasazení, dva push za sebou bez domluvy jsou zbytečné riziko.
-- **Když push selže, protože mezitím pushnul někdo jiný: nikdy force-push.**
-  `git pull --rebase origin main`, vyřešit konflikty, znovu spustit `npm run validate`
-  a `npm run smoke`, teprve pak push.
-- **`src/data/places.json` je nejpravděpodobnější místo konfliktu** — jeden 780kB soubor.
-  Při souběžné práci přidávej nová místa přednostně do `src/data/places-nova.json`
-  (přihrádka, viz [.claude/rules/database.md](.claude/rules/database.md)) a slučuj
-  (`npm run slouc`) až když je jistota, že s daty zrovna nikdo jiný nepracuje.
+- Nikdy nepracuj přímo na `main`. Vždy na osobní trvalé větvi `<prefix>/work`, kde
+  `<prefix>` načti z `CLAUDE.local.md`. Pokud `CLAUDE.local.md` nebo prefix chybí,
+  zeptej se uživatele jednou a ulož ho tam.
+- Commituj a pushuj na osobní větev průběžně, bez ptaní.
+- Než sloučíš svou větev do `main`, VŽDY v tomto pořadí:
+  a) `git fetch origin`
+  b) smerguj/rebase aktuální `main` do své osobní větve jako první (konflikty
+     řeš tady, ne až v `main`)
+  c) konflikty řeš podle nejlepšího úsudku; u `src/data/places.json` slučuj po
+     jednotlivých záznamech (podle ID), nikdy jako čistý textový diff velkého
+     JSON souboru; každé netriviální rozhodnutí u konfliktu popiš v commit zprávě
+  d) spusť existující kontrolní skripty (`npm run smoke`, `check-filters`, `parity`,
+     `check-images`, `perf` – podle toho, co v repu existuje). Pokud cokoliv selže,
+     NEPOKRAČUJ do `main`, oprav to nebo nahlas problém.
+  e) vytvoř bezpečnostní tag na aktuálním `main` před mergem, formát:
+     `backup/main-YYYYMMDD-HHmm`
+  f) slouč osobní větev do `main` a rovnou pushni `main`. Bez Pull Requestu,
+     bez čekání na potvrzení.
+- Nikdy force-push do `main`, nikdy nepřepisuj historii `main`.
+- Pokud si nejsi jistá/jistý správností mergů a testy neprochází, zastav se a jasně
+  napiš, co selhalo — nepushuj rozbitý kód, i když jinak pracuješ bez ptaní.
+
+Doplňkově, ať ke konfliktům dochází co nejméně:
+
+- **`src/data/places.json` je nejpravděpodobnější místo konfliktu** — jeden 780kB
+  soubor. Při souběžné práci přidávej nová místa přednostně do
+  `src/data/places-nova.json` (přihrádka, viz
+  [.claude/rules/database.md](.claude/rules/database.md)) a slučuj (`npm run slouc`)
+  až když je jistota, že s daty zrovna nikdo jiný nepracuje.
 - V konfliktu v JSON nikdy „vzít moje"/„vzít jeho" naslepo — ověřit, že se nesmazalo
   cizí místo nebo poznámka.
 
