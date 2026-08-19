@@ -103,9 +103,10 @@ const kontrola = async (popis, fn, ocekavano) => {
   console.log(`  ${ok ? 'ok   ' : 'CHYBA'} ${popis.padEnd(42)} ${hodnota}`)
 }
 
-// 58 = 57 z původní aplikace + `i-filtr` (trychtýř podle listu „SADA PIKTOGRAMŮ",
-// viz VZHLED.md). Číslo se mění jen s vědomým přidáním ikony do sprite.svg.
-await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 59)
+// 57 z původní aplikace + `i-filtr` (trychtýř podle listu „SADA PIKTOGRAMŮ",
+// viz VZHLED.md) + `i-zalozka` + `i-slozka` (složky výprav, srpen 2026).
+// Číslo se mění jen s vědomým přidáním ikony do sprite.svg.
+await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 60)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
 // Nad mapou je pět rychlých pilulek podle předlohy, od srpna 2026 „moje věci"
@@ -332,19 +333,22 @@ await kontrola('detail pod porovnáním zůstal', () => page.locator('#sheet.sho
 await page.goBack()
 await page.waitForTimeout(400)
 
-// plán
+// plán: knihovna Výpravy → nová výprava → Itinerář
 await page.click('#tabs button[data-tab="plan"]')
 await page.waitForTimeout(300)
-await kontrola('prázdný plán má hlášku', () => page.locator('#planWrap .empty').count(), 1)
-await kontrola('segment Cesta · Přehled · Plán', () => page.locator('#planSegment button').count(), 3)
-// Bez rozjeté cesty se začíná Přehledem; karta Cesta vysvětlí, že se nejede.
-await kontrola('začíná se Přehledem', () => page.locator('#planSegment button.on').innerText(), 'Přehled')
+await kontrola('prázdná knihovna má hlášku', () => page.locator('#planWrap .empty').count(), 1)
+await kontrola('segment Na cestě · Výpravy · Itinerář', () => page.locator('#planSegment button').count(), 3)
+// Bez rozjeté cesty se začíná knihovnou Výpravy – ta je vstupní bod.
+await kontrola('začíná se Výpravami', () => page.locator('#planSegment button.on').innerText(), 'Výpravy')
 // Fantom se nevypisuje (srpen 2026): čerstvý uživatel žádnou výpravu nezaložil,
-// takže mu seznam nemá vnucovat prázdný „Náš plán". Jakmile přibude zastávka,
-// výprava se objeví – to hlídá kontrola „výprava se zastávkou už v seznamu je" níž.
+// takže mu knihovna nemá vnucovat prázdný „Náš plán".
 await kontrola('fantomová výprava se nevypisuje', () => page.locator('.vypravaradek').count(), 0)
 
-// „Přidat zastávku“ → vybírátko míst → zastávka v plánu
+// Nová výprava (prompt) → rovnou do Itineráře → „Přidat zastávku“ → vybírátko
+page.once('dialog', (d) => d.accept('Zkušební výprava'))
+await page.click('#vypNova')
+await page.waitForTimeout(500)
+await kontrola('nová výprava otevře Itinerář', () => page.locator('#planSegment button.on').innerText(), 'Itinerář')
 await page.click('#planPridat')
 await page.waitForTimeout(600)
 await kontrola('vybírátko míst se otevřelo', () => page.locator('#vyberMista.show').count(), 1)
@@ -356,15 +360,37 @@ await kontrola('zastávka přibyla do plánu', () =>
   1
 )
 await kontrola('počítadlo nad záložkou Plán', () => page.locator('#planCount').innerText(), '1')
-await kontrola('výprava se zastávkou už v seznamu je', () => page.locator('.vypravaradek').count(), 1)
-await kontrola('aktivní výprava je označená', () => page.locator('.vypravaradek.on').count(), 1)
+// Vyjíždí se z otevřeného plánu, jako se v navigaci spouští otevřená trasa.
+await kontrola('Itinerář nabízí Vyjet', () => page.locator('#planVyjet').count(), 1)
 
-// Průběh výpravy: odškrtnutá zastávka se zapisuje jako navštívená, tedy do
-// téhož místa jako srdce v Seznamu. Žádná druhá evidence.
-await kontrola('pruh průběhu je v přehledu', () => page.locator('.prubeh').count(), 1)
-await kontrola('průběh začíná na nule', () => page.locator('.prubeh-hlava b').innerText(), '0 z 1 zastávky')
-await page.click('#planSegment button[data-seg="plan"]')
+// Knihovna: výprava v seznamu, složky, sbalování, otevření řádkem
+await page.click('#planSegment button[data-seg="vypravy"]')
+await page.waitForTimeout(400)
+await kontrola('výprava se zastávkou je v knihovně', () => page.locator('.vypravaradek').count(), 1)
+await kontrola('výprava na mapě je odlišená', () => page.locator('.vypravaradek.on').count(), 1)
+page.once('dialog', (d) => d.accept('Balkán'))
+await page.click('#slozkaNova')
+await page.waitForTimeout(400)
+await kontrola('nová složka je vidět i prázdná', () => page.locator('.slozka-radek').count(), 1)
+await page.click('.vypravaradek [data-vyprava-vice]')
+await page.waitForTimeout(300)
+await kontrola('řádek výpravy má akce', () => page.locator('.vyprava-akce').count(), 1)
+await page.click('.slozka-pill[data-slozka-cil="Balkán"]')
+await page.waitForTimeout(400)
+await kontrola('výprava se přesunula do složky', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).vypravaSlozka), 'Balkán')
+await kontrola('řádek je uvnitř složky', () => page.locator('.slozka-obsah .vypravaradek').count(), 1)
+await page.click('.slozka-radek')
+await page.waitForTimeout(300)
+await kontrola('složka jde sbalit', () => page.locator('.slozka-obsah').count(), 0)
+await page.click('.slozka-radek')
+await page.waitForTimeout(300)
+await page.click('.slozka-obsah .vypravaradek')
 await page.waitForTimeout(500)
+await kontrola('ťuknutí na výpravu otevře Itinerář', () => page.locator('#planSegment button.on').innerText(), 'Itinerář')
+
+// Odškrtnutá zastávka se zapisuje jako navštívená, tedy do téhož místa jako
+// srdce v Seznamu. Žádná druhá evidence.
 await kontrola('zastávka má fajfku „byli jsme tady"', () => page.locator('.zastavka-hotovo').count(), 1)
 await page.click('.zastavka-hotovo')
 await page.waitForTimeout(500)
@@ -374,8 +400,6 @@ await kontrola('odškrtnutí se zapíše jako navštíveno', () =>
 )
 await page.click('.zastavka-hotovo')
 await page.waitForTimeout(500)
-await page.click('#planSegment button[data-seg="prehled"]')
-await page.waitForTimeout(400)
 
 // Navigace je pod jedním tlačítkem, ne třemi v řádku. GPX je čtvrtá volba –
 // jediná, která unese celou trasu (Google jen deset bodů, Apple a Waze jeden).
@@ -389,18 +413,16 @@ await kontrola('GPX je mezi nimi', () => page.locator('#planGpx').count(), 1)
 await page.click('#backdrop', { position: { x: 190, y: 40 } })
 await page.waitForTimeout(400)
 
-// Přehled plánu: čísla jedné výpravy; srovnání je nadstavba (jen když jsou
-// aspoň dvě výpravy, což tady není – kontroluje se tedy základ).
-await kontrola('přehled má výběr výpravy', () => page.locator('#prehVyber').count(), 1)
-await kontrola('přehled má čtyři skupiny čísel', () => page.locator('.preh-skupina').count(), 4)
+// Čísla výpravy bydlí dole v Itineráři; srovnání je nadstavba a nabízí se
+// až od dvou výprav, což tady není – kontroluje se tedy základ.
+await kontrola('čísla výpravy jsou v Itineráři', () => page.locator('.preh-skupina').count(), 4)
+await kontrola('srovnání se nabízí až od dvou výprav', () => page.locator('#prehSrovnej').count(), 0)
 // Bez zapnutého srovnání chodí do radek() null – dřív se vypisoval doslova.
-await kontrola('v číslech přehledu není doslovné „null"', () =>
+await kontrola('v číslech výpravy není doslovné „null"', () =>
   page.evaluate(() => [...document.querySelectorAll('.preh-radek')].every((r) => !r.textContent.includes('null'))))
 
 // Vlastní bloky: přidat seznam, položku, odškrtnout; vlastní místo pozná
 // vložené souřadnice v několika tvarech.
-await page.click('#planSegment button[data-seg="plan"]')
-await page.waitForTimeout(400)
 await kontrola('nabídka bloků má pět typů', () => page.locator('[data-blok-novy]').count(), 5)
 await page.click('[data-blok-novy="seznam"]')
 await page.waitForTimeout(400)

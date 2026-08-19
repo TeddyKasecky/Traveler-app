@@ -285,9 +285,9 @@ function prazdnaCesta() {
       <h3>Zatím se nikam nejede</h3>
       ${
         mist
-          ? `<p>Aktivní výprava má ${mist} ${sklonuj(mist, 'zastávku', 'zastávky', 'zastávek')}. Až sednete do auta, vyjeďte – odznačování a čas poběží odsud.</p>
+          ? `<p>Výprava „${esc(store.vypravaNazev || BEZ_NAZVU)}" má ${mist} ${sklonuj(mist, 'zastávku', 'zastávky', 'zastávek')}. Až sednete do auta, vyjeďte – odznačování a čas poběží odsud.</p>
              <button class="btn primary" id="cestaVyjed">${IC('i-van')}Vyjet</button>`
-          : `<p>Nejdřív je potřeba plán: v kartě Plán si poskládej zastávky, pak se odsud vyjíždí.</p>`
+          : `<p>Nejdřív je potřeba plán: v kartě Výpravy si otevři nebo založ výpravu, v Itineráři poskládej zastávky a vyjeď.</p>`
       }
     </div>
     ${archivHtml()}`

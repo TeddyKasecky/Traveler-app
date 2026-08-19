@@ -24,6 +24,7 @@ import { openWizard } from './wizard.js'
 import { zapniVyberMist } from '../map/map.js'
 import { novaVyprava } from '../views/plan/vypravy.js'
 import { aktivujZalozku } from '../core/router.js'
+import { otevriItinerar } from '../views/plan/plan.js'
 import { otevriVyber } from './vyberMista.js'
 import { toast } from './toast.js'
 
@@ -76,7 +77,7 @@ export function initPlusMenu() {
       if (!save()) return
       draw()
       toast(`Výprava založená: ${ids.length} ${ids.length === 1 ? 'místo' : ids.length < 5 ? 'místa' : 'míst'}`)
-      aktivujZalozku('plan')
+      otevriItinerar()
     })
   }
   document.getElementById('plusMisto').onclick = () => {

@@ -1,14 +1,19 @@
 /**
  * Záložka Plán – „jak to pojedeme".
  *
- * Skladba podle předlohy `grafika/…11_09_50 (4).png`: název výpravy, segment
- * Přehled · Plán · Mapa, karta trasy se statistikami a tlačítkem „Optimalizovat
- * trasu", itinerář po dnech s náhledy a dole lišta „Uloženo" a „Odeslat do
- * navigace".
+ * Tři karty, každá odpovídá na jednu otázku (přejmenováno v srpnu 2026,
+ * inspirace knihovnou tras v Mapy.cz – ne kopie):
  *
- * PROČ SEGMENT, A NE JEDNA DLOUHÁ STRÁNKA: obrazovka odpovídá na tři různé
- * otázky – kolik to je (Přehled), v jakém pořadí (Plán) a kudy (Mapa).
- * Do teď byly všechny tři pomíchané v jednom sloupci karet.
+ *   Na cestě   „jak nám to jede"     – probíhající cesta + archiv po letech
+ *   Výpravy    „které plány mám"     – knihovna: složky, výpravy, zakládání
+ *   Itinerář   „jak to pojedeme"     – VŠECHNO o otevřené výpravě: dny,
+ *                                      zastávky, bloky, akce i čísla se srovnáním
+ *
+ * ŽÁDNÝ VĚČNĚ VYBRANÝ PLÁN NAHOŘE: dřív visel název aktivní výpravy jako
+ * titulek nade všemi kartami a výběr plánu byl na dvou místech dvěma
+ * mechanikami. Teď se plán vybírá jedině v knihovně – ťuknutí ho otevře
+ * v Itineráři. „Otevřená" výprava je datově pořád ta aktivní (`store.plan`
+ * řídí mapu, Domů i vyjetí), jen se ten pojem už nikam nepíše.
  *
  * NAVIGAČNÍ TLAČÍTKA (`#planNav`, `#planNavApple`, `#planNavWaze`) se přesunula
  * do vysouvací nabídky, ale **zůstala synchronní**: okno se otevírá přímo
@@ -23,17 +28,20 @@ import { KAT } from '../../data/categories.js'
 import { obrazekMista } from '../../data/kategorieFoto.js'
 import { IC } from '../../icons/sprite.js'
 import { toast } from '../../components/toast.js'
-import { sekce, segment, statpanel, ikonBtn } from '../../components/vzory.js'
+import { sekce, segment, ikonBtn } from '../../components/vzory.js'
 import { otevriVyber } from '../../components/vyberMista.js'
 import { goTo, draw, mapa, priblizNaFiltr, vyberBod } from '../../map/map.js'
 import { aktivujZalozku } from '../../core/router.js'
 import { stahniSoubor } from '../../core/csv.js'
 import { dnyPlanu, pridejDen, presunDoDne, zrusDny, rozdelPodleHodin, rozdelNaPocet, nastavDny } from './dny.js'
 import { gpxZPlanu, nazevSouboru } from './gpx.js'
-import { seznamVyprav, prepniVypravu, novaVyprava, prejmenujVypravu, smazAktivniVypravu, BEZ_NAZVU } from './vypravy.js'
-import { cestaHtml, napojCestu, jedeSe } from './cesta.js'
+import {
+  seznamVyprav, seznamSlozek, prepniVypravu, novaVyprava, novaSlozka, prejmenujSlozku,
+  smazSlozku, presunVypravu, prejmenuj, smaz, BEZ_NAZVU,
+} from './vypravy.js'
+import { cestaHtml, napojCestu, jedeSe, vyjed } from './cesta.js'
 import { blokyDneHtml, pridatBlokHtml, napojBloky, rozpocetCelkem } from './bloky.js'
-import { prehledPlanuHtml, napojPrehledPlanu } from './prehled.js'
+import { cislaPlanuHtml, napojCislaPlanu } from './prehled.js'
 
 /** Kolik zastávek unese odkaz do Google Maps. */
 const MAX_DO_NAVIGACE = 10
@@ -43,15 +51,20 @@ const KLIKATOST = 1.35
 const KMH = 62
 
 /**
- * Který díl segmentu je vidět. Jen v paměti; po restartu se začíná Aktuální
- * cestou, když se zrovna jede – kdo je na cestě, chce odznačovat, ne plánovat.
+ * Který díl segmentu je vidět. Jen v paměti; po restartu se začíná kartou
+ * Na cestě, když se zrovna jede – kdo je na cestě, chce odznačovat, ne
+ * plánovat. Jinak knihovnou Výpravy: ta je vstupní bod ke všemu ostatnímu.
  */
 let dil = ''
-const vychoziDil = () => (jedeSe() ? 'cesta' : 'prehled')
+const vychoziDil = () => (jedeSe() ? 'cesta' : 'vypravy')
 /** Která zastávka má rozbalené ovládání pod sebou. */
 let rozbaleno = ''
 /** Sbalené dny (čísla od jedničky). Jen v paměti. */
 const sbaleneDny = new Set()
+/** Co má v knihovně rozbalené akce: 'v' + index výpravy, 's' + název složky. */
+let rozbalenoVKnihovne = ''
+/** Sbalené složky v knihovně. Jen v paměti; výchozí všechny rozbalené. */
+const sbaleneSlozky = new Set()
 
 /** Přidá nebo odebere místo z plánu. */
 export function togglePlan(id) {
@@ -109,7 +122,8 @@ function fmtCas(hrs) {
   return m ? `${h} h ${m} min` : `${h} h`
 }
 
-export const sklonuj = (n, a, b, c) => (n === 1 ? a : n < 5 ? b : c)
+// Nula skloňuje jako pět a víc: „0 výprav", ne „0 výpravy".
+export const sklonuj = (n, a, b, c) => (n === 1 ? a : n >= 2 && n < 5 ? b : c)
 
 /* ================= vykreslení ================= */
 
@@ -127,25 +141,25 @@ export function renderPlan() {
   if (!dil) dil = vychoziDil()
 
   wrap.innerHTML =
-    hlava(items, dny) +
     segment(
       [
-        // Tečka u Aktuální cesty říká „něco běží" – jinak by se na rozjetou
+        // Tečka u Na cestě říká „něco běží" – jinak by se na rozjetou
         // cestu dalo zapomenout v jiném dílu.
-        { id: 'cesta', popisek: jedeSe() ? 'Cesta ·' : 'Cesta' },
-        { id: 'prehled', popisek: 'Přehled' },
-        { id: 'plan', popisek: 'Plán' },
+        { id: 'cesta', popisek: jedeSe() ? 'Na cestě ·' : 'Na cestě' },
+        { id: 'vypravy', popisek: 'Výpravy' },
+        { id: 'itinerar', popisek: 'Itinerář' },
       ],
       dil,
       'planSegment'
     ) +
-    (dil === 'cesta' ? cestaHtml() : dil === 'prehled' ? prehled(items, dny) : itinerar(items, dny)) +
-    (dil === 'cesta' ? '' : lista(items))
+    (dil === 'cesta' ? cestaHtml() : dil === 'vypravy' ? knihovna() : kartaItinerare(items, dny)) +
+    (dil === 'itinerar' ? lista(items) : '')
 
   napoj(wrap, items)
   if (dil === 'cesta') napojCestu(wrap, renderPlan)
-  if (dil === 'prehled') napojPrehledPlanu(wrap, renderPlan)
-  if (dil === 'plan') {
+  if (dil === 'vypravy') napojKnihovnu(wrap)
+  if (dil === 'itinerar') {
+    napojCislaPlanu(wrap, renderPlan)
     // Překresluje se přes draw(), ne jen renderPlan(): vlastní místa mění
     // trasu i špendlíky na mapě a ta by jinak zůstala stará.
     napojBloky(wrap, draw, (cb) => vyberBod(cb))
@@ -160,13 +174,25 @@ export function renderPlan() {
   }
 }
 
-/** Hlavička: název výpravy a co obnáší. */
+/**
+ * Otevře Itinerář otevřené výpravy. Vstup zvenku: karta výpravy na Domů
+ * a Mapě, průvodce a výběr míst na mapě – všude tam člověk právě sáhl na
+ * konkrétní plán a chce ho vidět, ne knihovnu.
+ */
+export function otevriItinerar() {
+  dil = 'itinerar'
+  aktivujZalozku('plan')
+  renderPlan()
+}
+
+/** Hlavička Itineráře: název otevřené výpravy a co obnáší. */
 function hlava(items, dny) {
   const st = planStats(items)
+  const slozka = store.vypravaSlozka || ''
   const popis = items.length
     ? `${items.length} ${sklonuj(items.length, 'zastávka', 'zastávky', 'zastávek')} · ${dny.length} ${sklonuj(dny.length, 'den', 'dny', 'dní')}${
         items.length > 1 ? ` · ${fmtKm(st.road)}` : ''
-      }`
+      }${slozka ? ` · ${slozka}` : ''}`
     : 'Zatím prázdná'
 
   return `<div class="planhlava">
@@ -179,65 +205,221 @@ function hlava(items, dny) {
   <div id="planMenu" hidden></div>`
 }
 
-/* ---------- Přehled ---------- */
+/* ---------- Výpravy (knihovna) ---------- */
 
-function prehled(items, dny) {
-  const st = planStats(items)
-  const zemi = new Set(items.map((p) => p.z)).size
-
-  const vypravy = seznamVyprav()
-  const seznamHtml = vypravy
-    .map((v) => {
-      const km = planStats(v.plan.map((id) => S.byId[id]).filter(Boolean)).road
-      return `<button class="vypravaradek${v.aktivni ? ' on' : ''}" data-vyprava="${v.index}">
-        ${IC(v.aktivni ? 'i-route' : 'i-map')}
-        <div>
-          <b>${esc(v.nazev)}</b>
-          <span>${v.plan.length} ${sklonuj(v.plan.length, 'zastávka', 'zastávky', 'zastávek')}${v.plan.length > 1 ? ` · ${fmtKm(km)}` : ''}</span>
-        </div>
-        ${v.aktivni ? `<i>aktivní</i>` : IC('i-sipka', 'font-size:15px;color:var(--text3)')}
-      </button>`
-    })
-    .join('')
+/** Jeden řádek výpravy v knihovně. */
+function radekVypravy(v) {
+  const km = planStats(v.plan.map((id) => S.byId[id]).filter(Boolean)).road
+  const dnu = (v.planDny || []).filter((d) => d > 0).length || 1
+  const meta =
+    `${v.plan.length} ${sklonuj(v.plan.length, 'zastávka', 'zastávky', 'zastávek')}` +
+    (v.plan.length > 1 ? ` · ${dnu} ${sklonuj(dnu, 'den', 'dny', 'dní')} · ${fmtKm(km)}` : '')
 
   return (
-    sekce('Moje výpravy', { akce: 'Nová výprava', akceId: 'vypNova' }) +
-    `<div class="vypravy">${seznamHtml}</div>` +
-    (items.length ? pruhPrubehu(items) : '') +
-    prehledPlanuHtml() +
-    sekce('Trasa a přehled') +
-    (items.length
-      ? `<div class="trasakarta">
-          ${statpanel([
-            { ikona: 'i-route', popisek: 'Celkem vzdálenost', hodnota: items.length > 1 ? fmtKm(st.road) : '—' },
-            { ikona: 'i-clock', popisek: 'Odhadovaný čas', hodnota: items.length > 1 ? fmtCas(st.hrs) : '—' },
-            { ikona: 'i-pinme', popisek: 'Zastávky', hodnota: `${items.length} ${sklonuj(items.length, 'místo', 'místa', 'míst')}` },
-            { ikona: 'i-kalendar', popisek: 'Rozděleno na', hodnota: `${dny.length} ${sklonuj(dny.length, 'den', 'dny', 'dní')}` },
-            { ikona: 'i-globe', popisek: 'Zemí na trase', hodnota: String(zemi) },
-          ])}
-          <button class="btn small" id="planNaMapu">${IC('i-map')}Ukázat na mapě</button>
-          ${items.length > 2 ? `<button class="btn zvyrazneny" id="planOpt">${IC('i-sparkles')}Optimalizovat trasu</button>` : ''}
-          ${items.length > 2 ? rozdeleni() : ''}
+    `<div class="vypravaradek${v.aktivni ? ' on' : ''}" data-vyprava="${v.index}">
+      ${IC(v.aktivni ? 'i-route' : 'i-map')}
+      <div>
+        <b>${esc(v.nazev)}</b>
+        <span>${meta}</span>
+      </div>
+      ${v.aktivni ? `<i title="Tahle výprava je vidět na mapě">na mapě</i>` : ''}
+      <button class="ikonbtn vyprava-vice" data-vyprava-vice title="Co s touhle výpravou">${IC('i-vice')}</button>
+    </div>` + (rozbalenoVKnihovne === `v${v.index}` ? akceVypravy(v) : '')
+  )
+}
+
+/** Rozbalené akce pod řádkem výpravy: přejmenovat, smazat, zařadit do složky. */
+function akceVypravy(v) {
+  const nazvy = seznamSlozek().map((s) => s.slozka).filter(Boolean)
+  return `<div class="vyprava-akce" data-pro="${v.index}">
+    <div class="btnrow" style="margin:0">
+      <button class="btn small" data-act="v-prejmenovat">${IC('i-quill')}Přejmenovat</button>
+      <button class="btn small" data-act="v-smazat">${IC('i-x')}Smazat</button>
+    </div>
+    <div class="vyprava-slozky">
+      <button class="slozka-pill${!v.slozka ? ' on' : ''}" data-slozka-cil="">Bez složky</button>
+      ${nazvy.map((n) => `<button class="slozka-pill${v.slozka === n ? ' on' : ''}" data-slozka-cil="${esc(n)}">${esc(n)}</button>`).join('')}
+      <button class="slozka-pill" data-slozka-cil="+">${IC('i-plus')}Nová…</button>
+    </div>
+  </div>`
+}
+
+/** Hlavička složky: sbalitelná, s počtem a vlastní nabídkou. */
+function hlavickaSlozky(s) {
+  const sbalena = sbaleneSlozky.has(s.slozka)
+  return (
+    `<div class="slozka-radek${sbalena ? ' sbalena' : ''}" data-slozka="${esc(s.slozka)}">
+      ${IC('i-slozka')}
+      <b>${esc(s.slozka)}</b>
+      <span>${s.vypravy.length} ${sklonuj(s.vypravy.length, 'výprava', 'výpravy', 'výprav')}</span>
+      <button class="ikonbtn" data-slozka-vice title="Co s touhle složkou">${IC('i-vice')}</button>
+      <span class="slozka-sipka">${IC('i-down')}</span>
+    </div>` +
+    (rozbalenoVKnihovne === `s${s.slozka}`
+      ? `<div class="vyprava-akce" data-akce-slozky="${esc(s.slozka)}">
+          <div class="btnrow" style="margin:0">
+            <button class="btn small" data-act="s-prejmenovat">${IC('i-quill')}Přejmenovat složku</button>
+            <button class="btn small" data-act="s-smazat">${IC('i-x')}Smazat složku</button>
+          </div>
         </div>`
-      : prazdno())
+      : '')
   )
 }
 
 /**
- * Pruh průběhu výpravy.
- *
- * Do teď byl Plán jen seznam před cestou a za jízdy neměl co dělat. Odškrtnutá
- * zastávka se zapisuje jako navštívená (`store.stav`), takže se objeví i v číslech
- * na Domů a v Seznamu — je to jedna a ta samá informace, ne druhá evidence.
+ * Knihovna výprav: složky jako sbalitelné skupiny, nezařazené nakonec.
+ * Žádný připnutý aktivní plán – ťuknutí na výpravu ji otevře v Itineráři.
  */
-function pruhPrubehu(items) {
-  const { hotovo, celkem, zbyva } = prubehVypravy(items)
-  const podil = celkem ? Math.round((hotovo / celkem) * 100) : 0
-  const vpravo = hotovo === celkem ? 'Hotovo, celá výprava objetá' : `zbývá ${fmtKm(zbyva)}`
+function knihovna() {
+  const vypravy = seznamVyprav()
 
-  return `<div class="prubeh">
-    <div class="prubeh-hlava"><b>${hotovo} z ${celkem} ${sklonuj(celkem, 'zastávky', 'zastávek', 'zastávek')}</b><span>${esc(vpravo)}</span></div>
-    <div class="prubeh-lista"><i style="width:${podil}%"></i></div>
+  if (!vypravy.length)
+    return `<div class="empty">${IC('i-van')}Zatím tu není žádná výprava.
+      Založ si první – zastávky do ní pak přidáš v Itineráři, z Objevuj nebo výběrem z mapy.
+      <div class="btnrow" style="justify-content:center;margin-bottom:0">
+        <button class="btn small primary" id="vypNova">${IC('i-plus')}Nová výprava</button>
+      </div></div>`
+
+  const skupiny = seznamSlozek()
+  const maSlozky = skupiny.some((s) => s.slozka)
+
+  const casti = []
+  for (const s of skupiny) {
+    if (s.slozka) {
+      casti.push(hlavickaSlozky(s))
+      if (!sbaleneSlozky.has(s.slozka))
+        casti.push(`<div class="slozka-obsah">${s.vypravy.map(radekVypravy).join('')}</div>`)
+    } else {
+      const kus = s.vypravy.map(radekVypravy).join('')
+      casti.push(maSlozky ? `<div class="sekce"><span class="sekce-text">Nezařazené</span></div>${kus}` : kus)
+    }
+  }
+
+  return (
+    sekce('Moje výpravy', { pozn: `${vypravy.length} ${sklonuj(vypravy.length, 'výprava', 'výpravy', 'výprav')}` }) +
+    `<div class="vypravy">${casti.join('')}</div>
+    <div class="btnrow knihovna-pridat">
+      <button class="ghostbtn" id="vypNova">${IC('i-plus')}Nová výprava</button>
+      <button class="ghostbtn" id="slozkaNova">${IC('i-slozka')}Nová složka</button>
+    </div>`
+  )
+}
+
+/** Obsluha knihovny: otevírání, sbalování složek, akce řádků. */
+function napojKnihovnu(wrap) {
+  for (const r of wrap.querySelectorAll('.vypravaradek[data-vyprava]')) {
+    const i = Number(r.dataset.vyprava)
+    r.onclick = () => {
+      rozbalenoVKnihovne = ''
+      dil = 'itinerar'
+      if (i >= 0) {
+        prepniVypravu(i)
+        draw()
+      } else renderPlan()
+    }
+    const vice = r.querySelector('[data-vyprava-vice]')
+    if (vice)
+      vice.onclick = (e) => {
+        e.stopPropagation()
+        rozbalenoVKnihovne = rozbalenoVKnihovne === `v${i}` ? '' : `v${i}`
+        renderPlan()
+      }
+  }
+
+  for (const akce of wrap.querySelectorAll('[data-pro]')) {
+    const i = Number(akce.dataset.pro)
+    const zaznam = () => seznamVyprav().find((x) => x.index === i)
+    akce.querySelector('[data-act="v-prejmenovat"]').onclick = () => {
+      const v = zaznam()
+      const n = prompt('Název výpravy:', v ? v.nazev : '')
+      if (n === null) return
+      prejmenuj(i, n)
+      renderPlan()
+    }
+    akce.querySelector('[data-act="v-smazat"]').onclick = () => {
+      const v = zaznam()
+      if (!confirm(`Smazat výpravu „${v ? v.nazev : ''}" i se zastávkami?`)) return
+      rozbalenoVKnihovne = ''
+      smaz(i)
+      draw()
+      toast('Výprava smazána')
+    }
+    for (const p of akce.querySelectorAll('[data-slozka-cil]'))
+      p.onclick = () => {
+        let cil = p.dataset.slozkaCil
+        if (cil === '+') {
+          const n = prompt('Název nové složky:', '')
+          if (n === null || !n.trim()) return
+          cil = n.trim()
+        }
+        presunVypravu(i, cil)
+        renderPlan()
+      }
+  }
+
+  for (const h of wrap.querySelectorAll('.slozka-radek')) {
+    const nazev = h.dataset.slozka
+    h.onclick = () => {
+      sbaleneSlozky.has(nazev) ? sbaleneSlozky.delete(nazev) : sbaleneSlozky.add(nazev)
+      renderPlan()
+    }
+    const vice = h.querySelector('[data-slozka-vice]')
+    if (vice)
+      vice.onclick = (e) => {
+        e.stopPropagation()
+        rozbalenoVKnihovne = rozbalenoVKnihovne === `s${nazev}` ? '' : `s${nazev}`
+        renderPlan()
+      }
+  }
+
+  for (const akce of wrap.querySelectorAll('[data-akce-slozky]')) {
+    const nazev = akce.dataset.akceSlozky
+    akce.querySelector('[data-act="s-prejmenovat"]').onclick = () => {
+      const n = prompt('Nový název složky:', nazev)
+      if (n === null || !n.trim()) return
+      rozbalenoVKnihovne = ''
+      prejmenujSlozku(nazev, n)
+      renderPlan()
+    }
+    akce.querySelector('[data-act="s-smazat"]').onclick = () => {
+      if (!confirm(`Smazat složku „${nazev}"? Výpravy v ní zůstanou, jen spadnou mezi nezařazené.`)) return
+      rozbalenoVKnihovne = ''
+      smazSlozku(nazev)
+      renderPlan()
+    }
+  }
+
+  const slozkaBtn = document.getElementById('slozkaNova')
+  if (slozkaBtn)
+    slozkaBtn.onclick = () => {
+      const n = prompt('Název nové složky:', '')
+      if (n === null || !n.trim()) return
+      novaSlozka(n)
+      renderPlan()
+    }
+}
+
+/* ---------- Itinerář (karta) ---------- */
+
+/**
+ * Celá karta Itinerář: hlavička, akce, dny se zastávkami a čísla výpravy.
+ * Kreslí se i bez jediné výpravy – edituje se aktivní slot, který tu byl
+ * odjakživa, a první zastávkou se zhmotní jako výprava i v knihovně.
+ */
+function kartaItinerare(items, dny) {
+  return hlava(items, dny) + akceItinerare(items) + itinerar(items, dny) + cislaPlanuHtml()
+}
+
+/**
+ * Akce nad itinerářem. „Vyjet" je tady, ne schované na kartě Na cestě:
+ * vyjíždí se z otevřeného plánu, jako se v navigaci spouští otevřená trasa.
+ */
+function akceItinerare(items) {
+  if (!items.length) return ''
+  return `<div class="btnrow itiakce">
+    ${!jedeSe() ? `<button class="btn primary" id="planVyjet">${IC('i-van')}Vyjet</button>` : ''}
+    <button class="btn small" id="planNaMapu">${IC('i-map')}Na mapě</button>
+    ${items.length > 2 ? `<button class="btn small" id="planOpt">${IC('i-sparkles')}Optimalizovat</button>` : ''}
   </div>`
 }
 
@@ -317,7 +499,8 @@ function itinerar(items, dny) {
           <button class="btn small" id="planDen">${IC('i-kalendar')}Přidat den</button>
           ${vicDnu ? `<button class="btn small" id="planBezDnu">Zrušit dny</button>` : ''}
         </div>`
-      : '')
+      : '') +
+    (items.length > 2 ? rozdeleni() : '')
   )
 }
 
@@ -384,28 +567,29 @@ function napoj(wrap, items) {
     }
   }
 
-  for (const b of wrap.querySelectorAll('[data-vyprava]')) {
-    b.onclick = () => {
-      const i = Number(b.dataset.vyprava)
-      if (i < 0) return
-      prepniVypravu(i)
-      draw()
-      toast(`Výprava: ${store.vypravaNazev || BEZ_NAZVU}`)
-    }
-  }
-
   const nova = document.getElementById('vypNova')
   if (nova)
     nova.onclick = () => {
       const nazev = prompt('Jak se bude výprava jmenovat?', '')
       if (nazev === null) return
       novaVyprava(nazev)
+      // Rovnou do Itineráře: nová výprava je prázdná a tam se plní.
+      dil = 'itinerar'
       draw()
       toast('Nová výprava založená')
     }
 
   const vice = document.getElementById('planVice')
   if (vice) vice.onclick = () => prepniMenu()
+
+  const vyjet = document.getElementById('planVyjet')
+  if (vyjet)
+    vyjet.onclick = () => {
+      if (!vyjed()) return
+      dil = 'cesta'
+      toast('Šťastnou cestu!')
+      draw()
+    }
 
   const pridat = document.getElementById('planPridat')
   if (pridat)
@@ -736,12 +920,35 @@ function prepniMenu() {
 
   m.innerHTML = `
     <button id="planPrejmenuj">${IC('i-quill')}Přejmenovat výpravu</button>
+    <button id="planDoSlozky">${IC('i-slozka')}Přesunout do složky</button>
     <button id="planShare">${IC('i-copy')}Kopírovat plán</button>
     ${store.plan.length > 1 ? `<button id="planOtoc">${IC('i-route')}Otočit pořadí</button>` : ''}
     ${(store.planDny || []).length > 1 ? `<button id="planDupDen">${IC('i-kalendar')}Duplikovat poslední den</button>` : ''}
     <button id="planClear">${IC('i-trash')}Vyprázdnit zastávky</button>
     <button id="planSmaz">${IC('i-x')}Smazat celou výpravu</button>`
   m.hidden = false
+
+  // Druhé patro nabídky: výběr složky přepíše obsah menu, křížek se vrací.
+  document.getElementById('planDoSlozky').onclick = () => {
+    const nazvy = seznamSlozek().map((s) => s.slozka).filter(Boolean)
+    m.innerHTML =
+      `<button data-slozka-cil="">${IC('i-x')}Bez složky</button>` +
+      nazvy.map((n) => `<button data-slozka-cil="${esc(n)}">${IC('i-slozka')}${esc(n)}</button>`).join('') +
+      `<button data-slozka-cil="+">${IC('i-plus')}Nová složka…</button>`
+    for (const b of m.querySelectorAll('[data-slozka-cil]'))
+      b.onclick = () => {
+        let cil = b.dataset.slozkaCil
+        if (cil === '+') {
+          const n = prompt('Název nové složky:', '')
+          if (n === null || !n.trim()) return
+          cil = n.trim()
+        }
+        presunVypravu(-1, cil)
+        m.hidden = true
+        toast(cil ? `Výprava je ve složce ${cil}` : 'Výprava je bez složky')
+        renderPlan()
+      }
+  }
 
   const otoc = document.getElementById('planOtoc')
   if (otoc)
@@ -770,7 +977,7 @@ function prepniMenu() {
   document.getElementById('planPrejmenuj').onclick = () => {
     const n = prompt('Název výpravy:', store.vypravaNazev || '')
     if (n === null) return
-    prejmenujVypravu(n)
+    prejmenuj(-1, n)
     renderPlan()
   }
 
@@ -800,7 +1007,7 @@ function prepniMenu() {
 
   document.getElementById('planSmaz').onclick = () => {
     if (!confirm(`Smazat výpravu „${store.vypravaNazev || BEZ_NAZVU}" i se zastávkami?`)) return
-    smazAktivniVypravu()
+    smaz(-1)
     draw()
     toast('Výprava smazána')
   }

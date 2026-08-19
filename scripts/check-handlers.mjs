@@ -82,8 +82,11 @@ async function projdi(page) {
   // jinak by kontrola hlásila, že tlačítka z originálu nemají protějšek,
   // a měla by pravdu jen proto, že se na ně nedostala.
   // V originále `#planVice` neexistuje, takže se na staré verzi nic nestane.
+  // Od srpna 2026 nabídka bydlí na dílu Itinerář – nejdřív se tam přepnout.
   await page.evaluate(() => document.querySelector('#tabs button[data-tab="plan"]')?.click())
   await page.waitForTimeout(500)
+  await page.evaluate(() => document.querySelector('#planSegment button[data-seg="itinerar"]')?.click())
+  await page.waitForTimeout(400)
   await page.evaluate(() => document.getElementById('planVice')?.click())
   await page.waitForTimeout(400)
 }

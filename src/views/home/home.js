@@ -21,7 +21,7 @@ import { S, store, prefs, savePrefs } from '../../core/store.js'
 import { esc } from '../../core/html.js'
 import { dkm, fmtKm } from '../../core/geo.js'
 import { aktivujZalozku } from '../../core/router.js'
-import { prubehVypravy } from '../plan/plan.js'
+import { prubehVypravy, otevriItinerar } from '../plan/plan.js'
 import { IC } from '../../icons/sprite.js'
 import { hash } from '../../components/postcard.js'
 import { openWizard } from '../../components/wizard.js'
@@ -249,10 +249,10 @@ export function renderHome() {
     pozdrav.onclick = () => zeptejSeNaJmeno(pozdrav)
   }
 
-  napojVypravu(el, { naPlan: () => aktivujZalozku('plan'), naPruvodce: () => openWizard() })
+  napojVypravu(el, { naPlan: () => otevriItinerar(), naPruvodce: () => openWizard() })
 
   const doPlanu = document.getElementById('homePlan')
-  if (doPlanu) doPlanu.onclick = () => aktivujZalozku('plan')
+  if (doPlanu) doPlanu.onclick = () => otevriItinerar()
 
   for (const k of el.querySelectorAll('.fotokarta[data-id]')) {
     k.onclick = () => goTo(S.byId[k.dataset.id])

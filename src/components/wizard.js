@@ -8,6 +8,7 @@ import { S, store, save } from '../core/store.js'
 import { esc } from '../core/html.js'
 import { dkm, zjistiPolohu } from '../core/geo.js'
 import { registrujOverlay, aktivujZalozku } from '../core/router.js'
+import { otevriItinerar } from '../views/plan/plan.js'
 import { IC } from '../icons/sprite.js'
 import { toast } from './toast.js'
 
@@ -128,7 +129,7 @@ export function makeTrip() {
   store.plan = route
   save()
   closeWizard()
-  aktivujZalozku('plan')
+  otevriItinerar()
   // Schválně se tu nevolá draw(): původní aplikace taky nepřekreslovala mapu,
   // čára plánu se objeví až při dalším překreslení. Zachováno 1:1.
   toast(`Výlet naplánován – ${route.length} zastávek ✨`)

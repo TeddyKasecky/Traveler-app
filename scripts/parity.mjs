@@ -431,6 +431,9 @@ await zkus('„Kopírovat“ dá text do schránky', async () => {
   // „Kopírovat“ se přestavbou Plánu přesunulo z řádku tlačítek do nabídky pod
   // „…“ – vedlejší akce tam patří podle předlohy. Cesta se tím prodloužila
   // o jedno ťuknutí a kontrola ji musí projít stejně jako uživatel.
+  // Od srpna 2026 nabídka bydlí na dílu Itinerář, ne nad všemi kartami.
+  await page.click('#planSegment button[data-seg="itinerar"]')
+  await page.waitForTimeout(400)
   await page.click('#planVice')
   await page.waitForTimeout(300)
   await page.click('#planShare')

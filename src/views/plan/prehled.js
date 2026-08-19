@@ -1,29 +1,31 @@
 /**
- * Přehled plánu – čísla jedné výpravy a volitelné srovnání s druhou.
+ * Čísla výpravy – čtyři skupiny čísel otevřené výpravy a volitelné srovnání.
  *
- * ZÁKLAD JE PŘEHLED JEDNOHO PLÁNU: vybraná výprava a k ní čtyři skupiny
- * čísel (délka a náročnost · co je na trase · země a oblasti · praktické).
+ * Do srpna 2026 to byla samostatná karta Přehled s vlastním výběrem plánu.
+ * Zanikla schválně: výběr plánu patří do knihovny Výpravy a čísla k otevřené
+ * výpravě do Itineráře – dvě místa výběru dvěma mechanikami mátla.
+ *
  * SROVNÁNÍ JE NADSTAVBA, ne výchozí stav – tlačítkem „Srovnat s…" se přidá
- * druhý plán a tatáž čísla se ukážou vedle sebe; křížkem se zase vypne.
+ * druhý plán (výběr seskupený po složkách) a tatáž čísla se ukážou vedle
+ * sebe; křížkem se zase vypne.
  *
  * Všechno jsou čisté funkce nad seznamem míst – žádný stav kromě toho,
- * které dvě výpravy se zrovna ukazují (jen v paměti).
+ * s kterou výpravou se zrovna srovnává (jen v paměti).
  */
 
 import { S, store } from '../../core/store.js'
 import { esc } from '../../core/html.js'
 import { IC } from '../../icons/sprite.js'
 import { dkm } from '../../core/geo.js'
-import { seznamVyprav } from './vypravy.js'
+import { seznamVyprav, seznamSlozek, BEZ_NAZVU } from './vypravy.js'
 import { planStats } from './plan.js'
 import { fmtKm } from '../../core/geo.js'
 
 /** Silnice bývá delší než vzdušná čára – týž koeficient jako v plan.js. */
 const KLIKATOST = 1.35
 
-/** Kterou výpravu ukazuje přehled (index v seznamu) a s kterou se srovnává. */
-let vybrana = -1
-let srovnavana = -1
+/** S kterou výpravou se srovnává: index v `store.vypravy`, null = bez srovnání. */
+let srovnavana = null
 
 /**
  * Čísla jedné výpravy pro všechny čtyři skupiny.
@@ -78,36 +80,54 @@ function skupina(nadpis, ikona, radky) {
   return `<div class="preh-skupina"><div class="preh-nadpis">${IC(ikona)}${nadpis}</div>${radky}</div>`
 }
 
+/** Záznam výpravy, se kterou se srovnává, nebo null. */
+function srovnavanaVyprava() {
+  if (srovnavana == null) return null
+  const v = (store.vypravy || [])[srovnavana]
+  if (!v || !Array.isArray(v.plan)) {
+    srovnavana = null
+    return null
+  }
+  return { nazev: v.nazev || BEZ_NAZVU, plan: v.plan }
+}
+
 /**
- * HTML přehledu. Volá `plan.js` z karty Přehled.
+ * Volby pro výběr srovnávané výpravy, seskupené po složkách.
+ * Aktivní (index -1) se vynechává – sama se sebou se nesrovnává.
+ */
+function volbySrovnani() {
+  return seznamSlozek()
+    .map((s) => {
+      const opts = s.vypravy
+        .filter((v) => !v.aktivni)
+        .map((v) => `<option value="${v.index}"${v.index === srovnavana ? ' selected' : ''}>${esc(v.nazev)}</option>`)
+        .join('')
+      if (!opts) return ''
+      return s.slozka ? `<optgroup label="${esc(s.slozka)}">${opts}</optgroup>` : opts
+    })
+    .join('')
+}
+
+/**
+ * HTML čísel otevřené výpravy. Vkládá je Itinerář (`plan.js`).
  * @returns {string}
  */
-export function prehledPlanuHtml() {
-  const vypravy = seznamVyprav()
-  if (vybrana < 0 || vybrana >= vypravy.length) vybrana = vypravy.findIndex((v) => v.aktivni)
-  if (srovnavana >= vypravy.length) srovnavana = -1
+export function cislaPlanuHtml() {
+  if (!store.plan.length) return ''
+  const a = cislaVypravy(store.plan)
+  const druha = srovnavanaVyprava()
+  const b = druha ? cislaVypravy(druha.plan) : null
+  const jineJsou = seznamVyprav().some((v) => !v.aktivni)
 
-  const hlavni = vypravy[vybrana]
-  if (!hlavni) return ''
-  const a = cislaVypravy(hlavni.plan)
-  const b = srovnavana >= 0 && srovnavana !== vybrana ? cislaVypravy(vypravy[srovnavana].plan) : null
-
-  const vyberHtml = `<div class="preh-vyber">
-    <select id="prehVyber">${vypravy
-      .map((v, i) => `<option value="${i}"${i === vybrana ? ' selected' : ''}>${esc(v.nazev)}</option>`)
-      .join('')}</select>
-    ${
-      b
-        ? `<span class="preh-proti">proti</span>
-           <select id="prehSrovnat">${vypravy
-             .map((v, i) => `<option value="${i}"${i === srovnavana ? ' selected' : ''}${i === vybrana ? ' disabled' : ''}>${esc(v.nazev)}</option>`)
-             .join('')}</select>
-           <button class="ikonbtn" id="prehZrusSrovnani" title="Zrušit srovnání">${IC('i-x')}</button>`
-        : vypravy.length > 1
-          ? `<button class="btn small" id="prehSrovnej">${IC('i-copy')}Srovnat s…</button>`
-          : ''
-    }
-  </div>`
+  const srovnaniHtml = druha
+    ? `<div class="preh-vyber">
+        <span class="preh-proti">proti</span>
+        <select id="prehSrovnat">${volbySrovnani()}</select>
+        <button class="ikonbtn" id="prehZrusSrovnani" title="Zrušit srovnání">${IC('i-x')}</button>
+      </div>`
+    : jineJsou
+      ? `<div class="preh-vyber"><button class="btn small" id="prehSrovnej">${IC('i-copy')}Srovnat s…</button></div>`
+      : ''
 
   const kategorieHtml = (c) =>
     Object.entries(c.kategorie)
@@ -117,9 +137,10 @@ export function prehledPlanuHtml() {
 
   const f = (n) => String(n)
 
-  return `${vyberHtml}
+  return `<div class="sekce"><span class="sekce-text">Čísla výpravy</span></div>
+    ${srovnaniHtml}
     <div class="preh${b ? ' srovnani' : ''}">
-      ${b ? `<div class="preh-hlavy"><span></span><b>${esc(hlavni.nazev)}</b><b class="druhy">${esc(vypravy[srovnavana].nazev)}</b></div>` : ''}
+      ${b ? `<div class="preh-hlavy"><span></span><b>${esc(store.vypravaNazev || BEZ_NAZVU)}</b><b class="druhy">${esc(druha.nazev)}</b></div>` : ''}
       ${skupina(
         'Délka a náročnost',
         'i-route',
@@ -155,23 +176,16 @@ export function prehledPlanuHtml() {
 }
 
 /**
- * Naváže výběr a srovnání.
+ * Naváže zapnutí, přepnutí a vypnutí srovnání.
  * @param {HTMLElement} wrap
  * @param {() => void} prekresli
  */
-export function napojPrehledPlanu(wrap, prekresli) {
-  const vyber = wrap.querySelector('#prehVyber')
-  if (vyber)
-    vyber.onchange = () => {
-      vybrana = Number(vyber.value)
-      if (srovnavana === vybrana) srovnavana = -1
-      prekresli()
-    }
+export function napojCislaPlanu(wrap, prekresli) {
   const srovnej = wrap.querySelector('#prehSrovnej')
   if (srovnej)
     srovnej.onclick = () => {
-      const vypravy = seznamVyprav()
-      srovnavana = vypravy.findIndex((_, i) => i !== vybrana)
+      const prvni = seznamVyprav().find((v) => !v.aktivni)
+      srovnavana = prvni ? prvni.index : null
       prekresli()
     }
   const vyberSrovnani = wrap.querySelector('#prehSrovnat')
@@ -183,7 +197,7 @@ export function napojPrehledPlanu(wrap, prekresli) {
   const zrus = wrap.querySelector('#prehZrusSrovnani')
   if (zrus)
     zrus.onclick = () => {
-      srovnavana = -1
+      srovnavana = null
       prekresli()
     }
 }
