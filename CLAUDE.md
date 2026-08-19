@@ -62,12 +62,12 @@ npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
 
-npm run smoke            # proklikání v prohlížeči, 177 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 163 kontrol
+npm run smoke            # proklikání v prohlížeči, 203 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 189 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
-npm run check-dny        # dny, výpravy, složky a záloha, 74 bodů
+npm run check-dny        # dny, výpravy, složky, záloha a body trasy, 94 bodů
 npm run check-filters    # 134 kombinací filtrů
 npm run check-handlers   # napojení tlačítek, 61/61
 npm run check-form       # že formulář vyrábí platná místa, 18/18
@@ -109,8 +109,8 @@ Runtime závislosti jsou **dvě** a obě vědomě:
 | `src/main.js` | vstupní bod — jen poskládá díly a zaregistruje odběry událostí, žádná logika |
 | `src/core/` | čistá logika bez DOM: `store.js` (stav + pub/sub), `router.js`, `filters.js`, `search.js`, `geo.js`, `csv.js`, `storage.js` (localStorage), `fotoDb.js` (IndexedDB), `html.js`, `motiv.js` (světlý/tmavý), `barvy.js` (čtení tokenů do JS) |
 | `src/data/` | `places.json` (580 míst), `places-nova.json` (přihrádka), číselníky `categories.js`/`collections.js`/`moods.js`, `validate.js`, `schema.md`, `basemap.json` (obrysy zemí), `mesta.json` (985 měst), `relief.json` (meze evropské mřížky) |
-| `src/views/` | obrazovky Domů, Mapa (spodní část), Objevuj, Seznam, Plán (`plan/` má i cestu, archiv, achievementy, přehled a bloky), Detail, Profil, Nastavení, Porovnání + registr `index.js` |
-| `src/components/` | díly použité na víc obrazovkách: `vzory.js` (11 stavebních dílů rozvržení), `vypravaKarta.js`, `vyberMista.js`, `plusMenu.js`, karta, filtry, sheet, wizard, formulář, toast |
+| `src/views/` | obrazovky Domů, Mapa (spodní část), Objevuj, Seznam, Plán (`plan/` má i cestu, archiv, achievementy, čísla výpravy, bloky a `body.js` s daty bez `IC`), Detail, Profil, Nastavení, Porovnání + registr `index.js` |
+| `src/components/` | díly použité na víc obrazovkách: `vzory.js` (11 stavebních dílů rozvržení), `dialog.js` (potvrzení/zadání/výběr místo prompt/confirm/alert), `vypravaKarta.js`, `vyberMista.js`, `plusMenu.js`, karta, filtry, sheet, wizard, formulář, toast |
 | `src/map/` | Leaflet: `map.js`, `markers.js`, `planLine.js`, `detailMap.js`, `podklad.js` (offline mapa), `vektory.js` (plochy a kresby v MapLibre), `kresby.js` (kde kresby stojí — z masky), `vbm.js` + `vbmWorker.js` (čtení staženého balíku) |
 | `src/styles/` | CSS po dílech, pořadí určuje `index.css`; barvy a rozměry jen z `tokens.css` |
 | `src/pwa/` | `sw.js` (šablona service workeru) a `register.js` |
@@ -139,7 +139,7 @@ _Odvozeno ze skutečného kódu — žádný linter to nevynucuje._
 - Parametry typované JSDoc anotacemi (`@param {Record<string, any>} p`), ne TypeScriptem.
 - CSS: barvy a rozměry výhradně přes proměnné z `tokens.css`, nikdy natvrdo. Nová barva
   patří do sémantické vrstvy **a do obou tmavých bloků** — viz [VZHLED.md](VZHLED.md).
-- Ikony jsou symboly v `src/icons/sprite.svg` (60 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
+- Ikony jsou symboly v `src/icons/sprite.svg` (61 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
 
 Podrobná pravidla podle oblasti (auto-scoped podle cesty):
 [.claude/rules/database.md](.claude/rules/database.md) ·
@@ -206,29 +206,38 @@ Co se kam přestěhovalo a proč, je v [VZHLED.md](VZHLED.md) v části
 - **Výpravy** (`store.vypravy`, `store.vypravaNazev`, složky `store.slozky`
   a `store.vypravaSlozka`) fungují stejně jako dny: přidat vedle, nikdy
   nepřepisovat, žádná migrace. Hlídá to `npm run check-dny`.
-- **Automatické dělení na dny** (`rozdelPodleHodin`, `rozdelNaPocet` v `views/plan/dny.js`)
-  jsou čisté funkce délky úseků → délky dnů. Zápis jde přes `nastavDny()`, které odmítne
-  rozdělení, jehož součet nesedí na počet zastávek. **Před přepsáním ručního dělení se
-  vždycky ukáže náhled a musí se potvrdit.**
+- **„Rozdělit na dny" (podle hodin/počtu) je smazané** (srpen 2026, na přání) – ruční
+  dělení tažením a prázdné dny to pokrývají srozumitelněji. `nastavDny()` v `views/plan/dny.js`
+  zůstává jedinou zapisovací cestou a odmítne rozdělení, jehož součet nesedí na počet
+  zastávek. **Nula je platná délka dne** – prázdný den se dá založit a je cílem tažení
+  i šipek; dřív se zahazoval, takže „Přidat den" bylo od druhého kliknutí tiché nic.
 
 ## Plán, cesty a bloky (srpen 2026)
 
-Plán má tři karty (přejmenováno v srpnu 2026): **Na cestě** (probíhající
-cesta – odznačování, pauzy, plánové achievementy, archiv po letech),
-**Výpravy** (knihovna: sbalitelné složky, akce na řádku, tažení dlouhým
-podržením, žádný věčně vybraný plán) a **Itinerář** (všechno o otevřené
-výpravě: tažení za prstem i celých dnů, sbalení dne, vlastní bloky, Vyjet,
-dole čísla výpravy se srovnáním – dřívější karta Přehled zanikla).
-Výběr plánu je jedině v knihovně; ťuknutí výpravu otevře v Itineráři
-(datově je to dnešní aktivní výprava, pojem se už nikam nepíše).
+Plán má tři karty: **Na cestě** (probíhající cesta – odznačování, pauzy,
+plánové achievementy, Další cíl + Navigovat + zbývá km), **Výpravy**
+(knihovna: sbalitelné složky, akce na řádku, tažení dlouhým podržením,
+nastavitelné řazení, ukončené cesty po letech) a **Itinerář** (všechno
+o otevřené výpravě: tažení za prstem i celých dnů, prázdné dny, vlastní
+body a bloky, Vyjet, dole čísla výpravy se srovnáním). Výběr je jedině
+v knihovně; ťuknutí na výpravu ji jen AKTIVUJE NA MAPĚ (datově dnešní
+aktivní výprava) – do Itineráře vede „Otevřít itinerář" v akcích řádku.
 
+- **Dialogy místo `prompt()`/`confirm()`/`alert()`**: `components/dialog.js`
+  (`potvrd`, `zadej`, `vyberZeSeznamu`, `oznam`) – jedna karta nad `#backdrop`,
+  promise, zrušení vrací `null`/`false`. Smoke/parity na ně sahají přes
+  `#dialog.show`, ne `page.once('dialog')`.
 - **Nové klíče ve `store`**: `cesta` (probíhající, čas se počítá ze začátku
   a pauz, nikde se netiká), `cesty` (archiv, souhrn se počítá při ukončení),
   `bloky` (klíčované názvem výpravy), `achievementy` (získaná id), `slozky`
-  (názvy složek v pořadí) a `vypravaSlozka`. Složka je pole `slozka` přímo
-  na záznamu výpravy, ne mapa podle názvu – název je křehká identita. Platí
-  „přidat vedle, nikdy nepřepisovat, žádný zápis při startu".
-- **Přejmenování výpravy stěhuje bloky** (`prejmenuj` ve `vypravy.js`) –
+  (názvy složek v pořadí), `vypravaSlozka` a `vypravaVytvoreno`. Složka i čas
+  vzniku jsou pole přímo na záznamu výpravy, ne mapa podle názvu – název je
+  křehká identita. Platí „přidat vedle, nikdy nepřepisovat, žádný zápis při startu".
+- **Řazení výprav je nastavitelné** (Nastavení → Řazení výprav, `prefs.razeniVyprav`:
+  abecedně/nejnovější/největší/bez řazení) a řadí se až při zobrazení – data
+  v `store.vypravy` se nikdy nepřeskládávají, `prepniVypravu()` dál dělá výměnu
+  na místě. Výpravu jde **duplikovat** (`duplikuj()`, kopíruje i bloky pod nový
+  unikátní název). Přejmenování stěhuje bloky (`prejmenuj` ve `vypravy.js`) –
   `store.bloky` klíčuje názvem a bez stěhování by osiřely. Fantomová prázdná
   bezejmenná výprava se v seznamech nevypisuje, dokud žádná jiná není;
   Itinerář ji ale dál edituje a první zastávkou se zhmotní.
@@ -237,8 +246,24 @@ Výběr plánu je jedině v knihovně; ťuknutí výpravu otevře v Itineráři
 - **Achievementy**: definice je datová, uložená jsou jen id získaných.
   Id se NIKDY nemění – stejné pravidlo jako u id míst. Profilové v Profilu,
   plánové generuje `planoveAchievementy()` (vždy aspoň 20 na plán).
-- **Bloky**: poznámka, zaškrtávací seznam, vlastní místo (odkaz/GPS/mapa),
-  odkaz, rozpočet. Vlastní místo se vplétá do trasy v `map/planLine.js`.
+- **Body trasy** (blok typu `misto`, druh start/nocleh/cíl/vlastní) jsou
+  plnohodnotné body itineráře, ne jen poznámka s GPS: kotví se polem `po`
+  (id zastávky, hned ZA kterou stojí; `po: null` + `den: d` = začátek dne d;
+  obojí null = konec plánu, historické chování) a táhnou se stejně jako
+  zastávky. Poloha čtyřmi cestami – vložený text, adresa přes Nominatim
+  (jediné síťové volání za běhu, jen online), ruční GPS, ťuknutí do mapy.
+  `map/planLine.js` je řadí podle `po`/`den` a kreslí znakem podle druhu.
+- **Datová logika bloků je v `views/plan/body.js`**, ne v `bloky.js` – ten
+  neimportuje `IC`/`icons/sprite.js` (čte `sprite.svg?raw`, Vite syntaxe, kterou
+  čistý Node neumí), takže `rozpoznejSouradnice()` a `pridejBod()` jde testovat
+  v `check-dny.mjs` bez prohlížeče. `bloky.js` z něj čerpá a přidává vykreslení.
+- **Ukončené cesty žijí v knihovně Výprav**, ne na kartě Na cestě: sekce po
+  letech (`archiv.js`), řádek se zámkem. Ťuknutí cestu AKTIVUJE NA MAPĚ přes
+  `S.otevrenaCesta` (index do `store.cesty`, jen v paměti) – přesně jako
+  výpravu, jen z ní nejde vyjet. Po přepnutí na Itinerář se ukáže v zamčeném
+  režimu: trasa/dny/časy napořád zamčené, „Odemknout poznámky" zpřístupní
+  jen poznámku cesty a poznámky zastávek. Aktivace jiné výpravy (nebo
+  otevření jejího itineráře) `S.otevrenaCesta` zase nuluje.
 - **Mapa umí dvě služby pro views**: `vyberBod(cb)` (ťuknutí → souřadnice)
   a `zapniVyberMist(cb)` (košík špendlíků → nová výprava přes „+" na mapě).
 - **Testovací úklid ve smoke**: localStorage se nesmí čistit přepsáním –
