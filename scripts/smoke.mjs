@@ -345,8 +345,13 @@ await kontrola('začíná se Výpravami', () => page.locator('#planSegment butto
 await kontrola('fantomová výprava se nevypisuje', () => page.locator('.vypravaradek').count(), 0)
 
 // Nová výprava (prompt) → rovnou do Itineráře → „Přidat zastávku“ → vybírátko
-page.once('dialog', (d) => d.accept('Zkušební výprava'))
 await page.click('#vypNova')
+await page.waitForTimeout(400)
+// Dialogy jsou od srpna 2026 vlastní (#dialog), ne nativní prompt/confirm.
+await kontrola('dialog má vstup i obě tlačítka', () =>
+  page.locator('#dialog.show #dialogVstup, #dialog.show #dialogAno, #dialog.show #dialogNe').count(), 3)
+await page.locator('#dialogVstup').fill('Zkušební výprava')
+await page.click('#dialogAno')
 await page.waitForTimeout(500)
 await kontrola('nová výprava otevře Itinerář', () => page.locator('#planSegment button.on').innerText(), 'Itinerář')
 await page.click('#planPridat')
@@ -368,8 +373,10 @@ await page.click('#planSegment button[data-seg="vypravy"]')
 await page.waitForTimeout(400)
 await kontrola('výprava se zastávkou je v knihovně', () => page.locator('.vypravaradek').count(), 1)
 await kontrola('výprava na mapě je odlišená', () => page.locator('.vypravaradek.on').count(), 1)
-page.once('dialog', (d) => d.accept('Balkán'))
 await page.click('#slozkaNova')
+await page.waitForTimeout(300)
+await page.locator('#dialogVstup').fill('Balkán')
+await page.click('#dialogAno')
 await page.waitForTimeout(400)
 await kontrola('nová složka je vidět i prázdná', () => page.locator('.slozka-radek').count(), 1)
 await page.click('.vypravaradek [data-vyprava-vice]')
@@ -388,8 +395,10 @@ await page.waitForTimeout(300)
 
 // Tažení dlouhým podržením (druhá cesta vedle pilulek): řádek výpravy nad
 // hlavičku druhé složky, pak přeskládání složek tažením hlavičky.
-page.once('dialog', (d) => d.accept('Alpy'))
 await page.click('#slozkaNova')
+await page.waitForTimeout(300)
+await page.locator('#dialogVstup').fill('Alpy')
+await page.click('#dialogAno')
 await page.waitForTimeout(400)
 {
   const radek = await page.locator('.slozka-obsah .vypravaradek').boundingBox()
@@ -487,11 +496,13 @@ await kontrola('vlastní místo má špendlík na mapě', () =>
 // Uklidit bloky SMAZÁNÍM PŘES UI, ne přepsáním localStorage: aplikace při
 // odchodu ze stránky dopisuje store z paměti (pagehide → save()), takže by
 // přepsaný záznam hned zase přepsala zpátky tím starým.
-page.once('dialog', (d) => d.accept())
 await page.locator('.blok-smaz').first().click()
+await page.waitForTimeout(300)
+await page.click('#dialogAno')
 await page.waitForTimeout(400)
-page.once('dialog', (d) => d.accept())
 await page.locator('.blok-smaz').first().click()
+await page.waitForTimeout(300)
+await page.click('#dialogAno')
 await page.waitForTimeout(400)
 await kontrola('bloky uklizené', () => page.locator('.blok').count(), 0)
 
@@ -519,8 +530,9 @@ await kontrola('odznačené je i navštívené', () =>
 await kontrola('plánové achievementy: aspoň 20', () =>
   page.locator('#planWrap .achv').count().then((n) => n >= 20))
 await kontrola('něco už je získané', () => page.locator('#planWrap .achv.ma').count().then((n) => n >= 1))
-page.once('dialog', (d) => d.accept())
 await page.click('#cestaKonec')
+await page.waitForTimeout(300)
+await page.click('#dialogAno')
 await page.waitForTimeout(600)
 await kontrola('cesta skončila v archivu', () =>
   page.evaluate(() => {
@@ -565,8 +577,10 @@ await page.evaluate(() => document.querySelector('.badge-pin').closest('.leaflet
 await page.waitForTimeout(400)
 await kontrola('ťuknutí přidalo do košíku', () =>
   page.locator('.vyberbod-listka span').innerText().then((t) => t.includes('Vybráno 1')))
-page.once('dialog', (d) => d.accept())
 await page.click('.vyberbod-listka [data-act="hotovo"]')
+await page.waitForTimeout(300)
+// Předvyplněná hodnota „Výlet z mapy" se jen odklepne – jako dřív u promptu.
+await page.click('#dialogAno')
 await page.waitForTimeout(600)
 await kontrola('z košíku vznikla nová výprava', () =>
   page.evaluate(() => {
@@ -577,15 +591,17 @@ await kontrola('a skočilo se do Plánu', () => page.evaluate(() => location.has
 // Vrátit se k jediné výpravě: smazat tu novou (aktivuje se odložená).
 await page.evaluate(() => document.getElementById('planVice').click())
 await page.waitForTimeout(300)
-page.once('dialog', (d) => d.accept())
 await page.evaluate(() => document.getElementById('planSmaz').click())
+await page.waitForTimeout(300)
+await page.click('#dialogAno')
 await page.waitForTimeout(500)
 
 // uklidit po sobě, ať další kontroly počítají s prázdným plánem
 await page.evaluate(() => document.getElementById('planVice').click())
 await page.waitForTimeout(300)
-page.once('dialog', (d) => d.accept())
 await page.evaluate(() => document.getElementById('planClear').click())
+await page.waitForTimeout(300)
+await page.click('#dialogAno')
 await page.waitForTimeout(500)
 await kontrola('plán se dá vyprázdnit', () =>
   page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).plan.length),

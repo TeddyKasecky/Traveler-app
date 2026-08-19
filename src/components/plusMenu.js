@@ -27,6 +27,7 @@ import { aktivujZalozku } from '../core/router.js'
 import { otevriItinerar } from '../views/plan/plan.js'
 import { otevriVyber } from './vyberMista.js'
 import { toast } from './toast.js'
+import { zadej } from './dialog.js'
 
 const tlacitko = () => document.getElementById('fabPlus')
 const nabidka = () => document.getElementById('plusMenu')
@@ -69,8 +70,8 @@ export function initPlusMenu() {
     zavriPlus()
     // Ťukání na špendlíky skládá košík; z něj vznikne NOVÁ výprava, aktivní
     // plán zůstane netknutý – teprve tím se výběr propíše do karty Plán.
-    zapniVyberMist((ids) => {
-      const nazev = prompt('Jak se bude nová výprava jmenovat?', 'Výlet z mapy')
+    zapniVyberMist(async (ids) => {
+      const nazev = await zadej({ nadpis: 'Nová výprava', text: 'Jak se bude jmenovat?', vychozi: 'Výlet z mapy' })
       if (nazev === null) return
       if (!novaVyprava(nazev)) return
       store.plan = ids

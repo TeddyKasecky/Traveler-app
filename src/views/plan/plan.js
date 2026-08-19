@@ -28,6 +28,7 @@ import { KAT } from '../../data/categories.js'
 import { obrazekMista } from '../../data/kategorieFoto.js'
 import { IC } from '../../icons/sprite.js'
 import { toast } from '../../components/toast.js'
+import { potvrd, zadej, vyberZeSeznamu } from '../../components/dialog.js'
 import { sekce, segment, ikonBtn } from '../../components/vzory.js'
 import { otevriVyber } from '../../components/vyberMista.js'
 import { goTo, draw, mapa, priblizNaFiltr, vyberBod } from '../../map/map.js'
@@ -332,26 +333,32 @@ function napojKnihovnu(wrap) {
   for (const akce of wrap.querySelectorAll('[data-pro]')) {
     const i = Number(akce.dataset.pro)
     const zaznam = () => seznamVyprav().find((x) => x.index === i)
-    akce.querySelector('[data-act="v-prejmenovat"]').onclick = () => {
+    akce.querySelector('[data-act="v-prejmenovat"]').onclick = async () => {
       const v = zaznam()
-      const n = prompt('Název výpravy:', v ? v.nazev : '')
+      const n = await zadej({ nadpis: 'Přejmenovat výpravu', vychozi: v ? v.nazev : '' })
       if (n === null) return
       prejmenuj(i, n)
       renderPlan()
     }
-    akce.querySelector('[data-act="v-smazat"]').onclick = () => {
+    akce.querySelector('[data-act="v-smazat"]').onclick = async () => {
       const v = zaznam()
-      if (!confirm(`Smazat výpravu „${v ? v.nazev : ''}" i se zastávkami?`)) return
+      const dal = await potvrd({
+        nadpis: `Smazat výpravu „${v ? v.nazev : ''}"?`,
+        text: 'Smaže se i se zastávkami a rozdělením na dny.',
+        ano: 'Smazat',
+        nebezpecne: true,
+      })
+      if (!dal) return
       rozbalenoVKnihovne = ''
       smaz(i)
       draw()
       toast('Výprava smazána')
     }
     for (const p of akce.querySelectorAll('[data-slozka-cil]'))
-      p.onclick = () => {
+      p.onclick = async () => {
         let cil = p.dataset.slozkaCil
         if (cil === '+') {
-          const n = prompt('Název nové složky:', '')
+          const n = await zadej({ nadpis: 'Nová složka', placeholder: 'třeba Léto 2027' })
           if (n === null || !n.trim()) return
           cil = n.trim()
         }
@@ -377,15 +384,21 @@ function napojKnihovnu(wrap) {
 
   for (const akce of wrap.querySelectorAll('[data-akce-slozky]')) {
     const nazev = akce.dataset.akceSlozky
-    akce.querySelector('[data-act="s-prejmenovat"]').onclick = () => {
-      const n = prompt('Nový název složky:', nazev)
+    akce.querySelector('[data-act="s-prejmenovat"]').onclick = async () => {
+      const n = await zadej({ nadpis: 'Přejmenovat složku', vychozi: nazev })
       if (n === null || !n.trim()) return
       rozbalenoVKnihovne = ''
       prejmenujSlozku(nazev, n)
       renderPlan()
     }
-    akce.querySelector('[data-act="s-smazat"]').onclick = () => {
-      if (!confirm(`Smazat složku „${nazev}"? Výpravy v ní zůstanou, jen spadnou mezi nezařazené.`)) return
+    akce.querySelector('[data-act="s-smazat"]').onclick = async () => {
+      const dal = await potvrd({
+        nadpis: `Smazat složku „${nazev}"?`,
+        text: 'Výpravy v ní zůstanou, jen spadnou mezi nezařazené.',
+        ano: 'Smazat složku',
+        nebezpecne: true,
+      })
+      if (!dal) return
       rozbalenoVKnihovne = ''
       smazSlozku(nazev)
       renderPlan()
@@ -394,8 +407,8 @@ function napojKnihovnu(wrap) {
 
   const slozkaBtn = document.getElementById('slozkaNova')
   if (slozkaBtn)
-    slozkaBtn.onclick = () => {
-      const n = prompt('Název nové složky:', '')
+    slozkaBtn.onclick = async () => {
+      const n = await zadej({ nadpis: 'Nová složka', placeholder: 'třeba Léto 2027' })
       if (n === null || !n.trim()) return
       novaSlozka(n)
       renderPlan()
@@ -730,8 +743,8 @@ function napoj(wrap, items) {
 
   const nova = document.getElementById('vypNova')
   if (nova)
-    nova.onclick = () => {
-      const nazev = prompt('Jak se bude výprava jmenovat?', '')
+    nova.onclick = async () => {
+      const nazev = await zadej({ nadpis: 'Nová výprava', text: 'Jak se bude jmenovat?', placeholder: 'třeba Jarní Alpy' })
       if (nazev === null) return
       novaVyprava(nazev)
       // Rovnou do Itineráře: nová výprava je prázdná a tam se plní.
@@ -986,13 +999,13 @@ function napojTahani(wrap) {
  * @param {'hodiny'|'pocet'} zpusob
  * @param {Array<Record<string, any>>} items
  */
-function rozdelDny(zpusob, items) {
+async function rozdelDny(zpusob, items) {
   if (items.length < 3) return
   const u = useky(items)
 
   let delky
   if (zpusob === 'hodiny') {
-    const zadano = prompt('Kolik hodin denně chceme nejvýš jet?', '4')
+    const zadano = await zadej({ nadpis: 'Rozdělit podle hodin', text: 'Kolik hodin denně chceme nejvýš jet?', vychozi: '4' })
     if (zadano === null) return
     const limit = Number(String(zadano).replace(',', '.'))
     if (!(limit > 0)) {
@@ -1005,7 +1018,7 @@ function rozdelDny(zpusob, items) {
       return
     }
   } else {
-    const zadano = prompt('Na kolik dní to rozdělit?', String(Math.max(2, dnyPlanu().length)))
+    const zadano = await zadej({ nadpis: 'Rozdělit na dny', text: 'Na kolik dní to rozdělit?', vychozi: String(Math.max(2, dnyPlanu().length)) })
     if (zadano === null) return
     const pocet = Math.floor(Number(zadano))
     if (!(pocet > 1)) {
@@ -1032,7 +1045,7 @@ function rozdelDny(zpusob, items) {
     })
     .join('\n')
 
-  if (!confirm(`Rozdělit takhle?\n\n${nahled}\n\nDosavadní rozdělení na dny se přepíše.`)) return
+  if (!(await potvrd({ nadpis: 'Rozdělit takhle?', text: `${nahled}\n\nDosavadní rozdělení na dny se přepíše.`, ano: 'Rozdělit' }))) return
 
   if (!nastavDny(delky)) {
     toast('Rozdělení nesedělo na počet zastávek, nic jsem neměnila')
@@ -1097,10 +1110,10 @@ function prepniMenu() {
       nazvy.map((n) => `<button data-slozka-cil="${esc(n)}">${IC('i-slozka')}${esc(n)}</button>`).join('') +
       `<button data-slozka-cil="+">${IC('i-plus')}Nová složka…</button>`
     for (const b of m.querySelectorAll('[data-slozka-cil]'))
-      b.onclick = () => {
+      b.onclick = async () => {
         let cil = b.dataset.slozkaCil
         if (cil === '+') {
-          const n = prompt('Název nové složky:', '')
+          const n = await zadej({ nadpis: 'Nová složka', placeholder: 'třeba Léto 2027' })
           if (n === null || !n.trim()) return
           cil = n.trim()
         }
@@ -1135,8 +1148,8 @@ function prepniMenu() {
       toast('Přidán den na konec')
     }
 
-  document.getElementById('planPrejmenuj').onclick = () => {
-    const n = prompt('Název výpravy:', store.vypravaNazev || '')
+  document.getElementById('planPrejmenuj').onclick = async () => {
+    const n = await zadej({ nadpis: 'Přejmenovat výpravu', vychozi: store.vypravaNazev || '' })
     if (n === null) return
     prejmenuj(-1, n)
     renderPlan()
@@ -1154,20 +1167,32 @@ function prepniMenu() {
       await navigator.clipboard.writeText(t)
       toast('Plán zkopírován')
     } catch {
-      prompt('Zkopíruj:', t)
+      zadej({ nadpis: 'Kopírovat plán', text: 'Zkopíruj ručně:', vychozi: t, ano: 'Zavřít' })
     }
   }
 
-  document.getElementById('planClear').onclick = () => {
-    if (!confirm('Vyprázdnit zastávky téhle výpravy?')) return
+  document.getElementById('planClear').onclick = async () => {
+    const dal = await potvrd({
+      nadpis: 'Vyprázdnit zastávky?',
+      text: 'Zastávky téhle výpravy se odeberou, výprava zůstane.',
+      ano: 'Vyprázdnit',
+      nebezpecne: true,
+    })
+    if (!dal) return
     store.plan = []
     store.planDny = []
     save()
     draw()
   }
 
-  document.getElementById('planSmaz').onclick = () => {
-    if (!confirm(`Smazat výpravu „${store.vypravaNazev || BEZ_NAZVU}" i se zastávkami?`)) return
+  document.getElementById('planSmaz').onclick = async () => {
+    const dal = await potvrd({
+      nadpis: `Smazat výpravu „${store.vypravaNazev || BEZ_NAZVU}"?`,
+      text: 'Smaže se i se zastávkami a rozdělením na dny.',
+      ano: 'Smazat',
+      nebezpecne: true,
+    })
+    if (!dal) return
     smaz(-1)
     draw()
     toast('Výprava smazána')

@@ -26,6 +26,7 @@ import { registrujOverlay, aktivujZalozku } from '../core/router.js'
 import { mistaZCsv, zalohaData, obnovZalohu, stahniJson } from '../core/csv.js'
 import { draw } from '../map/map.js'
 import { toast } from './toast.js'
+import { zavriDialog, potvrd, oznam } from './dialog.js'
 import { syncFiltersUI } from './chip.js'
 import { nastavMotiv, zvolenyMotiv } from '../core/motiv.js'
 
@@ -226,6 +227,8 @@ export function initFilterPanel() {
  * a panel filtrů nemá důvod znát obrazovku Plán ani vybírátko.
  */
 function zavriVse() {
+  // Dialog je nejvýš – klik na závěs zavře jen jeho, panel pod ním zůstane.
+  if (zavriDialog(null)) return
   zavriFiltry()
   for (const id of ['wizard', 'navSheet', 'vyberMista']) {
     document.getElementById(id)?.classList.remove('show')
@@ -264,14 +267,14 @@ function initData() {
         aktivujZalozku('home')
         toast(`Načteno ${data.length} míst`)
       } catch {
-        alert('CSV se nepodařilo načíst – zkontroluj formát vse-dohromady-v3.')
+        oznam({ nadpis: 'Import se nepovedl', text: 'CSV se nepodařilo načíst – zkontroluj formát vse-dohromady-v3.' })
       }
     }
     rd.readAsText(f, 'utf-8')
   }
 
-  document.getElementById('dataReset').onclick = () => {
-    if (!confirm('Vrátit vestavěná data? Poznámky zůstanou.')) return
+  document.getElementById('dataReset').onclick = async () => {
+    if (!(await potvrd({ nadpis: 'Vrátit vestavěná data?', text: 'Poznámky zůstanou.', ano: 'Vrátit' }))) return
     ulozVlastniData(null)
     nastavData(VESTAVENA_DATA)
     fillSelects()
@@ -295,7 +298,7 @@ function initData() {
         // uživatel nedozví „obnoveno“ dřív, než je jasné, že fotky opravdu sedí.
         toast((await savePhotos()) ? 'Záloha obnovena' : 'Obnoveno, ale fotky se neuložily')
       } catch {
-        alert('Soubor se nepodařilo načíst.')
+        oznam({ nadpis: 'Obnova se nepovedla', text: 'Soubor se nepodařilo načíst.' })
       }
     }
     rd.readAsText(f, 'utf-8')

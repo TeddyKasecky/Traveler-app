@@ -26,6 +26,7 @@ import { zkontrolujMisto } from '../data/validate.js'
 import { sestavMisto, naText } from '../data/newPlace.js'
 import { IC } from '../icons/sprite.js'
 import { toast } from './toast.js'
+import { potvrd } from './dialog.js'
 
 /**
  * Popis formuláře. Pořadí odpovídá `data/schema.md`.
@@ -482,8 +483,8 @@ function napoj() {
     toast('Staženo')
   }
 
-  document.getElementById('afClear').onclick = () => {
-    if (!confirm('Vyprázdnit formulář?')) return
+  document.getElementById('afClear').onclick = async () => {
+    if (!(await potvrd({ nadpis: 'Vyprázdnit formulář?', ano: 'Vyprázdnit', nebezpecne: true }))) return
     data = {}
     uloziKoncept()
     zrusMapku()

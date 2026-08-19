@@ -1,0 +1,22 @@
+/* Dialog – náhrada prompt()/confirm()/alert(), viz components/dialog.js.
+   Karta uprostřed nad #backdrop; z-index nad 1250 (backdrop) i 1300 (wizard),
+   jinak by klik na dialog padal do závěsu – stejná past jako u průvodce. */
+#dialog{position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.97);opacity:0;
+  pointer-events:none;z-index:1360;width:min(440px,calc(100vw - 36px));background:var(--plocha);
+  border:var(--line);border-radius:var(--r);box-shadow:var(--stin-3);padding:18px 18px 16px;
+  transition:opacity .18s,transform .18s var(--pop)}
+#dialog.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}
+#dialog h2{font-family:var(--f-disp);font-size:1.12rem;margin:0 0 9px;display:flex;gap:9px;align-items:center}
+#dialog h2 svg.ic{font-size:19px;color:var(--akcent);flex:0 0 auto}
+#dialog .dialog-text{font-size:.86rem;color:var(--text2);margin:0 0 14px;white-space:pre-line}
+#dialog input{width:100%;border:var(--line);border-radius:var(--r-s);background:var(--plocha2);
+  padding:11px 12px;font:inherit;margin-bottom:14px}
+#dialog .btnrow{margin:0;justify-content:flex-end}
+#dialog .dialog-seznam{display:flex;flex-direction:column;gap:7px;max-height:46svh;overflow:auto;margin:0 0 12px}
+#dialog .dialog-volba{display:flex;gap:10px;align-items:center;text-align:left;background:var(--plocha2);
+  border:var(--line);border-radius:var(--r-s);padding:11px 13px;font:inherit;font-weight:700;
+  transition:transform .16s var(--pop)}
+#dialog .dialog-volba:active{transform:var(--stisk)}
+#dialog .dialog-volba.on{background:var(--plocha-zelena);border-color:var(--akcent)}
+#dialog .dialog-volba svg.ic{font-size:17px;color:var(--text3);flex:0 0 auto}
+#dialog .dialog-volba span{font-weight:600;font-size:.74rem;color:var(--text2);margin-left:auto}

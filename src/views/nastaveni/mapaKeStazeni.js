@@ -26,6 +26,7 @@
 import { nactiMapu, ulozMapu, smazMapu } from '../../core/mapaDb.js'
 import { prefs, savePrefs } from '../../core/store.js'
 import { toast } from '../../components/toast.js'
+import { potvrd } from '../../components/dialog.js'
 import { mapa } from '../../map/map.js'
 import { obnovVektory } from '../../map/podklad.js'
 
@@ -173,7 +174,13 @@ export function initMapaKeStazeni() {
 
   stahniBtn.onclick = stahni
   smazBtn.onclick = async () => {
-    if (!confirm('Smazat staženou mapu? Offline se pak kreslí jen zjednodušená mapa.')) return
+    const dal = await potvrd({
+      nadpis: 'Smazat staženou mapu?',
+      text: 'Offline se pak kreslí jen zjednodušená mapa.',
+      ano: 'Smazat',
+      nebezpecne: true,
+    })
+    if (!dal) return
     await smazMapu()
     prefs.offlineMapa = 'zjednodusena'
     savePrefs()

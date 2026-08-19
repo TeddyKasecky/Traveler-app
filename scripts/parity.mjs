@@ -555,8 +555,10 @@ await zkus('„Vrátit vestavěná data“ obnoví 580 míst', async () => {
   // byla v panelu Filtry, který na přepnutí záložky nereaguje.
   await page.click('#nastaveniOpen')
   await page.waitForTimeout(400)
-  page.once('dialog', (d) => d.accept())
   await page.click('#dataReset')
+  await page.waitForTimeout(300)
+  // Potvrzení je od srpna 2026 vlastní dialog, ne nativní confirm.
+  await page.click('#dialogAno')
   await page.waitForTimeout(1500)
   const n = await page.locator('#totalN').innerText()
   const ov = await page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:data') || '{}').mista)

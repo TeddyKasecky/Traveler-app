@@ -22,6 +22,7 @@ import { esc } from '../../core/html.js'
 import { IC } from '../../icons/sprite.js'
 import { BEZ_NAZVU } from './vypravy.js'
 import { toast } from '../../components/toast.js'
+import { potvrd } from '../../components/dialog.js'
 
 /** Klíč aktivní výpravy v `store.bloky`. */
 const klic = () => store.vypravaNazev || BEZ_NAZVU
@@ -254,14 +255,14 @@ export function napojBloky(wrap, prekresli, vyberZMapy) {
       }
     }
 
-    kartaBloku.onclick = (e) => {
+    kartaBloku.onclick = async (e) => {
       const akce = e.target.closest('[data-act]')
       if (!akce) return
       const act = akce.dataset.act
       const i = Number(akce.dataset.i)
 
       if (act === 'smaz') {
-        if (!confirm('Smazat tenhle blok?')) return
+        if (!(await potvrd({ nadpis: 'Smazat tenhle blok?', ano: 'Smazat', nebezpecne: true }))) return
         smazBlok(b.id)
         return prekresli()
       }

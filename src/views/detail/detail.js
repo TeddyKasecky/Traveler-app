@@ -18,6 +18,7 @@ import { fotoKategorie, vyrez } from '../../data/kategorieFoto.js'
 import { pridejDoPorovnani } from '../porovnani/porovnani.js'
 import { addPhoto, smazFotku } from '../../components/photos.js'
 import { toast } from '../../components/toast.js'
+import { zadej } from '../../components/dialog.js'
 import { vytvorMiniMapu, zavriMiniMapu } from '../../map/detailMap.js'
 import { goTo, draw } from '../../map/map.js'
 import { togglePlan } from '../plan/plan.js'
@@ -356,7 +357,7 @@ export function openDetail(p, focus) {
       await navigator.clipboard.writeText(t)
       toast('Souřadnice zkopírovány')
     } catch {
-      prompt('Souřadnice:', t)
+      zadej({ nadpis: 'Souřadnice', text: 'Zkopíruj ručně:', vychozi: t, ano: 'Zavřít' })
     }
   }
 

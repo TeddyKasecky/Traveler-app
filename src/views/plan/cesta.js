@@ -22,6 +22,7 @@ import { sklonuj } from './plan.js'
 import { dnyPlanu } from './dny.js'
 import { BEZ_NAZVU } from './vypravy.js'
 import { toast } from '../../components/toast.js'
+import { potvrd } from '../../components/dialog.js'
 import { draw } from '../../map/map.js'
 import { planoveAchievementy, pripisPlanove, pripisProfilove } from './achievementy.js'
 import { archivHtml, napojArchiv } from './archiv.js'
@@ -350,10 +351,15 @@ export function napojCestu(wrap, prekresli) {
 
   const konec = wrap.querySelector('#cestaKonec')
   if (konec)
-    konec.onclick = () => {
+    konec.onclick = async () => {
       const c = store.cesta
       const hotovo = c ? Object.keys(c.odznacene).length : 0
-      if (!confirm(`Ukončit cestu? ${hotovo ? `Odznačeno ${hotovo} zastávek, ` : ''}cesta se uloží do ukončených.`)) return
+      const dal = await potvrd({
+        nadpis: 'Ukončit cestu?',
+        text: `${hotovo ? `Odznačeno ${hotovo} zastávek. ` : ''}Cesta se uloží do ukončených.`,
+        ano: 'Ukončit',
+      })
+      if (!dal) return
       if (ukonciCestu()) {
         // Ukončená cesta se může propsat do profilových achievementů
         // (první cesta, týden na kolech…), tak se rovnou připíšou.
@@ -368,8 +374,14 @@ export function napojCestu(wrap, prekresli) {
 
   const zrusit = wrap.querySelector('#cestaZrusit')
   if (zrusit)
-    zrusit.onclick = () => {
-      if (!confirm('Zrušit rozjetou cestu? Odznačení a poznámky z cesty se zahodí. Tohle nejde vrátit.')) return
+    zrusit.onclick = async () => {
+      const dal = await potvrd({
+        nadpis: 'Zrušit rozjetou cestu?',
+        text: 'Odznačení a poznámky z cesty se zahodí. Tohle nejde vrátit.',
+        ano: 'Zahodit cestu',
+        nebezpecne: true,
+      })
+      if (!dal) return
       zrusCestu()
       draw()
       prekresli()

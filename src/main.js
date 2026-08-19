@@ -26,6 +26,7 @@ import { initPlusMenu } from './components/plusMenu.js'
 import { initVyberMista, otevriVyber } from './components/vyberMista.js'
 import { initIntro } from './components/intro.js'
 import { initAddForm } from './components/addForm.js'
+import { initDialog } from './components/dialog.js'
 import { initPorovnani } from './views/porovnani/porovnani.js'
 import { initMapaKeStazeni } from './views/nastaveni/mapaKeStazeni.js'
 
@@ -55,6 +56,7 @@ initSheet()
 initFilterPanel()
 initWizard()
 initVyberMista()
+initDialog()
 initPlusMenu()
 // Sbalování spodku Mapy. Úchyt i bublina jsou staticky v index.html, takže
 // se obsluha věší jednou tady, ne v renderMapaDole().
