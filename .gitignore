@@ -10,3 +10,7 @@ Thumbs.db
 .DS_Store
 .screenshots/
 .parita.json
+
+# Grafické podklady (mockupy, listy kreseb a ikon) do repa nepatří —
+# jsou to zdrojáky návrhu, ne aplikace. Viz CLAUDE.md.
+grafika/
