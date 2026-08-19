@@ -189,6 +189,97 @@ pripravV(['a', 'b'], [], [{ nazev: 'X', plan: ['c'], planDny: [] }], 'Alpy')
 obnovZalohu(store, { plan: ['x', 'y'] }, {}, {})
 t('stará záloha bez výprav je nesmaže', store.vypravy.length === 1 && jako(store.plan) === jako(['x', 'y']))
 
+/* ================= složky výprav ================= */
+/* Složka je štítek na záznamu, ne mapa podle názvu – přejmenování výpravy ji
+ * nesmí shodit a přepnutí výpravy ji musí odnést i přinést. */
+
+console.log('\nSložky výprav\n')
+
+const { seznamSlozek, novaSlozka, prejmenujSlozku, smazSlozku, presunVypravu, prejmenuj, smaz } =
+  await import('../src/views/plan/vypravy.js')
+
+/** Nastaví stav včetně složek. */
+function pripravS(plan, vypravy, nazev, slozky, vypravaSlozka) {
+  pripravV(plan, [], vypravy, nazev)
+  store.slozky = [...slozky]
+  store.vypravaSlozka = vypravaSlozka
+  store.bloky = {}
+}
+
+pripravS([], [], '', [], '')
+t('fantom: čerstvý uživatel nemá žádnou výpravu', seznamVyprav().length === 0)
+
+pripravS([], [{ nazev: 'X', plan: ['a'], planDny: [] }], '', [], '')
+t('prázdná bezejmenná vedle odložených fantom není', seznamVyprav().length === 2)
+
+pripravS(['a'], [{ nazev: 'Dolomity', plan: ['d'], planDny: [], slozka: '' }], 'Alpy', ['Léto'], 'Léto')
+{
+  prepniVypravu(0)
+  t('složka odejde s odloženou výpravou', store.vypravy[0].slozka === 'Léto')
+  t('složka přijde s aktivovanou výpravou', store.vypravaSlozka === '')
+  prepniVypravu(0)
+  t('přepnutí tam a zpět vrátí i složku', store.vypravaSlozka === 'Léto' && store.vypravy[0].slozka === '')
+}
+
+pripravS(['a'], [{ nazev: 'B', plan: ['b'], planDny: [], slozka: 'Zima' }, { nazev: 'C', plan: ['c'], planDny: [] }], 'Alpy', ['Léto', 'Zima', 'Prázdná'], 'Léto')
+{
+  const sk = seznamSlozek()
+  t('seznamSlozek drží pořadí a nezařazené dává nakonec',
+    jako(sk.map((s) => s.slozka)) === jako(['Léto', 'Zima', 'Prázdná', '']))
+  t('prázdná složka je vidět', sk[2].vypravy.length === 0)
+  t('výpravy padly do svých složek', sk[0].vypravy[0].nazev === 'Alpy' && sk[1].vypravy[0].nazev === 'B' && sk[3].vypravy[0].nazev === 'C')
+}
+
+pripravS(['a'], [{ nazev: 'B', plan: ['b'], planDny: [], slozka: 'Ztracená' }], 'Alpy', [], '')
+t('záznam se složkou, která neexistuje, spadne mezi nezařazené',
+  seznamSlozek().length === 1 && seznamSlozek()[0].vypravy.length === 2)
+
+pripravS(['a'], [{ nazev: 'B', plan: ['b'], planDny: [] }], 'Alpy', [], '')
+{
+  novaSlozka('Léto')
+  novaSlozka('Léto')
+  t('nová složka vznikne jen jednou', jako(store.slozky) === jako(['Léto']))
+  presunVypravu(-1, 'Léto')
+  presunVypravu(0, 'Podzim')
+  t('přesun zařadí aktivní i odloženou', store.vypravaSlozka === 'Léto' && store.vypravy[0].slozka === 'Podzim')
+  t('přesun do neznámé složky ji založí', jako(store.slozky) === jako(['Léto', 'Podzim']))
+  prejmenujSlozku('Léto', 'Jaro')
+  t('přejmenování složky vezme záznamy s sebou', store.vypravaSlozka === 'Jaro' && store.slozky.includes('Jaro') && !store.slozky.includes('Léto'))
+  const mist = seznamVyprav().length
+  smazSlozku('Podzim')
+  t('smazání složky nesmaže výpravu', seznamVyprav().length === mist && store.vypravy[0].slozka === '')
+}
+
+pripravS(['a'], [{ nazev: 'B', plan: ['b'], planDny: [] }], 'Alpy', [], '')
+{
+  store.bloky = { Alpy: [{ typ: 'poznamka', text: 'x' }], B: [{ typ: 'seznam' }] }
+  prejmenuj(-1, 'Tatry')
+  t('přejmenování aktivní přestěhuje bloky', (store.bloky.Tatry || []).length === 1 && !store.bloky.Alpy)
+  prejmenuj(0, 'Tatry')
+  t('přejmenování odložené bloky slije, nic nesmaže', (store.bloky.Tatry || []).length === 2 && !store.bloky.B)
+  t('odložená má nový název', store.vypravy[0].nazev === 'Tatry')
+}
+
+pripravS(['a'], [{ nazev: 'B', plan: ['b'], planDny: [], slozka: 'Zima' }, { nazev: 'C', plan: ['c'], planDny: [] }], 'Alpy', ['Zima'], '')
+{
+  smaz(1)
+  t('smazání odložené nechá ostatní být', seznamVyprav().length === 2 && store.vypravy[0].nazev === 'B')
+  smaz(-1)
+  t('za smazanou aktivní nastoupí odložená i se složkou', store.vypravaNazev === 'B' && store.vypravaSlozka === 'Zima')
+}
+
+pripravS(['a'], [{ nazev: 'B', plan: ['b'], planDny: [], slozka: 'Zima' }], 'Alpy', ['Léto', 'Zima'], 'Léto')
+{
+  const z = JSON.parse(JSON.stringify(zalohaData(store, {}, {})))
+  pripravS([], [], '', [], '')
+  obnovZalohu(store, z, {}, {})
+  t('záloha nese složky i zařazení', jako(store.slozky) === jako(['Léto', 'Zima']) && store.vypravaSlozka === 'Léto' && store.vypravy[0].slozka === 'Zima')
+}
+
+pripravS(['a'], [], 'Alpy', ['Léto'], 'Léto')
+obnovZalohu(store, { plan: ['x'] }, {}, {})
+t('stará záloha bez složek je nesmaže', jako(store.slozky) === jako(['Léto']) && store.vypravaSlozka === 'Léto')
+
 /* ================= záloha cest, bloků a achievementů ================= */
 /* Srpen 2026: bez těchhle klíčů by obnova na jiném telefonu tiše zahodila
  * archiv cest, zaškrtávací seznamy i získané achievementy. */

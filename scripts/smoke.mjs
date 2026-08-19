@@ -339,10 +339,10 @@ await kontrola('prázdný plán má hlášku', () => page.locator('#planWrap .em
 await kontrola('segment Cesta · Přehled · Plán', () => page.locator('#planSegment button').count(), 3)
 // Bez rozjeté cesty se začíná Přehledem; karta Cesta vysvětlí, že se nejede.
 await kontrola('začíná se Přehledem', () => page.locator('#planSegment button.on').innerText(), 'Přehled')
-// I bez jediné zastávky má člověk jednu výpravu – tu bezejmennou, kterou měl
-// odjakživa. Kdyby se seznam ukázal prázdný, vypadalo by to, že se něco ztratilo.
-await kontrola('výprava je v seznamu i prázdná', () => page.locator('.vypravaradek').count(), 1)
-await kontrola('aktivní výprava je označená', () => page.locator('.vypravaradek.on').count(), 1)
+// Fantom se nevypisuje (srpen 2026): čerstvý uživatel žádnou výpravu nezaložil,
+// takže mu seznam nemá vnucovat prázdný „Náš plán". Jakmile přibude zastávka,
+// výprava se objeví – to hlídá kontrola „výprava se zastávkou už v seznamu je" níž.
+await kontrola('fantomová výprava se nevypisuje', () => page.locator('.vypravaradek').count(), 0)
 
 // „Přidat zastávku“ → vybírátko míst → zastávka v plánu
 await page.click('#planPridat')
@@ -356,6 +356,8 @@ await kontrola('zastávka přibyla do plánu', () =>
   1
 )
 await kontrola('počítadlo nad záložkou Plán', () => page.locator('#planCount').innerText(), '1')
+await kontrola('výprava se zastávkou už v seznamu je', () => page.locator('.vypravaradek').count(), 1)
+await kontrola('aktivní výprava je označená', () => page.locator('.vypravaradek.on').count(), 1)
 
 // Průběh výpravy: odškrtnutá zastávka se zapisuje jako navštívená, tedy do
 // téhož místa jako srdce v Seznamu. Žádná druhá evidence.

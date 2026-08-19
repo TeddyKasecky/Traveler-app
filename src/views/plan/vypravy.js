@@ -11,8 +11,10 @@
  *
  *   plan: []          beze změny – zastávky AKTIVNÍ výpravy
  *   planDny: []       beze změny – dny aktivní výpravy
- *   vypravy: []       NOVÉ – odložené výpravy [{ nazev, plan, planDny }]
+ *   vypravy: []       NOVÉ – odložené výpravy [{ nazev, plan, planDny, slozka? }]
  *   vypravaNazev: ''  NOVÉ – název aktivní výpravy, '' znamená „Náš plán"
+ *   slozky: []        NOVÉ (srpen 2026) – názvy složek v pořadí, jak vznikly
+ *   vypravaSlozka: '' NOVÉ (srpen 2026) – složka aktivní výpravy, '' = nezařazená
  *
  * MIGRACE ŽÁDNÁ: kdo `vypravy` nemá, má jednu výpravu bez názvu – přesně
  * dnešní stav. Při startu se nic nezapisuje. Starší build z cache klíč ignoruje
@@ -21,6 +23,11 @@
  * PŘEPNUTÍ JE VÝMĚNA NA MÍSTĚ: aktivní výprava si sedne přesně do slotu té,
  * která se aktivuje. Žádné mazání, žádné přidávání, jeden zápis – nemá kde
  * vzniknout okamžik, ve kterém by zastávka neexistovala ani v jednom.
+ *
+ * SLOŽKA JE ŠTÍTEK NA ZÁZNAMU, ne mapa { název výpravy → složka }: název je
+ * křehká identita (přejmenování by výpravu vyhodilo ze složky) a stejná past
+ * už jednou klapla u bloků. `store.slozky` drží jen pořadí a to, že složka
+ * existuje i prázdná.
  */
 
 import { store, save } from '../../core/store.js'
@@ -31,28 +38,56 @@ export const BEZ_NAZVU = 'Náš plán'
 /** Odložené výpravy, vždycky jako pole. Staré uložení klíč nemá. */
 const odlozene = () => (Array.isArray(store.vypravy) ? store.vypravy : (store.vypravy = []))
 
+/** Názvy složek, vždycky jako pole. Staré uložení klíč nemá. */
+const slozky = () => (Array.isArray(store.slozky) ? store.slozky : (store.slozky = []))
+
 /** Aktivní výprava jako záznam, který se dá odložit. */
 const aktivniZaznam = () => ({
   nazev: store.vypravaNazev || BEZ_NAZVU,
   plan: store.plan,
   planDny: store.planDny || [],
+  slozka: store.vypravaSlozka || '',
 })
 
 /**
- * Všechny výpravy k vypsání. Aktivní je první.
- * @returns {Array<{nazev:string, plan:string[], planDny:number[], aktivni:boolean, index:number}>}
+ * Fantom: prázdný bezejmenný aktivní slot, když žádná jiná výprava není.
+ * Je nerozlišitelný od „výpravy Náš plán s nula zastávkami", ale čerstvý
+ * uživatel žádnou výpravu nezaložil – a seznam mu nemá jednu vnucovat.
+ */
+const jenFantom = () =>
+  !store.vypravaNazev && !store.plan.length && !(store.planDny || []).length && !odlozene().length
+
+/**
+ * Všechny výpravy k vypsání. Aktivní je první; fantom se nevypisuje.
+ * @returns {Array<{nazev:string, plan:string[], planDny:number[], slozka:string, aktivni:boolean, index:number}>}
  */
 export function seznamVyprav() {
   return [
-    { ...aktivniZaznam(), aktivni: true, index: -1 },
+    ...(jenFantom() ? [] : [{ ...aktivniZaznam(), aktivni: true, index: -1 }]),
     ...odlozene().map((v, i) => ({
       nazev: v.nazev || BEZ_NAZVU,
       plan: Array.isArray(v.plan) ? v.plan : [],
       planDny: Array.isArray(v.planDny) ? v.planDny : [],
+      slozka: typeof v.slozka === 'string' ? v.slozka : '',
       aktivni: false,
       index: i,
     })),
   ]
+}
+
+/**
+ * Výpravy seskupené do složek k vypsání: složky v pořadí `store.slozky`
+ * (i prázdné – čerstvě založená složka musí být vidět), nezařazené nakonec.
+ * Záznam se složkou, která už neexistuje, spadne mezi nezařazené.
+ * @returns {Array<{slozka:string, vypravy:ReturnType<typeof seznamVyprav>}>}
+ */
+export function seznamSlozek() {
+  const vsechny = seznamVyprav()
+  const znam = new Set(slozky())
+  const skupiny = slozky().map((n) => ({ slozka: n, vypravy: vsechny.filter((v) => v.slozka === n) }))
+  const mimo = vsechny.filter((v) => !v.slozka || !znam.has(v.slozka))
+  if (mimo.length) skupiny.push({ slozka: '', vypravy: mimo })
+  return skupiny
 }
 
 /**
@@ -69,6 +104,7 @@ export function prepniVypravu(i) {
   store.vypravaNazev = cil.nazev || BEZ_NAZVU
   store.plan = Array.isArray(cil.plan) ? cil.plan : []
   store.planDny = Array.isArray(cil.planDny) ? cil.planDny : []
+  store.vypravaSlozka = typeof cil.slozka === 'string' ? cil.slozka : ''
   sez[i] = odchazi
   return save()
 }
@@ -87,32 +123,140 @@ export function novaVyprava(nazev) {
   store.vypravaNazev = (nazev || '').trim() || BEZ_NAZVU
   store.plan = []
   store.planDny = []
+  store.vypravaSlozka = ''
   return save()
 }
 
 /**
- * Přejmenuje aktivní výpravu.
+ * Bloky jsou klíčované názvem výpravy, takže se musí stěhovat s ním – jinak
+ * by přejmenování osiřelo zaškrtávací seznamy i vlastní místa. Když pod novým
+ * názvem už nějaké bloky jsou (dvě stejnojmenné výpravy je sdílejí), slučuje
+ * se – smazat se nesmí nic.
+ */
+function prestehujBloky(stary, novy) {
+  if (stary === novy || !store.bloky || !Array.isArray(store.bloky[stary])) return
+  store.bloky[novy] = Array.isArray(store.bloky[novy])
+    ? [...store.bloky[novy], ...store.bloky[stary]]
+    : store.bloky[stary]
+  delete store.bloky[stary]
+}
+
+/**
+ * Přejmenuje výpravu – aktivní (i = -1) i odloženou – a přestěhuje její bloky.
+ * @param {number} i  pořadí v `store.vypravy`, -1 pro aktivní
  * @param {string} nazev
  * @returns {boolean}
  */
-export function prejmenujVypravu(nazev) {
-  store.vypravaNazev = (nazev || '').trim()
+export function prejmenuj(i, nazev) {
+  const novy = (nazev || '').trim()
+  if (i < 0) {
+    prestehujBloky(store.vypravaNazev || BEZ_NAZVU, novy || BEZ_NAZVU)
+    store.vypravaNazev = novy
+    return save()
+  }
+  const v = odlozene()[i]
+  if (!v) return true
+  prestehujBloky(v.nazev || BEZ_NAZVU, novy || BEZ_NAZVU)
+  v.nazev = novy || BEZ_NAZVU
   return save()
 }
 
+/** Přejmenuje aktivní výpravu. Zůstává kvůli stávajícím voláním. */
+export function prejmenujVypravu(nazev) {
+  return prejmenuj(-1, nazev)
+}
+
 /**
- * Smaže aktivní výpravu i s jejími zastávkami a přepne na první odloženou.
- *
- * Maže se jen aktivní: co člověk zrovna nevidí, se smazat nedá. Kdo chce
- * zrušit odloženou, přepne se na ni a uvidí, o co přijde.
- *
+ * Smaže výpravu i s jejími zastávkami – aktivní (i = -1) i odloženou.
+ * Za smazanou aktivní nastoupí první odložená. Bloky se nechávají být:
+ * stejnojmenná výprava by o ně přišla a osiřelý klíč nikomu nevadí.
+ * @param {number} i  pořadí v `store.vypravy`, -1 pro aktivní
  * @returns {boolean}
  */
-export function smazAktivniVypravu() {
+export function smaz(i) {
   const sez = odlozene()
+  if (i >= 0) {
+    if (!sez[i]) return true
+    sez.splice(i, 1)
+    return save()
+  }
   const dalsi = sez.shift()
   store.vypravaNazev = dalsi ? dalsi.nazev || BEZ_NAZVU : ''
   store.plan = dalsi && Array.isArray(dalsi.plan) ? dalsi.plan : []
   store.planDny = dalsi && Array.isArray(dalsi.planDny) ? dalsi.planDny : []
+  store.vypravaSlozka = dalsi && typeof dalsi.slozka === 'string' ? dalsi.slozka : ''
+  return save()
+}
+
+/** Smaže aktivní výpravu. Zůstává kvůli stávajícím voláním. */
+export function smazAktivniVypravu() {
+  return smaz(-1)
+}
+
+/* ================= složky ================= */
+
+/**
+ * Založí složku. Prázdný název a duplicita se tiše přeskočí.
+ * @param {string} nazev
+ * @returns {boolean}
+ */
+export function novaSlozka(nazev) {
+  const n = (nazev || '').trim()
+  if (!n || slozky().includes(n)) return true
+  slozky().push(n)
+  return save()
+}
+
+/**
+ * Přejmenuje složku všude: v seznamu, na záznamech i u aktivní výpravy.
+ * Když nový název už existuje, složky se slijí.
+ * @param {string} stara
+ * @param {string} nova
+ * @returns {boolean}
+ */
+export function prejmenujSlozku(stara, nova) {
+  const n = (nova || '').trim()
+  if (!n || n === stara) return true
+  const sez = slozky()
+  const i = sez.indexOf(stara)
+  if (i < 0) return true
+  if (sez.includes(n)) sez.splice(i, 1)
+  else sez[i] = n
+  for (const v of odlozene()) if (v.slozka === stara) v.slozka = n
+  if (store.vypravaSlozka === stara) store.vypravaSlozka = n
+  return save()
+}
+
+/**
+ * Smaže složku. Výpravy v ní zůstávají – spadnou mezi nezařazené.
+ * @param {string} nazev
+ * @returns {boolean}
+ */
+export function smazSlozku(nazev) {
+  const sez = slozky()
+  const i = sez.indexOf(nazev)
+  if (i < 0) return true
+  sez.splice(i, 1)
+  for (const v of odlozene()) if (v.slozka === nazev) v.slozka = ''
+  if (store.vypravaSlozka === nazev) store.vypravaSlozka = ''
+  return save()
+}
+
+/**
+ * Přesune výpravu do složky ('' = mezi nezařazené). Neznámou složku založí,
+ * ať přesun nikdy neskončí v prázdnu.
+ * @param {number} i  pořadí v `store.vypravy`, -1 pro aktivní
+ * @param {string} slozka
+ * @returns {boolean}
+ */
+export function presunVypravu(i, slozka) {
+  const n = (slozka || '').trim()
+  if (n && !slozky().includes(n)) slozky().push(n)
+  if (i < 0) store.vypravaSlozka = n
+  else {
+    const v = odlozene()[i]
+    if (!v) return true
+    v.slozka = n
+  }
   return save()
 }

@@ -66,10 +66,19 @@ export const store = nacti(KEY, {
   /** Délky dnů v plánu, např. [3,2]. Prázdné = plán se na dny nedělí.
    *  Vedle `plan`, ne místo něj – viz views/plan/dny.js. */
   planDny: [],
-  /** Odložené výpravy [{nazev, plan, planDny}]. Aktivní zůstává v `plan`. */
+  /** Odložené výpravy [{nazev, plan, planDny, slozka?}]. Aktivní zůstává v `plan`. */
   vypravy: [],
   /** Název aktivní výpravy. Prázdný = „Náš plán“. Viz views/plan/vypravy.js. */
   vypravaNazev: '',
+  /**
+   * Názvy složek výprav v pořadí, jak vznikly. Složka je jen štítek:
+   * kam výprava patří, si nese každý záznam sám v poli `slozka` – mapa
+   * podle názvu výpravy by se rozbila přejmenováním (název je křehká
+   * identita, viz `bloky`). Viz views/plan/vypravy.js.
+   */
+  slozky: [],
+  /** Složka aktivní výpravy. Prázdná = nezařazená. */
+  vypravaSlozka: '',
   /**
    * Probíhající cesta, nebo null. Viz views/plan/cesta.js.
    *
