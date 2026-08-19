@@ -153,6 +153,12 @@ export function zalohaData(store, photos, prefs) {
     planDny: store.planDny || [],
     vypravy: store.vypravy || [],
     vypravaNazev: store.vypravaNazev || '',
+    // Srpen 2026: bez cest, bloků a achievementů by obnova na jiném telefonu
+    // tiše zahodila celý archiv a všechny seznamy – stejná past jako kdysi fotky.
+    cesta: store.cesta || null,
+    cesty: store.cesty || [],
+    bloky: store.bloky || {},
+    achievementy: store.achievementy || {},
     prio: store.prio,
     photos: photos || {},
     prefs: prefs || {},
@@ -182,6 +188,18 @@ export function obnovZalohu(store, d, photos, prefs) {
   if (Array.isArray(d.planDny)) store.planDny = d.planDny
   if (Array.isArray(d.vypravy)) store.vypravy = d.vypravy
   if (typeof d.vypravaNazev === 'string') store.vypravaNazev = d.vypravaNazev
+  // Probíhající cesta se bere jen tehdy, když žádná neběží – rozjetou cestu
+  // v telefonu nesmí záloha zaklepnout. Archiv se slučuje podle času vyjetí.
+  if (d.cesta && typeof d.cesta === 'object' && !store.cesta) store.cesta = d.cesta
+  if (Array.isArray(d.cesty)) {
+    const mam = new Set((store.cesty || []).map((c) => c.zacatek))
+    store.cesty = [...(store.cesty || []), ...d.cesty.filter((c) => c && !mam.has(c.zacatek))].sort(
+      (a, b) => b.zacatek - a.zacatek
+    )
+  }
+  if (d.bloky && typeof d.bloky === 'object') store.bloky = Object.assign(store.bloky || {}, d.bloky)
+  if (d.achievementy && typeof d.achievementy === 'object')
+    store.achievementy = Object.assign(store.achievementy || {}, d.achievementy)
   if (photos && d.photos) Object.assign(photos, d.photos)
   if (prefs && d.prefs) Object.assign(prefs, d.prefs)
 }

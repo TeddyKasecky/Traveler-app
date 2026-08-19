@@ -189,6 +189,47 @@ pripravV(['a', 'b'], [], [{ nazev: 'X', plan: ['c'], planDny: [] }], 'Alpy')
 obnovZalohu(store, { plan: ['x', 'y'] }, {}, {})
 t('stará záloha bez výprav je nesmaže', store.vypravy.length === 1 && jako(store.plan) === jako(['x', 'y']))
 
+/* ================= záloha cest, bloků a achievementů ================= */
+/* Srpen 2026: bez těchhle klíčů by obnova na jiném telefonu tiše zahodila
+ * archiv cest, zaškrtávací seznamy i získané achievementy. */
+
+console.log('\nZáloha cest, bloků a achievementů\n')
+
+pripravV(['a'], [], [], 'Alpy')
+{
+  store.cesta = null
+  store.cesty = [{ nazev: 'Léto', zacatek: 100, konec: 200, zastavky: ['a'], dny: [1] }]
+  store.bloky = { Alpy: [{ typ: 'poznamka', text: 'ahoj' }] }
+  store.achievementy = { 'prvni-misto': 1 }
+  const z = JSON.parse(JSON.stringify(zalohaData(store, {}, {})))
+  store.cesty = []
+  store.bloky = {}
+  store.achievementy = {}
+  obnovZalohu(store, z, {}, {})
+  t('záloha nese archiv cest', store.cesty.length === 1 && store.cesty[0].nazev === 'Léto')
+  t('záloha nese bloky', (store.bloky.Alpy || []).length === 1)
+  t('záloha nese achievementy', !!store.achievementy['prvni-misto'])
+  obnovZalohu(store, z, {}, {})
+  t('dvakrát obnovená záloha nezdvojí archiv', store.cesty.length === 1)
+}
+
+{
+  store.cesta = { nazev: 'Teď', zacatek: 5 }
+  obnovZalohu(store, { cesta: { nazev: 'Stará', zacatek: 1 } }, {}, {})
+  t('rozjetou cestu v telefonu záloha nezaklepne', store.cesta.nazev === 'Teď')
+  store.cesta = null
+  obnovZalohu(store, { cesta: { nazev: 'Stará', zacatek: 1 } }, {}, {})
+  t('bez rozjeté cesty se cesta ze zálohy převezme', store.cesta.nazev === 'Stará')
+  store.cesta = null
+}
+
+{
+  store.cesty = [{ nazev: 'Léto', zacatek: 100 }]
+  store.bloky = { Alpy: [{ typ: 'poznamka' }] }
+  obnovZalohu(store, { plan: ['x'] }, {}, {})
+  t('stará záloha bez nových klíčů je nesmaže', store.cesty.length === 1 && (store.bloky.Alpy || []).length === 1)
+}
+
 /* ================= automatické dělení na dny ================= */
 /* Sahá na `planDny`, tedy na uživatelská data. Nejdůležitější je, že se
  * NIKDY neztratí zastávka: součet délek dnů musí vždycky sedět na délku plánu. */

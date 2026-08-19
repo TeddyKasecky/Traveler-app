@@ -64,9 +64,13 @@ export function cislaVypravy(plan) {
   }
 }
 
-/** Jedna dvojice popisek–hodnota; při srovnání dvě hodnoty vedle sebe. */
+/**
+ * Jedna dvojice popisek–hodnota; při srovnání dvě hodnoty vedle sebe.
+ * Test je `!= null`, ne `!== undefined`: bez zapnutého srovnání sem chodí
+ * `b && f(…)`, tedy `null` – a ten se dřív vypisoval doslova jako „null".
+ */
 function radek(popisek, a, b) {
-  return `<div class="preh-radek"><span>${popisek}</span><b>${a}</b>${b !== undefined ? `<b class="druhy">${b}</b>` : ''}</div>`
+  return `<div class="preh-radek"><span>${popisek}</span><b>${a}</b>${b != null ? `<b class="druhy">${b}</b>` : ''}</div>`
 }
 
 /** Skupina řádků s nadpisem. */

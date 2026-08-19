@@ -391,6 +391,9 @@ await page.waitForTimeout(400)
 // aspoň dvě výpravy, což tady není – kontroluje se tedy základ).
 await kontrola('přehled má výběr výpravy', () => page.locator('#prehVyber').count(), 1)
 await kontrola('přehled má čtyři skupiny čísel', () => page.locator('.preh-skupina').count(), 4)
+// Bez zapnutého srovnání chodí do radek() null – dřív se vypisoval doslova.
+await kontrola('v číslech přehledu není doslovné „null"', () =>
+  page.evaluate(() => [...document.querySelectorAll('.preh-radek')].every((r) => !r.textContent.includes('null'))))
 
 // Vlastní bloky: přidat seznam, položku, odškrtnout; vlastní místo pozná
 // vložené souřadnice v několika tvarech.
