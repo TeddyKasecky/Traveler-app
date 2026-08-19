@@ -195,8 +195,9 @@ t('stará záloha bez výprav je nesmaže', store.vypravy.length === 1 && jako(s
 
 console.log('\nSložky výprav\n')
 
-const { seznamSlozek, novaSlozka, prejmenujSlozku, smazSlozku, presunVypravu, prejmenuj, smaz } =
+const { seznamSlozek, novaSlozka, prejmenujSlozku, smazSlozku, presunVypravu, prejmenuj, smaz, duplikuj } =
   await import('../src/views/plan/vypravy.js')
+const { prefs } = await import('../src/core/store.js')
 
 /** Nastaví stav včetně složek. */
 function pripravS(plan, vypravy, nazev, slozky, vypravaSlozka) {
@@ -279,6 +280,56 @@ pripravS(['a'], [{ nazev: 'B', plan: ['b'], planDny: [], slozka: 'Zima' }], 'Alp
 pripravS(['a'], [], 'Alpy', ['Léto'], 'Léto')
 obnovZalohu(store, { plan: ['x'] }, {}, {})
 t('stará záloha bez složek je nesmaže', jako(store.slozky) === jako(['Léto']) && store.vypravaSlozka === 'Léto')
+
+/* ================= duplikace, čas vzniku a řazení ================= */
+
+console.log('\nDuplikace, čas vzniku a řazení\n')
+
+pripravS(['a'], [{ nazev: 'B', plan: ['b'], planDny: [] }], 'Alpy', [], '')
+{
+  store.vypravaVytvoreno = 111
+  store.bloky = { Alpy: [{ typ: 'poznamka', text: 'x' }] }
+  const novy = duplikuj(-1)
+  t('kopie má unikátní název', novy === 'Alpy (kopie)' && store.vypravy.some((v) => v.nazev === novy))
+  const kopie = store.vypravy.find((v) => v.nazev === novy)
+  t('kopie nese zastávky i bloky', jako(kopie.plan) === jako(['a']) && (store.bloky[novy] || []).length === 1)
+  store.bloky[novy][0].text = 'zmena'
+  t('bloky kopie jsou nezávislé na originálu', store.bloky.Alpy[0].text === 'x')
+  const druhy = duplikuj(-1)
+  t('druhá kopie nekoliduje jménem', druhy === 'Alpy (kopie 2)')
+}
+
+pripravS(['a'], [{ nazev: 'B', plan: ['b'], planDny: [], vytvoreno: 222 }], 'Alpy', [], '')
+{
+  store.vypravaVytvoreno = 111
+  prepniVypravu(0)
+  t('čas vzniku odejde s odloženou i přijde s aktivovanou',
+    store.vypravaVytvoreno === 222 && store.vypravy[0].vytvoreno === 111)
+  const z = JSON.parse(JSON.stringify(zalohaData(store, {}, {})))
+  store.vypravaVytvoreno = 0
+  obnovZalohu(store, z, {}, {})
+  t('záloha nese čas vzniku aktivní výpravy', store.vypravaVytvoreno === 222)
+}
+
+pripravS(['x'], [
+  { nazev: 'Zeta', plan: ['a', 'b'], planDny: [], vytvoreno: 300 },
+  { nazev: 'Alfa', plan: ['c'], planDny: [], vytvoreno: 100 },
+], 'Méty', [], '')
+{
+  store.vypravaVytvoreno = 200
+  const nazvy = () => seznamSlozek()[0].vypravy.map((v) => v.nazev).join(',')
+  prefs.razeniVyprav = 'abecedne'
+  t('řazení abecedně', nazvy() === 'Alfa,Méty,Zeta')
+  prefs.razeniVyprav = 'nejnovejsi'
+  t('řazení podle času vzniku', nazvy() === 'Zeta,Méty,Alfa')
+  prefs.razeniVyprav = 'zastavky'
+  t('řazení podle počtu zastávek', nazvy() === 'Zeta,Méty,Alfa' || nazvy() === 'Zeta,Alfa,Méty')
+  prefs.razeniVyprav = 'zadne'
+  t('bez řazení drží pořadí pole', nazvy() === 'Méty,Zeta,Alfa')
+  delete prefs.razeniVyprav
+  t('řazení je jen zobrazení – data v poli se nehýbají',
+    jako(store.vypravy.map((v) => v.nazev)) === jako(['Zeta', 'Alfa']))
+}
 
 /* ================= záloha cest, bloků a achievementů ================= */
 /* Srpen 2026: bez těchhle klíčů by obnova na jiném telefonu tiše zahodila

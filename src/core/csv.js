@@ -155,6 +155,7 @@ export function zalohaData(store, photos, prefs) {
     vypravaNazev: store.vypravaNazev || '',
     slozky: store.slozky || [],
     vypravaSlozka: store.vypravaSlozka || '',
+    vypravaVytvoreno: store.vypravaVytvoreno || 0,
     // Srpen 2026: bez cest, bloků a achievementů by obnova na jiném telefonu
     // tiše zahodila celý archiv a všechny seznamy – stejná past jako kdysi fotky.
     cesta: store.cesta || null,
@@ -192,6 +193,7 @@ export function obnovZalohu(store, d, photos, prefs) {
   if (typeof d.vypravaNazev === 'string') store.vypravaNazev = d.vypravaNazev
   if (Array.isArray(d.slozky)) store.slozky = d.slozky
   if (typeof d.vypravaSlozka === 'string') store.vypravaSlozka = d.vypravaSlozka
+  if (typeof d.vypravaVytvoreno === 'number') store.vypravaVytvoreno = d.vypravaVytvoreno
   // Probíhající cesta se bere jen tehdy, když žádná neběží – rozjetou cestu
   // v telefonu nesmí záloha zaklepnout. Archiv se slučuje podle času vyjetí.
   if (d.cesta && typeof d.cesta === 'object' && !store.cesta) store.cesta = d.cesta

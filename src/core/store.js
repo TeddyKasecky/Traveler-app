@@ -79,6 +79,8 @@ export const store = nacti(KEY, {
   slozky: [],
   /** Složka aktivní výpravy. Prázdná = nezařazená. */
   vypravaSlozka: '',
+  /** Kdy aktivní výprava vznikla (ms). 0 = starý záznam bez data. */
+  vypravaVytvoreno: 0,
   /**
    * Probíhající cesta, nebo null. Viz views/plan/cesta.js.
    *

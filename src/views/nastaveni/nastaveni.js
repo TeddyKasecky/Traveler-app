@@ -90,6 +90,19 @@ export async function renderNastaveni() {
       )}
     </div>
 
+    <div class="sechd">${IC('i-route')}Řazení výprav</div>
+    <div class="meta" style="margin:0 2px 10px">Jak řadit výpravy v knihovně a ve složkách. Řazení se nemění tím, kterou výpravu si otevřeš.</div>
+    ${segment(
+      [
+        { id: 'abecedne', popisek: 'Abecedně' },
+        { id: 'nejnovejsi', popisek: 'Nejnovější' },
+        { id: 'zastavky', popisek: 'Největší' },
+        { id: 'zadne', popisek: 'Bez řazení' },
+      ],
+      prefs.razeniVyprav || 'abecedne',
+      'razeniSeg'
+    )}
+
     <div class="sechd">${IC('i-globe')}Místo v telefonu</div>
     <div class="meta" id="mistoInfo" style="margin:0 2px 10px">Počítá se…</div>
 
@@ -114,6 +127,15 @@ export async function renderNastaveni() {
       for (const x of document.querySelectorAll('#kresbySeg button')) x.classList.toggle('on', x === b)
       obnovKresbyVMape()
       toast(b.dataset.seg === 'vypnute' ? 'Kresby vypnuté' : `Kresby ${b.dataset.seg === 'huste' ? 'husté' : 'střídmé'}`)
+    }
+  }
+
+  for (const b of document.querySelectorAll('#razeniSeg button')) {
+    b.onclick = () => {
+      prefs.razeniVyprav = b.dataset.seg
+      if (!savePrefs()) return
+      for (const x of document.querySelectorAll('#razeniSeg button')) x.classList.toggle('on', x === b)
+      toast('Řazení výprav nastavené')
     }
   }
 

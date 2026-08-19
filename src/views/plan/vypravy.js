@@ -11,10 +11,12 @@
  *
  *   plan: []          beze změny – zastávky AKTIVNÍ výpravy
  *   planDny: []       beze změny – dny aktivní výpravy
- *   vypravy: []       NOVÉ – odložené výpravy [{ nazev, plan, planDny, slozka? }]
+ *   vypravy: []       NOVÉ – odložené výpravy [{ nazev, plan, planDny, slozka?, vytvoreno? }]
  *   vypravaNazev: ''  NOVÉ – název aktivní výpravy, '' znamená „Náš plán"
  *   slozky: []        NOVÉ (srpen 2026) – názvy složek v pořadí, jak vznikly
  *   vypravaSlozka: '' NOVÉ (srpen 2026) – složka aktivní výpravy, '' = nezařazená
+ *   vypravaVytvoreno: 0  NOVÉ (srpen 2026) – kdy aktivní výprava vznikla (ms);
+ *                     staré záznamy pole nemají a při řazení padají dozadu
  *
  * MIGRACE ŽÁDNÁ: kdo `vypravy` nemá, má jednu výpravu bez názvu – přesně
  * dnešní stav. Při startu se nic nezapisuje. Starší build z cache klíč ignoruje
@@ -30,7 +32,7 @@
  * existuje i prázdná.
  */
 
-import { store, save } from '../../core/store.js'
+import { store, save, prefs } from '../../core/store.js'
 
 /** Jak se jmenuje výprava bez jména. */
 export const BEZ_NAZVU = 'Náš plán'
@@ -47,6 +49,7 @@ const aktivniZaznam = () => ({
   plan: store.plan,
   planDny: store.planDny || [],
   slozka: store.vypravaSlozka || '',
+  vytvoreno: store.vypravaVytvoreno || 0,
 })
 
 /**
@@ -69,10 +72,29 @@ export function seznamVyprav() {
       plan: Array.isArray(v.plan) ? v.plan : [],
       planDny: Array.isArray(v.planDny) ? v.planDny : [],
       slozka: typeof v.slozka === 'string' ? v.slozka : '',
+      vytvoreno: v.vytvoreno || 0,
       aktivni: false,
       index: i,
     })),
   ]
+}
+
+/**
+ * Řazení pro zobrazení. Data v poli se NIKDY nepřeskládávají (výměna na
+ * místě při přepnutí je bezpečnostní záruka) – řadí se až tady, takže se
+ * pořadí v knihovně nemění tím, kterou výpravu si člověk zrovna otevřel.
+ * `zadne` nechává pořadí pole, `nejnovejsi` řadí staré záznamy bez data dozadu.
+ */
+const RAZENI = {
+  abecedne: (a, b) => a.nazev.localeCompare(b.nazev, 'cs'),
+  nejnovejsi: (a, b) => (b.vytvoreno || 0) - (a.vytvoreno || 0),
+  zastavky: (a, b) => b.plan.length - a.plan.length,
+  zadne: null,
+}
+
+const serad = (vypravy) => {
+  const fn = RAZENI[prefs.razeniVyprav || 'abecedne']
+  return fn ? [...vypravy].sort(fn) : vypravy
 }
 
 /**
@@ -82,7 +104,7 @@ export function seznamVyprav() {
  * @returns {Array<{slozka:string, vypravy:ReturnType<typeof seznamVyprav>}>}
  */
 export function seznamSlozek() {
-  const vsechny = seznamVyprav()
+  const vsechny = serad(seznamVyprav())
   const znam = new Set(slozky())
   const skupiny = slozky().map((n) => ({ slozka: n, vypravy: vsechny.filter((v) => v.slozka === n) }))
   const mimo = vsechny.filter((v) => !v.slozka || !znam.has(v.slozka))
@@ -105,6 +127,7 @@ export function prepniVypravu(i) {
   store.plan = Array.isArray(cil.plan) ? cil.plan : []
   store.planDny = Array.isArray(cil.planDny) ? cil.planDny : []
   store.vypravaSlozka = typeof cil.slozka === 'string' ? cil.slozka : ''
+  store.vypravaVytvoreno = cil.vytvoreno || 0
   sez[i] = odchazi
   return save()
 }
@@ -124,7 +147,35 @@ export function novaVyprava(nazev) {
   store.plan = []
   store.planDny = []
   store.vypravaSlozka = ''
+  store.vypravaVytvoreno = Date.now()
   return save()
+}
+
+/**
+ * Zduplikuje výpravu (i = -1 aktivní) do odložených, včetně bloků.
+ * Název dostane příponu „(kopie)" tak, aby byl unikátní – bloky jsou
+ * klíčované názvem a stejnojmenné výpravy by je sdílely.
+ * @param {number} i  pořadí v `store.vypravy`, -1 pro aktivní
+ * @returns {string}  název kopie ('' když není co duplikovat)
+ */
+export function duplikuj(i) {
+  const zdroj = i < 0 ? aktivniZaznam() : odlozene()[i]
+  if (!zdroj) return ''
+  const puvodni = zdroj.nazev || BEZ_NAZVU
+  const nazvy = new Set(seznamVyprav().map((v) => v.nazev))
+  let novy = `${puvodni} (kopie)`
+  for (let n = 2; nazvy.has(novy); n++) novy = `${puvodni} (kopie ${n})`
+  odlozene().push({
+    nazev: novy,
+    plan: [...(zdroj.plan || [])],
+    planDny: [...(zdroj.planDny || [])],
+    slozka: zdroj.slozka || '',
+    vytvoreno: Date.now(),
+  })
+  const bloky = store.bloky && store.bloky[puvodni]
+  if (Array.isArray(bloky)) store.bloky[novy] = JSON.parse(JSON.stringify(bloky))
+  save()
+  return novy
 }
 
 /**
@@ -185,6 +236,7 @@ export function smaz(i) {
   store.plan = dalsi && Array.isArray(dalsi.plan) ? dalsi.plan : []
   store.planDny = dalsi && Array.isArray(dalsi.planDny) ? dalsi.planDny : []
   store.vypravaSlozka = dalsi && typeof dalsi.slozka === 'string' ? dalsi.slozka : ''
+  store.vypravaVytvoreno = (dalsi && dalsi.vytvoreno) || 0
   return save()
 }
 

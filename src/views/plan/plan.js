@@ -21,7 +21,7 @@
  * z gesta uživatele, a `parity` na tom stojí.
  */
 
-import { S, store, save, PHOTOS } from '../../core/store.js'
+import { S, store, save, prefs, savePrefs, PHOTOS } from '../../core/store.js'
 import { esc } from '../../core/html.js'
 import { dkm, fmtKm } from '../../core/geo.js'
 import { KAT } from '../../data/categories.js'
@@ -38,7 +38,7 @@ import { dnyPlanu, pridejDen, presunDoDne, zrusDny, rozdelPodleHodin, rozdelNaPo
 import { gpxZPlanu, nazevSouboru } from './gpx.js'
 import {
   seznamVyprav, seznamSlozek, prepniVypravu, novaVyprava, novaSlozka, prejmenujSlozku,
-  smazSlozku, presunVypravu, prejmenuj, smaz, BEZ_NAZVU,
+  smazSlozku, presunVypravu, prejmenuj, smaz, duplikuj, BEZ_NAZVU,
 } from './vypravy.js'
 import { cestaHtml, napojCestu, jedeSe, vyjed } from './cesta.js'
 import { blokyDneHtml, pridatBlokHtml, napojBloky, rozpocetCelkem } from './bloky.js'
@@ -64,8 +64,14 @@ let rozbaleno = ''
 const sbaleneDny = new Set()
 /** Co má v knihovně rozbalené akce: 'v' + index výpravy, 's' + název složky. */
 let rozbalenoVKnihovne = ''
-/** Sbalené složky v knihovně. Jen v paměti; výchozí všechny rozbalené. */
-const sbaleneSlozky = new Set()
+/** Sbalené složky si pamatuje prefs – přežijí restart. Zápis až při ťuknutí. */
+const sbaleneSlozky = () => new Set(Array.isArray(prefs.sbaleneSlozky) ? prefs.sbaleneSlozky : [])
+const prepniSbaleni = (nazev) => {
+  const mn = sbaleneSlozky()
+  mn.has(nazev) ? mn.delete(nazev) : mn.add(nazev)
+  prefs.sbaleneSlozky = [...mn]
+  savePrefs()
+}
 
 /** Přidá nebo odebere místo z plánu. */
 export function togglePlan(id) {
@@ -232,30 +238,27 @@ function radekVypravy(v) {
   )
 }
 
-/** Rozbalené akce pod řádkem výpravy: přejmenovat, smazat, zařadit do složky. */
+/** Rozbalené akce pod řádkem výpravy. Otevření Itineráře je jen tady. */
 function akceVypravy(v) {
-  const nazvy = seznamSlozek().map((s) => s.slozka).filter(Boolean)
   return `<div class="vyprava-akce" data-pro="${v.index}">
     <div class="btnrow" style="margin:0">
+      <button class="btn small primary" data-act="v-otevrit">${IC('i-route')}Otevřít itinerář</button>
       <button class="btn small" data-act="v-prejmenovat">${IC('i-quill')}Přejmenovat</button>
-      <button class="btn small" data-act="v-smazat">${IC('i-x')}Smazat</button>
-    </div>
-    <div class="vyprava-slozky">
-      <button class="slozka-pill${!v.slozka ? ' on' : ''}" data-slozka-cil="">Bez složky</button>
-      ${nazvy.map((n) => `<button class="slozka-pill${v.slozka === n ? ' on' : ''}" data-slozka-cil="${esc(n)}">${esc(n)}</button>`).join('')}
-      <button class="slozka-pill" data-slozka-cil="+">${IC('i-plus')}Nová…</button>
+      <button class="btn small" data-act="v-duplikovat">${IC('i-copy')}Duplikovat</button>
+      <button class="btn small" data-act="v-slozka">${IC('i-slozka')}${v.slozka ? esc(v.slozka) : 'Bez složky'}</button>
+      <button class="btn small nebezpecne" data-act="v-smazat">${IC('i-x')}Smazat</button>
     </div>
   </div>`
 }
 
 /** Hlavička složky: sbalitelná, s počtem a vlastní nabídkou. */
 function hlavickaSlozky(s) {
-  const sbalena = sbaleneSlozky.has(s.slozka)
+  const sbalena = sbaleneSlozky().has(s.slozka)
   return (
     `<div class="slozka-radek${sbalena ? ' sbalena' : ''}" data-slozka="${esc(s.slozka)}">
       ${IC('i-slozka')}
       <b>${esc(s.slozka)}</b>
-      <span>${s.vypravy.length} ${sklonuj(s.vypravy.length, 'výprava', 'výpravy', 'výprav')}</span>
+      <span class="slozka-pocet">${s.vypravy.length} ${sklonuj(s.vypravy.length, 'výprava', 'výpravy', 'výprav')}</span>
       <button class="ikonbtn" data-slozka-vice title="Co s touhle složkou">${IC('i-vice')}</button>
       <span class="slozka-sipka">${IC('i-down')}</span>
     </div>` +
@@ -291,8 +294,11 @@ function knihovna() {
   for (const s of skupiny) {
     if (s.slozka) {
       casti.push(hlavickaSlozky(s))
-      if (!sbaleneSlozky.has(s.slozka))
-        casti.push(`<div class="slozka-obsah" data-slozka="${esc(s.slozka)}">${s.vypravy.map(radekVypravy).join('')}</div>`)
+      if (!sbaleneSlozky().has(s.slozka))
+        casti.push(`<div class="slozka-obsah" data-slozka="${esc(s.slozka)}">${
+          s.vypravy.map(radekVypravy).join('') ||
+          `<div class="meta slozka-prazdna">Zatím prázdná – výpravu sem přetáhni, nebo ji zařaď přes „…".</div>`
+        }</div>`)
     } else {
       const kus = s.vypravy.map(radekVypravy).join('')
       casti.push(maSlozky ? `<div class="sekce"><span class="sekce-text">Nezařazené</span></div>${kus}` : kus)
@@ -313,13 +319,12 @@ function knihovna() {
 function napojKnihovnu(wrap) {
   for (const r of wrap.querySelectorAll('.vypravaradek[data-vyprava]')) {
     const i = Number(r.dataset.vyprava)
+    // Ťuknutí NEotevírá Itinerář – jen přepne, co je vidět na mapě.
     r.onclick = () => {
-      rozbalenoVKnihovne = ''
-      dil = 'itinerar'
-      if (i >= 0) {
-        prepniVypravu(i)
-        draw()
-      } else renderPlan()
+      if (i < 0) return
+      prepniVypravu(i)
+      draw()
+      toast(`Na mapě: ${store.vypravaNazev || BEZ_NAZVU}`)
     }
     const vice = r.querySelector('[data-vyprava-vice]')
     if (vice)
@@ -333,6 +338,39 @@ function napojKnihovnu(wrap) {
   for (const akce of wrap.querySelectorAll('[data-pro]')) {
     const i = Number(akce.dataset.pro)
     const zaznam = () => seznamVyprav().find((x) => x.index === i)
+    akce.querySelector('[data-act="v-otevrit"]').onclick = () => {
+      rozbalenoVKnihovne = ''
+      dil = 'itinerar'
+      if (i >= 0) {
+        prepniVypravu(i)
+        draw()
+      } else renderPlan()
+    }
+    akce.querySelector('[data-act="v-duplikovat"]').onclick = () => {
+      const novy = duplikuj(i)
+      if (novy) toast(`Kopie založená: ${novy}`)
+      renderPlan()
+    }
+    akce.querySelector('[data-act="v-slozka"]').onclick = async () => {
+      const v = zaznam()
+      const polozky = [
+        { id: '', popisek: 'Bez složky', ikona: 'i-x', on: !(v && v.slozka) },
+        ...seznamSlozek()
+          .map((s) => s.slozka)
+          .filter(Boolean)
+          .map((n) => ({ id: n, popisek: n, ikona: 'i-slozka', on: !!v && v.slozka === n })),
+        { id: '+', popisek: 'Nová složka…', ikona: 'i-plus' },
+      ]
+      let cil = await vyberZeSeznamu({ nadpis: 'Do které složky?', polozky })
+      if (cil === null) return
+      if (cil === '+') {
+        const n = await zadej({ nadpis: 'Nová složka', placeholder: 'třeba Léto 2027' })
+        if (n === null || !n.trim()) return
+        cil = n.trim()
+      }
+      presunVypravu(i, cil)
+      renderPlan()
+    }
     akce.querySelector('[data-act="v-prejmenovat"]').onclick = async () => {
       const v = zaznam()
       const n = await zadej({ nadpis: 'Přejmenovat výpravu', vychozi: v ? v.nazev : '' })
@@ -354,23 +392,12 @@ function napojKnihovnu(wrap) {
       draw()
       toast('Výprava smazána')
     }
-    for (const p of akce.querySelectorAll('[data-slozka-cil]'))
-      p.onclick = async () => {
-        let cil = p.dataset.slozkaCil
-        if (cil === '+') {
-          const n = await zadej({ nadpis: 'Nová složka', placeholder: 'třeba Léto 2027' })
-          if (n === null || !n.trim()) return
-          cil = n.trim()
-        }
-        presunVypravu(i, cil)
-        renderPlan()
-      }
   }
 
   for (const h of wrap.querySelectorAll('.slozka-radek')) {
     const nazev = h.dataset.slozka
     h.onclick = () => {
-      sbaleneSlozky.has(nazev) ? sbaleneSlozky.delete(nazev) : sbaleneSlozky.add(nazev)
+      prepniSbaleni(nazev)
       renderPlan()
     }
     const vice = h.querySelector('[data-slozka-vice]')
@@ -1094,6 +1121,7 @@ function prepniMenu() {
 
   m.innerHTML = `
     <button id="planPrejmenuj">${IC('i-quill')}Přejmenovat výpravu</button>
+    <button id="planDuplikuj">${IC('i-copy')}Duplikovat výpravu</button>
     <button id="planDoSlozky">${IC('i-slozka')}Přesunout do složky</button>
     <button id="planShare">${IC('i-copy')}Kopírovat plán</button>
     ${store.plan.length > 1 ? `<button id="planOtoc">${IC('i-route')}Otočit pořadí</button>` : ''}
@@ -1102,26 +1130,34 @@ function prepniMenu() {
     <button id="planSmaz">${IC('i-x')}Smazat celou výpravu</button>`
   m.hidden = false
 
-  // Druhé patro nabídky: výběr složky přepíše obsah menu, křížek se vrací.
-  document.getElementById('planDoSlozky').onclick = () => {
-    const nazvy = seznamSlozek().map((s) => s.slozka).filter(Boolean)
-    m.innerHTML =
-      `<button data-slozka-cil="">${IC('i-x')}Bez složky</button>` +
-      nazvy.map((n) => `<button data-slozka-cil="${esc(n)}">${IC('i-slozka')}${esc(n)}</button>`).join('') +
-      `<button data-slozka-cil="+">${IC('i-plus')}Nová složka…</button>`
-    for (const b of m.querySelectorAll('[data-slozka-cil]'))
-      b.onclick = async () => {
-        let cil = b.dataset.slozkaCil
-        if (cil === '+') {
-          const n = await zadej({ nadpis: 'Nová složka', placeholder: 'třeba Léto 2027' })
-          if (n === null || !n.trim()) return
-          cil = n.trim()
-        }
-        presunVypravu(-1, cil)
-        m.hidden = true
-        toast(cil ? `Výprava je ve složce ${cil}` : 'Výprava je bez složky')
-        renderPlan()
-      }
+  document.getElementById('planDuplikuj').onclick = () => {
+    m.hidden = true
+    const novy = duplikuj(-1)
+    if (novy) toast(`Kopie založená: ${novy}`)
+    renderPlan()
+  }
+
+  // Výběr složky je dialog se seznamem – pilulky by se s hodně složkami nevešly.
+  document.getElementById('planDoSlozky').onclick = async () => {
+    m.hidden = true
+    const polozky = [
+      { id: '', popisek: 'Bez složky', ikona: 'i-x', on: !store.vypravaSlozka },
+      ...seznamSlozek()
+        .map((s) => s.slozka)
+        .filter(Boolean)
+        .map((n) => ({ id: n, popisek: n, ikona: 'i-slozka', on: store.vypravaSlozka === n })),
+      { id: '+', popisek: 'Nová složka…', ikona: 'i-plus' },
+    ]
+    let cil = await vyberZeSeznamu({ nadpis: 'Do které složky?', polozky })
+    if (cil === null) return
+    if (cil === '+') {
+      const n = await zadej({ nadpis: 'Nová složka', placeholder: 'třeba Léto 2027' })
+      if (n === null || !n.trim()) return
+      cil = n.trim()
+    }
+    presunVypravu(-1, cil)
+    toast(cil ? `Výprava je ve složce ${cil}` : 'Výprava je bez složky')
+    renderPlan()
   }
 
   const otoc = document.getElementById('planOtoc')
