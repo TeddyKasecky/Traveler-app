@@ -104,9 +104,9 @@ const kontrola = async (popis, fn, ocekavano) => {
 }
 
 // 57 z původní aplikace + `i-filtr` (trychtýř podle listu „SADA PIKTOGRAMŮ",
-// viz VZHLED.md) + `i-zalozka` + `i-slozka` (složky výprav, srpen 2026).
-// Číslo se mění jen s vědomým přidáním ikony do sprite.svg.
-await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 60)
+// viz VZHLED.md) + `i-zalozka` + `i-slozka` + `i-zamek` (ukončené cesty
+// v knihovně, srpen 2026). Číslo se mění jen s vědomým přidáním do sprite.svg.
+await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 61)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
 // Nad mapou je pět rychlých pilulek podle předlohy, od srpna 2026 „moje věci"
@@ -614,6 +614,9 @@ await kontrola('odznačení se zapsalo', () =>
   page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('vandrbuch:v1')).cesta.odznacene).length), 1)
 await kontrola('odznačené je i navštívené', () =>
   page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('vandrbuch:v1')).stav).filter((x) => x === 'visited').length), 1)
+// S jedinou zastávkou v plánu (odznačenou) není „Další cíl“ ani co ukazovat
+// jako zbývá – doplňky se ověřují samostatně v ruční kontrole vzhledu.
+await kontrola('u hotové jednozastávkové cesty není Další cíl', () => page.locator('.cesta-dalsi').count(), 0)
 // Achievementy: plánové se generují z obsahu plánu a pro každý jich musí
 // být aspoň dvacet – i pro tenhle miniaturní jednozastávkový.
 // Počítá se JEN v kartě Plánu: panely se nezahazují, jen schovávají, takže
@@ -631,9 +634,34 @@ await kontrola('cesta skončila v archivu', () =>
     const v = JSON.parse(localStorage.getItem('vandrbuch:v1'))
     return !v.cesta && v.cesty.length === 1 && v.cesty[0].navstiveno === 1
   }))
-await kontrola('archiv je vidět po letech', () => page.locator('.archiv-rok').count(), 1)
 await kontrola('profilový achievement za první cestu', () =>
   page.evaluate(() => !!JSON.parse(localStorage.getItem('vandrbuch:v1')).achievementy['prvni-cesta']))
+
+// Ukončená cesta žije v knihovně Výprav, ne na kartě Na cestě (srpen 2026):
+// řádek po letech se zámkem, ťuknutí ji aktivuje na mapě jako výpravu,
+// v Itineráři se pak ukáže zamčená s možností odemknout jen poznámky.
+await page.click('#planSegment button[data-seg="vypravy"]')
+await page.waitForTimeout(400)
+await kontrola('ukončená cesta je v knihovně po letech', () => page.locator('.archivradek').count(), 1)
+await page.click('.archivradek')
+await page.waitForTimeout(400)
+await kontrola('ťuknutí ji aktivuje na mapě', () => page.locator('.archivradek.on').count(), 1)
+await page.click('#planSegment button[data-seg="itinerar"]')
+await page.waitForTimeout(500)
+await kontrola('Itinerář ukáže zamčenou cestu', () => page.locator('.cesta-zamek').count(), 1)
+await kontrola('vyjet z ukončené cesty nejde', () => page.locator('#planVyjet').count(), 0)
+await kontrola('fajfka zastávky je zamčená', () => page.locator('.cesta-zastavka.zamcena').count(), 1)
+await page.click('#cestaOdemknout')
+await page.waitForTimeout(400)
+await kontrola('po odemčení jde upravit poznámku zastávky', () => page.locator('.cesta-zastavka .cesta-pozn').count(), 1)
+await page.locator('.cesta-zastavka .cesta-pozn').fill('Bylo krásně')
+await page.waitForTimeout(600)
+await kontrola('poznámka zastávky ukončené cesty se uložila', () =>
+  page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('vandrbuch:v1')).cesty[0].poznamky || {}).includes('Bylo krásně')))
+await page.locator('#cestaArchivPoznamka').fill('Skvělá výprava')
+await page.waitForTimeout(600)
+await kontrola('poznámka ukončené cesty se uložila', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).cesty[0].poznamka), 'Skvělá výprava')
 // Uklidit stav navštíveného místa po zkoušce cesty. Reload níž zahodí stav
 // modulů, takže se musí vrátit i „první otevření Mapy" – karta výpravy po
 // něm držela jen v paměti a kontroly na Mapě s prvním otevřením počítají.

@@ -40,11 +40,12 @@ import {
   seznamVyprav, seznamSlozek, prepniVypravu, novaVyprava, novaSlozka, prejmenujSlozku,
   smazSlozku, presunVypravu, prejmenuj, smaz, duplikuj, BEZ_NAZVU,
 } from './vypravy.js'
-import { cestaHtml, napojCestu, jedeSe, vyjed } from './cesta.js'
+import { cestaHtml, napojCestu, jedeSe, vyjed, zamcenaCestaHtml, napojZamcenouCestu } from './cesta.js'
 import {
   blokyDneHtml, pridatBlokHtml, napojBloky, rozpocetCelkem, blokHtml, blok, bloky,
   vsechnyBody, pridejBod, hledejAdresu, rozpoznejSouradnice, DRUHY,
 } from './bloky.js'
+import { archivRadkyHtml, napojArchivRadky } from './archiv.js'
 import { cislaPlanuHtml, napojCislaPlanu } from './prehled.js'
 
 /** Kolik zastávek unese odkaz do Google Maps. */
@@ -153,7 +154,7 @@ export function renderPlan() {
       'planSegment'
     ) +
     (dil === 'cesta' ? cestaHtml() : dil === 'vypravy' ? knihovna() : kartaItinerare(items, dny)) +
-    (dil === 'itinerar' ? lista(items) : '')
+    (dil === 'itinerar' && S.otevrenaCesta == null ? lista(items) : '')
 
   napoj(wrap, items)
   if (dil === 'cesta') napojCestu(wrap, renderPlan)
@@ -162,16 +163,20 @@ export function renderPlan() {
     napojTahaniKnihovny(wrap)
   }
   if (dil === 'itinerar') {
-    napojCislaPlanu(wrap, renderPlan)
-    // Překresluje se přes draw(), ne jen renderPlan(): vlastní místa mění
-    // trasu i špendlíky na mapě a ta by jinak zůstala stará.
-    napojBloky(wrap, draw, (cb) => vyberBod(cb))
-    for (const b of wrap.querySelectorAll('[data-act="sbal-den"]')) {
-      b.onclick = (e) => {
-        e.stopPropagation()
-        const den = Number(b.dataset.den)
-        sbaleneDny.has(den) ? sbaleneDny.delete(den) : sbaleneDny.add(den)
-        renderPlan()
+    if (S.otevrenaCesta != null && store.cesty[S.otevrenaCesta]) {
+      napojZamcenouCestu(wrap, renderPlan, S.otevrenaCesta)
+    } else {
+      napojCislaPlanu(wrap, renderPlan)
+      // Překresluje se přes draw(), ne jen renderPlan(): vlastní místa mění
+      // trasu i špendlíky na mapě a ta by jinak zůstala stará.
+      napojBloky(wrap, draw, (cb) => vyberBod(cb))
+      for (const b of wrap.querySelectorAll('[data-act="sbal-den"]')) {
+        b.onclick = (e) => {
+          e.stopPropagation()
+          const den = Number(b.dataset.den)
+          sbaleneDny.has(den) ? sbaleneDny.delete(den) : sbaleneDny.add(den)
+          renderPlan()
+        }
       }
     }
   }
@@ -184,6 +189,7 @@ export function renderPlan() {
  */
 export function otevriItinerar() {
   dil = 'itinerar'
+  S.otevrenaCesta = null
   aktivujZalozku('plan')
   renderPlan()
 }
@@ -218,6 +224,7 @@ function radekVypravy(v) {
     `${v.plan.length} ${sklonuj(v.plan.length, 'zastávka', 'zastávky', 'zastávek')}` +
     (v.plan.length > 1 ? ` · ${dnu} ${sklonuj(dnu, 'den', 'dny', 'dní')} · ${fmtKm(km)}` : '')
 
+  const naMape = v.aktivni && S.otevrenaCesta == null
   return (
     `<div class="vypravaradek${v.aktivni ? ' on' : ''}" data-vyprava="${v.index}">
       ${IC(v.aktivni ? 'i-route' : 'i-map')}
@@ -225,7 +232,7 @@ function radekVypravy(v) {
         <b>${esc(v.nazev)}</b>
         <span>${meta}</span>
       </div>
-      ${v.aktivni ? `<i title="Tahle výprava je vidět na mapě">na mapě</i>` : ''}
+      ${naMape ? `<i title="Tahle výprava je vidět na mapě">na mapě</i>` : ''}
       <button class="ikonbtn vyprava-vice" data-vyprava-vice title="Co s touhle výpravou">${IC('i-vice')}</button>
     </div>` + (rozbalenoVKnihovne === `v${v.index}` ? akceVypravy(v) : '')
   )
@@ -304,7 +311,8 @@ function knihovna() {
     <div class="btnrow knihovna-pridat">
       <button class="ghostbtn" id="vypNova">${IC('i-plus')}Nová výprava</button>
       <button class="ghostbtn" id="slozkaNova">${IC('i-slozka')}Nová složka</button>
-    </div>`
+    </div>` +
+    archivRadkyHtml()
   )
 }
 
@@ -315,6 +323,7 @@ function napojKnihovnu(wrap) {
     // Ťuknutí NEotevírá Itinerář – jen přepne, co je vidět na mapě.
     r.onclick = () => {
       if (i < 0) return
+      S.otevrenaCesta = null
       prepniVypravu(i)
       draw()
       toast(`Na mapě: ${store.vypravaNazev || BEZ_NAZVU}`)
@@ -334,10 +343,9 @@ function napojKnihovnu(wrap) {
     akce.querySelector('[data-act="v-otevrit"]').onclick = () => {
       rozbalenoVKnihovne = ''
       dil = 'itinerar'
-      if (i >= 0) {
-        prepniVypravu(i)
-        draw()
-      } else renderPlan()
+      S.otevrenaCesta = null
+      if (i >= 0) prepniVypravu(i)
+      draw()
     }
     akce.querySelector('[data-act="v-duplikovat"]').onclick = () => {
       const novy = duplikuj(i)
@@ -433,6 +441,16 @@ function napojKnihovnu(wrap) {
       novaSlozka(n)
       renderPlan()
     }
+
+  // Ukončené cesty: ťuknutí aktivuje na mapě, jako výprava – jen z nich
+  // nejde vyjet. Tap na už aktivní nic nedělá (stejná symetrie jako výprava).
+  napojArchivRadky(wrap, (i) => {
+    if (i === null) return renderPlan()
+    if (S.otevrenaCesta === i) return
+    S.otevrenaCesta = i
+    draw()
+    toast(`Na mapě: ${store.cesty[i].nazev}`)
+  })
 }
 
 /**
@@ -601,6 +619,12 @@ function napojTahaniKnihovny(wrap) {
  * odjakživa, a první zastávkou se zhmotní jako výprava i v knihovně.
  */
 function kartaItinerare(items, dny) {
+  if (S.otevrenaCesta != null) {
+    const c = store.cesty[S.otevrenaCesta]
+    if (c) return zamcenaCestaHtml(c, S.otevrenaCesta)
+    // Záznam zmizel (např. stará záloha bez něj) – bezpečně spadnout na živý itinerář.
+    S.otevrenaCesta = null
+  }
   return hlava(items, dny) + akceItinerare(items) + itinerar(items, dny) + cislaPlanuHtml()
 }
 

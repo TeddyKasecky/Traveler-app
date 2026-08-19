@@ -1,5 +1,11 @@
 /**
- * Archiv ukončených cest – tříděný po letech.
+ * Ukončené cesty v knihovně Výprav – řádky ve stylu `.vypravaradek`, po letech.
+ *
+ * Do srpna 2026 to byla vlastní karta na kartě Na cestě s rozbalováním
+ * detailu na místě. Ukončená cesta se dnes chová jako výprava: ťuknutí ji
+ * jen aktivuje na mapě (`S.otevrenaCesta`), detail (dny se zastávkami,
+ * čísla, achievementy) je v Itineráři v zamčeném režimu – jedno místo na
+ * „otevřít a podívat se", ne dvě různá.
  *
  * Souhrny počítá `ukonciCestu()` už při ukončení, tady se jen čtou. Schválně:
  * data míst se můžou změnit (CSV import) a archiv má držet, jaká cesta BYLA,
@@ -9,76 +15,80 @@
  * vzdušnou čarou přes odznačené zastávky, a to je číslo, které lže.
  */
 
-import { store } from '../../core/store.js'
+import { S, store } from '../../core/store.js'
 import { esc } from '../../core/html.js'
 import { IC } from '../../icons/sprite.js'
-import { fmtDoba } from './cesta.js'
 import { sklonuj } from './plan.js'
 import { planoveAchievementy } from './achievementy.js'
 
-/** Které roky jsou rozbalené. Jen v paměti; poslední rok se rozbalí sám. */
+/** Které roky jsou rozbalené. Jen v paměti; poslední (nejnovější) se rozbalí sám. */
 const rozbaleneRoky = new Set()
-/** Která cesta má rozbalený detail. */
-let rozbalenaCesta = -1
 
 const datum = (ms) => new Date(ms).toLocaleDateString('cs-CZ')
 
-/**
- * HTML archivu. Prázdný archiv nevrací nic – sekce se pak vůbec neukazuje.
- * @returns {string}
- */
-export function archivHtml() {
-  if (!store.cesty.length) return ''
-
-  // Po letech, nejnovější rok první. Pořadí uvnitř roku drží unshift
-  // z `ukonciCestu()` – nejnovější cesta nahoře.
-  const poLetech = new Map()
+/** Ukončené cesty seskupené po letech, nejnovější rok první. */
+function poLetech() {
+  const m = new Map()
   store.cesty.forEach((c, i) => {
     const rok = new Date(c.zacatek).getFullYear()
-    if (!poLetech.has(rok)) poLetech.set(rok, [])
-    poLetech.get(rok).push({ c, i })
+    if (!m.has(rok)) m.set(rok, [])
+    m.get(rok).push({ c, i })
   })
-  const roky = [...poLetech.keys()].sort((a, b) => b - a)
-  if (!rozbaleneRoky.size && roky.length) rozbaleneRoky.add(roky[0])
+  return [...m.entries()].sort((a, b) => b[0] - a[0])
+}
 
-  return `
-    <div class="sekce"><span class="sekce-text">Ukončené cesty</span></div>
-    ${roky
-      .map((rok) => {
-        const cesty = poLetech.get(rok)
+/**
+ * Sekce „Ukončené cesty" pro knihovnu Výprav. Prázdný archiv nevrací nic –
+ * sekce se pak vůbec neukazuje.
+ * @returns {string}
+ */
+export function archivRadkyHtml() {
+  if (!store.cesty.length) return ''
+  const roky = poLetech()
+  if (!rozbaleneRoky.size && roky.length) rozbaleneRoky.add(roky[0][0])
+
+  return (
+    `<div class="sekce"><span class="sekce-text">Ukončené cesty</span></div>` +
+    roky
+      .map(([rok, cesty]) => {
         const otevreny = rozbaleneRoky.has(rok)
-        return `
-        <button class="archiv-rok${otevreny ? ' on' : ''}" data-rok="${rok}">
-          <b>${rok}</b>
-          <span>${cesty.length} ${sklonuj(cesty.length, 'cesta', 'cesty', 'cest')}</span>
-          ${IC('i-down')}
-        </button>
-        ${otevreny ? cesty.map(({ c, i }) => cestaVArchivu(c, i)).join('') : ''}`
+        return (
+          `<div class="slozka-radek${otevreny ? '' : ' sbalena'}" data-rok="${rok}">
+            ${IC('i-kalendar')}
+            <b>${rok}</b>
+            <span class="slozka-pocet">${cesty.length} ${sklonuj(cesty.length, 'cesta', 'cesty', 'cest')}</span>
+            <span class="slozka-sipka">${IC('i-down')}</span>
+          </div>` +
+          (otevreny ? `<div class="slozka-obsah">${cesty.map(({ c, i }) => radekCesty(c, i)).join('')}</div>` : '')
+        )
       })
-      .join('')}`
+      .join('')
+  )
 }
 
-/** Jedna cesta v archivu; rozbalená ukáže rozpad a achievementy. */
-function cestaVArchivu(c, i) {
-  const rozbalena = rozbalenaCesta === i
-  const dni = Math.max(1, Math.round((c.konec - c.zacatek) / 86400000))
-
-  return `
-    <div class="archiv-cesta${rozbalena ? ' on' : ''}">
-      <button class="archiv-hlava" data-cesta="${i}">
-        <div>
-          <b>${esc(c.nazev)}</b>
-          <span class="meta">${datum(c.zacatek)} – ${datum(c.konec)} · ${dni} ${sklonuj(dni, 'den', 'dny', 'dní')}
-            · ${c.navstiveno}/${c.zastavek} ${sklonuj(c.zastavek, 'zastávka', 'zastávky', 'zastávek')}</span>
-        </div>
-        ${IC('i-down')}
-      </button>
-      ${rozbalena ? detailCesty(c) : ''}
-    </div>`
+/** Jeden řádek ukončené cesty. Zamčená ikona rovnou říká, že je jen ke čtení. */
+function radekCesty(c, i) {
+  const aktivni = S.otevrenaCesta === i
+  return `<div class="vypravaradek archivradek${aktivni ? ' on' : ''}" data-cesta="${i}">
+    ${IC('i-zamek')}
+    <div>
+      <b>${esc(c.nazev)}</b>
+      <span>${datum(c.zacatek)} · ${c.navstiveno}/${c.zastavek} ${sklonuj(c.zastavek, 'zastávka', 'zastávky', 'zastávek')}</span>
+    </div>
+    ${aktivni ? `<i title="Tahle cesta je vidět na mapě">na mapě</i>` : ''}
+  </div>`
 }
 
-/** Rozbalený detail: čísla, země, kategorie, poznámky a achievementy. */
-function detailCesty(c) {
+/**
+ * Rozpad ukončené cesty pro zamčený Itinerář: země, kraje, kategorie,
+ * počet poznámek a achievementy. Čísla (čistý čas, navštíveno/vynecháno)
+ * a samotná poznámka se kreslí v `cesta.js`, který má `fmtDoba` a řeší
+ * i editovatelnost po „Odemknout poznámky" – nedávat je sem, ať `archiv.js`
+ * nemusí importovat z `cesta.js` a `cesta.js` z `archiv.js` navzájem.
+ * @param {object} c
+ * @returns {string}
+ */
+export function detailCestyHtml(c) {
   const kategorie = Object.entries(c.kategorie || {}).sort((a, b) => b[1] - a[1])
   const hodnoceni = Object.values(c.hodnoceni || {})
   const prumer = hodnoceni.length ? (hodnoceni.reduce((a, b) => a + b, 0) / hodnoceni.length).toFixed(1) : null
@@ -90,54 +100,40 @@ function detailCesty(c) {
   const ziskane = new Set(c.ziskane || [])
 
   return `
-    <div class="archiv-detail">
-      <div class="archiv-cisla">
-        <div><b>${fmtDoba(c.cistyMs || 0)}</b><span>čistý čas</span></div>
-        <div><b>${c.navstiveno}</b><span>navštíveno</span></div>
-        <div><b>${c.vynechano}</b><span>vynecháno</span></div>
-        ${prumer ? `<div><b>${prumer} ★</b><span>průměr hodnocení</span></div>` : ''}
-      </div>
-      ${c.zeme && c.zeme.length ? `<div class="meta archiv-radka">${IC('i-globe')}${c.zeme.map(esc).join(' · ')}</div>` : ''}
-      ${c.kraje && c.kraje.length ? `<div class="meta archiv-radka">${IC('i-map')}${c.kraje.map(esc).join(' · ')}</div>` : ''}
-      ${
-        kategorie.length
-          ? `<div class="archiv-tagy">${kategorie.map(([k, n]) => `<span class="tag">${esc(k)} × ${n}</span>`).join('')}</div>`
-          : ''
-      }
-      ${poznamky ? `<div class="meta archiv-radka">${IC('i-quill')}${poznamky} ${sklonuj(poznamky, 'poznámka', 'poznámky', 'poznámek')} z cesty</div>` : ''}
-      ${c.poznamka ? `<p class="archiv-poznamka">${esc(c.poznamka)}</p>` : ''}
-      ${
-        definice.length
-          ? `<div class="meta archiv-radka">${IC('i-spark')}Achievementy: ${ziskane.size} z ${definice.length}</div>
-             <div class="achv-mriz">${definice
-               .map(
-                 (a) =>
-                   `<span class="achv${ziskane.has(a.id) ? ' ma' : ''}" title="${esc(a.popis)}">${esc(a.nazev)}</span>`
-               )
-               .join('')}</div>`
-          : ''
-      }
-    </div>`
+    ${prumer ? `<div class="meta archiv-radka">${IC('i-star')}Průměr hodnocení ${prumer} ★</div>` : ''}
+    ${c.zeme && c.zeme.length ? `<div class="meta archiv-radka">${IC('i-globe')}${c.zeme.map(esc).join(' · ')}</div>` : ''}
+    ${c.kraje && c.kraje.length ? `<div class="meta archiv-radka">${IC('i-map')}${c.kraje.map(esc).join(' · ')}</div>` : ''}
+    ${
+      kategorie.length
+        ? `<div class="archiv-tagy">${kategorie.map(([k, n]) => `<span class="tag">${esc(k)} × ${n}</span>`).join('')}</div>`
+        : ''
+    }
+    ${poznamky ? `<div class="meta archiv-radka">${IC('i-quill')}${poznamky} ${sklonuj(poznamky, 'poznámka', 'poznámky', 'poznámek')} ze zastávek</div>` : ''}
+    ${
+      definice.length
+        ? `<div class="meta archiv-radka">${IC('i-spark')}Achievementy: ${ziskane.size} z ${definice.length}</div>
+           <div class="achv-mriz">${definice
+             .map((a) => `<span class="achv${ziskane.has(a.id) ? ' ma' : ''}" title="${esc(a.popis)}">${esc(a.nazev)}</span>`)
+             .join('')}</div>`
+        : ''
+    }`
 }
 
 /**
- * Naváže rozbalování. Volá se po vložení HTML.
+ * Naváže sbalování let a aktivaci cesty (ťuknutí = jen na mapu, jako
+ * u výpravy – žádné rozbalování detailu na místě).
  * @param {HTMLElement} wrap
- * @param {() => void} prekresli
+ * @param {(i: number|null) => void} naAktivaci  null = jen se sbalil/rozbalil rok
  */
-export function napojArchiv(wrap, prekresli) {
-  for (const b of wrap.querySelectorAll('.archiv-rok')) {
-    b.onclick = () => {
-      const rok = Number(b.dataset.rok)
+export function napojArchivRadky(wrap, naAktivaci) {
+  for (const r of wrap.querySelectorAll('.slozka-radek[data-rok]')) {
+    const rok = Number(r.dataset.rok)
+    r.onclick = () => {
       rozbaleneRoky.has(rok) ? rozbaleneRoky.delete(rok) : rozbaleneRoky.add(rok)
-      prekresli()
+      naAktivaci(null)
     }
   }
-  for (const b of wrap.querySelectorAll('.archiv-hlava')) {
-    b.onclick = () => {
-      const i = Number(b.dataset.cesta)
-      rozbalenaCesta = rozbalenaCesta === i ? -1 : i
-      prekresli()
-    }
+  for (const r of wrap.querySelectorAll('.archivradek[data-cesta]')) {
+    r.onclick = () => naAktivaci(Number(r.dataset.cesta))
   }
 }

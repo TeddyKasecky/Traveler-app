@@ -385,3 +385,24 @@
 .itinerar .blok{transition:transform .18s var(--pop)}
 .itinerar .blok.tahne{transition:none}
 .itinerar .pridatzastavku{transition:transform .18s var(--pop)}
+
+/* ---------- ukončené cesty v knihovně a zamčený Itinerář (srpen 2026) ---------- */
+.archivradek svg.ic{color:var(--text3)}
+.archivradek span{display:block;font-size:.74rem;font-weight:600;color:var(--text2)}
+
+.cesta-zamek{display:flex;align-items:center;gap:9px;background:var(--plocha2);border:var(--line);
+  border-radius:var(--r-s);padding:9px 12px;margin:0 2px 12px;font-size:.78rem;font-weight:700;color:var(--text2)}
+.cesta-zamek svg.ic{font-size:16px;color:var(--text3);flex:0 0 auto}
+.cesta-zamek span{flex:1}
+.cesta-zamek .btn{margin:0}
+
+.cesta-zastavka.zamcena .cesta-fajfka{cursor:default;opacity:.55}
+.cesta-pozn-zamcena{margin-top:6px;font-style:italic}
+
+.cesta-zbyva{margin:0 2px 12px}
+.cesta-dalsi{display:flex;align-items:center;gap:10px;background:var(--plocha-zelena);
+  border:var(--line);border-radius:var(--r-s);padding:10px 13px;margin:0 2px 14px}
+.cesta-dalsi > div{flex:1;min-width:0}
+.cesta-dalsi .meta{display:block}
+.cesta-dalsi b{display:block;font-family:var(--f-disp);font-size:1rem}
+.cesta-dalsi .btn{flex:0 0 auto;margin:0}

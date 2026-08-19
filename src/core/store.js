@@ -309,6 +309,13 @@ export const S = {
   /** @type {string[]} id míst vybraných k porovnání. Jen v paměti – není to
    *  uživatelské datum, je to výběr na pár vteřin. */
   porovnani: [],
+  /**
+   * Index do `store.cesty` ukončené cesty otevřené z knihovny Výprav,
+   * nebo null. Jen v paměti – po restartu se knihovna otevře znovu na
+   * výpravách, ne na archivu (srpen 2026). Aktivace výpravy i vyjetí
+   * tenhle ukazatel nulují – trasa na mapě smí kreslit jen jedno z obojího.
+   */
+  otevrenaCesta: null,
 }
 
 /**

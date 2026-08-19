@@ -85,18 +85,27 @@ export function drawPlanLine(mapa) {
     dodavka = null
   }
 
-  // Za jízdy se kreslí otisk cesty, ne živý plán – plán se dá upravovat
-  // i s rozjetou cestou a trasa na mapě má ukazovat to, co se opravdu jede.
+  // Za jízdy se kreslí otisk ROZJETÉ cesty; při prohlížení ukončené cesty
+  // z knihovny (S.otevrenaCesta) otisk TÉ; jinak živý plán – ten se dá
+  // upravovat i s rozjetou cestou a trasa na mapě má ukazovat, co se jede.
   const jedeSe = !!store.cesta
-  const zdrojIds = jedeSe ? store.cesta.zastavky : store.plan
+  const cestaOtevrena = !jedeSe && S.otevrenaCesta != null ? store.cesty[S.otevrenaCesta] : null
+  const otisk = jedeSe ? store.cesta : cestaOtevrena
+  const zdrojIds = otisk ? otisk.zastavky : store.plan
   const zastavky = zdrojIds.map((id) => S.byId[id]).filter(Boolean)
 
   // Body trasy z bloků: bod s `po` hned za svou zastávkou, bod se `den`
-  // na začátek dne, historické bez obojího na konec plánu. Za jízdy se do
-  // otisku nepletou – trasa cesty je otisk.
-  const mista = jedeSe ? [] : vlastniMista()
+  // na začátek dne, historické bez obojího na konec plánu. Cesty (živé
+  // i ukončené) jsou otisk – vlastní místa se do nich nepletou.
+  const mista = otisk ? [] : vlastniMista()
   const poZastavce = (id) => mista.filter((m) => m.po === id)
-  const delky = (store.planDny || []).length ? store.planDny : [zastavky.length]
+  const delky = otisk
+    ? otisk.dny && otisk.dny.length
+      ? otisk.dny
+      : [zastavky.length]
+    : (store.planDny || []).length
+      ? store.planDny
+      : [zastavky.length]
   const body = []
   let od = 0
   delky.forEach((delka, i) => {
@@ -142,13 +151,14 @@ export function drawPlanLine(mapa) {
 
   cara = L.polyline(
     body.map((p) => [p.lat, p.lon]),
-    { color: token('--zvyrazneni', '#E1B152'), weight: 4.5, opacity: jedeSe ? 0.5 : 0.95, lineCap: 'round', lineJoin: 'round' }
+    { color: token('--zvyrazneni', '#E1B152'), weight: 4.5, opacity: otisk ? 0.5 : 0.95, lineCap: 'round', lineJoin: 'round' }
   ).addTo(mapa)
 
-  // Ujetá část: plnou žlutou mezi odznačenými zastávkami v pořadí odznačení.
-  // Bez GPS je to poctivá aproximace – spojnice míst, kde jsme opravdu byli.
-  if (jedeSe) {
-    const poradi = Object.entries(store.cesta.odznacene)
+  // Ujetá část: plnou žlutou mezi odznačenými zastávkami v pořadí odznačení –
+  // živé i ukončené cesty mají `odznacene` ve stejném tvaru. Bez GPS je to
+  // poctivá aproximace – spojnice míst, kde jsme opravdu byli.
+  if (otisk) {
+    const poradi = Object.entries(otisk.odznacene || {})
       .sort((a, b) => a[1] - b[1])
       .map(([id]) => S.byId[id])
       .filter(Boolean)
@@ -160,9 +170,13 @@ export function drawPlanLine(mapa) {
     }
   }
 
-  dodavka = L.marker(stredTrasy(body), {
-    interactive: false,
-    keyboard: false,
-    icon: L.divIcon({ className: 'dodavka', iconSize: [0, 0], iconAnchor: [0, 0], html: `<img src="${vanObr}" alt="">` }),
-  }).addTo(mapa)
+  // Dodávka je „kde jsme teď" – u ukončené cesty z knihovny nic takového
+  // není, tak se nekreslí, ať nevypadá jako živá poloha.
+  if (!cestaOtevrena) {
+    dodavka = L.marker(stredTrasy(body), {
+      interactive: false,
+      keyboard: false,
+      icon: L.divIcon({ className: 'dodavka', iconSize: [0, 0], iconAnchor: [0, 0], html: `<img src="${vanObr}" alt="">` }),
+    }).addTo(mapa)
+  }
 }

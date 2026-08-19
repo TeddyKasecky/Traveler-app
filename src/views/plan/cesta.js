@@ -16,6 +16,7 @@
  */
 
 import { S, store, save, saveOdlozene } from '../../core/store.js'
+import { dkm, fmtKm } from '../../core/geo.js'
 import { esc } from '../../core/html.js'
 import { IC } from '../../icons/sprite.js'
 import { sklonuj } from './plan.js'
@@ -25,8 +26,11 @@ import { toast } from '../../components/toast.js'
 import { potvrd } from '../../components/dialog.js'
 import { draw } from '../../map/map.js'
 import { planoveAchievementy, pripisPlanove, pripisProfilove } from './achievementy.js'
-import { archivHtml, napojArchiv } from './archiv.js'
+import { detailCestyHtml } from './archiv.js'
 import { bloky, blok } from './bloky.js'
+
+/** Silnice bývá delší než vzdušná čára – týž koeficient jako v plan.js. */
+const KLIKATOST = 1.35
 
 /** Formát času cesty: dny a hodiny, pod hodinu minuty. */
 export function fmtDoba(ms) {
@@ -158,6 +162,12 @@ export function cestaHtml() {
   const hotovo = mista.filter((p) => c.odznacene[p.id]).length
   const podil = mista.length ? Math.round((hotovo / mista.length) * 100) : 0
 
+  // Zbývá = součet úseků, jejichž CÍLOVÁ zastávka ještě není odznačená –
+  // funguje i při odznačování na přeskáčku (stejná definice jako v plan.js).
+  let zbyva = 0
+  for (let i = 1; i < mista.length; i++) if (!c.odznacene[mista[i].id]) zbyva += dkm(mista[i - 1], mista[i]) * KLIKATOST
+  const dalsiCil = mista.find((p) => !c.odznacene[p.id])
+
   // Dny podle otisku: délky se převedou na úseky seznamu.
   const dny = c.dny && c.dny.length ? c.dny : [mista.length]
   let od = 0
@@ -177,6 +187,16 @@ export function cestaHtml() {
       <div class="cesta-cisla"><b>${hotovo}</b><span>z ${mista.length}</span></div>
     </div>
     <div class="cesta-pruh"><span style="width:${podil}%"></span></div>
+    ${mista.length > 1 ? `<div class="meta cesta-zbyva">${hotovo === mista.length ? 'Hotovo, celá cesta objetá' : `zbývá ${fmtKm(zbyva)}`}</div>` : ''}
+
+    ${
+      dalsiCil
+        ? `<div class="cesta-dalsi">
+            <div><span class="meta">Další cíl</span><b>${esc(dalsiCil.n)}</b></div>
+            <button class="btn small primary" id="cestaNavigovat" data-lat="${dalsiCil.lat}" data-lon="${dalsiCil.lon}">${IC('i-nav')}Navigovat</button>
+          </div>`
+        : ''
+    }
 
     ${poDnech
       .map(
@@ -198,8 +218,7 @@ export function cestaHtml() {
       <button class="btn small nebezpecne" id="cestaZrusit">Zrušit</button>
     </div>
 
-    ${achievementyCesty(c)}
-    ${archivHtml()}`
+    ${achievementyCesty(c)}`
 }
 
 /**
@@ -262,17 +281,29 @@ function achievementyCesty(c) {
       .join('')}</div>`
 }
 
-/** Jedna zastávka s fajfkou a poznámkou. */
-function zastavkaCesty(p, c) {
+/**
+ * Jedna zastávka s fajfkou a poznámkou – živé i ukončené cesty. `zamceno`
+ * vypne fajfku (trasa a odznačení ukončené cesty se už nedají měnit);
+ * `poznEditovatelna` řídí vstupní pole vs. prostý text (odemyká se zvlášť).
+ */
+function zastavkaCesty(p, c, { zamceno = false, poznEditovatelna = true } = {}) {
   const odznacena = !!c.odznacene[p.id]
-  const pozn = c.poznamky[p.id] || ''
+  const pozn = (c.poznamky || {})[p.id] || ''
   return `
-    <div class="cesta-zastavka${odznacena ? ' hotova' : ''}" data-id="${p.id}">
-      <button class="cesta-fajfka" data-id="${p.id}" title="${odznacena ? 'Byli jsme tu' : 'Odznačit'}">${IC('i-check')}</button>
+    <div class="cesta-zastavka${odznacena ? ' hotova' : ''}${zamceno ? ' zamcena' : ''}" data-id="${p.id}">
+      <button class="cesta-fajfka" data-id="${p.id}" title="${odznacena ? 'Byli jsme tu' : 'Odznačit'}"${zamceno ? ' disabled' : ''}>${IC('i-check')}</button>
       <div class="cesta-telo">
         <b>${esc(p.n)}</b>
         <span class="meta">${esc(p.z)}${odznacena ? ` · ${new Date(c.odznacene[p.id]).toLocaleDateString('cs-CZ')}` : ''}</span>
-        ${odznacena ? `<input class="cesta-pozn" data-id="${p.id}" placeholder="Poznámka…" value="${esc(pozn)}">` : ''}
+        ${
+          odznacena
+            ? poznEditovatelna
+              ? `<input class="cesta-pozn" data-id="${p.id}" placeholder="Poznámka…" value="${esc(pozn)}">`
+              : pozn
+                ? `<div class="meta cesta-pozn-zamcena">${IC('i-quill')}${esc(pozn)}</div>`
+                : ''
+            : ''
+        }
       </div>
     </div>`
 }
@@ -290,8 +321,102 @@ function prazdnaCesta() {
              <button class="btn primary" id="cestaVyjed">${IC('i-van')}Vyjet</button>`
           : `<p>Nejdřív je potřeba plán: v kartě Výpravy si otevři nebo založ výpravu, v Itineráři poskládej zastávky a vyjeď.</p>`
       }
+    </div>`
+}
+
+/* ================= ukončená cesta v Itineráři (jen ke čtení) ================= */
+
+/** Které ukončené cestě (index do `store.cesty`) jsou zrovna odemčené poznámky. */
+let odemcenaCesta = -1
+export const jsouPoznamkyOdemcene = (i) => odemcenaCesta === i
+
+/**
+ * Karta Itineráře pro ukončenou cestu otevřenou z knihovny Výprav – jen ke
+ * čtení. Trasa, dny a časy jsou zamčené navždy (byly to a nejde je předělat);
+ * poznámka cesty a poznámky zastávek jde upravit po „Odemknout poznámky".
+ * @param {object} c  záznam ze `store.cesty`
+ * @param {number} i  jeho index
+ * @returns {string}
+ */
+export function zamcenaCestaHtml(c, i) {
+  const mista = c.zastavky.map((id) => S.byId[id]).filter(Boolean)
+  const hotovo = mista.filter((p) => c.odznacene[p.id]).length
+  const odemceno = jsouPoznamkyOdemcene(i)
+
+  const dny = c.dny && c.dny.length ? c.dny : [mista.length]
+  let od = 0
+  const poDnech = dny.map((delka, di) => {
+    const kus = mista.slice(od, od + delka)
+    od += delka
+    return { den: di + 1, kus }
+  })
+
+  return `
+    <div class="cesta-zamek">${IC('i-zamek')}<span>Ukončená cesta · jen ke čtení</span>
+      <button class="btn small" id="cestaOdemknout">${odemceno ? 'Poznámky odemčené' : 'Odemknout poznámky'}</button>
     </div>
-    ${archivHtml()}`
+    <div class="cesta-hlava">
+      <div>
+        <h3>${esc(c.nazev)}</h3>
+        <div class="meta">${new Date(c.zacatek).toLocaleDateString('cs-CZ')} – ${new Date(c.konec).toLocaleDateString('cs-CZ')} ·
+          na cestě ${fmtDoba(c.cistyMs || 0)}</div>
+      </div>
+      <div class="cesta-cisla"><b>${hotovo}</b><span>z ${mista.length}</span></div>
+    </div>
+
+    ${poDnech
+      .map(
+        ({ den, kus }) => `
+      ${dny.length > 1 ? `<div class="sekce"><span class="sekce-text">${den}. den</span></div>` : ''}
+      ${kus.map((p) => zastavkaCesty(p, c, { zamceno: true, poznEditovatelna: odemceno })).join('')}`
+      )
+      .join('')}
+
+    <div class="sekce"><span class="sekce-text">Poznámka z cesty</span></div>
+    ${
+      odemceno
+        ? `<textarea class="cesta-poznamka" id="cestaArchivPoznamka" data-cesta="${i}" rows="3"
+             placeholder="Co si z cesty pamatujeme…">${esc(c.poznamka || '')}</textarea>`
+        : c.poznamka
+          ? `<p class="archiv-poznamka">${esc(c.poznamka)}</p>`
+          : `<div class="meta" style="margin:0 2px 10px">Zatím žádná – odemkni poznámky a dopiš ji.</div>`
+    }
+
+    ${detailCestyHtml(c)}`
+}
+
+/**
+ * Naváže obsluhu zamčené karty. Odznačování, mazání a bloky tu nejsou –
+ * jediné, co jde měnit, jsou poznámky, a jen po odemčení.
+ * @param {HTMLElement} wrap
+ * @param {() => void} prekresli
+ * @param {number} i  index cesty ve `store.cesty`
+ */
+export function napojZamcenouCestu(wrap, prekresli, i) {
+  const odemkni = wrap.querySelector('#cestaOdemknout')
+  if (odemkni)
+    odemkni.onclick = () => {
+      odemcenaCesta = odemcenaCesta === i ? -1 : i
+      prekresli()
+    }
+
+  const c = store.cesty[i]
+  if (!c) return
+
+  for (const inp of wrap.querySelectorAll('.cesta-pozn')) {
+    inp.oninput = () => {
+      c.poznamky = c.poznamky || {}
+      c.poznamky[inp.dataset.id] = inp.value
+      saveOdlozene()
+    }
+  }
+
+  const pozn = wrap.querySelector('#cestaArchivPoznamka')
+  if (pozn)
+    pozn.oninput = () => {
+      c.poznamka = pozn.value
+      saveOdlozene()
+    }
 }
 
 /**
@@ -370,7 +495,14 @@ export function napojCestu(wrap, prekresli) {
       }
     }
 
-  napojArchiv(wrap, prekresli)
+  const navigovat = wrap.querySelector('#cestaNavigovat')
+  if (navigovat)
+    // Google Maps, přímo v obsluze kliknutí – prohlížeče blokují window.open,
+    // které nepřijde rovnou z gesta uživatele (stejné pravidlo jako v plan.js).
+    navigovat.onclick = () => {
+      const { lat, lon } = navigovat.dataset
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, '_blank')
+    }
 
   const zrusit = wrap.querySelector('#cestaZrusit')
   if (zrusit)
