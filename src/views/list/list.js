@@ -24,8 +24,14 @@ import { goTo, draw } from '../../map/map.js'
 import { PHOTOS } from '../../core/store.js'
 import heroObr from '../../assets/hero/seznam.webp'
 
-/** Kolik řádků se nejvýš vykreslí. Zbytek se schová za hlášku. */
+/** Kolik řádků se nejvýš vykreslí, dokud nikdo neklikne na „Zobrazit dalších 50“. */
 const STROP = 250
+
+/** Kolik řádků je aktuálně rozbaleno (N10). */
+let zobrazeno = STROP
+
+/** Otisk poslední sady id – když se změní (nový filtr/hledání), `zobrazeno` se vrátí na STROP. */
+let posledniSada = ''
 
 /**
  * Seřadí místa podle volby v `#fRazeni`.
@@ -85,6 +91,13 @@ export function renderList() {
 
   const serazene = serad(visible())
 
+  // Nová sada (jiný filtr/hledání) vrací rozbalení zpátky na STROP – jinak
+  // by po zpřesnění hledání zůstalo „rozbaleno na 400“ z předchozího, širšího
+  // výsledku a UI by ukazovalo zavádějící číslo.
+  const sada = serazene.map(({ p }) => p.id).join(',')
+  if (sada !== posledniSada) zobrazeno = STROP
+  posledniSada = sada
+
   // Řádek aktivních filtrů. V předloze je jen když něco filtruje.
   const aktivni = [
     F.coll && COLL.find((c) => c.k === F.coll)?.n,
@@ -109,7 +122,7 @@ export function renderList() {
 
   kartyEl.innerHTML =
     serazene
-      .slice(0, STROP)
+      .slice(0, zobrazeno)
       .map(({ p, d }) => {
         const k = KAT[p.k] || {}
         const stav = store.stav[p.id]
@@ -132,12 +145,19 @@ export function renderList() {
         })
       })
       .join('') +
-    (serazene.length > STROP
-      ? `<div class="meta" style="text-align:center;padding:12px">Zobrazeno prvních ${STROP} – zpřesni hledání.</div>`
+    (serazene.length > zobrazeno
+      ? `<button class="btn small" id="listVic" style="margin:12px auto;display:block">Zobrazit dalších 50 (z ${serazene.length})</button>`
       : '')
 
   const zrus = document.getElementById('listZrus')
   if (zrus) zrus.onclick = () => document.getElementById('fReset').click()
+
+  const vic = document.getElementById('listVic')
+  if (vic)
+    vic.onclick = () => {
+      zobrazeno += 50
+      renderList()
+    }
 
   for (const r of kartyEl.querySelectorAll('.radek[data-id]')) {
     const id = r.dataset.id
