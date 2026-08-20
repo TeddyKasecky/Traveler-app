@@ -14,7 +14,7 @@
  *   3. Na první záložce zpět aplikaci opustí, jak je na Androidu zvykem.
  */
 
-import { S, emit } from './store.js'
+import { S } from './store.js'
 
 /**
  * @typedef {Object} Zalozka
@@ -77,11 +77,6 @@ export function aktivujZalozku(t, zHistorie = false) {
   z.poAktivaci?.()
 
   if (!zHistorie) zapisDoHistorie(t)
-
-  // Router nesmí znát views (natožpak konkrétní kartu Na cestě uvnitř
-  // Plánu), takže si jen oznámí, že se něco přepnulo – kdo poslouchá
-  // (views/plan/cesta-zivot.js přes main.js), si podle `t` rozhodne sám.
-  emit('zalozkaZmenena', t)
 }
 
 function zapisDoHistorie(t) {

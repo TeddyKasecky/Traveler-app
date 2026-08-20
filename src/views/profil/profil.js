@@ -19,9 +19,8 @@ import { esc } from '../../core/html.js'
 import { IC } from '../../icons/sprite.js'
 import { toast } from '../../components/toast.js'
 import { vyberAutaHtml, napojVyberAuta } from '../../components/vyberAuta.js'
-import { zobrazPolohu, vyberBod } from '../../map/map.js'
+import { zobrazPolohu } from '../../map/map.js'
 import { PROFILOVE, pripisProfilove } from '../plan/achievementy.js'
-import { pozicHtml, napojPozice } from './pozice.js'
 
 /** Spočítá, co se dá říct o uživatelských datech. */
 function cisla() {
@@ -109,8 +108,6 @@ export function renderProfil() {
     <div class="sechd">${IC('i-van')}Čím jezdíme</div>
     <div class="meta" style="margin:0 2px 10px">Vybrané auto jezdí po mapě na místě tvé polohy.</div>
     ${vyberAutaHtml()}
-
-    ${pozicHtml()}
   `
 
   // Jméno se ukládá při odchodu z políčka, ne při každém písmenu: savePrefs()
@@ -122,8 +119,6 @@ export function renderProfil() {
     zobrazPolohu()
     toast('Auto vybráno')
   })
-
-  napojPozice(wrap, renderProfil, (cb) => vyberBod(cb))
 
   document.getElementById('profilJmeno').onblur = (e) => {
     const nove = e.target.value.trim()

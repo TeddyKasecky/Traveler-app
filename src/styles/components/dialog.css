@@ -18,6 +18,5 @@
   transition:transform .16s var(--pop)}
 #dialog .dialog-volba:active{transform:var(--stisk)}
 #dialog .dialog-volba.on{background:var(--plocha-zelena);border-color:var(--akcent)}
-#dialog .dialog-volba:disabled{opacity:.45;pointer-events:none}
 #dialog .dialog-volba svg.ic{font-size:17px;color:var(--text3);flex:0 0 auto}
 #dialog .dialog-volba span{font-weight:600;font-size:.74rem;color:var(--text2);margin-left:auto}

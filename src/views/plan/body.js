@@ -18,9 +18,8 @@
  * konec plánu – tak se chovají historické bloky bez těchhle polí).
  */
 
-import { store, S, save } from '../../core/store.js'
+import { store, save } from '../../core/store.js'
 import { BEZ_NAZVU } from './vypravy.js'
-import { pozice } from '../../core/pozice.js'
 
 /** Klíč aktivní výpravy v `store.bloky`. */
 const klic = () => store.vypravaNazev || BEZ_NAZVU
@@ -75,101 +74,12 @@ export const vsechnyBody = () => bloky().filter((b) => b.typ === 'misto')
 
 /**
  * Založí bod trasy. Vrací jeho id.
- *
- * `zdroj` říká, odkud se bere poloha, když nejde o ruční/pevný zápis do
- * `lat`/`lon`: `{typ:'pozice', id}` odkazuje na core/pozice.js (úprava
- * pozice v profilu se pak promítne všude, kde je použitá – odkazem, ne
- * kopií), `{typ:'gps'}` znamená "aktuální poloha v okamžiku PŘEPOČTU trasy"
- * (views/plan/routing.js), ne trvale uložený bod. Čti přes souradniceBodu().
- * @param {{druh?: string, nazev?: string, lat?: number|null, lon?: number|null, den?: number|null, po?: string|null, zdroj?: {typ: 'pozice', id: string}|{typ: 'gps'}|null}} p
+ * @param {{druh?: string, nazev?: string, lat?: number|null, lon?: number|null, den?: number|null, po?: string|null}} p
  */
-export function pridejBod({ druh = 'vlastni', nazev = '', lat = null, lon = null, den = null, po = null, zdroj = null }) {
+export function pridejBod({ druh = 'vlastni', nazev = '', lat = null, lon = null, den = null, po = null }) {
   const id = noveId()
-  zapis([...bloky(), { id, typ: 'misto', den, po, druh, nazev, lat, lon, poznamka: '', hotovo: 0, zdroj }])
+  zapis([...bloky(), { id, typ: 'misto', den, po, druh, nazev, lat, lon, poznamka: '', hotovo: 0 }])
   return id
-}
-
-/**
- * Aktuální souřadnice bodu trasy. Pro `zdroj.typ === 'pozice'` NEBERE
- * `b.lat`/`b.lon` (mohou být zastaralá kopie), ale dotáhne živou hodnotu
- * z core/pozice.js – tak se projeví úprava pozice v profilu bez přepisování
- * bodu. Vrací null, když uložená pozice, na kterou bod odkazoval, byla
- * smazána, nebo když bod polohu vůbec nemá.
- * @param {object} b  bod trasy (blok typu misto)
- * @returns {{lat: number, lon: number}|null}
- */
-export function souradniceBodu(b) {
-  if (b.zdroj && b.zdroj.typ === 'pozice') {
-    const p = pozice(b.zdroj.id)
-    return p ? { lat: p.lat, lon: p.lon } : null
-  }
-  return Number.isFinite(b.lat) && Number.isFinite(b.lon) ? { lat: b.lat, lon: b.lon } : null
-}
-
-/**
- * Existuje v aktivním plánu bod s tímhle druhem? Start a cíl smí být
- * nejvýš jeden na plán – používá se k zašednutí volby v průvodci přidáním
- * bodu. Staré výpravy mohly mít vícenásobný start/cíl už dřív (appka to
- * nezakazovala); tahle kontrola na ně nesahá, jen brání vzniku NOVÝCH.
- * @param {string} druh
- * @returns {boolean}
- */
-export const maBod = (druh) => vsechnyBody().some((b) => b.druh === druh)
-
-/**
- * Založí Start nebo Cíl na pevné pozici (začátek/konec celého plánu) –
- * tyhle dva druhy se nedají přetáhnout jinam v itineráři (views/plan/dny.js),
- * takže se vždy zakládají rovnou na kraji, ne tam, kam by mířil výchozí
- * `po`/`den` volajícího místa. `den:1, po:null` řadí na začátek dne 1;
- * `po:null, den:null` řadí na konec plánu – stejný tvar, jaký appka dnes
- * používá pro historické body bez kotvy.
- * @param {'start'|'cil'} druh
- * @param {{nazev?: string, lat?: number|null, lon?: number|null, zdroj?: {typ: 'pozice', id: string}|{typ: 'gps'}|null}} p
- * @returns {string|null} id nového bodu, nebo null když už jeden existuje
- */
-export function pridejStartCil(druh, { nazev = '', lat = null, lon = null, zdroj = null } = {}) {
-  if (maBod(druh)) return null // volající to má zablokovat dřív (zašedlá volba) – tohle je pojistka
-  if (druh === 'start') return pridejBod({ druh, nazev, lat, lon, den: 1, po: null, zdroj })
-  return pridejBod({ druh, nazev, lat, lon, den: null, po: null, zdroj })
-}
-
-/**
- * Zastávky a body trasy aktivní výpravy v pořadí, ve kterém appka kreslí
- * trasu na mapě (map/planLine.js#drawPlanLine – stejné proplétání podle
- * `po`/`den`, tady jen pro views, ne pro mapu). Body bez rozpoznatelné
- * polohy (smazaná uložená pozice, „zatím bez polohy“) se PŘESKAKUJÍ – to
- * je zamýšlené chování pro přepočet trasy (views/plan/routing.js), ne
- * chyba: štítek bez lokace appka do routingu prostě nepočítá.
- * @returns {Array<{lat: number, lon: number, id: string, zdroj: {typ:'pozice'|'gps', id?:string}|null}>}
- */
-export function serazenaTrasa() {
-  const zastavky = store.plan.map((id) => S.byId[id]).filter(Boolean)
-  const mista = vsechnyBody()
-    .map((b) => {
-      const s = souradniceBodu(b)
-      return s ? { lat: s.lat, lon: s.lon, id: b.id, po: b.po, den: b.den, zdroj: b.zdroj || null } : null
-    })
-    .filter(Boolean)
-  const poZastavce = (id) => mista.filter((m) => m.po === id)
-  const delky = (store.planDny || []).length ? store.planDny : [zastavky.length]
-
-  const body = []
-  let od = 0
-  delky.forEach((delka, i) => {
-    for (const m of mista) if (!m.po && m.den === i + 1) body.push(m)
-    for (const z of zastavky.slice(od, od + delka)) {
-      body.push(z)
-      body.push(...poZastavce(z.id))
-    }
-    od += delka
-  })
-  for (const z of zastavky.slice(od)) {
-    body.push(z)
-    body.push(...poZastavce(z.id))
-  }
-  for (const m of mista) if (!m.po && m.den == null) body.push(m)
-
-  return body.map((b) => ({ lat: b.lat, lon: b.lon, id: b.id, zdroj: b.zdroj || null }))
 }
 
 /** Součet rozpočtu celého plánu – ukazuje se pod itinerářem. */

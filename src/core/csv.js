@@ -162,11 +162,6 @@ export function zalohaData(store, photos, prefs) {
     cesty: store.cesty || [],
     bloky: store.bloky || {},
     achievementy: store.achievementy || {},
-    // Srpen 2026: uložené pozice a přepočet trasy – stejná past jako výš,
-    // bez nich by obnova na jiném telefonu tiše zahodila Domov/Práci a
-    // appka by spadla zpátky na vzdušný odhad, dokud by se nepřepočítalo znovu.
-    ulozenePozice: store.ulozenePozice || [],
-    aktivniPrepocet: store.aktivniPrepocet || null,
     prio: store.prio,
     photos: photos || {},
     prefs: prefs || {},
@@ -211,9 +206,6 @@ export function obnovZalohu(store, d, photos, prefs) {
   if (d.bloky && typeof d.bloky === 'object') store.bloky = Object.assign(store.bloky || {}, d.bloky)
   if (d.achievementy && typeof d.achievementy === 'object')
     store.achievementy = Object.assign(store.achievementy || {}, d.achievementy)
-  if (Array.isArray(d.ulozenePozice)) store.ulozenePozice = d.ulozenePozice
-  if (d.aktivniPrepocet && typeof d.aktivniPrepocet === 'object') store.aktivniPrepocet = d.aktivniPrepocet
-  // d.vypravy se kopíruje celé výš, takže vypravy[].prepocet se přenese samo.
   if (photos && d.photos) Object.assign(photos, d.photos)
   if (prefs && d.prefs) Object.assign(prefs, d.prefs)
 }

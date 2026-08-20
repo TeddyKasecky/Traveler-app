@@ -89,30 +89,3 @@ export function zjistiPolohu() {
     { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
   )
 }
-
-/**
- * Jednorázové zjištění polohy jako Promise, bez vlastních toastů – volající
- * (výběr start/cíl, sběr bodů pro přepočet trasy) si hlášku dá podle svého
- * kontextu. NENÍ TOTÉŽ jako watchPosition ve views/plan/cesta-zivot.js –
- * tohle je jeden dotaz, appka se ho nezeptá znovu, dokud ji o to nikdo
- * nepožádá.
- * @returns {Promise<{lat: number, lon: number}>}
- */
-export function zjistiPolohuJednorazove() {
-  return new Promise((resolve, reject) => {
-    if (!('geolocation' in navigator)) return reject(new Error('Tenhle prohlížeč polohu neumí'))
-    if (window.isSecureContext === false) return reject(new Error('Poloha funguje jen přes HTTPS'))
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-      (err) => {
-        const msg = {
-          1: 'Přístup k poloze je zamítnutý – povol ho v nastavení prohlížeče',
-          2: 'GPS teď není dostupná – zkus to pod širým nebem',
-          3: 'Hledání polohy vypršelo – zkus to znovu',
-        }
-        reject(new Error(msg[err && err.code] || 'Polohu se nepodařilo zjistit'))
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
-    )
-  })
-}

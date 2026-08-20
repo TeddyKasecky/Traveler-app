@@ -15,8 +15,6 @@ import { S, store } from '../core/store.js'
 import { esc } from '../core/html.js'
 import { dkm } from '../core/geo.js'
 import { token } from '../core/barvy.js'
-import { pozice } from '../core/pozice.js'
-import { projektujNaTrasu } from '../core/projekce.js'
 import vanObr from '../assets/van.webp'
 
 /** @type {L.Polyline|null} */
@@ -27,53 +25,18 @@ let ujeta = null
 let dodavka = null
 /** @type {L.LayerGroup|null} špendlíky vlastních míst z bloků plánu */
 let vlastni = null
-/** @type {L.CircleMarker|null} živě sledovaná poloha promítnutá na trasu (views/plan/cesta-zivot.js) */
-let zivaZnacka = null
 
 /**
- * Aktuální souřadnice bodu trasy, nebo null.
- *
- * Duplikát views/plan/body.js#souradniceBodu – mapa nesmí importovat views
- * (viz vlastnipin níž, kde je ze stejného důvodu podruhé výčet druhů), ale
- * core/pozice.js smí, takže se dá dotáhnout živá hodnota uložené pozice, ne
- * jen zastaralá kopie v `b.lat`/`b.lon`.
- * @param {object} b  bod trasy (blok typu misto)
- */
-function souradniceBodu(b) {
-  if (b.zdroj && b.zdroj.typ === 'pozice') {
-    const p = pozice(b.zdroj.id)
-    return p ? { lat: p.lat, lon: p.lon } : null
-  }
-  return Number.isFinite(b.lat) && Number.isFinite(b.lon) ? { lat: b.lat, lon: b.lon } : null
-}
-
-/**
- * Otisk seznamu bodů – duplikát views/plan/routing.js#otiskBodu ze stejného
- * důvodu jako souradniceBodu výš (mapa nesmí importovat views). Používá se
- * jen na porovnání `===` s `store.aktivniPrepocet.otisk`, ne na zápis.
- * @param {Array<{lat: number, lon: number, id?: string}>} body
- */
-function otiskBodu(body) {
-  return body.map((b) => `${b.id || ''}:${b.lat.toFixed(5)},${b.lon.toFixed(5)}`).join('|')
-}
-
-/**
- * Vlastní místa aktivní výpravy (bloky typu `misto` s rozpoznatelnou polohou).
+ * Vlastní místa aktivní výpravy (bloky typu `misto` se souřadnicemi).
  *
  * Čtou se přímo ze `store.bloky` – jsou to data, ne view, takže mapa smí.
- * Vrací je v pořadí dnů, aby se daly vplést do trasy za zastávky svého dne;
- * `lat`/`lon` jsou dosazené aktuální (viz souradniceBodu výš), ne nutně to,
- * co má blok zapsané přímo na sobě.
+ * Vrací je v pořadí dnů, aby se daly vplést do trasy za zastávky svého dne.
  */
 function vlastniMista() {
   const klic = store.vypravaNazev || 'Náš plán'
-  return ((store.bloky || {})[klic] || [])
-    .filter((b) => b.typ === 'misto')
-    .map((b) => {
-      const s = souradniceBodu(b)
-      return s ? { ...b, lat: s.lat, lon: s.lon } : null
-    })
-    .filter(Boolean)
+  return ((store.bloky || {})[klic] || []).filter(
+    (b) => b.typ === 'misto' && Number.isFinite(b.lat) && Number.isFinite(b.lon)
+  )
 }
 
 /**
@@ -120,10 +83,6 @@ export function drawPlanLine(mapa) {
   if (dodavka) {
     dodavka.remove()
     dodavka = null
-  }
-  if (zivaZnacka) {
-    zivaZnacka.remove()
-    zivaZnacka = null
   }
 
   // Za jízdy se kreslí otisk ROZJETÉ cesty; při prohlížení ukončené cesty
@@ -190,16 +149,10 @@ export function drawPlanLine(mapa) {
 
   if (body.length < 2) return
 
-  // Skutečná trasa z Mapy.com Routing API (views/plan/routing.js), pokud je
-  // pro TENHLE seznam bodů ještě platná – jinak (žádný přepočet, zastaralý,
-  // nebo se jede/prohlíží otisk cesty) zůstává fallback: rovná spojnice bodů.
-  const prepocet = !otisk && store.aktivniPrepocet
-  const platny = prepocet && prepocet.otisk === otiskBodu(body)
-  const carovaGeometrie = platny ? prepocet.polyline : body.map((p) => [p.lat, p.lon])
-
-  cara = L.polyline(carovaGeometrie, {
-    color: token('--zvyrazneni', '#E1B152'), weight: 4.5, opacity: otisk ? 0.5 : 0.95, lineCap: 'round', lineJoin: 'round',
-  }).addTo(mapa)
+  cara = L.polyline(
+    body.map((p) => [p.lat, p.lon]),
+    { color: token('--zvyrazneni', '#E1B152'), weight: 4.5, opacity: otisk ? 0.5 : 0.95, lineCap: 'round', lineJoin: 'round' }
+  ).addTo(mapa)
 
   // Ujetá část: plnou žlutou mezi odznačenými zastávkami v pořadí odznačení –
   // živé i ukončené cesty mají `odznacene` ve stejném tvaru. Bez GPS je to
@@ -225,20 +178,5 @@ export function drawPlanLine(mapa) {
       keyboard: false,
       icon: L.divIcon({ className: 'dodavka', iconSize: [0, 0], iconAnchor: [0, 0], html: `<img src="${vanObr}" alt="">` }),
     }).addTo(mapa)
-  }
-
-  // Živě sledovaná poloha (views/plan/cesta-zivot.js) promítnutá na
-  // POSLEDNÍ PLATNÝ přepočet trasy – jen za jízdy (jedeSe), jen když appka
-  // sledování skutečně spustila (S.zivaPoloha existuje jen na popředí,
-  // na kartě Na cestě) a jen na skutečnou trasu z Routing API, ne vzdušnou
-  // spojnici (ta by projekci zkreslila).
-  if (jedeSe && S.zivaPoloha && store.aktivniPrepocet && store.aktivniPrepocet.polyline) {
-    const proj = projektujNaTrasu(S.zivaPoloha, store.aktivniPrepocet.polyline)
-    if (proj) {
-      zivaZnacka = L.circleMarker([proj.bod.lat, proj.bod.lon], {
-        radius: 8, color: token('--sun', '#A87C24'), weight: 3,
-        fillColor: token('--paper', '#FAF5EC'), fillOpacity: 1,
-      }).addTo(mapa)
-    }
   }
 }

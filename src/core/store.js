@@ -103,27 +103,6 @@ export const store = nacti(KEY, {
   bloky: {},
   /** Získané profilové achievementy: { [id]: ms }. Viz plan/achievementy.js. */
   achievementy: {},
-  /**
-   * Vlastní pojmenované pozice z profilu (Domov, Práce...), neomezený počet.
-   * Vlastní `id` – odkazují se z bodů trasy (start/cíl), takže přejmenování
-   * nebo posun na mapě se promítne všude, kde je pozice použitá. Viz
-   * core/pozice.js.
-   *   [{ id, nazev, lat, lon, vytvoreno }]
-   */
-  ulozenePozice: [],
-  /**
-   * Poslední přepočet trasy AKTIVNÍ výpravy z Mapy.com Routing API, nebo null.
-   * Odložené výpravy nesou svůj přepočet přímo na svém záznamu ve `vypravy`
-   * (pole `prepocet`) – jsou to samostatné objekty, nepotřebují klíčovanou mapu.
-   *
-   *   { otisk, polyline: [[lat,lon]...], vzdalenostKm, casMin, spocitanoV }
-   *
-   * `otisk` je otisk seznamu bodů z okamžiku přepočtu (views/plan/routing.js
-   * #otiskBodu) – porovnáním s aktuálním otiskem appka pozná zastaralost.
-   * Zastaralý výsledek SE NEMAŽE (fallback na vzdušný odhad), jen se
-   * nenabízí jako platný. Viz views/plan/routing.js.
-   */
-  aktivniPrepocet: null,
   prio: {},
   dataOverride: null,
   seen: false,
@@ -337,15 +316,6 @@ export const S = {
    * tenhle ukazatel nulují – trasa na mapě smí kreslit jen jedno z obojího.
    */
   otevrenaCesta: null,
-  /**
-   * Živě sledovaná poloha na kartě Na cestě, nebo null. Viz
-   * views/plan/cesta-zivot.js. NENÍ totéž jako `userPos` výše – ten je
-   * jednorázové „kde jsem“ tlačítko na mapě a zůstává po zjištění, tohle
-   * se sleduje `watchPosition` jen na popředí a má přestat aktualizovat,
-   * jakmile appka zajde na pozadí. Jen v paměti, nic se neukládá.
-   * @type {{lat:number, lon:number}|null}
-   */
-  zivaPoloha: null,
 }
 
 /**
