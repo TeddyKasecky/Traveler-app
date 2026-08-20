@@ -338,9 +338,10 @@ aktivní výprava) – do Itineráře vede „Otevřít itinerář" v akcích ř
   (`src/assets/kategorie/`); kreslená pohlednice z `postcard.js` zůstává pod ním jako
   záchrana, když se obrázek nenačte. Je to záměr, ne nedodělek — fotky nedoplňuj náhodně.
 - **Záloha nese `prio`, `planDny`, `vypravy`, `vypravaNazev` a od srpna 2026
-  i `cesta`, `cesty`, `bloky`, `achievementy`, `slozky` a `vypravaSlozka`**.
-  Staré zálohy tyhle klíče nemají a obnova je přeskočí; rozjetou cestu
-  v telefonu obnova nepřepíše a archiv slučuje podle času vyjetí.
+  i `cesta`, `cesty`, `bloky`, `achievementy`, `slozky`, `vypravaSlozka`,
+  `ulozenePozice` a `aktivniPrepocet`**. Staré zálohy tyhle klíče nemají
+  a obnova je přeskočí; rozjetou cestu v telefonu obnova nepřepíše a archiv
+  slučuje podle času vyjetí.
 - **Badge u filtrů nepočítá filtr `fire`** („Musíme!") (N1). Nové filtry `ulozene`
   a `vPlanu` se do něj naopak počítají.
 - **Výplně ikon nejdou přes CSS.** Ikony se vkládají jako `<use>` a do stromu instance
