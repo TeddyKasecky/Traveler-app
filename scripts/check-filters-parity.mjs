@@ -208,7 +208,7 @@ store.plan = S.places.slice(10, 14).map((p) => p.id)
 const zkus = (popis, uprav, cekano) => {
   nastavF(vychozi())
   // `vychozi()` je z doby před novými filtry a `nastavF` je proto nenuluje.
-  F.ulozene = F.vPlanu = false
+  F.ulozene = false
   uprav()
   const n = visible().length
   const ok = n === cekano
@@ -217,24 +217,21 @@ const zkus = (popis, uprav, cekano) => {
 }
 
 zkus('uložená srdcem', () => (F.ulozene = true), ulozeneId.length)
-zkus('v plánu', () => (F.vPlanu = true), store.plan.length)
 zkus('navštíveno', () => (F.stav = 'visited'), Object.values(store.stav).filter((x) => x === 'visited').length)
 zkus(
   'uložená ≠ stav „wish"',
   () => (F.stav = 'wish'),
   S.places.filter((p) => store.stav[p.id] !== 'visited').length
 )
-zkus('uložená + v plánu naráz', () => {
-  F.ulozene = true
-  F.vPlanu = true
-}, ulozeneId.filter((id) => store.plan.includes(id)).length)
 
 nastavF(vychozi())
 F.ulozene = true
-F.vPlanu = false
 const odznakUloz = pocetAktivnich()
 console.log(`  odznak filtrů: jen „Uložená" → ${odznakUloz} (nové filtry se do odznaku počítají)`)
 if (odznakUloz !== 1) cisla++
+// „V plánu“ přestalo být filtr v F – nahradil ho mód mapy „Na cestě“
+// (S.mapaMod, components/chip.js, map/map.js#draw()), který visible() vůbec
+// neprochází, takže tady už se netestuje.
 
 // Uklidit po sobě, ať to neovlivní nic dalšího.
 for (const id of ulozeneId) delete store.stav[id]

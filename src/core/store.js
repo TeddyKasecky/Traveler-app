@@ -319,7 +319,6 @@ export const F = {
    * z originálu znamená „všechno kromě navštíveného“. Viz `core/filters.js`.
    */
   ulozene: false,
-  vPlanu: false,
 }
 
 /* ================= běhový stav ================= */
@@ -354,6 +353,14 @@ export const S = {
    * @type {{lat:number, lon:number}|null}
    */
   zivaPoloha: null,
+  /**
+   * Mód mapy: 'plna' (výchozí, všechna filtrovaná místa) nebo 'nacesta'
+   * (jen prvky aktivní cesty – čára, vlastní body, dodávka, žádné běžné
+   * špendlíky). Přepíná se pilulkou „Na cestě“ (components/chip.js), vidět
+   * jen když `store.cesta` existuje. Jen v paměti – nepřežívá restart,
+   * ukončení/zrušení cesty ho vrací na 'plna' (views/plan/cesta.js).
+   */
+  mapaMod: 'plna',
 }
 
 /**

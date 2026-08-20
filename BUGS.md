@@ -29,7 +29,7 @@ v okamžiku testu aktivní „Na cestě" ze dřívějška, takže editace/přepo
 Ověřeno reprodukcí: appka bez aktivní cesty vykreslila trasu (vzdušnou i po
 přepočtu) správně napoprvé.
 
-Řešeno tím, že appka dostane mód mapy „Na cestě" (viz `NAPADY.md`), který
-uživateli jasně ukáže, na co se dívá — dokud appka nerozlišovala vizuálně
-„živý plán" od „aktivní cesta", bylo snadné se splést. V `map/planLine.js`
-se nic neopravovalo, chování je správné.
+Řešeno tím, že appka dostala mód mapy „Na cestě" (`NAPADY.md` N13,
+`S.mapaMod`), který uživateli jasně ukáže, na co se dívá — dokud appka
+nerozlišovala vizuálně „živý plán" od „aktivní cesta", bylo snadné se
+splést. V `map/planLine.js` se nic neopravovalo, chování je správné.

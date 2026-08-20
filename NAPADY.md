@@ -171,6 +171,39 @@ konzistentní se zbytkem appky):*
   v průvodci výběru polohy pro start/cíl) — při dalších úpravách kolem toho je
   nutné je zase aktualizovat, jinak testy nahlásí falešnou chybu.
 
+**N13 — Mód mapy „Na cestě", volba typu dopravy, srozumitelnější chyba 404 — ~~HOTOVO~~**
+
+Tři menší věci z jedné dávky (srpen 2026), navazující na N12:
+
+1. **Mód mapy „Na cestě"** (`S.mapaMod`, `core/store.js`) nahradil rychlý filtr
+   „V plánu" (`F.vPlanu`, smazaný). Pilulka „Na cestě" v `components/chip.js`
+   se ukáže jen když existuje `store.cesta` (opravdu se jede, po stisku Vyjet)
+   a přepíná `S.mapaMod` mezi `'plna'`/`'nacesta'`, ne `F.*` — je to mód
+   mapy, ne filtr viditelnosti. `map/map.js#draw()` v módu `'nacesta'` pošle
+   `srovnejVyrez()` prázdné pole místo `visible()`, takže zmizí běžné
+   špendlíky a zůstane jen to, co kreslí `drawPlanLine()` (čára, vlastní
+   body, dodávka, živá značka) — ta se volá stejně jako dřív, beze změny.
+   `views/plan/cesta.js` (`zrusCestu()`, `ukonciCestu()`) mód vrací na
+   `'plna'`, jakmile cesta zanikne. `core/filters.js` už `F.vPlanu`
+   nezná (`visible()`, `pocetAktivnich()`, `resetFiltru()` upravené).
+2. **`prefs.routeType`** (`core/store.js`) — globální předvolba typu dopravy
+   pro přepočet trasy (auto/kolo/pěšky), segment v Nastavení, čte ji
+   `zavolejRouting()` v `views/plan/routing.js` místo natvrdo `'car_fast'`.
+3. **Srozumitelnější chyba při HTTP 404** z Routing API — `zavolejRouting()`
+   čte `errorCode` z těla odpovědi (7/9 = bod mimo síť dopravy, typicky
+   ostrov/moře) a ukáže vysvětlující hlášku místo holého čísla stavu.
+   API nemá parametr pro „povolit trajekty" — přes otevřený oceán trasa
+   prostě neexistuje.
+
+Připraveno i needitovatelné místo pro budoucí vlastní API klíč Mapy.com
+v Nastavení (`.volbaapiklic.nejde`) — appka zatím používá jeden sdílený
+klíč pro všechny, žádná zapisovací logika zatím neexistuje.
+
+Zdánlivý bug „na mapě se po přepočtu nic nezobrazí", který tuhle dávku
+vyvolal, nebyl chyba v kódu — appka kreslila otisk aktivní cesty
+(`store.cesta.zastavky`) místo živého plánu, a bez vizuálního rozlišení to
+splynulo. Podrobně v `BUGS.md` B1.
+
 ---
 
 ## Vzhled a UX

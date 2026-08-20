@@ -92,6 +92,9 @@ function prepniPauzu() {
 /** Zahodí rozjetou cestu. Nevratné, proto s potvrzením u volajícího. */
 function zrusCestu() {
   store.cesta = null
+  // Bez aktivní cesty nemá mód „Na cestě“ (S.mapaMod) co zobrazovat –
+  // jinak by appka po zrušení dál schovávala běžné špendlíky bezdůvodně.
+  S.mapaMod = 'plna'
   save()
 }
 
@@ -137,6 +140,9 @@ export function ukonciCestu() {
     ziskane: c.ziskane || [],
   })
   store.cesta = null
+  // Stejný důvod jako u zrusCestu() výš – bez aktivní cesty nemá mód
+  // „Na cestě“ co zobrazovat.
+  S.mapaMod = 'plna'
   return save()
 }
 

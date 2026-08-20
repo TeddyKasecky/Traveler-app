@@ -110,11 +110,12 @@ const kontrola = async (popis, fn, ocekavano) => {
 await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 62)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
-// Nad mapou je pět rychlých pilulek podle předlohy, od srpna 2026 „moje věci"
-// (Vše, Uložená, Musíme!, V plánu, Byli jsme) místo kategorií.
+// Nad mapou jsou čtyři rychlé pilulky „moje věci" (Vše, Uložená, Musíme!,
+// Byli jsme). Pátá, „Na cestě" (mód mapy, S.mapaMod), se ukáže jen s aktivní
+// cestou (store.cesta) – bez ní appka nemá co přepínat, viz components/chip.js.
 // Kategorie se tím neztratily – všech deset je v panelu Filtry, což ověřuje
 // druhá kontrola. Bez ní by se dalo pět chybějících kategorií přehlédnout.
-await kontrola('rychlé filtry nad mapou', () => page.locator('#chips .pilulka').count(), 5)
+await kontrola('rychlé filtry nad mapou', () => page.locator('#chips .pilulka').count(), 4)
 await kontrola('všech deset kategorií ve filtru', () => page.locator('#katRow .toggle.kat').count(), 10)
 await kontrola('naplněné oblasti ve filtru', () => page.locator('#fReg option').count(), 118)
 // Volby nesou počet a prázdné jsou zašedlé – bez toho nabízel Seznam po výběru
@@ -799,9 +800,10 @@ await kontrola('druhé ťuknutí plát vrátí', () =>
   page.locator('#ulozeneObsah').evaluate((e) => e.getBoundingClientRect().height < 2), true)
 
 // Rychlé filtry nad mapou se projeví hned, bez potvrzování. Od srpna 2026
-// filtrují „moje věci" (uložená, Musíme!, v plánu, byli jsme), ne kategorie —
-// kategorii už na mapě rozlišuje barva špendlíku, viz components/chip.js.
-await kontrola('nad mapou je pět rychlých pilulek', () => page.locator('#chips .pilulka').count(), 5)
+// filtrují „moje věci" (uložená, Musíme!, byli jsme), ne kategorie — kategorii
+// už na mapě rozlišuje barva špendlíku, viz components/chip.js. „Na cestě"
+// (mód mapy) bez aktivní cesty chybí, proto čtyři, ne pět.
+await kontrola('nad mapou je pět rychlých pilulek', () => page.locator('#chips .pilulka').count(), 4)
 await page.click('#chips .pilulka[data-id="ulozene"]')
 await page.waitForTimeout(400)
 // Nic uloženého zatím není, takže filtr musí vrátit nulu – a hlavně ne 580.
