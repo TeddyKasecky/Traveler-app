@@ -5,9 +5,9 @@
  * diakritiku. Dřív se jen převedlo na malá písmena, takže „soutesky“ nenašlo
  * „Soutěsky“. Nově se z obou stran odstraní háčky a čárky.
  *
- * Prohledávají se stejná pole a ve stejném pořadí jako dřív:
- *   n (název) · z (země) · r (oblast) · t (typ) · p (praktické info) · f (zajímavost)
- * Krátký popis `sh` mezi nimi schválně není – přidat ho je nápad N7, ne oprava.
+ * Prohledávají se pole:
+ *   n (název) · z (země) · r (oblast) · t (typ) · p (praktické info) ·
+ *   f (zajímavost) · sh (krátký popis, N7)
  *
  * Text se předpočítá jednou při načtení dat, ne při každém stisku klávesy.
  */
@@ -39,7 +39,7 @@ export function bezDiakritiky(s) {
 export function postavIndex(places) {
   index.clear()
   for (const p of places) {
-    index.set(p.id, bezDiakritiky(`${p.n} ${p.z} ${p.r} ${p.t} ${p.p} ${p.f || ''}`))
+    index.set(p.id, bezDiakritiky(`${p.n} ${p.z} ${p.r} ${p.t} ${p.p} ${p.f || ''} ${p.sh || ''}`))
   }
 }
 
