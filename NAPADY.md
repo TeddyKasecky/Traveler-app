@@ -65,13 +65,17 @@ a v seznamu se zobrazuje, ale hledat se v něm nedá.
 
 **N12 — Uložené pozice, přepočet trasy přes Mapy.com Routing API, živé sledování**
 
-Rozpracováno, nasazeno na `main` a **vráceno revert commitem** (main dnes tuhle
-funkci nemá). Celá implementace (10 commitů) zůstává nedotčená na větvi
-`tadeas/work`, commity `ac8d947`..`bc567bb`. Mezitím se přestavěla záložka Plán,
-takže se to nedá jen znovu mergnout — je potřeba to **přestavět podle nové podoby
-Plánu**, ne zopakovat 1:1. Tenhle zápis je proto podrobný: aby šlo z hotové větve
-brát kus po kuse (data, UI, routing, živé sledování jsou oddělené vrstvy), ne
-všechno najednou.
+Implementováno a nasazené na `main` (10 commitů, `ac8d947`..`bc567bb`, plus
+merge/revert historie kolem toho — obsahově je `main` dnes na úrovni `bc567bb`).
+**Funkčně nedokončené**: appka nemá zapsaný API klíč (`MAPY_API_KLIC = ''` v
+`routing.js`), takže tlačítko „Přepočítat" hlásí chybu a appka spadá na fallback
+(vzdušný odhad). Klíč od uživatele existuje
+(`BgblIMF4M6fhAqmBAEMFcKSZy6xw2O7PlZ9l4DPoXpE`, viz níž proč se ještě nezapsal),
+ale ani se zapsaným klíčem nejsou hotová tři místa v `routing.js` (viz „Co zůstalo
+nedořešené" níž) — bez nich appka na reálné volání API stejně spadne na fallback,
+jen s jinou chybovou hláškou. Tenhle zápis je podrobný záměrně: aby šlo dopočítat
+přesně to, co chybí, kus po kuse (data, UI, routing, živé sledování jsou oddělené
+vrstvy), ne rozebírat celou funkci znovu od nuly.
 
 *Co to bylo:* čtyři propojené funkce — (1) neomezený vlastní seznam pojmenovaných
 pozic v Profilu (Domov, Práce…) s vlastním `id`, (2) start a cíl trasy šly vybrat
@@ -81,20 +85,20 @@ Mapy.com Routing API pro skutečnou trasu (polyline/vzdálenost/čas) místo dos
 odhadu vzdušnou čarou × `KLIKATOST`, (4) živé sledování zbývající vzdálenosti/času
 na kartě Na cestě a značka na mapě, striktně jen na popředí appky.
 
-*Proč je to odložené:* API klíč od Mapy.com (typ „Vanderbuch API") má v administraci
-(`developer.mapy.com`) nastavené **omezení na Referery** — jen produkční doména
-`traveler-app.teddykasecky.workers.dev`. To znamená, že tvar API (přesná cesta,
-formát parametru `points`, pořadí `lat`/`lon`, tvar JSON odpovědi) **nejde ověřit
-přes `curl`** — Mapy.com vrací identické `{"detail":[{"msg":"Forbidden"}]}` / HTTP 403
-i na zcela neplatný klíč (ověřeno srovnáním), takže 403 nerozliší „špatný request"
-od „chybí prohlížečový kontext". Zkoušelo se: holý dotaz, `Referer` hlavička na
-povolenou doménu, `Origin` hlavička, reálný `User-Agent`, jiné endpointy
-(`geocode`, `rgeocode`, `suggest`) — všude stejná odpověď. Jediná cesta k ověření
-tvaru API je reálné kliknutí v prohlížeči na doméně, kterou klíč povoluje (produkce,
-nebo `localhost` po přidání do Aktivních omezení v administraci Mapy.com — na tom se
-přestalo, protože se zjistilo, že tohle je potřeba udělat **předtím**, ne až po
-nasazení). Klíč samotný (`BgblIMF4M6fhAqmBAEMFcKSZy6xw2O7PlZ9l4DPoXpE`) uživatel má
-a appka ho zatím nikde nemá zapsaný (byl smazaný revertem).
+*Proč přepočet ještě nefunguje:* API klíč od Mapy.com (typ „Vanderbuch API") má
+v administraci (`developer.mapy.com`) nastavené **omezení na Referery** — jen
+produkční doména `traveler-app.teddykasecky.workers.dev`. To znamená, že tvar API
+(přesná cesta, formát parametru `points`, pořadí `lat`/`lon`, tvar JSON odpovědi)
+**nejde ověřit přes `curl`** — Mapy.com vrací identické
+`{"detail":[{"msg":"Forbidden"}]}` / HTTP 403 i na zcela neplatný klíč (ověřeno
+srovnáním), takže 403 nerozliší „špatný request" od „chybí prohlížečový kontext".
+Zkoušelo se: holý dotaz, `Referer` hlavička na povolenou doménu, `Origin` hlavička,
+reálný `User-Agent`, jiné endpointy (`geocode`, `rgeocode`, `suggest`) — všude
+stejná odpověď. Jediná cesta k ověření tvaru API je reálné kliknutí v prohlížeči
+na doméně, kterou klíč povoluje (produkce, nebo `localhost` po přidání do
+Aktivních omezení v administraci Mapy.com — nejjednodušší je přidat `localhost`
+předem, než se cokoli zkouší lokálně). Klíč samotný uživatel má, appka ho zatím
+nemá zapsaný v `routing.js` (`MAPY_API_KLIC = ''`, vědomý placeholder).
 
 *Co bylo hotové a otestované (podle kroků, dá se brát postupně):*
 1. **Datový model** — `store.ulozenePozice: []` a `store.aktivniPrepocet: null`
@@ -151,8 +155,8 @@ a appka ho zatím nikde nemá zapsaný (byl smazaný revertem).
 9. **Značka na mapě** — `zivaZnacka` v `planLine.js`, `L.circleMarker` na
    `projektujNaTrasu(S.zivaPoloha, ...)`, jen za jízdy a s platným přepočtem.
    Ověřeno E2E stejně jako bod 6.
-10. **Zápis do dokumentace** — `STAV.md` měl sekci „čeká na váš krok" s týmiž
-    třemi TODO co níž; smazána revertem, proto je teď tady.
+10. **Zápis do dokumentace** — `STAV.md` má sekci „3a. … čeká na váš krok" s
+    týmiž třemi TODO co níž (je na `main`, aktuální).
 
 *Co zůstalo nedořešené (tři TODO v `routing.js`, `zavolejRouting`/`zpracujOdpoved`):*
 přesná cesta API (zkoušeno `/v1/routing/route`, nepodařilo se ověřit), formát/pořadí
@@ -160,22 +164,23 @@ souřadnic v parametru `points` (zkoušeno `lon,lat` podle všeobecné konvence,
 se ověřit), tvar JSON odpovědi (`zpracujOdpoved()` je prázdná skořápka). Než se klíč
 ověří naostro v prohlížeči, tohle jsou jen odhady.
 
-*Co při přestavbě zachovat (funguje, otestované, konzistentní se zbytkem appky):*
+*Co při dokončování zachovat/dodržet (funguje, otestované, konzistentní se zbytkem
+appky):*
 - Duplicitní `souradniceBodu()`/`otiskBodu()`/výčet druhů v `map/planLine.js` — mapa
   nesmí importovat `views/`, appka tenhle vzor už měla (výčet `start/nocleh/cíl`).
 - Živé sledování v samostatném souboru, ne v `cesta.js` — architektonicky důležité,
   ať se nesplete „trvalá ujetá trasa bez GPS" s „dočasný displej s GPS na popředí".
 - `MAPY_API_KLIC` jako prázdný placeholder v kódu (appka nemá backend) — appka MUSÍ
   fungovat i bez něj (chyba, fallback na vzdušný odhad), nikdy nesmí spadnout.
-- Referer omezení klíče: **až se bude znovu implementovat, nejdřív přidat
-  `localhost`/`localhost:5173` do Aktivních omezení na `developer.mapy.com`**,
-  než se začne cokoli testovat lokálně — jinak se celé ověřování zase zasekne na
-  stejném místě.
-- `main` má u sebe GitHub branch protection proti force-push — vracení už nasazené
-  věci jde jen přes revert commit, ne přepsání historie.
+- Referer omezení klíče: **než se cokoli zkouší v `npm run dev`, nejdřív přidat
+  `localhost`/`localhost:5173` do Aktivních omezení na `developer.mapy.com`** —
+  bez toho appka na localhostu dostane stejné 403 jako curl a vypadá to jako
+  nefunkční kód, i když je to jen chybějící domácí povolení.
+- `main` má u sebe GitHub branch protection proti force-push — jakékoli vracení
+  už nasazené věci jde jen přes revert commit, ne přepsání historie.
 - `scripts/smoke.mjs` má natvrdo zapsaná čísla (počet ikon ve sprite, počet položek
-  v průvodci výběru polohy pro start/cíl) — při přestavbě je nutné je zase
-  aktualizovat, jinak testy nahlásí falešnou chybu.
+  v průvodci výběru polohy pro start/cíl) — při dalších úpravách kolem toho je
+  nutné je zase aktualizovat, jinak testy nahlásí falešnou chybu.
 
 ---
 
