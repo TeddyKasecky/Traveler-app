@@ -29,6 +29,7 @@ import { planoveAchievementy, pripisPlanove, pripisProfilove } from './achieveme
 import { detailCestyHtml } from './archiv.js'
 import { bloky, blok } from './bloky.js'
 import { coDalHtml, napojCoDal } from './kosikView.js'
+import { spustSledovani, zastavSledovani, aktualniProjekce } from './cesta-zivot.js'
 
 /** Silnice bývá delší než vzdušná čára – týž koeficient jako v plan.js. */
 const KLIKATOST = 1.35
@@ -194,6 +195,12 @@ export function cestaHtml() {
   for (let i = 1; i < mista.length; i++) if (!c.odznacene[mista[i].id]) zbyva += dkm(mista[i - 1], mista[i]) * KLIKATOST
   const dalsiCil = mista.find((p) => !c.odznacene[p.id])
 
+  // Živé sledování (cesta-zivot.js): vzdálenost/čas přesnější než odhad
+  // výš, protože vychází ze skutečné trasy z Routing API a reálné polohy –
+  // ale POZOR, je to "zbývá do cíle CELÉ trasy", ne do dalšího cíle jako
+  // pole výš. Vidí to jen ten, kdo appku drží na popředí na kartě Na cestě.
+  const proj = aktualniProjekce(store.aktivniPrepocet)
+
   // Dny podle otisku: délky se převedou na úseky seznamu.
   const dny = c.dny && c.dny.length ? c.dny : [mista.length]
   let od = 0
@@ -214,6 +221,11 @@ export function cestaHtml() {
     </div>
     <div class="cesta-pruh"><span style="width:${podil}%"></span></div>
     ${mista.length > 1 ? `<div class="meta cesta-zbyva">${hotovo === mista.length ? 'Hotovo, celá cesta objetá' : `zbývá ${fmtKm(zbyva)}`}</div>` : ''}
+    ${
+      proj
+        ? `<div class="meta cesta-ziva">${IC('i-compass')}Podle polohy zbývá ${fmtKm(proj.zbyvaKm)} do cíle trasy</div>`
+        : ''
+    }
 
     ${
       dalsiCil
@@ -459,6 +471,12 @@ export function napojZamcenouCestu(wrap, prekresli, i) {
  * @param {() => void} prekresli
  */
 export function napojCestu(wrap, prekresli) {
+  // Živé sledování jen na viditelné kartě Na cestě (S.activeTab==='plan')
+  // – jinak by běželo na pozadí, i když se dívá člověk na Mapu nebo Domů.
+  // zastavSledovani() je idempotentní, bezpečné volat, i když už neběží.
+  if (store.cesta && S.activeTab === 'plan') spustSledovani()
+  else zastavSledovani()
+
   const vyjedBtn = wrap.querySelector('#cestaVyjed')
   if (vyjedBtn)
     vyjedBtn.onclick = () => {

@@ -147,7 +147,12 @@ export function priblizNaKosik(mapa, polozky, odkud = null) {
   const body = polozky.filter((x) => Number.isFinite(x.p.lat)).map((x) => [x.p.lat, x.p.lon])
   if (odkud) body.push([odkud.lat, odkud.lon])
   if (!body.length) return
-  mapa.fitBounds(L.latLngBounds(body), { padding: [40, 40], maxZoom: 10 })
+  // BEZ ANIMACE, A JE TO NUTNÉ: animované přiblížení doběhne i po `mapa.remove()`
+  // a `_onZoomTransitionEnd` pak sáhne na zrušené panely – TypeError
+  // `_leaflet_pos` v konzoli. Karta Košík se překresluje při každé změně
+  // a odejít se z ní dá kdykoli, takže se to trefí snadno. Srovnání výřezu
+  // je navíc jednorázové, animaci na něm nikdo nepotřebuje.
+  mapa.fitBounds(L.latLngBounds(body), { padding: [40, 40], maxZoom: 10, animate: false })
 }
 
 /** Je něco z košíku vůbec umístitelné na mapu? */

@@ -105,8 +105,9 @@ const kontrola = async (popis, fn, ocekavano) => {
 
 // 57 z původní aplikace + `i-filtr` (trychtýř podle listu „SADA PIKTOGRAMŮ",
 // viz VZHLED.md) + `i-zalozka` + `i-slozka` + `i-zamek` (ukončené cesty
-// v knihovně, srpen 2026). Číslo se mění jen s vědomým přidáním do sprite.svg.
-await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 61)
+// v knihovně, srpen 2026) + `i-dum` (uložené pozice v profilu, srpen 2026).
+// Číslo se mění jen s vědomým přidáním do sprite.svg.
+await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 62)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
 // Nad mapou je pět rychlých pilulek podle předlohy, od srpna 2026 „moje věci"
@@ -629,7 +630,9 @@ await page.click('.dialog-volba[data-i="0"]') // start
 await page.waitForTimeout(400)
 await page.click('#dialogAno') // ponechat výchozí název „Start“
 await page.waitForTimeout(400)
-await kontrola('krok polohy nabízí čtyři cesty', () => page.locator('#dialog .dialog-volba').count(), 4)
+// Start/cíl mají navíc Uloženou pozici a Aktuální polohu (srpen 2026) –
+// u prostředních bodů (nocleh/vlastní) jich zůstávají čtyři.
+await kontrola('krok polohy pro start nabízí šest cest', () => page.locator('#dialog .dialog-volba').count(), 6)
 await page.click('.dialog-volba[data-i="0"]') // vložit odkaz/souřadnice
 await page.waitForTimeout(400)
 await page.locator('#dialogVstup').fill('50.0755, 14.4378')

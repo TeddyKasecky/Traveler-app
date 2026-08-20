@@ -188,8 +188,21 @@ function prazdnyKosik() {
 /** @type {import('leaflet').Map|null} vlastní instance mapy v kartě Košík */
 let mapaKosiku = null
 
-/** Uklidí mapu košíku. Volá se při odchodu z karty. */
+/**
+ * Pořadové číslo posledního požadavku na vykreslení mapy.
+ *
+ * Mapa vzniká až s odkladem (rAF + 180 ms), aby měl prvek nenulovou velikost.
+ * Mezitím se ale karta může překreslit nebo se z ní dá odejít – a odložený
+ * callback by pak postavil Leaflet na prvku, který už v dokumentu není.
+ * Leaflet z toho padá na `_leaflet_pos` při prvním posunu. Čítač říká
+ * callbacku „tvoje kolo už neplatí, nic nestav".
+ */
+let koloMapy = 0
+
+/** Uklidí mapu košíku. Volá se při odchodu z karty i před novým vykreslením. */
 export function zavriMapuKosiku() {
+  // Zneplatní i požadavek, který se ještě nestihl provést.
+  koloMapy++
   zahodKosikVrstvu()
   if (mapaKosiku) {
     try {
@@ -220,15 +233,17 @@ function vykresliMapuKosiku(wrap) {
     return
   }
 
+  const moje = koloMapy
   requestAnimationFrame(() => {
     setTimeout(() => {
-      if (!document.body.contains(el) || el._leaflet_id) return
+      // Mezitím se mohlo odejít z karty nebo překreslit – pak se nestaví nic.
+      if (moje !== koloMapy || !document.body.contains(el) || el._leaflet_id) return
       try {
         mapaKosiku = L.map(el, {
           zoomControl: false,
           attributionControl: false,
           scrollWheelZoom: false,
-        }).setView([polozky[0].p.lat, polozky[0].p.lon], 8)
+        }).setView([polozky[0].p.lat, polozky[0].p.lon], 8, { animate: false })
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mapaKosiku)
 
         // Kde jsi ty – bez toho by koridor neměl odkud vycházet.

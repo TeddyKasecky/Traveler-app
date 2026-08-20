@@ -20,7 +20,7 @@
 // storage.js sahá na localStorage hned při načtení modulu.
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} }
 
-const { store } = await import('../src/core/store.js')
+const { store, S } = await import('../src/core/store.js')
 const { dnyPlanu, pridejDen, presunDoDne, zrusDny, nastavDny } =
   await import('../src/views/plan/dny.js')
 const { zalohaData, obnovZalohu } = await import('../src/core/csv.js')
@@ -121,6 +121,9 @@ console.log('\nVýpravy\n')
 const { seznamVyprav, prepniVypravu, novaVyprava, smazAktivniVypravu, BEZ_NAZVU } = await import(
   '../src/views/plan/vypravy.js'
 )
+const { pridejPozici } = await import('../src/core/pozice.js')
+const { souradniceBodu, maBod, pridejStartCil, serazenaTrasa } = await import('../src/views/plan/body.js')
+const { otiskBodu, pocetOdkazuNaPozici } = await import('../src/views/plan/routing.js')
 
 /** Nastaví stav včetně odložených výprav. */
 function pripravV(plan, planDny, vypravy, nazev) {
@@ -455,6 +458,98 @@ priprav(['a', 'b', 'c'], [2, 1])
   // blokyDneHtml() v bloky.js filtruje b.typ !== 'misto' – vykreslování se
   // testuje v prohlížeči (smoke.mjs), tenhle soubor je čistý Node bez IC.
   t('vsechnyBody vrací jen typ misto', vsechnyBody().every((b) => b.typ === 'misto'))
+}
+
+console.log('\nUložené pozice a start/cíl (srpen 2026)\n')
+
+priprav(['a', 'b'], [])
+{
+  store.vypravaNazev = 'Zkouška start/cíl'
+  store.bloky = {}
+  store.ulozenePozice = []
+  const pozId = pridejPozici({ nazev: 'Domov', lat: 50.1, lon: 14.1 })
+
+  t('start jde založit z uložené pozice', (() => {
+    const id = pridejStartCil('start', { nazev: 'Start', zdroj: { typ: 'pozice', id: pozId } })
+    const b = vsechnyBody().find((x) => x.id === id)
+    return b && b.den === 1 && b.po === null
+  })())
+
+  t('souradniceBodu dotáhne živou hodnotu pozice, ne zastaralou kopii', (() => {
+    const b = vsechnyBody().find((x) => x.zdroj && x.zdroj.typ === 'pozice')
+    const s1 = souradniceBodu(b)
+    const p = store.ulozenePozice.find((x) => x.id === pozId)
+    p.lat = 51.5
+    const s2 = souradniceBodu(b)
+    return s1.lat === 50.1 && s2.lat === 51.5
+  })())
+
+  t('maBod pozná existující start', maBod('start') === true)
+  t('maBod nehlásí cíl, který ještě není', maBod('cil') === false)
+  t('pridejStartCil odmítne druhý start (pojistka)', pridejStartCil('start', { nazev: 'Další start' }) === null)
+
+  t('cíl se zakládá na konec plánu (po i den null)', (() => {
+    const id = pridejStartCil('cil', { nazev: 'Cíl', lat: 48, lon: 16 })
+    const b = vsechnyBody().find((x) => x.id === id)
+    return b.po === null && b.den === null
+  })())
+
+  t('pocetOdkazuNaPozici počítá napříč store.bloky', pocetOdkazuNaPozici(pozId) === 1)
+
+  store.ulozenePozice = store.ulozenePozice.filter((x) => x.id !== pozId)
+  t('souradniceBodu vrací null po smazání odkazované pozice', (() => {
+    const b = vsechnyBody().find((x) => x.zdroj && x.zdroj.typ === 'pozice')
+    return souradniceBodu(b) === null
+  })())
+}
+
+console.log('\nSeřazená trasa pro Routing API (srpen 2026)\n')
+
+priprav(['x', 'y'], [])
+{
+  store.vypravaNazev = 'Zkouška trasy'
+  store.bloky = {}
+  store.ulozenePozice = []
+  S.byId = { x: { id: 'x', lat: 50, lon: 14 }, y: { id: 'y', lat: 48, lon: 16 } }
+  const idStart = pridejStartCil('start', { nazev: 'Start', lat: 49, lon: 13 })
+  const idCil = pridejStartCil('cil', { nazev: 'Cíl', lat: 47, lon: 17 })
+  const trasa = serazenaTrasa()
+  t('trasa má start na začátku', trasa[0].id === idStart)
+  t('trasa má cíl na konci', trasa[trasa.length - 1].id === idCil)
+  t('zastávky jsou mezi start a cíl v pořadí store.plan', trasa[1].id === 'x' && trasa[2].id === 'y')
+  t('trasa má 4 body (start, 2 zastávky, cíl)', trasa.length === 4)
+
+  // Bod bez rozpoznatelné polohy (zatím bez polohy) se do trasy nepočítá.
+  pridejBod({ druh: 'vlastni', nazev: 'Bez polohy', po: 'x' })
+  t('bod bez polohy se v serazenaTrasa() přeskočí', serazenaTrasa().length === 4)
+}
+
+console.log('\nOtisk trasy a přepočet vázaný na výpravu (srpen 2026)\n')
+
+t('otiskBodu je stejný pro stejné pořadí a polohu', (() => {
+  const body = [{ id: 'x', lat: 50.1, lon: 14.1 }, { id: 'y', lat: 48.2, lon: 16.3 }]
+  return otiskBodu(body) === otiskBodu(body.map((b) => ({ ...b })))
+})())
+
+t('otiskBodu se změní po posunu souřadnice', (() => {
+  const a = [{ id: 'x', lat: 50.1, lon: 14.1 }]
+  const b = [{ id: 'x', lat: 50.2, lon: 14.1 }]
+  return otiskBodu(a) !== otiskBodu(b)
+})())
+
+t('otiskBodu se změní po přeřazení pořadí', (() => {
+  const body = [{ id: 'x', lat: 50.1, lon: 14.1 }, { id: 'y', lat: 48.2, lon: 16.3 }]
+  return otiskBodu(body) !== otiskBodu([...body].reverse())
+})())
+
+pripravV(['a', 'b'], [], [{ nazev: 'Dolomity', plan: ['d'], planDny: [] }], 'Alpy')
+{
+  store.aktivniPrepocet = { otisk: 'x', polyline: [[1, 2]], vzdalenostKm: 10, casMin: 20, spocitanoV: 1 }
+  prepniVypravu(0)
+  t('přepočet se přesune do odložené výpravy při přepnutí', store.vypravy[0].prepocet.otisk === 'x')
+  t('přepočet aktivní výpravy je z cíle přepnutí (žádný zde)', store.aktivniPrepocet === null)
+  prepniVypravu(0)
+  t('přepočet se vrátí zpátky při opětovném přepnutí', store.aktivniPrepocet && store.aktivniPrepocet.otisk === 'x')
 }
 
 /* ---------- košík, kotva a zajížďka ---------- */

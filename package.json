@@ -12,6 +12,7 @@
     "validate": "node scripts/validate-data.mjs",
     "check-uloziste": "node scripts/check-uloziste.mjs",
     "check-dny": "node scripts/check-dny.mjs",
+    "check-projekce": "node scripts/check-projekce.mjs",
     "check-images": "node scripts/check-images.mjs",
     "smoke": "node scripts/smoke.mjs",
     "smoke:single": "node scripts/smoke.mjs --single",
