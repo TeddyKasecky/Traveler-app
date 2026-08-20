@@ -50,16 +50,16 @@ export function visible() {
 /**
  * Počet aktivních filtrů pro odznak na tlačítku filtrů.
  *
- * POZOR: `fire` se schválně nepočítá – tak to bylo v původní aplikaci
- * (INVENTURA.md P10, NAPADY.md N1). Vypadá to jako chyba, ale opravit ji
- * znamená změnit chování, takže na to čekám.
+ * `fire` (N1) se dřív do součtu nepočítal – tak to bylo v původní aplikaci
+ * a vypadalo to jako chyba, kterou appka nechávala 1:1. Teď se počítá
+ * spolu s ostatními přepínači.
  *
  * @returns {number}
  */
 export function pocetAktivnich() {
   return (
     [F.reg, F.zeme, F.typ, F.coll].filter(Boolean).length +
-    ['free', 'kids', 'dogs', 'wow'].filter((k) => F[k]).length +
+    ['free', 'kids', 'dogs', 'wow', 'fire'].filter((k) => F[k]).length +
     // `ulozene` a `vPlanu` jsou nové, žádné dědictví nedrží – počítají se.
     ['ulozene', 'vPlanu'].filter((k) => F[k]).length +
     (F.stav ? 1 : 0)

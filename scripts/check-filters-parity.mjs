@@ -191,7 +191,7 @@ const odznakFire = pocetAktivnich()
 F.fire = false
 F.free = true
 const odznakFree = pocetAktivnich()
-console.log(`\nOdznak filtrů: jen "Musíme!" → ${odznakFire} (v originále taky 0, viz N1), jen "Zdarma" → ${odznakFree}`)
+console.log(`\nOdznak filtrů: jen "Musíme!" → ${odznakFire} (po N1 se počítá), jen "Zdarma" → ${odznakFree}`)
 
 /* ---------- rychlé filtry „moje věci“ (v originále nebyly) ---------- */
 /* Originál je nezná, takže se nedají porovnat – ověřuje se jejich význam.
