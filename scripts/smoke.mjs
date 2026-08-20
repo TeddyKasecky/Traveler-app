@@ -340,9 +340,9 @@ await page.waitForTimeout(400)
 await page.click('#tabs button[data-tab="plan"]')
 await page.waitForTimeout(300)
 await kontrola('prázdná knihovna má hlášku', () => page.locator('#planWrap .empty').count(), 1)
-await kontrola('segment Na cestě · Výpravy · Itinerář · Košík', () => page.locator('#planSegment button').count(), 4)
+await kontrola('segment Na cestě · V plánu · Za námi', () => page.locator('#planSegment button').count(), 3)
 // Bez rozjeté cesty se začíná knihovnou Výpravy – ta je vstupní bod.
-await kontrola('začíná se Výpravami', () => page.locator('#planSegment button.on').innerText(), 'Výpravy')
+await kontrola('začíná se V plánu', () => page.locator('#planSegment button.on').innerText(), 'V plánu')
 // Fantom se nevypisuje (srpen 2026): čerstvý uživatel žádnou výpravu nezaložil,
 // takže mu knihovna nemá vnucovat prázdný „Náš plán".
 await kontrola('fantomová výprava se nevypisuje', () => page.locator('.vypravaradek').count(), 0)
@@ -356,7 +356,10 @@ await kontrola('dialog má vstup i obě tlačítka', () =>
 await page.locator('#dialogVstup').fill('Zkušební výprava')
 await page.click('#dialogAno')
 await page.waitForTimeout(500)
-await kontrola('nová výprava otevře Itinerář', () => page.locator('#planSegment button.on').innerText(), 'Itinerář')
+// Itinerář od srpna 2026 není díl segmentu (ten má jen Na cestě · V plánu ·
+// Za námi) – je to vnitřek konkrétní cesty. Že se otevřel, se pozná podle
+// dashboardu s kostrou dnů, ne podle zvýrazněného tlačítka.
+await kontrola('nová výprava otevře Itinerář', () => page.locator('.planhlava h2').count(), 1)
 await page.click('#planPridat')
 await page.waitForTimeout(600)
 await kontrola('vybírátko míst se otevřelo', () => page.locator('#vyberMista.show').count(), 1)
@@ -373,7 +376,7 @@ await kontrola('Itinerář nabízí Vyjet', () => page.locator('#planVyjet').cou
 
 // Košík (srpen 2026): wishlist výpravy bez pořadí a bez dnů. Plní se
 // hvězdičkou v detailu místa, vysypává se do itineráře.
-await page.evaluate(() => document.querySelector('#planSegment button[data-seg="kosik"]')?.click())
+await page.evaluate(() => document.querySelector('[data-dash="kosik"]')?.click())
 await page.waitForTimeout(400)
 await kontrola('prázdný košík vysvětluje, k čemu je', () =>
   page.locator('.cesta-prazdno h3').innerText().then((x) => /prázdný/i.test(x))
@@ -400,7 +403,7 @@ await page.goBack()
 await page.waitForTimeout(500)
 await page.click('#tabs button[data-tab="plan"]')
 await page.waitForTimeout(300)
-await page.evaluate(() => document.querySelector('#planSegment button[data-seg="kosik"]')?.click())
+await page.evaluate(() => document.querySelector('[data-dash="kosik"]')?.click())
 await page.waitForTimeout(500)
 await kontrola('košík ukazuje uložené místo', () => page.locator('.kosik-radek').count(), 1)
 // Přesun do itineráře košík vyprázdní – na dvou místech naráz by místo mátlo.
@@ -416,8 +419,13 @@ await kontrola('místo z košíku přešlo do itineráře', () =>
 // by `#planPridat` neexistovalo. Zastávka přidaná z košíku se přitom musí
 // zase odebrat: následující kontroly stojí na plánu o jedné zastávce
 // a jinak by se sesypaly na posunutých počtech.
-await page.evaluate(() => document.querySelector('#planSegment button[data-seg="itinerar"]')?.click())
-await page.waitForTimeout(500)
+// Itinerář není díl segmentu – zpátky se jde přes akce řádku v knihovně.
+await page.locator('#planSegment button', { hasText: 'V plánu' }).first().click()
+await page.waitForTimeout(400)
+await page.click('.vypravaradek [data-vyprava-vice]')
+await page.waitForTimeout(300)
+await page.click('[data-act="v-otevrit"]')
+await page.waitForTimeout(600)
 await page.locator('.zastavka').nth(1).locator('[data-act="vice"]').click()
 await page.waitForTimeout(300)
 await page.locator('.zastavka').nth(1).locator('[data-act="rm"]').click()
@@ -541,7 +549,7 @@ await page.waitForTimeout(300)
 await page.locator('.vypravaradek', { hasText: '(kopie)' }).click()
 await page.waitForTimeout(400)
 await kontrola('ťuknutí výpravu jen aktivuje, karta se nemění', () =>
-  page.locator('#planSegment button.on').innerText(), 'Výpravy')
+  page.locator('#planSegment button.on').innerText(), 'V plánu')
 await kontrola('aktivovaná kopie je na mapě', () =>
   page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).vypravaNazev.includes('(kopie)')))
 // Kopii zase smazat (přes akce jejího řádku) a vrátit se k původní.
@@ -557,7 +565,7 @@ await page.click('.slozka-obsah .vypravaradek [data-vyprava-vice]')
 await page.waitForTimeout(300)
 await page.click('[data-act="v-otevrit"]')
 await page.waitForTimeout(500)
-await kontrola('„Otevřít itinerář" otevře Itinerář', () => page.locator('#planSegment button.on').innerText(), 'Itinerář')
+await kontrola('„Otevřít itinerář" otevře Itinerář', () => page.locator('.planhlava h2').count(), 1)
 
 // Odškrtnutá zastávka se zapisuje jako navštívená, tedy do téhož místa jako
 // srdce v Seznamu. Žádná druhá evidence.
@@ -696,17 +704,18 @@ await kontrola('cesta skončila v archivu', () =>
 await kontrola('profilový achievement za první cestu', () =>
   page.evaluate(() => !!JSON.parse(localStorage.getItem('vandrbuch:v1')).achievementy['prvni-cesta']))
 
-// Ukončená cesta žije v knihovně Výprav, ne na kartě Na cestě (srpen 2026):
-// řádek po letech se zámkem, ťuknutí ji aktivuje na mapě jako výpravu,
+// Ukončené cesty mají od srpna 2026 vlastní záložku „Za námi" – do teď to
+// byla sekce dole v knihovně, kam se muselo doscrollovat přes všechny
+// plánované výpravy. Ťuknutí cestu aktivuje na mapě jako výpravu,
 // v Itineráři se pak ukáže zamčená s možností odemknout jen poznámky.
-await page.click('#planSegment button[data-seg="vypravy"]')
+await page.click('#planSegment button[data-seg="archiv"]')
 await page.waitForTimeout(400)
-await kontrola('ukončená cesta je v knihovně po letech', () => page.locator('.archivradek').count(), 1)
+await kontrola('ukončená cesta je v Za námi po letech', () => page.locator('.archivradek').count(), 1)
+// Jedno ťuknutí cestu rovnou otevře – vzpomínky se chodí prohlížet, ne
+// aktivovat na mapě. (V knihovně Výprav ťuknutí naopak jen aktivuje, protože
+// z výpravy se ještě pojede.)
 await page.click('.archivradek')
-await page.waitForTimeout(400)
-await kontrola('ťuknutí ji aktivuje na mapě', () => page.locator('.archivradek.on').count(), 1)
-await page.click('#planSegment button[data-seg="itinerar"]')
-await page.waitForTimeout(500)
+await page.waitForTimeout(700)
 await kontrola('Itinerář ukáže zamčenou cestu', () => page.locator('.cesta-zamek').count(), 1)
 await kontrola('vyjet z ukončené cesty nejde', () => page.locator('#planVyjet').count(), 0)
 await kontrola('fajfka zastávky je zamčená', () => page.locator('.cesta-zastavka.zamcena').count(), 1)

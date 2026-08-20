@@ -220,10 +220,10 @@ export function cestaHtml() {
       <div class="cesta-cisla"><b>${hotovo}</b><span>z ${mista.length}</span></div>
     </div>
     <div class="cesta-pruh"><span style="width:${podil}%"></span></div>
-    ${mista.length > 1 ? `<div class="meta cesta-zbyva">${hotovo === mista.length ? 'Hotovo, celá cesta objetá' : `zbývá ${fmtKm(zbyva)}`}</div>` : ''}
+    ${mista.length > 1 ? `<div class="meta cesta-zbyva">${hotovo === mista.length ? 'Projeli jsme celou trasu' : `v plánu je ještě ${fmtKm(zbyva)}`}</div>` : ''}
     ${
       proj
-        ? `<div class="meta cesta-ziva">${IC('i-compass')}Podle polohy zbývá ${fmtKm(proj.zbyvaKm)} do cíle trasy</div>`
+        ? `<div class="meta cesta-ziva">${IC('i-compass')}Podle polohy je do konce trasy ${fmtKm(proj.zbyvaKm)}</div>`
         : ''
     }
 

@@ -130,17 +130,22 @@ export const PROFILOVE = [
     popis: 'Cesta trvající aspoň 14 dní',
     splneno: () => store.cesty.some((c) => c.konec - c.zacatek >= 14 * 86400000),
   },
+  // Tyhle dva dřív odměňovaly NEVYNECHÁNÍ ani jedné zastávky („Bleskový
+  // víkend", „Do posledního místa"). Z cesty se tím stávala soutěž, jestli se
+  // stihlo všechno – a to je přesně naopak, než k čemu je tahle aplikace:
+  // jde o užívání si času, ne o výkon. Podmínka je teď o zážitku.
+  // ID SE NESMÍ ZMĚNIT – kdo je má získané, o ně nepřijde.
   {
     id: 'vikendovka',
-    nazev: 'Bleskový víkend',
-    popis: 'Dokončit cestu do tří dnů bez vynechané zastávky',
-    splneno: () => store.cesty.some((c) => c.konec - c.zacatek <= 3 * 86400000 && c.zastavek >= 2 && c.vynechano === 0),
+    nazev: 'Víkend za městem',
+    popis: 'Vyrazit na cestu, která se vejde do tří dnů',
+    splneno: () => store.cesty.some((c) => c.konec - c.zacatek <= 3 * 86400000 && c.zastavek >= 2),
   },
   {
     id: 'cesta-bez-vynechani',
-    nazev: 'Do posledního místa',
-    popis: 'Dokončit cestu bez vynechané zastávky',
-    splneno: () => store.cesty.some((c) => c.zastavek >= 3 && c.vynechano === 0),
+    nazev: 'Bez spěchu',
+    popis: 'Strávit na jedné cestě aspoň pět dní',
+    splneno: () => store.cesty.some((c) => c.konec - c.zacatek >= 5 * 86400000),
   },
   {
     id: 'zapisovatel',

@@ -56,6 +56,7 @@ import { archivRadkyHtml, napojArchivRadky } from './archiv.js'
 import { cislaPlanuHtml, napojCislaPlanu } from './prehled.js'
 import { kosik } from './kosik.js'
 import { kosikHtml, napojKosik, zavriMapuKosiku } from './kosikView.js'
+import { dashboardHtml } from './dashboard.js'
 
 /** Kolik zastávek unese odkaz do Google Maps. */
 const MAX_DO_NAVIGACE = 10
@@ -158,15 +159,18 @@ export function renderPlan() {
 
   wrap.innerHTML =
     segment(
+      // TŘI ZÁLOŽKY PODLE ČASU, ne podle funkce (srpen 2026). Do teď se
+      // dělilo na Na cestě · Výpravy · Itinerář · Košík, tedy podle toho, CO
+      // s plánem děláš. Člověk ale přemýšlí v čase: jedu, chystám se, mám za
+      // sebou. Itinerář a Košík proto zmizely ze segmentu – nejsou to
+      // samostatné obrazovky, ale části JEDNÉ konkrétní cesty a otevírají se
+      // z jejího dashboardu.
       [
         // Tečka u Na cestě říká „něco běží" – jinak by se na rozjetou
         // cestu dalo zapomenout v jiném dílu.
         { id: 'cesta', popisek: jedeSe() ? 'Na cestě ·' : 'Na cestě' },
-        { id: 'vypravy', popisek: 'Výpravy' },
-        { id: 'itinerar', popisek: 'Itinerář' },
-        // Počet v popisku říká „něco tam čeká" – prázdný košík se snadno
-        // přehlédne a nasbíraná místa by v něm tiše ležela.
-        { id: 'kosik', popisek: kosik().length ? `Košík ${kosik().length}` : 'Košík' },
+        { id: 'vypravy', popisek: 'V plánu' },
+        { id: 'archiv', popisek: 'Za námi' },
       ],
       dil,
       'planSegment'
@@ -175,14 +179,29 @@ export function renderPlan() {
       ? cestaHtml()
       : dil === 'vypravy'
         ? knihovna()
-        : dil === 'kosik'
-          ? kosikHtml(vychoziBod())
-          : kartaItinerare(items, dny)) +
+        : dil === 'archiv'
+          ? archivHtml()
+          : dil === 'kosik'
+            ? kosikHtml(vychoziBod())
+            : kartaItinerare(items, dny)) +
     (dil === 'itinerar' && S.otevrenaCesta == null ? lista(items) : '')
 
   napoj(wrap, items)
   if (dil === 'kosik') napojKosik(wrap, renderPlan)
   if (dil === 'cesta') napojCestu(wrap, renderPlan)
+  if (dil === 'archiv')
+    // JEDNO ŤUKNUTÍ OTEVŘE, na rozdíl od knihovny Výprav. Tam ťuknutí výpravu
+    // jen aktivuje na mapě, protože se z ní ještě pojede. Ukončená cesta se
+    // chodí PROHLÍŽET – dvojí ťuknutí (nejdřív na mapu, pak otevřít) by nikdo
+    // neuhodl. Na mapu se stejně vykreslí, `S.otevrenaCesta` řídí obojí.
+    // `null` znamená jen rozbalení roku – tam se překresluje.
+    napojArchivRadky(wrap, (i) => {
+      if (i === null) return renderPlan()
+      S.otevrenaCesta = i
+      dil = 'itinerar'
+      draw()
+      renderPlan()
+    })
   if (dil === 'vypravy') {
     napojKnihovnu(wrap)
     napojTahaniKnihovny(wrap)
@@ -219,24 +238,13 @@ export function otevriItinerar() {
   renderPlan()
 }
 
-/** Hlavička Itineráře: název otevřené výpravy a co obnáší. */
+/**
+ * Hlavička Itineráře. Od srpna 2026 je to dashboard cesty (dashboard.js):
+ * jméno, tři čísla a kostra dnů s kotvami. Šedý řádek textu, který tu byl
+ * do teď, neodpovídal na jedinou otázku, kterou si člověk nad plánem klade.
+ */
 function hlava(items, dny) {
-  const st = planStats(items)
-  const slozka = store.vypravaSlozka || ''
-  const popis = items.length
-    ? `${items.length} ${sklonuj(items.length, 'zastávka', 'zastávky', 'zastávek')} · ${dny.length} ${sklonuj(dny.length, 'den', 'dny', 'dní')}${
-        items.length > 1 ? ` · ${fmtKm(st.road)}` : ''
-      }${slozka ? ` · ${slozka}` : ''}`
-    : 'Zatím prázdná'
-
-  return `<div class="planhlava">
-    <div class="planhlava-text">
-      <h2>${esc(store.vypravaNazev || BEZ_NAZVU)}</h2>
-      <div class="meta">${esc(popis)}</div>
-    </div>
-    ${ikonBtn('i-vice', { id: 'planVice', titul: 'Další akce' })}
-  </div>
-  <div id="planMenu" hidden></div>`
+  return dashboardHtml(items, dny, planStats(items))
 }
 
 /* ---------- Výpravy (knihovna) ---------- */
@@ -336,9 +344,30 @@ function knihovna() {
     <div class="btnrow knihovna-pridat">
       <button class="ghostbtn" id="vypNova">${IC('i-plus')}Nová výprava</button>
       <button class="ghostbtn" id="slozkaNova">${IC('i-slozka')}Nová složka</button>
-    </div>` +
-    archivRadkyHtml()
+    </div>`
+    // Ukončené cesty tu odsud odešly do vlastní záložky „Za námi" (srpen 2026).
+    // Knihovna odpovídá na „kam se chystáme", archiv na „kde jsme byli“ –
+    // dvě různé otázky nepatří na jednu obrazovku.
   )
+}
+
+/**
+ * Záložka „Za námi" – ukončené cesty po letech.
+ *
+ * Do teď to byla sekce dole v knihovně Výprav, kam se muselo doscrollovat
+ * přes všechny plánované výpravy. Vzpomínky jsou přitom to, k čemu se člověk
+ * vrací nejčastěji.
+ */
+function archivHtml() {
+  if (!store.cesty.length) {
+    return `<div class="cesta-prazdno">
+      ${IC('i-kalendar')}
+      <h3>Zatím jsme nikde nebyli</h3>
+      <p>Až první cestu ukončíš, uloží se sem i se všemi zastávkami,
+         poznámkami a čísly. Nic se neztratí.</p>
+    </div>`
+  }
+  return archivRadkyHtml()
 }
 
 /** Obsluha knihovny: otevírání, sbalování složek, akce řádků. */
@@ -943,6 +972,32 @@ function lista(items) {
 /* ================= obsluha ================= */
 
 function napoj(wrap, items) {
+  // Dlaždice dashboardu vedou tam, kde se to řeší – číslo, na které se dá
+  // ťuknout, musí něco udělat, jinak vypadá jako ovládací prvek a mlčí.
+  for (const b of wrap.querySelectorAll('[data-dash]')) {
+    b.onclick = () => {
+      if (b.dataset.dash === 'kosik') {
+        dil = 'kosik'
+        renderPlan()
+        return
+      }
+      // Zastávky i volné dny žijí v itineráři pod dashboardem – stačí sjet.
+      const cil = wrap.querySelector(b.dataset.dash === 'volno' ? '.kostra-den.volny' : '.zastavka')
+      if (cil) cil.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }
+
+  // Ťuknutí na den kostry: zatím sjede na ten den v itineráři. Průvodce
+  // „naplánujme tenhle den" přijde v dalším kole (dohodnuto se zadavatelkou).
+  for (const b of wrap.querySelectorAll('[data-kostra-den]')) {
+    b.onclick = () => {
+      const den = Number(b.dataset.kostraDen)
+      const cil = wrap.querySelector(`.denhd[data-den="${den}"]`)
+      if (cil) cil.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      else toast(`${den}. den je zatím volný`)
+    }
+  }
+
   for (const b of wrap.querySelectorAll('#planSegment button')) {
     b.onclick = () => {
       // Mapa košíku je vlastní instance Leafletu – bez úklidu by po odchodu

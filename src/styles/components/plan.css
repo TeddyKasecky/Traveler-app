@@ -506,3 +506,41 @@
 .kosik-radek.daleko{opacity:.62}
 .kosik-kotva-znak svg.ic{font-size:12px;color:var(--rust);stroke:var(--rust);vertical-align:-1px}
 .kosik-kotva svg.ic{color:var(--text3)}
+
+/* ---------- dashboard cesty a kostra dnů ---------- */
+/* Kostra = dny dopředu, kotvy s oknem, prázdno jako pozvánka.
+   Prázdný den NENÍ chyba – nekreslí se proto červeně ani s vykřičníkem. */
+
+.dash-cisla{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}
+.dash-dlazdice{display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:var(--plocha);border:var(--line);border-radius:var(--r-s);box-shadow:var(--stin-1);
+  padding:12px 6px;font:inherit;color:var(--text);transition:border-color .18s}
+.dash-dlazdice b{font-family:var(--f-disp);font-size:1.45rem;line-height:1;font-weight:700}
+.dash-dlazdice span{font-size:.74rem;color:var(--text2);text-align:center}
+/* Volné dny jsou to nejcennější, co dashboard ukazuje – tam se dá pomoct. */
+.dash-dlazdice.zvyraznena{border-color:var(--moss)}
+.dash-dlazdice.zvyraznena b{color:var(--moss)}
+
+.kostra{display:flex;flex-direction:column;gap:5px;margin-bottom:16px}
+.kostra-den{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  background:var(--plocha);border:var(--line);border-radius:var(--r-s);box-shadow:var(--stin-1);
+  padding:9px 11px;font:inherit;color:var(--text);transition:border-color .18s,background .18s}
+.kostra-cislo{flex:0 0 auto;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;
+  background:var(--plocha2);color:var(--text2);font-size:.76rem;font-weight:700}
+.kostra-telo{flex:1;min-width:0;display:flex;align-items:center;gap:6px;font-size:.85rem}
+
+/* Den s kotvou: jediný závazek cesty, drží se rezavé jako kotva v košíku. */
+.kostra-den.kotva{border-left:3px solid var(--rust)}
+.kostra-den.kotva .kostra-cislo{background:var(--rust);color:var(--na-akcentu)}
+.kostra-kotva{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.kostra-kotva svg.ic{font-size:13px;color:var(--rust);stroke:var(--rust)}
+.kostra-kotva .meta{font-size:.74rem}
+/* Den uvnitř okna kotvy – ještě není rozhodnuto, který to bude. */
+.kostra-okno svg.ic{font-size:12px;color:var(--text3);stroke:var(--text3)}
+
+/* Volný den je pozvánka, ne mezera. */
+.kostra-den.volny{background:transparent;border-style:dashed;box-shadow:none}
+.kostra-volno{display:inline-flex;align-items:center;gap:5px;color:var(--text3);font-size:.8rem}
+.kostra-volno svg.ic{font-size:12px;stroke:var(--moss);color:var(--moss)}
+.kostra-den.volny:hover{border-color:var(--moss);background:var(--plocha)}
+.kostra-pocet{color:var(--text2);font-size:.82rem}
