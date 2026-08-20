@@ -9,7 +9,7 @@
  * a Plánem (invalidace uloženého přepočtu).
  */
 
-import { store, save } from '../../core/store.js'
+import { store, save, prefs } from '../../core/store.js'
 import { zjistiPolohuJednorazove } from '../../core/geo.js'
 import { serazenaTrasa } from './body.js'
 
@@ -101,7 +101,7 @@ export async function zavolejRouting(body) {
     const params = new URLSearchParams({
       apikey: MAPY_API_KLIC,
       lang: 'cs',
-      routeType: 'car_fast',
+      routeType: prefs.routeType || 'car_fast',
       start: `${prvni.lon},${prvni.lat}`,
       end: `${posledni.lon},${posledni.lat}`,
     })

@@ -103,6 +103,25 @@ export async function renderNastaveni() {
       'razeniSeg'
     )}
 
+    <div class="sechd">${IC('i-route')}Typ dopravy pro přepočet trasy</div>
+    <div class="meta" style="margin:0 2px 10px">Čím se počítá skutečná trasa (tlačítko Přepočítat v Itineráři).</div>
+    ${segment(
+      [
+        { id: 'car_fast', popisek: 'Auto' },
+        { id: 'bike_road', popisek: 'Kolo' },
+        { id: 'foot_fast', popisek: 'Pěšky' },
+      ],
+      prefs.routeType || 'car_fast',
+      'routeTypeSeg'
+    )}
+
+    <div class="sechd">${IC('i-nastaveni')}Vlastní API klíč Mapy.com</div>
+    <div class="meta" style="margin:0 2px 10px">Zatím appka používá jeden sdílený klíč pro všechny. Možnost nastavit si vlastní přijde později.</div>
+    <div class="volbaapiklic nejde">
+      <input type="text" placeholder="Zatím není k dispozici" disabled>
+      <button class="btn small" disabled>Uložit</button>
+    </div>
+
     <div class="sechd">${IC('i-globe')}Místo v telefonu</div>
     <div class="meta" id="mistoInfo" style="margin:0 2px 10px">Počítá se…</div>
 
@@ -136,6 +155,15 @@ export async function renderNastaveni() {
       if (!savePrefs()) return
       for (const x of document.querySelectorAll('#razeniSeg button')) x.classList.toggle('on', x === b)
       toast('Řazení výprav nastavené')
+    }
+  }
+
+  for (const b of document.querySelectorAll('#routeTypeSeg button')) {
+    b.onclick = () => {
+      prefs.routeType = b.dataset.seg
+      if (!savePrefs()) return
+      for (const x of document.querySelectorAll('#routeTypeSeg button')) x.classList.toggle('on', x === b)
+      toast('Typ dopravy nastavený')
     }
   }
 

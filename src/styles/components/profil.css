@@ -65,6 +65,14 @@
 .volbakresby{margin:0 0 4px}
 .volbakresby.nejde{opacity:.5;pointer-events:none}
 
+/* ---------- vlastní API klíč Mapy.com (zatím nedostupné) ---------- */
+/* Appka má zatím jeden sdílený klíč pro všechny – místo je připravené,
+ * ale needitovatelné, stejně jako kresby bez stažené mapy výš. */
+.volbaapiklic{display:flex;gap:8px;margin:0 0 4px}
+.volbaapiklic input{flex:1;border:var(--line);border-radius:var(--r-s);background:var(--plocha);
+  padding:11px 13px;font:inherit;font-size:.92rem;color:var(--text);box-shadow:var(--stin-1)}
+.volbaapiklic.nejde{opacity:.5;pointer-events:none}
+
 /* ---------- stažení malované mapy ---------- */
 /* Pruh průběhu tu je proto, že jde o megabajty. Bez něj by stahování
  * na pomalé síti vypadalo jako zaseknutá aplikace. */

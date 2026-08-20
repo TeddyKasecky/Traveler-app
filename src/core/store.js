@@ -260,6 +260,14 @@ export const prefs = nacti(PREFK, {
    */
   offlineMapa: 'stazena',
   /**
+   * Typ dopravy pro přepočet trasy přes Mapy.com Routing API
+   * (views/plan/routing.js). Mapy.com podporuje: 'car_fast' (výchozí),
+   * 'car_fast_traffic', 'car_short', 'foot_fast', 'foot_hiking',
+   * 'bike_road', 'bike_mountain' – appka v Nastavení nabízí jen tři
+   * nejběžnější (auto/kolo/pěšky), zbytek jde přidat stejným vzorem.
+   */
+  routeType: 'car_fast',
+  /**
    * Hustota kreseb krajiny na malované mapě: 'vypnute', 'stridme', 'huste'.
    *
    * Mění se tím jen cílová rozteč, se kterou se kresby sypou z masky
