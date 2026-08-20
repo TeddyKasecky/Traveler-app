@@ -13,14 +13,10 @@ k věcem, které v původní aplikaci vůbec nebyly.
 
 Nechávám 1:1, ale stojí za rozhodnutí.
 
-**N1 — Badge u filtrů nepočítá „Musíme!"**
-`index-original.html:838` sčítá `reg, zeme, typ, coll, free, kids, dogs, wow, stav`.
-Filtr `fire` chybí, takže když je zapnutý jen on, na tlačítku filtrů se nic neukáže,
-přestože se výsledky filtrují. Oprava = přidat `'fire'` do seznamu.
-
-Pozor: nové filtry `ulozene` a `vPlanu` (rychlé pilulky nad mapou, srpen 2026)
-se do odznaku **počítají** — žádné dědictví nedrží. Nesrovnalost je tedy jen
-u `fire`.
+**N1 — Badge u filtrů nepočítá „Musíme!" — ~~HOTOVO~~**
+`index-original.html:838` sčítal `reg, zeme, typ, coll, free, kids, dogs, wow, stav`
+bez `fire`. `pocetAktivnich()` v `src/core/filters.js` teď `'fire'` počítá spolu
+s ostatními přepínači — zapnutí jen „Musíme!" ukáže odznak na tlačítku Filtry.
 
 **N2 — Záloha neukládá priority, ale obnova je čte — ~~HOTOVO~~**
 Export posílal jen `notes, stav, rating, plan`, takže se plamínky zálohou ztrácely.
@@ -33,16 +29,19 @@ Import nastaví u všech míst `col: []`. Kolekce i dlaždice v Objevuj pak zmiz
 a nejde je vrátit jinak než přes „Vrátit vestavěná data". Řešení by bylo
 kolekce dopočítat z ostatních polí, nebo je u známých id zachovat.
 
-**N4 — „Zrušit vše" nesmaže hledání**
-`#fReset` vynuluje `F` kromě `F.q`, a políčko `#q` zůstane vyplněné.
+**N4 — „Zrušit vše" nesmaže hledání — ~~HOTOVO~~**
+`resetFiltru()` v `src/core/filters.js` teď nuluje i `F.q`. `syncFiltersUI()`
+v `src/components/chip.js` navíc srovnává inputy `#q`/`#qMapa` se stavem —
+bez toho by pole vizuálně zůstalo vyplněné, i když `F.q` už bylo prázdné.
 
 ---
 
 ## Data
 
-**N5 — Kolekce „Se psem" nemá dlaždici**
-7 míst má v `col` hodnotu `psi`, ale `COLL` má jen 11 definic a `psi` mezi nimi není.
-V Objevuj se proto nikdy nezobrazí. Přidat 12. definici = jednořádková změna.
+**N5 — Kolekce „Se psem" nemá dlaždici — ~~HOTOVO~~**
+`COLL` v `src/data/collections.js` má 12. definici (`k: 'psi'`, ikona `i-paw` —
+appka ji už používala pro pole `ps`). Dlaždice „Se psem – 7 míst" se v Objevuj
+zobrazuje, žádný vykreslovací kód se měnit nemusel (`COLL.map()` je obecné).
 
 **N6 — Filtr „Se psem" má skoro prázdný výsledek**
 Pole `ps` je vyplněné jen u 8 z 580 míst (5× „Ano", 3× „Ne"). Filtr tedy vrací 5 míst,
@@ -55,27 +54,23 @@ a `jettegrytene-nissedal-norsko-358` mají dvakrát `koupacka`,
 Na chování to nemá vliv (filtr používá `includes`), `npm run validate` to hlásí jako
 varování. Oprava = smazat duplicitu, ale je to zásah do dat, tak nechávám na tobě.
 
-**N7 — Hledání neprohledává krátký popis (`sh`)**
-Fulltext bere `n + z + r + t + p + f`. Pole `sh` má vyplněných všech 580 míst
-a v seznamu se zobrazuje, ale hledat se v něm nedá.
+**N7 — Hledání neprohledává krátký popis (`sh`) — ~~HOTOVO~~**
+`postavIndex()` v `src/core/search.js` teď zahrnuje i `sh` do indexovaného
+textu. Ověřeno: hledání textu, který je jen v `sh`, teď místo najde.
 
 ---
 
 ## Plán a trasa
 
-**N12 — Uložené pozice, přepočet trasy přes Mapy.com Routing API, živé sledování**
+**N12 — Uložené pozice, přepočet trasy přes Mapy.com Routing API, živé sledování — ~~HOTOVO~~**
 
-Implementováno a nasazené na `main` (10 commitů, `ac8d947`..`bc567bb`, plus
-merge/revert historie kolem toho — obsahově je `main` dnes na úrovni `bc567bb`).
-**Funkčně nedokončené**: appka nemá zapsaný API klíč (`MAPY_API_KLIC = ''` v
-`routing.js`), takže tlačítko „Přepočítat" hlásí chybu a appka spadá na fallback
-(vzdušný odhad). Klíč od uživatele existuje
-(`BgblIMF4M6fhAqmBAEMFcKSZy6xw2O7PlZ9l4DPoXpE`, viz níž proč se ještě nezapsal),
-ale ani se zapsaným klíčem nejsou hotová tři místa v `routing.js` (viz „Co zůstalo
-nedořešené" níž) — bez nich appka na reálné volání API stejně spadne na fallback,
-jen s jinou chybovou hláškou. Tenhle zápis je podrobný záměrně: aby šlo dopočítat
-přesně to, co chybí, kus po kuse (data, UI, routing, živé sledování jsou oddělené
-vrstvy), ne rozebírat celou funkci znovu od nuly.
+Implementováno a nasazené na `main`, včetně skutečného volání Mapy.com Routing
+API (11 commitů na `tadeas/work`). Appka má zapsaný API klíč a `zavolejRouting()`/
+`zpracujOdpoved()` odpovídají skutečnému tvaru API — ověřeno reálným voláním
+v `npm run dev` (appka dostala HTTP 200, uložila skutečnou trasu a vykreslila
+ji na mapě). Tenhle zápis zůstává jako referenční přehled pro budoucí zásahy
+do stejné oblasti kódu (data, UI, routing, živé sledování jsou oddělené
+vrstvy, viz níž).
 
 *Co to bylo:* čtyři propojené funkce — (1) neomezený vlastní seznam pojmenovaných
 pozic v Profilu (Domov, Práce…) s vlastním `id`, (2) start a cíl trasy šly vybrat
@@ -85,20 +80,19 @@ Mapy.com Routing API pro skutečnou trasu (polyline/vzdálenost/čas) místo dos
 odhadu vzdušnou čarou × `KLIKATOST`, (4) živé sledování zbývající vzdálenosti/času
 na kartě Na cestě a značka na mapě, striktně jen na popředí appky.
 
-*Proč přepočet ještě nefunguje:* API klíč od Mapy.com (typ „Vanderbuch API") má
-v administraci (`developer.mapy.com`) nastavené **omezení na Referery** — jen
-produkční doména `traveler-app.teddykasecky.workers.dev`. To znamená, že tvar API
-(přesná cesta, formát parametru `points`, pořadí `lat`/`lon`, tvar JSON odpovědi)
-**nejde ověřit přes `curl`** — Mapy.com vrací identické
-`{"detail":[{"msg":"Forbidden"}]}` / HTTP 403 i na zcela neplatný klíč (ověřeno
-srovnáním), takže 403 nerozliší „špatný request" od „chybí prohlížečový kontext".
-Zkoušelo se: holý dotaz, `Referer` hlavička na povolenou doménu, `Origin` hlavička,
-reálný `User-Agent`, jiné endpointy (`geocode`, `rgeocode`, `suggest`) — všude
-stejná odpověď. Jediná cesta k ověření tvaru API je reálné kliknutí v prohlížeči
-na doméně, kterou klíč povoluje (produkce, nebo `localhost` po přidání do
-Aktivních omezení v administraci Mapy.com — nejjednodušší je přidat `localhost`
-předem, než se cokoli zkouší lokálně). Klíč samotný uživatel má, appka ho zatím
-nemá zapsaný v `routing.js` (`MAPY_API_KLIC = ''`, vědomý placeholder).
+*Jak se API nakonec ověřilo (pro příště, kdyby se klíč měnil nebo appka
+sahala na jiný Mapy.com endpoint):* klíč má v administraci
+(`developer.mapy.com`) omezení na Referery. `curl` ho nešel ověřit přímo —
+Mapy.com vrací identické `{"detail":[{"msg":"Forbidden"}]}` / HTTP 403 i na
+zcela neplatný klíč (ověřeno srovnáním), takže 403 nerozliší „špatný request"
+od „chybí prohlížečový kontext". Fungovalo ale poslat `curl` s hlavičkou
+`Referer: http://localhost:5173/` (nebo produkční doména) — tenhle trik
+oklame kontrolu refereru i mimo prohlížeč a jde tak zjistit skutečný tvar
+API bez psaní appky naslepo. Zjištěný tvar: parametry `start`/`end`/
+volitelně `waypoints` (víc bodů `;`-oddělených), všechny jako `"lon,lat"`
+(ne `lat,lon`); odpověď má `length` v metrech, `duration` v sekundách,
+`geometry.geometry.coordinates` jako pole `[lon,lat]` (appka je otáčí na
+`[lat,lon]` pro Leaflet).
 
 *Co bylo hotové a otestované (podle kroků, dá se brát postupně):*
 1. **Datový model** — `store.ulozenePozice: []` a `store.aktivniPrepocet: null`
@@ -155,27 +149,22 @@ nemá zapsaný v `routing.js` (`MAPY_API_KLIC = ''`, vědomý placeholder).
 9. **Značka na mapě** — `zivaZnacka` v `planLine.js`, `L.circleMarker` na
    `projektujNaTrasu(S.zivaPoloha, ...)`, jen za jízdy a s platným přepočtem.
    Ověřeno E2E stejně jako bod 6.
-10. **Zápis do dokumentace** — `STAV.md` má sekci „3a. … čeká na váš krok" s
-    týmiž třemi TODO co níž (je na `main`, aktuální).
+10. **Doladění API** — `MAPY_API_KLIC` zapsaný, `zavolejRouting()`/
+    `zpracujOdpoved()` odpovídají skutečnému tvaru API (viz výš). Ověřeno
+    reálným voláním v `npm run dev`, appka dostala HTTP 200 a vykreslila
+    skutečnou trasu. `STAV.md` sekce „3a." aktualizovaná.
 
-*Co zůstalo nedořešené (tři TODO v `routing.js`, `zavolejRouting`/`zpracujOdpoved`):*
-přesná cesta API (zkoušeno `/v1/routing/route`, nepodařilo se ověřit), formát/pořadí
-souřadnic v parametru `points` (zkoušeno `lon,lat` podle všeobecné konvence, nepodařilo
-se ověřit), tvar JSON odpovědi (`zpracujOdpoved()` je prázdná skořápka). Než se klíč
-ověří naostro v prohlížeči, tohle jsou jen odhady.
-
-*Co při dokončování zachovat/dodržet (funguje, otestované, konzistentní se zbytkem
-appky):*
+*Co při dalších zásazích do stejné oblasti zachovat/dodržet (funguje, otestované,
+konzistentní se zbytkem appky):*
 - Duplicitní `souradniceBodu()`/`otiskBodu()`/výčet druhů v `map/planLine.js` — mapa
   nesmí importovat `views/`, appka tenhle vzor už měla (výčet `start/nocleh/cíl`).
 - Živé sledování v samostatném souboru, ne v `cesta.js` — architektonicky důležité,
   ať se nesplete „trvalá ujetá trasa bez GPS" s „dočasný displej s GPS na popředí".
-- `MAPY_API_KLIC` jako prázdný placeholder v kódu (appka nemá backend) — appka MUSÍ
-  fungovat i bez něj (chyba, fallback na vzdušný odhad), nikdy nesmí spadnout.
-- Referer omezení klíče: **než se cokoli zkouší v `npm run dev`, nejdřív přidat
-  `localhost`/`localhost:5173` do Aktivních omezení na `developer.mapy.com`** —
-  bez toho appka na localhostu dostane stejné 403 jako curl a vypadá to jako
-  nefunkční kód, i když je to jen chybějící domácí povolení.
+- `MAPY_API_KLIC` je veřejná konstanta v kódu (appka nemá backend), chráněná
+  referer omezením na straně Mapy.com, ne tajemstvím v appce. I tak appka
+  MUSÍ fungovat i při chybě volání (offline, vypršelý timeout, budoucí
+  zneplatnění klíče) — chyba se ukáže jako toast, fallback na vzdušný odhad,
+  appka nikdy nesmí kvůli tomu spadnout.
 - `main` má u sebe GitHub branch protection proti force-push — jakékoli vracení
   už nasazené věci jde jen přes revert commit, ne přepsání historie.
 - `scripts/smoke.mjs` má natvrdo zapsaná čísla (počet ikon ve sprite, počet položek
@@ -211,7 +200,11 @@ dlaždice dají vypnout úplně.
 
 ## Výkon
 
-**N10 — Seznam se renderuje najednou**
-`renderList()` má strop 250 karet a hlášku „Zobrazeno prvních 250". Není to virtualizace.
-Kdyby se strop zvedal, chtělo by to lazy render. Měření přijde ve fázi 3;
-bez souhlasu neměním, je to změna chování.
+**N10 — Seznam se renderuje najednou — ~~ČÁSTEČNĚ HOTOVO~~**
+`renderList()` v `src/views/list/list.js` má pořád strop 250 karet a pořád
+kreslí najednou (žádná virtualizace) — ale místo statické hlášky „Zobrazeno
+prvních 250" je teď tlačítko „Zobrazit dalších 50", které limit zvedá po
+kliknutí (proměnná `zobrazeno`, resetuje se na 250 při každé změně sady
+filtrovaných míst). U celého seznamu (580 míst bez filtru) to znamená dvě
+kliknutí navíc, ne skok na plný výpis. Skutečná virtualizace/lazy render
+zůstává neřešená — pořád stojí za měření, kdyby strop rostl výš.
