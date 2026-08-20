@@ -98,6 +98,142 @@ export function zahodKosik(nazev) {
  */
 export const mistaVKosiku = () => kosik().map((id) => S.byId[id]).filter(Boolean)
 
+/* ================= kotva ================= */
+
+/**
+ * Kotva = jediný závazek v jinak volné cestě.
+ *
+ * Nejedeme podle pevného itineráře – s dodávkou se rozhodujeme večer a podle
+ * počasí. Skoro nic ale není úplně volné: „do bikeparku chceme mezi 3. a 5.
+ * dnem" je závazek, který drží celou cestu pohromadě. Kotva je právě tohle:
+ * jedno místo z košíku a okno ve dnech od začátku cesty.
+ *
+ * PROČ NE DNY V ITINERÁŘI: den je přihrádka, do které se zastávka musí
+ * zařadit. Kotva je bod, ke kterému se míří – všechno ostatní zůstává volné.
+ *
+ * Uloženo v `store.kotvy`, klíčované názvem výpravy jako `bloky` a `kosik`,
+ * takže platí stejné pravidlo o stěhování při přejmenování.
+ *
+ *   { id, odeDne, doDne }   odeDne/doDne = pořadí dne cesty od jedničky
+ */
+
+/** Kotvy aktivní výpravy, vždycky pole. */
+export function kotvy() {
+  if (!store.kotvy || typeof store.kotvy !== 'object') store.kotvy = {}
+  return store.kotvy[klic()] || []
+}
+
+/** Zapíše kotvy aktivní výpravy. */
+export function zapisKotvy(nove) {
+  if (!store.kotvy || typeof store.kotvy !== 'object') store.kotvy = {}
+  store.kotvy[klic()] = nove
+  return save()
+}
+
+/** Kotva daného místa, nebo undefined. */
+export const kotvaMista = (id) => kotvy().find((k) => k.id === id)
+
+/**
+ * Nastaví kotvu. Stejné místo podruhé kotvu přepíše, ne zdvojí.
+ * @param {string} id
+ * @param {number} odeDne
+ * @param {number} doDne
+ */
+export function nastavKotvu(id, odeDne, doDne) {
+  const od = Math.max(1, Math.round(odeDne) || 1)
+  const doD = Math.max(od, Math.round(doDne) || od)
+  const bez = kotvy().filter((k) => k.id !== id)
+  return zapisKotvy([...bez, { id, odeDne: od, doDne: doD }])
+}
+
+/** Zruší kotvu místa. */
+export function zrusKotvu(id) {
+  return zapisKotvy(kotvy().filter((k) => k.id !== id))
+}
+
+/**
+ * Hlavní kotva – ta nejbližší v čase. Podle ní se kreslí koridor a počítá
+ * zajížďka; víc kotev naráz by znamenalo víc koridorů a z mapy by byl chaos.
+ * @returns {{id: string, odeDne: number, doDne: number}|null}
+ */
+export function hlavniKotva() {
+  const k = [...kotvy()].sort((a, b) => a.odeDne - b.odeDne)
+  return k[0] || null
+}
+
+/* ================= zajížďka ================= */
+
+/**
+ * O kolik km navíc stojí zastávka v místě `p` cestou z `odkud` do `kam`.
+ *
+ * `dkm(odkud→p) + dkm(p→kam) − dkm(odkud→kam)`. Nula znamená „přesně po
+ * cestě", velké číslo „to je úplně jinam".
+ *
+ * VZDUŠNOU ČAROU, A JE TO ODHAD: v Alpách údolí a průsmyky znamenají, že
+ * dvanáct kilometrů vzdušně může být hodina jízdy. Koeficient `KLIKATOST`
+ * to zprůměruje, ale v horách je optimistický. Skutečné routování by
+ * znamenalo další síťovou službu za běhu (dnes je jediná Nominatim) a bez
+ * signálu v horách by stejně nefungovalo. Proto odhad – a proto se v textu
+ * píše „zhruba", ne přesné číslo.
+ *
+ * @param {{lat:number, lon:number}} odkud
+ * @param {{lat:number, lon:number}} p
+ * @param {{lat:number, lon:number}} kam
+ * @returns {number} km navíc, nikdy záporné
+ */
+export function zajizdka(odkud, p, kam) {
+  if (!odkud || !p || !kam) return 0
+  const primo = dkm(odkud, kam)
+  const pres = dkm(odkud, p) + dkm(p, kam)
+  return Math.max(0, pres - primo)
+}
+
+/**
+ * Jak daleko od přímé cesty místo leží – pro koridor.
+ *
+ * Používá se poloviční zajížďka, což je dobrá aproximace kolmé vzdálenosti
+ * od spojnice: kdo zajede stranou o x km, ujede navíc zhruba 2x.
+ */
+export const odchylkaOdTrasy = (odkud, p, kam) => zajizdka(odkud, p, kam) / 2
+
+/** Do jaké odchylky se místo počítá jako „po cestě". */
+export const KORIDOR_KM = 30
+
+/**
+ * Košík setříděný podle zajížďky k hlavní kotvě.
+ *
+ * Bez kotvy nebo bez polohy se řadí podle vzdálenosti od `odkud`, a když
+ * není ani ta, abecedně – pořád je to použitelný seznam, jen bez koridoru.
+ *
+ * @param {{lat:number, lon:number}|null} odkud
+ * @returns {Array<{p: object, km: number|null, zajizdka: number|null, vKoridoru: boolean, kotva: object|null}>}
+ */
+export function kosikSeZajizdkou(odkud = null) {
+  const kotva = hlavniKotva()
+  const cil = kotva ? S.byId[kotva.id] : null
+
+  const out = mistaVKosiku().map((p) => {
+    const km = odkud ? dkm(odkud, p) : null
+    // Kotva sama zajížďku nemá – je to cíl, ne odbočka.
+    const z = odkud && cil && p.id !== cil.id ? zajizdka(odkud, p, cil) : null
+    return {
+      p,
+      km,
+      zajizdka: z,
+      vKoridoru: z != null ? z / 2 <= KORIDOR_KM : false,
+      kotva: kotvaMista(p.id) || null,
+    }
+  })
+
+  return out.sort((a, b) => {
+    // Kotvy nahoru – jsou to závazky, ne návrhy.
+    if (!!a.kotva !== !!b.kotva) return a.kotva ? -1 : 1
+    if (a.zajizdka != null && b.zajizdka != null) return a.zajizdka - b.zajizdka
+    if (a.km != null && b.km != null) return a.km - b.km
+    return a.p.n.localeCompare(b.p.n, 'cs')
+  })
+}
+
 /**
  * Rozdělí košík do skupin podle země a v každé seřadí podle vzdálenosti
  * od `odkud`, nebo abecedně, když polohu neznáme.

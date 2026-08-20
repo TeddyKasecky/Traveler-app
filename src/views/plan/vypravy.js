@@ -174,9 +174,11 @@ export function duplikuj(i) {
   })
   const bloky = store.bloky && store.bloky[puvodni]
   if (Array.isArray(bloky)) store.bloky[novy] = JSON.parse(JSON.stringify(bloky))
-  // Košík se kopíruje taky – wishlist patří k výpravě stejně jako bloky.
+  // Košík a kotvy se kopírují taky – patří k výpravě stejně jako bloky.
   const kos = store.kosik && store.kosik[puvodni]
   if (Array.isArray(kos)) store.kosik[novy] = [...kos]
+  const kot = store.kotvy && store.kotvy[puvodni]
+  if (Array.isArray(kot)) store.kotvy[novy] = kot.map((k) => ({ ...k }))
   save()
   return novy
 }
@@ -203,6 +205,14 @@ function prestehujBloky(stary, novy) {
       ? [...new Set([...store.kosik[novy], ...store.kosik[stary]])]
       : store.kosik[stary]
     delete store.kosik[stary]
+  }
+  // Kotvy taky – stejný klíč, stejná past. Slučují se podle id místa,
+  // aby po sloučení nevznikly dvě kotvy na tomtéž bodě.
+  if (store.kotvy && Array.isArray(store.kotvy[stary])) {
+    const cile = Array.isArray(store.kotvy[novy]) ? store.kotvy[novy] : []
+    const maji = new Set(cile.map((k) => k.id))
+    store.kotvy[novy] = [...cile, ...store.kotvy[stary].filter((k) => !maji.has(k.id))]
+    delete store.kotvy[stary]
   }
 }
 

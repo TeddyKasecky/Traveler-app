@@ -457,5 +457,71 @@ priprav(['a', 'b', 'c'], [2, 1])
   t('vsechnyBody vrací jen typ misto', vsechnyBody().every((b) => b.typ === 'misto'))
 }
 
+/* ---------- košík, kotva a zajížďka ---------- */
+// Čistá logika bez DOM, proto se dá testovat tady. Vykreslení mapy košíku
+// a koridoru se testuje v prohlížeči (smoke.mjs).
+{
+  const { S } = await import('../src/core/store.js')
+  const {
+    pridejDoKosiku, vyhodZKosiku, vKosiku, kosik, nastavKotvu, zrusKotvu,
+    hlavniKotva, kotvaMista, zajizdka, kosikSeZajizdkou, KORIDOR_KM,
+  } = await import('../src/views/plan/kosik.js')
+
+  store.vypravaNazev = 'Zkouška košíku'
+  store.kosik = {}
+  store.kotvy = {}
+
+  // Tři místa v řadě: A --- B --- C. B leží přesně mezi, takže zajížďka ~0.
+  S.places = [
+    { id: 'A', n: 'Ačko', k: 'Jezera', z: 'Rakousko', lat: 47.0, lon: 11.0 },
+    { id: 'B', n: 'Bčko', k: 'Jezera', z: 'Rakousko', lat: 47.5, lon: 11.0 },
+    { id: 'C', n: 'Cčko', k: 'Jezera', z: 'Itálie', lat: 48.0, lon: 11.0 },
+    { id: 'D', n: 'Déčko', k: 'Hory a túry', z: 'Itálie', lat: 47.5, lon: 14.0 },
+  ]
+  S.byId = Object.fromEntries(S.places.map((p) => [p.id, p]))
+
+  t('košík je zprvu prázdný', kosik().length === 0)
+  pridejDoKosiku('B')
+  t('místo se přidá', vKosiku('B'))
+  pridejDoKosiku('B')
+  t('duplicita se ignoruje', kosik().length === 1)
+  pridejDoKosiku('C')
+  pridejDoKosiku('D')
+  vyhodZKosiku('C')
+  t('místo jde vyhodit', !vKosiku('C') && kosik().length === 2)
+
+  const a = S.byId.A
+  const c = S.byId.C
+  t('bod přesně na trase má zajížďku ~0', zajizdka(a, S.byId.B, c) < 0.5)
+  t('bod stranou má zajížďku znatelnou', zajizdka(a, S.byId.D, c) > 100)
+  t('zajížďka není nikdy záporná', zajizdka(a, c, c) >= 0)
+
+  t('bez kotvy není hlavní kotva', hlavniKotva() === null)
+  pridejDoKosiku('C')
+  nastavKotvu('C', 3, 5)
+  t('kotva se uloží s oknem dnů', kotvaMista('C').odeDne === 3 && kotvaMista('C').doDne === 5)
+  nastavKotvu('C', 4, 6)
+  t('stejné místo kotvu přepíše, nezdvojí', store.kotvy['Zkouška košíku'].length === 1)
+  t('obrácené pořadí dnů se srovná', (nastavKotvu('C', 5, 2), kotvaMista('C').doDne >= kotvaMista('C').odeDne))
+
+  nastavKotvu('B', 1, 2)
+  t('hlavní kotva je ta nejbližší v čase', hlavniKotva().id === 'B')
+  zrusKotvu('B')
+  t('kotva jde zrušit', kotvaMista('B') == null && hlavniKotva().id === 'C')
+
+  {
+    const razeno = kosikSeZajizdkou(a)
+    t('kotva je v seznamu první', razeno[0].kotva != null && razeno[0].p.id === 'C')
+    t('kotva sama zajížďku nemá', razeno[0].zajizdka === null)
+    const bcko = razeno.find((x) => x.p.id === 'B')
+    const dcko = razeno.find((x) => x.p.id === 'D')
+    t('místo na trase je v koridoru', bcko.vKoridoru === true)
+    t('místo stranou v koridoru není', dcko.vKoridoru === false)
+    t('koridor má rozumnou šířku', KORIDOR_KM > 0 && KORIDOR_KM < 200)
+  }
+
+  t('bez polohy se pořadí nesesype', kosikSeZajizdkou(null).length === 3)
+}
+
 console.log(`\n${ok}/${ok + chyb} kontrol prošlo`)
 process.exit(chyb ? 1 : 0)

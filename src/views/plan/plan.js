@@ -50,7 +50,7 @@ import {
 import { archivRadkyHtml, napojArchivRadky } from './archiv.js'
 import { cislaPlanuHtml, napojCislaPlanu } from './prehled.js'
 import { kosik } from './kosik.js'
-import { kosikHtml, napojKosik } from './kosikView.js'
+import { kosikHtml, napojKosik, zavriMapuKosiku } from './kosikView.js'
 
 /** Kolik zastávek unese odkaz do Google Maps. */
 const MAX_DO_NAVIGACE = 10
@@ -886,6 +886,9 @@ function lista(items) {
 function napoj(wrap, items) {
   for (const b of wrap.querySelectorAll('#planSegment button')) {
     b.onclick = () => {
+      // Mapa košíku je vlastní instance Leafletu – bez úklidu by po odchodu
+      // z karty zůstala viset na prvku, který zmizí překreslením.
+      if (dil === 'kosik' && b.dataset.seg !== 'kosik') zavriMapuKosiku()
       dil = b.dataset.seg
       renderPlan()
     }

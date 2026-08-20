@@ -140,8 +140,10 @@ const definovane = new Set([...Object.keys(svetle), ...Object.keys(media), ...Ob
 // že barvy malované mapy se přestěhovaly do `tokens.css` jako `--mapa-*`.
 // Přibylo `--ps` (měřítko špendlíku podle zoomu, `map/map.js`). Odešly
 // `--kv`/`--ks`: kresby krajiny se přestěhovaly z DOM do MapLibre, kde je
-// velikost vlastností symbolu, ne proměnnou v CSS.
-const ZA_BEHU = new Set(['--pc', '--cc', '--mc', '--dc', '--ps'])
+// velikost vlastností symbolu, ne proměnnou v CSS. Přibylo `--kb` (barva
+// špendlíku košíku podle toho, jestli je místo po cestě, mimo koridor,
+// nebo je to kotva – `map/kosikVrstva.js`).
+const ZA_BEHU = new Set(['--pc', '--cc', '--mc', '--dc', '--ps', '--kb'])
 
 const nezname = new Set()
 for (const f of souboryCss) {

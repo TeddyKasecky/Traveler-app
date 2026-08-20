@@ -106,6 +106,12 @@ export const store = nacti(KEY, {
    * Klíčovaný názvem výpravy jako `bloky`. Viz views/plan/kosik.js.
    */
   kosik: {},
+  /**
+   * Kotvy výprav: { [název]: [{ id, odeDne, doDne }] }. Jediný závazek
+   * v jinak volné cestě – „do bikeparku mezi 3. a 5. dnem". Klíčované
+   * názvem výpravy jako `kosik`. Viz views/plan/kosik.js.
+   */
+  kotvy: {},
   /** Získané profilové achievementy: { [id]: ms }. Viz plan/achievementy.js. */
   achievementy: {},
   prio: {},

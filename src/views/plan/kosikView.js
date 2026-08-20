@@ -12,7 +12,7 @@
  */
 
 import { S, store, PHOTOS, save } from '../../core/store.js'
-import { dkm, fmtKm } from '../../core/geo.js'
+import { dkm, fmtKm, zjistiPolohu } from '../../core/geo.js'
 import { esc } from '../../core/html.js'
 import { IC } from '../../icons/sprite.js'
 import { KAT } from '../../data/categories.js'
@@ -22,8 +22,13 @@ import { sekce } from '../../components/vzory.js'
 import { toast } from '../../components/toast.js'
 import { potvrd } from '../../components/dialog.js'
 import {
-  kosik, mistaVKosiku, kosikPoZemich, pridejDoKosiku, vyhodZKosiku, vyprazdniKosik, vKosiku,
+  kosik, mistaVKosiku, pridejDoKosiku, vyhodZKosiku, vyprazdniKosik, vKosiku,
+  kosikSeZajizdkou, hlavniKotva, nastavKotvu, zrusKotvu,
 } from './kosik.js'
+import L from 'leaflet'
+import { drawKosik, zahodKosikVrstvu, priblizNaKosik, maCoKreslit } from '../../map/kosikVrstva.js'
+import { zadej } from '../../components/dialog.js'
+import { vychoziBod } from './cesta.js'
 import { sklonuj } from './plan.js'
 
 /** Silnice bývá delší než vzdušná čára – týž koeficient jako v plan.js. */
@@ -53,22 +58,41 @@ const dobaJizdy = (km) => {
 
 /* ================= košík ================= */
 
-/** Jedno místo v košíku. Bez pořadí a bez dne – to je celý smysl. */
-function kosikRadek(p, odkud) {
+/**
+ * Jedno místo v košíku. Bez pořadí a bez dne – to je celý smysl.
+ * Zajížďka je hlavní číslo: „kolik mě to stojí navíc" je otázka, kterou si
+ * u večeře klademe, ne „jak je to daleko vzdušnou čarou".
+ */
+function kosikRadek({ p, km, zajizdka: z, vKoridoru, kotva }, odkud) {
   const kat = KAT[p.k] || {}
   const o = obrazekMista(p, PHOTOS)
-  const km = odkud ? dkm(odkud, p) : null
-  return `<div class="kosik-radek" data-kos="${p.id}">
+  return `<div class="kosik-radek${kotva ? ' je-kotva' : ''}${z != null && !vKoridoru && !kotva ? ' daleko' : ''}"
+    data-kos="${p.id}">
     <img class="kosik-obr" src="${o.src}" alt="" loading="lazy" decoding="async" width="56" height="56"
       style="object-position:${o.vyrez}"
       ${o.zaloha ? `data-zaloha="${o.zaloha}" onerror="this.onerror=null;this.src=this.dataset.zaloha"` : ''}>
     <div class="kosik-text">
-      <h3>${esc(p.n)}</h3>
+      <h3>${esc(p.n)}${kotva ? ` <span class="kosik-kotva-znak">${IC('i-flag')}</span>` : ''}</h3>
       <div class="kosik-meta">
         <span style="color:${kat.c || 'var(--text2)'}">${IC(kat.i || 'i-spark')}${esc(p.k || '')}</span>
-        ${km != null ? `<span class="tecka">•</span>${fmtKm(km)}` : ''}
+        ${
+          kotva
+            ? `<span class="tecka">•</span><b>${kotva.odeDne}.–${kotva.doDne}. den</b>`
+            : z != null
+              ? `<span class="tecka">•</span><b class="${vKoridoru ? 'zaj-blizko' : 'zaj-daleko'}">${
+                  z < 1 ? 'po cestě' : `+${Math.round(z)} km`
+                }</b>`
+              : km != null
+                ? `<span class="tecka">•</span>${fmtKm(km)}`
+                : ''
+        }
       </div>
     </div>
+    ${
+      kotva
+        ? ''
+        : `<button class="ikonbtn kosik-kotva" data-kos-kotva="${p.id}" title="Udělat z toho kotvu">${IC('i-star')}</button>`
+    }
     <button class="ikonbtn kosik-do-planu" data-kos-plan="${p.id}" title="Přidat do itineráře">${IC('i-plus')}</button>
     <button class="ikonbtn kosik-ven" data-kos-ven="${p.id}" title="Vyhodit z košíku">${IC('i-x')}</button>
   </div>`
@@ -83,31 +107,70 @@ export function kosikHtml(odkud = null) {
   const mista = mistaVKosiku()
   if (!mista.length) return prazdnyKosik()
 
-  const skupiny = kosikPoZemich(odkud)
-  const prehled = skupiny
-    .map((s) => `<span class="kosik-zeme-pill">${esc(s.zeme)}<b>${s.mista.length}</b></span>`)
-    .join('')
+  const polozky = kosikSeZajizdkou(odkud)
+  const kotva = hlavniKotva()
+  const cil = kotva ? S.byId[kotva.id] : null
+  const poCeste = polozky.filter((x) => x.vKoridoru && !x.kotva).length
 
   return `
     <div class="kosik-hlava">
       <div>
         <h3>Košík výpravy</h3>
         <div class="meta">${mista.length} ${sklonuj(mista.length, 'místo', 'místa', 'míst')} ·
-          zatím bez pořadí a bez dnů</div>
+          bez pořadí a bez dnů</div>
       </div>
       <button class="btn small nebezpecne" id="kosikVyprazdnit">Vysypat</button>
     </div>
-    <div class="kosik-zeme">${prehled}</div>
 
-    ${skupiny
-      .map(
-        (s) => `
-      ${sekce(s.zeme, { pozn: `${s.mista.length} ${sklonuj(s.mista.length, 'místo', 'místa', 'míst')}` })}
-      ${s.mista.map((p) => kosikRadek(p, odkud)).join('')}`
-      )
-      .join('')}
+    ${kotvaPruh(cil, kotva, odkud)}
 
-    <div class="meta kosik-napoveda">${IC('i-plus')} přesune místo do itineráře, ${IC('i-x')} ho z košíku vyhodí.</div>`
+    <div class="kosik-mapa" id="kosikMapa"></div>
+    ${
+      odkud && cil
+        ? `<div class="meta kosik-legenda">
+             <span class="kos-tecka blizko"></span>po cestě (${poCeste})
+             <span class="kos-tecka daleko"></span>zajížďka
+             <span class="kos-tecka kotva"></span>kotva
+             <span class="kosik-odhad">vzdálenosti jsou zhruba – vzdušnou čarou</span>
+           </div>`
+        : `<div class="meta kosik-legenda">
+             ${
+               odkud
+                 ? 'Vyber kotvu a uvidíš, co máš po cestě.'
+                 : `<span>Bez polohy se zajížďka spočítat nedá.</span>
+                    <button class="btn small" id="kosikPoloha">${IC('i-pinme')}Zapnout polohu</button>`
+             }
+           </div>`
+    }
+
+    ${sekce(cil ? 'Po cestě ke kotvě' : 'Místa v košíku', {
+      pozn: cil ? 'seřazeno podle zajížďky' : '',
+    })}
+    ${polozky.map((x) => kosikRadek(x, odkud)).join('')}
+
+    <div class="meta kosik-napoveda">${IC('i-plus')} přesune místo do itineráře,
+      ${IC('i-star')} z něj udělá kotvu, ${IC('i-x')} ho vyhodí.</div>`
+}
+
+/** Pruh s kotvou, nebo výzva ji nastavit. */
+function kotvaPruh(cil, kotva, odkud) {
+  if (!cil || !kotva) {
+    return `<div class="kotva-pruh prazdna">${IC('i-flag')}
+      <div><b>Zatím bez kotvy</b>
+        <span class="meta">Označ místo, kam se chceš dostat – třeba bikepark mezi 3. a 5. dnem.
+          Podle něj se spočítá, co máš po cestě.</span></div>
+    </div>`
+  }
+  const km = odkud ? dkm(odkud, cil) : null
+  return `<div class="kotva-pruh">${IC('i-flag')}
+    <div>
+      <b>${esc(cil.n)}</b>
+      <span class="meta">chceme tam ${kotva.odeDne}.–${kotva.doDne}. den${
+        km != null ? ` · odsud zhruba ${fmtKm(km * KLIKATOST)}` : ''
+      }</span>
+    </div>
+    <button class="ikonbtn" data-kotva-zrus="${cil.id}" title="Zrušit kotvu">${IC('i-x')}</button>
+  </div>`
 }
 
 /** Prázdný košík: vysvětlit, k čemu je – jinak vypadá jako rozbitá obrazovka. */
@@ -122,12 +185,115 @@ function prazdnyKosik() {
     </div>`
 }
 
+/** @type {import('leaflet').Map|null} vlastní instance mapy v kartě Košík */
+let mapaKosiku = null
+
+/** Uklidí mapu košíku. Volá se při odchodu z karty. */
+export function zavriMapuKosiku() {
+  zahodKosikVrstvu()
+  if (mapaKosiku) {
+    try {
+      mapaKosiku.remove()
+    } catch {
+      /* prvek už zmizel s překreslením */
+    }
+    mapaKosiku = null
+  }
+}
+
+/**
+ * Postaví mapu košíku. Jako mini-mapa v detailu vzniká nová instance
+ * pokaždé – karta se překresluje celá a stará mapa zmizí s prvkem.
+ *
+ * Inicializuje se až po vykreslení (rAF + prodleva): dřív má prvek nulovou
+ * velikost a Leaflet by spočítal špatné souřadnice.
+ */
+function vykresliMapuKosiku(wrap) {
+  zavriMapuKosiku()
+  const el = wrap.querySelector('#kosikMapa')
+  if (!el || el._leaflet_id) return
+
+  const odkud = vychoziBod()
+  const polozky = kosikSeZajizdkou(odkud)
+  if (!maCoKreslit(polozky)) {
+    el.innerHTML = '<div class="meta kosik-bezmapy">Místa v košíku zatím nemají souřadnice.</div>'
+    return
+  }
+
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      if (!document.body.contains(el) || el._leaflet_id) return
+      try {
+        mapaKosiku = L.map(el, {
+          zoomControl: false,
+          attributionControl: false,
+          scrollWheelZoom: false,
+        }).setView([polozky[0].p.lat, polozky[0].p.lon], 8)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mapaKosiku)
+
+        // Kde jsi ty – bez toho by koridor neměl odkud vycházet.
+        if (odkud) {
+          L.marker([odkud.lat, odkud.lon], {
+            icon: L.divIcon({ className: 'kos-pin-obal', html: '<div class="kos-ja"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
+            zIndexOffset: 2000,
+          })
+            .addTo(mapaKosiku)
+            .bindTooltip('Tady jsi', { direction: 'top', offset: [0, -9] })
+        }
+
+        drawKosik(mapaKosiku, polozky, odkud)
+        priblizNaKosik(mapaKosiku, polozky, odkud)
+      } catch {
+        el.innerHTML = '<div class="meta kosik-bezmapy">Mapu se nepovedlo načíst.</div>'
+      }
+    }, 180)
+  })
+}
+
 /**
  * Naváže obsluhu košíku.
  * @param {HTMLElement} wrap
  * @param {() => void} prekresli
  */
 export function napojKosik(wrap, prekresli) {
+  vykresliMapuKosiku(wrap)
+
+  // Poloha se nikde nezjišťuje sama a je to správně – ptát se na ni bez
+  // vyžádání je otravné. Košík ji ale potřebuje, tak si o ni řekne tady.
+  const poloha = wrap.querySelector('#kosikPoloha')
+  if (poloha) poloha.onclick = () => zjistiPolohu()
+
+  for (const b of wrap.querySelectorAll('[data-kos-kotva]')) {
+    b.onclick = async (e) => {
+      e.stopPropagation()
+      const id = b.dataset.kosKotva
+      // Okno ve dnech, ne datum: cesta se počítá od vyjetí a datum by nutilo
+      // rozhodnout se dřív, než je jasné, kdy se vůbec vyráží.
+      const odpoved = await zadej({
+        nadpis: 'Kdy tam chceme být?',
+        text: 'Napiš rozsah dnů od vyjetí, třeba „3-5". Jeden den stačí taky.',
+        vychozi: '3-5',
+        placeholder: '3-5',
+      })
+      if (odpoved === null) return
+      const shoda = /^\s*(\d+)\s*(?:[-–—]\s*(\d+))?\s*$/.exec(odpoved)
+      if (!shoda) return toast('Nerozumím – zkus třeba „3-5"')
+      const od = Number(shoda[1])
+      const doD = shoda[2] ? Number(shoda[2]) : od
+      if (!nastavKotvu(id, od, doD)) return
+      toast('Kotva nastavená')
+      prekresli()
+    }
+  }
+
+  for (const b of wrap.querySelectorAll('[data-kotva-zrus]')) {
+    b.onclick = (e) => {
+      e.stopPropagation()
+      if (!zrusKotvu(b.dataset.kotvaZrus)) return
+      prekresli()
+    }
+  }
+
   for (const b of wrap.querySelectorAll('[data-kos-ven]')) {
     b.onclick = (e) => {
       e.stopPropagation()
