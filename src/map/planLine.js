@@ -16,6 +16,7 @@ import { esc } from '../core/html.js'
 import { dkm } from '../core/geo.js'
 import { token } from '../core/barvy.js'
 import { pozice } from '../core/pozice.js'
+import { projektujNaTrasu } from '../core/projekce.js'
 import vanObr from '../assets/van.webp'
 
 /** @type {L.Polyline|null} */
@@ -26,6 +27,8 @@ let ujeta = null
 let dodavka = null
 /** @type {L.LayerGroup|null} špendlíky vlastních míst z bloků plánu */
 let vlastni = null
+/** @type {L.CircleMarker|null} živě sledovaná poloha promítnutá na trasu (views/plan/cesta-zivot.js) */
+let zivaZnacka = null
 
 /**
  * Aktuální souřadnice bodu trasy, nebo null.
@@ -117,6 +120,10 @@ export function drawPlanLine(mapa) {
   if (dodavka) {
     dodavka.remove()
     dodavka = null
+  }
+  if (zivaZnacka) {
+    zivaZnacka.remove()
+    zivaZnacka = null
   }
 
   // Za jízdy se kreslí otisk ROZJETÉ cesty; při prohlížení ukončené cesty
@@ -218,5 +225,20 @@ export function drawPlanLine(mapa) {
       keyboard: false,
       icon: L.divIcon({ className: 'dodavka', iconSize: [0, 0], iconAnchor: [0, 0], html: `<img src="${vanObr}" alt="">` }),
     }).addTo(mapa)
+  }
+
+  // Živě sledovaná poloha (views/plan/cesta-zivot.js) promítnutá na
+  // POSLEDNÍ PLATNÝ přepočet trasy – jen za jízdy (jedeSe), jen když appka
+  // sledování skutečně spustila (S.zivaPoloha existuje jen na popředí,
+  // na kartě Na cestě) a jen na skutečnou trasu z Routing API, ne vzdušnou
+  // spojnici (ta by projekci zkreslila).
+  if (jedeSe && S.zivaPoloha && store.aktivniPrepocet && store.aktivniPrepocet.polyline) {
+    const proj = projektujNaTrasu(S.zivaPoloha, store.aktivniPrepocet.polyline)
+    if (proj) {
+      zivaZnacka = L.circleMarker([proj.bod.lat, proj.bod.lon], {
+        radius: 8, color: token('--sun', '#A87C24'), weight: 3,
+        fillColor: token('--paper', '#FAF5EC'), fillOpacity: 1,
+      }).addTo(mapa)
+    }
   }
 }
