@@ -108,7 +108,23 @@ export async function zavolejRouting(body) {
     if (zbytek.length) params.set('waypoints', zbytek.map((b) => `${b.lon},${b.lat}`).join(';'))
     const url = `https://api.mapy.com/v1/routing/route?${params}`
     const odpoved = await fetch(url, { signal: ctrl.signal })
-    if (!odpoved.ok) throw new Error(`Mapy.com odpověděly chybou ${odpoved.status}`)
+    if (!odpoved.ok) {
+      // 404 s errorCode 7/9 znamená "mezi těmihle body nevede trasa daného
+      // typu dopravy" (nejčastěji přes moře/ostrovy) – zdokumentované
+      // chování API, ne chyba appky. Tělo nemusí být JSON (např. u jiných
+      // stavových kódů), proto se čte v try.
+      let detail = null
+      try {
+        detail = await odpoved.json()
+      } catch {
+        /* tělo není JSON, zůstane obecná hláška níž */
+      }
+      const errorCode = detail?.detail?.[0]?.errorCode
+      if (odpoved.status === 404 && (errorCode === 7 || errorCode === 9)) {
+        throw new Error('Mezi některými body nevede trasa (např. přes moře) – zkus jiný typ dopravy v Nastavení, nebo body uprav.')
+      }
+      throw new Error(`Mapy.com odpověděly chybou ${odpoved.status}`)
+    }
     const data = await odpoved.json()
     return zpracujOdpoved(data)
   } catch (e) {
