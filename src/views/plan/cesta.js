@@ -249,7 +249,7 @@ function blokyNaCeste() {
     .map(
       (b) => `
       <div class="cesta-zastavka vlastni${b.hotovo ? ' hotova' : ''}">
-        <button class="cesta-fajfka" data-vlastni="${b.id}" title="${b.hotovo ? 'Byli jsme tu' : 'Odznačit'}">${IC('i-check')}</button>
+        <button class="cesta-fajfka" data-vlastni="${b.id}" title="${b.hotovo ? 'Odznačit' : 'Byli jsme tu'}">${IC('i-check')}</button>
         <div class="cesta-telo">
           <b>★ ${esc(b.nazev || 'Vlastní místo')}</b>
           <span class="meta">${b.lat.toFixed(4)}, ${b.lon.toFixed(4)}${b.den ? ` · ${b.den}. den` : ''}</span>
@@ -435,7 +435,9 @@ export function napojCestu(wrap, prekresli) {
       }
     }
 
-  for (const b of wrap.querySelectorAll('.cesta-fajfka')) {
+  // Jen zastávky z otisku – vlastní místa mají vlastní fajfku o kus níž.
+  // Bez `[data-id]` by sem spadla i ta jejich a zapsala `odznacene[undefined]`.
+  for (const b of wrap.querySelectorAll('.cesta-fajfka[data-id]')) {
     b.onclick = () => {
       const c = store.cesta
       if (!c) return
@@ -446,6 +448,33 @@ export function napojCestu(wrap, prekresli) {
       if (c.odznacene[id]) store.stav[id] = 'visited'
       if (!save()) return
       draw()
+      prekresli()
+    }
+  }
+
+  // Vlastní místa se odškrtávají na bloku (`hotovo`), ne do `cesta.odznacene`:
+  // otisk cesty klíčuje id míst z databáze a vlastní bod v ní není. Díky tomu
+  // odškrtnutí rovnou vidí i Itinerář, který čte týž blok.
+  for (const b of wrap.querySelectorAll('.cesta-fajfka[data-vlastni]')) {
+    b.onclick = () => {
+      const bod = blok(b.dataset.vlastni)
+      if (!bod) return
+      // `hotovo` je časové razítko, ne boolean – nula znamená neodškrtnuto.
+      bod.hotovo = bod.hotovo ? 0 : Date.now()
+      if (!save()) return
+      // Znak bodu na mapě se odznačením mění, tak se překreslí i trasa.
+      draw()
+      prekresli()
+    }
+  }
+
+  for (const r of wrap.querySelectorAll('.cesta-radek-seznamu')) {
+    r.onclick = () => {
+      const b = blok(r.dataset.blok)
+      const i = Number(r.dataset.i)
+      if (!b || !b.polozky || !b.polozky[i]) return
+      b.polozky[i].hotovo = b.polozky[i].hotovo ? 0 : Date.now()
+      if (!save()) return
       prekresli()
     }
   }
