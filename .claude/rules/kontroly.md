@@ -23,7 +23,8 @@ bez vyžádání. Místo nich je 27 samostatných spustitelných `.mjs` skriptů
 | `extract-places.mjs` | `npm run check-data` | že `places.json` je 1:1 s originálem |
 | `check-css-parity.mjs` | `npm run check-css:original` | 338 CSS pravidel proti originálu — **odstaveno redesignem** |
 | `check-tokeny.mjs` | `npm run check-tokeny` | barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů |
-| `check-dny.mjs` | `npm run check-dny` | dny, výpravy, složky, záloha, body trasy a automatické dělení, 94 bodů |
+| `check-dny.mjs` | `npm run check-dny` | dny, výpravy, složky, záloha, body trasy a automatické dělení, 113 bodů |
+| `check-projekce.mjs` | `npm run check-projekce` | throttle a projekce polohy na trasu (živé sledování, srpen 2026), 13 bodů |
 | `check-filters-parity.mjs` | `npm run check-filters` | 134 kombinací filtrů |
 | `check-handlers.mjs` | `npm run check-handlers` | napojení tlačítek za běhu, 61/61 |
 | `check-form.mjs` | `npm run check-form` | že formulář vyrábí platná místa, 18/18 |

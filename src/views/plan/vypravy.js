@@ -43,13 +43,20 @@ const odlozene = () => (Array.isArray(store.vypravy) ? store.vypravy : (store.vy
 /** Názvy složek, vždycky jako pole. Staré uložení klíč nemá. */
 const slozky = () => (Array.isArray(store.slozky) ? store.slozky : (store.slozky = []))
 
-/** Aktivní výprava jako záznam, který se dá odložit. */
+/**
+ * Aktivní výprava jako záznam, který se dá odložit. Nese i přepočet trasy
+ * (views/plan/routing.js) – ten žije při aktivitě jako store.aktivniPrepocet,
+ * v odloženém záznamu jako pole `prepocet`, stejně jako se dnes stěhuje
+ * `plan`/`planDny` tam a zpět. `prepocet: undefined` se do JSON.stringify
+ * neuloží vůbec, takže staré/prázdné záznamy zůstávají beze změny tvaru.
+ */
 const aktivniZaznam = () => ({
   nazev: store.vypravaNazev || BEZ_NAZVU,
   plan: store.plan,
   planDny: store.planDny || [],
   slozka: store.vypravaSlozka || '',
   vytvoreno: store.vypravaVytvoreno || 0,
+  prepocet: store.aktivniPrepocet || undefined,
 })
 
 /**
@@ -128,6 +135,7 @@ export function prepniVypravu(i) {
   store.planDny = Array.isArray(cil.planDny) ? cil.planDny : []
   store.vypravaSlozka = typeof cil.slozka === 'string' ? cil.slozka : ''
   store.vypravaVytvoreno = cil.vytvoreno || 0
+  store.aktivniPrepocet = cil.prepocet || null
   sez[i] = odchazi
   return save()
 }
@@ -148,6 +156,7 @@ export function novaVyprava(nazev) {
   store.planDny = []
   store.vypravaSlozka = ''
   store.vypravaVytvoreno = Date.now()
+  store.aktivniPrepocet = null
   return save()
 }
 
@@ -237,6 +246,7 @@ export function smaz(i) {
   store.planDny = dalsi && Array.isArray(dalsi.planDny) ? dalsi.planDny : []
   store.vypravaSlozka = dalsi && typeof dalsi.slozka === 'string' ? dalsi.slozka : ''
   store.vypravaVytvoreno = (dalsi && dalsi.vytvoreno) || 0
+  store.aktivniPrepocet = (dalsi && dalsi.prepocet) || null
   return save()
 }
 

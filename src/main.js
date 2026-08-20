@@ -38,6 +38,7 @@ import { renderDisc } from './views/discover/discover.js'
 import { renderList } from './views/list/list.js'
 import { renderPlan, zavriNavigaci, jeOtevrenaNavigace } from './views/plan/plan.js'
 import { renderMapaDole, initMapaDole } from './views/mapa/mapa.js'
+import { zastavSledovani } from './views/plan/cesta-zivot.js'
 
 import { registrujServiceWorker } from './pwa/register.js'
 
@@ -171,6 +172,28 @@ on('poloha', () => {
   if (S.activeTab === 'home') renderHome()
 })
 
+/**
+ * Živé sledování polohy na trase se posunulo (views/plan/cesta-zivot.js,
+ * throttlovaně). Překreslí kartu Na cestě (číslo "zbývá") i mapu (značka
+ * aktuální projektované polohy) – jen když je appka opravdu na Plánu, jinak
+ * by šlo o zbytečnou práci na neviditelné obrazovce.
+ */
+on('zivaProjekce', () => {
+  if (S.activeTab === 'plan') renderPlan()
+  draw()
+})
+
+/**
+ * Přepnula se hlavní záložka (core/router.js). Živé sledování polohy smí
+ * běžet jen na viditelné kartě Na cestě uvnitř Plánu – opuštění záložky
+ * "plan" (na Mapu, Domů, Profil…) ho musí zastavit, i když appka zůstává
+ * na popředí. Vstup ZPĚT na "plan" necháváme na renderPlan()/napojCestu(),
+ * ty samy poznají, jestli je otevřená zrovna karta Na cestě.
+ */
+on('zalozkaZmenena', (t) => {
+  if (t !== 'plan') zastavSledovani()
+})
+
 /* ---------- rozepsaná poznámka se nesmí ztratit ---------- */
 
 // Psaní poznámky ukládá až se přestane psát (store.saveOdlozene). Když se mezitím
@@ -179,7 +202,16 @@ on('poloha', () => {
 // na mobilu spolehnout; `visibilitychange` chytí přepnutí do jiné aplikace.
 window.addEventListener('pagehide', () => save())
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') save()
+  if (document.visibilityState === 'hidden') {
+    save()
+    // Živé sledování polohy (cesta-zivot.js) je JEN NA POPŘEDÍ – appka na
+    // pozadí ho nesmí držet běžet, prohlížeč by ho stejně brzy zastavil sám.
+    zastavSledovani()
+  } else if (S.activeTab === 'plan') {
+    // Návrat na popředí – necháme renderPlan() rozhodnout, jestli je
+    // otevřená karta Na cestě, a pokud ano, sledování zase naskočí.
+    renderPlan()
+  }
 })
 
 /* ---------- start ---------- */

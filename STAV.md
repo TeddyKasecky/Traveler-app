@@ -1,6 +1,6 @@
 # Kde jsme skončili
 
-Stav k **17. 8. 2026**. Tenhle soubor je předávka mezi sezeními: co je hotové, co
+Stav k **20. 8. 2026**. Tenhle soubor je předávka mezi sezeními: co je hotové, co
 musíte udělat vy, co se rozhodlo a proč, a co je na řadě. Důkazy a čísla jsou
 v [`PARITA.md`](PARITA.md), odložené nápady v [`NAPADY.md`](NAPADY.md),
 výklad vzhledu ve [`VZHLED.md`](VZHLED.md).
@@ -112,6 +112,39 @@ Kontroly: `validate` · `check-uloziste` 13/13 · `smoke` 133/133 · `smoke:sing
 | **Fáze 2: parkoviště z OSM a výška vozu** | vynecháno na vaše přání |
 
 ---
+
+## 3a. Uložené pozice, přepočet trasy a živé sledování — čeká na váš krok
+
+Hotovo a otestováno (10 commitů na `tadeas/work`): uložené pozice v Profilu
+(přidat/upravit/smazat, ručně nebo výběrem na mapě), start a cíl trasy jdou
+vybrat z uložené pozice nebo z aktuální GPS polohy (nejvýš jeden na plán,
+pevně na začátku/konci, nejde přetáhnout jinam), tlačítko „Přepočítat" na
+kartě Itinerář, vykreslení skutečné trasy na mapě místo vzdušné čáry, živé
+sledování zbývající vzdálenosti na kartě Na cestě a značka polohy na mapě
+(jen na popředí appky, watchPosition se zastaví při zhasnutí displeje nebo
+přepnutí jinam — žádná pozadí, žádné wake locky).
+
+**Bez vás to nedokončí:** volání skutečné trasy jde přes Mapy.com Routing
+API, appka na něj ale zatím nemá klíč. `src/views/plan/routing.js` má
+`MAPY_API_KLIC = ''` (appka bez něj funguje normálně, jen tlačítko
+Přepočítat ukáže srozumitelnou chybu a zůstane u odhadu vzdušnou čarou).
+Až budete mít klíč z účtu Mapy.com (Seznam.cz):
+
+1. Doplňte ho do `MAPY_API_KLIC` v `routing.js`.
+2. `zavolejRouting()` má tři místa označená `TODO` (přesná cesta API,
+   formát parametru `points`, tvar JSON odpovědi v `zpracujOdpoved()`) —
+   psaná bez dokumentace po ruce, jen aby appka bezpečně selhala, ne aby
+   fungovala. Bude potřeba je doladit podle skutečné odpovědi (stačí
+   jeden `curl` s reálným klíčem) a **ručně vyzkoušet Přepočítat** v appce
+   — tohle nejde automatizovat bez klíče, takže to žádný skript neověřil.
+3. Živé sledování na mobilu stojí za vyzkoušení naostro (ne jen v Edge
+   s mockovanou polohou) — `enableHighAccuracy: true` může znatelně
+   zatěžovat GPS čip/baterii, konstanty v `views/plan/cesta-zivot.js`
+   jsou vhodný start, ne nutně finální.
+
+Kontroly: `check-dny` 113/113 (nové testy pro start/cíl, otisk trasy,
+seřazenou trasu), `check-projekce` 13/13 (nový skript, throttle a projekce
+polohy na trasu), `smoke` 203/203, `check-tokeny` 7/7, `parity` 26/26.
 
 ## 4. Co je na řadě
 
