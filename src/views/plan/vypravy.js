@@ -174,6 +174,9 @@ export function duplikuj(i) {
   })
   const bloky = store.bloky && store.bloky[puvodni]
   if (Array.isArray(bloky)) store.bloky[novy] = JSON.parse(JSON.stringify(bloky))
+  // Košík se kopíruje taky – wishlist patří k výpravě stejně jako bloky.
+  const kos = store.kosik && store.kosik[puvodni]
+  if (Array.isArray(kos)) store.kosik[novy] = [...kos]
   save()
   return novy
 }
@@ -185,11 +188,22 @@ export function duplikuj(i) {
  * se – smazat se nesmí nic.
  */
 function prestehujBloky(stary, novy) {
-  if (stary === novy || !store.bloky || !Array.isArray(store.bloky[stary])) return
-  store.bloky[novy] = Array.isArray(store.bloky[novy])
-    ? [...store.bloky[novy], ...store.bloky[stary]]
-    : store.bloky[stary]
-  delete store.bloky[stary]
+  if (stary === novy) return
+  if (store.bloky && Array.isArray(store.bloky[stary])) {
+    store.bloky[novy] = Array.isArray(store.bloky[novy])
+      ? [...store.bloky[novy], ...store.bloky[stary]]
+      : store.bloky[stary]
+    delete store.bloky[stary]
+  }
+  // Košík je klíčovaný názvem stejně jako bloky, takže má stejnou past.
+  // Slučuje se přes Set – po sloučení dvou stejnojmenných výprav by jinak
+  // bylo jedno místo v košíku dvakrát.
+  if (store.kosik && Array.isArray(store.kosik[stary])) {
+    store.kosik[novy] = Array.isArray(store.kosik[novy])
+      ? [...new Set([...store.kosik[novy], ...store.kosik[stary]])]
+      : store.kosik[stary]
+    delete store.kosik[stary]
+  }
 }
 
 /**

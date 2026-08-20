@@ -406,3 +406,57 @@
 .cesta-dalsi .meta{display:block}
 .cesta-dalsi b{display:block;font-family:var(--f-disp);font-size:1rem}
 .cesta-dalsi .btn{flex:0 0 auto;margin:0}
+
+/* ---------- košík výpravy ---------- */
+/* Wishlist bez pořadí a bez dnů. Vizuálně schválně lehčí než zastávky
+   itineráře – košík je „chci vidět", ne závazek s dnem a kilometry. */
+
+.kosik-hlava{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  margin:2px 2px 10px}
+.kosik-hlava h3{margin:0 0 3px;font-family:var(--f-disp);font-weight:700;font-size:1.02rem}
+
+.kosik-zeme{display:flex;flex-wrap:wrap;gap:6px;margin:0 2px 12px}
+.kosik-zeme-pill{display:inline-flex;align-items:center;gap:6px;border:var(--line);
+  border-radius:var(--r-pill);background:var(--plocha);padding:4px 11px;font-size:.78rem;color:var(--text2)}
+.kosik-zeme-pill b{color:var(--text);font-size:.8rem}
+
+.kosik-radek{display:flex;gap:10px;align-items:center;background:var(--plocha);border:var(--line);
+  border-radius:var(--r-s);box-shadow:var(--stin-1);padding:8px 10px;margin-bottom:7px}
+.kosik-obr{flex:0 0 auto;width:56px;height:56px;border-radius:var(--r-s);object-fit:cover;
+  background:var(--plocha2)}
+.kosik-text{flex:1;min-width:0}
+.kosik-text h3{margin:0;font-size:.9rem;line-height:1.25;font-weight:600}
+.kosik-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:3px;
+  font-size:.76rem;color:var(--text2)}
+.kosik-meta svg.ic{font-size:12px;margin-right:3px;vertical-align:-2px}
+.kosik-radek .ikonbtn{flex:0 0 auto;width:32px;height:32px}
+.kosik-ven svg.ic{color:var(--text3)}
+.kosik-napoveda{margin:12px 2px 0;font-size:.76rem;line-height:1.5}
+.kosik-napoveda svg.ic{font-size:12px;vertical-align:-2px}
+
+/* ---------- Co dál? ---------- */
+/* Tipy na pokračování pod dnešní zastávkou. Chuť zužuje kategorie. */
+
+.chute{display:flex;flex-wrap:wrap;gap:6px;margin:0 2px 10px}
+.chut-pill{display:inline-flex;align-items:center;gap:6px;border:var(--line);border-radius:var(--r-pill);
+  background:var(--plocha);padding:6px 12px;font:inherit;font-size:.79rem;color:var(--text2);
+  transition:background .18s,color .18s,border-color .18s}
+.chut-pill svg.ic{font-size:13px;stroke:var(--pc,var(--akcent))}
+.chut-pill.on{background:var(--pc,var(--akcent));border-color:var(--pc,var(--akcent));
+  color:var(--na-akcentu)}
+.chut-pill.on svg.ic{stroke:var(--na-akcentu)}
+.chut-pill.zrus svg.ic{stroke:var(--text3)}
+
+.tip-radek{display:flex;gap:10px;align-items:center;background:var(--plocha);border:var(--line);
+  border-radius:var(--r-s);box-shadow:var(--stin-1);padding:9px 11px;margin-bottom:7px;flex-wrap:wrap}
+.tip-obr{flex:0 0 auto;width:52px;height:52px;border-radius:var(--r-s);object-fit:cover;
+  background:var(--plocha2)}
+.tip-text{flex:1;min-width:8rem}
+.tip-text h3{margin:0;font-size:.9rem;line-height:1.25;font-weight:600}
+/* Hvězdička u tipu z košíku: „tohle sis chtěl vidět a je to kousek". */
+.tip-znak svg.ic{font-size:12px;color:var(--sun);stroke:var(--sun);vertical-align:-1px}
+.tip-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:3px;
+  font-size:.76rem;color:var(--text2)}
+.tip-meta svg.ic{font-size:12px;margin-right:3px;vertical-align:-2px}
+.tip-akce{display:flex;gap:6px;flex:0 0 auto}
+.tip-prazdno{margin:0 2px 10px;font-size:.82rem;line-height:1.5}

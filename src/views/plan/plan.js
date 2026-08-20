@@ -40,13 +40,17 @@ import {
   seznamVyprav, seznamSlozek, prepniVypravu, novaVyprava, novaSlozka, prejmenujSlozku,
   smazSlozku, presunVypravu, prejmenuj, smaz, duplikuj, BEZ_NAZVU,
 } from './vypravy.js'
-import { cestaHtml, napojCestu, jedeSe, vyjed, zamcenaCestaHtml, napojZamcenouCestu } from './cesta.js'
+import {
+  cestaHtml, napojCestu, jedeSe, vyjed, zamcenaCestaHtml, napojZamcenouCestu, vychoziBod,
+} from './cesta.js'
 import {
   blokyDneHtml, pridatBlokHtml, napojBloky, rozpocetCelkem, blokHtml, blok, bloky,
   vsechnyBody, pridejBod, hledejAdresu, rozpoznejSouradnice, DRUHY,
 } from './bloky.js'
 import { archivRadkyHtml, napojArchivRadky } from './archiv.js'
 import { cislaPlanuHtml, napojCislaPlanu } from './prehled.js'
+import { kosik } from './kosik.js'
+import { kosikHtml, napojKosik } from './kosikView.js'
 
 /** Kolik zastávek unese odkaz do Google Maps. */
 const MAX_DO_NAVIGACE = 10
@@ -149,14 +153,24 @@ export function renderPlan() {
         { id: 'cesta', popisek: jedeSe() ? 'Na cestě ·' : 'Na cestě' },
         { id: 'vypravy', popisek: 'Výpravy' },
         { id: 'itinerar', popisek: 'Itinerář' },
+        // Počet v popisku říká „něco tam čeká" – prázdný košík se snadno
+        // přehlédne a nasbíraná místa by v něm tiše ležela.
+        { id: 'kosik', popisek: kosik().length ? `Košík ${kosik().length}` : 'Košík' },
       ],
       dil,
       'planSegment'
     ) +
-    (dil === 'cesta' ? cestaHtml() : dil === 'vypravy' ? knihovna() : kartaItinerare(items, dny)) +
+    (dil === 'cesta'
+      ? cestaHtml()
+      : dil === 'vypravy'
+        ? knihovna()
+        : dil === 'kosik'
+          ? kosikHtml(vychoziBod())
+          : kartaItinerare(items, dny)) +
     (dil === 'itinerar' && S.otevrenaCesta == null ? lista(items) : '')
 
   napoj(wrap, items)
+  if (dil === 'kosik') napojKosik(wrap, renderPlan)
   if (dil === 'cesta') napojCestu(wrap, renderPlan)
   if (dil === 'vypravy') {
     napojKnihovnu(wrap)

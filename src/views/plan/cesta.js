@@ -28,6 +28,7 @@ import { draw } from '../../map/map.js'
 import { planoveAchievementy, pripisPlanove, pripisProfilove } from './achievementy.js'
 import { detailCestyHtml } from './archiv.js'
 import { bloky, blok } from './bloky.js'
+import { coDalHtml, napojCoDal } from './kosikView.js'
 
 /** Silnice bývá delší než vzdušná čára – týž koeficient jako v plan.js. */
 const KLIKATOST = 1.35
@@ -139,6 +140,31 @@ export function ukonciCestu() {
   return save()
 }
 
+/**
+ * Odkud se měří „co je poblíž" – pro tipy Co dál? i pro vzdálenosti v košíku.
+ *
+ * GPS má přednost, protože je to opravdu tam, kde stojíš. Když není (bez
+ * signálu, zamítnuté oprávnění, prohlížeč bez polohy), nastoupí poslední
+ * odznačená zastávka: na cestě je to nejlepší odhad, kde jsi. Bez obojího
+ * vrací null a volající karty se prostě nevykreslí.
+ *
+ * @returns {{lat:number, lon:number, popis:string}|null}
+ */
+export function vychoziBod() {
+  if (S.userPos && Number.isFinite(S.userPos.lat)) {
+    return { lat: S.userPos.lat, lon: S.userPos.lon, popis: 'od tebe' }
+  }
+  const c = store.cesta
+  if (c) {
+    // Poslední v pořadí odznačení, ne poslední v plánu – odznačovat se dá
+    // na přeskáčku a zajímá nás, kde jsme skončili.
+    const posledni = odznaceneVPoradi().slice(-1)[0]
+    const p = posledni && S.byId[posledni]
+    if (p) return { lat: p.lat, lon: p.lon, popis: `od: ${p.n}` }
+  }
+  return null
+}
+
 /** Pořadí odznačení – pro čáru ujeté trasy na mapě. */
 export function odznaceneVPoradi() {
   const c = store.cesta
@@ -206,6 +232,8 @@ export function cestaHtml() {
       )
       .join('')}
 
+    ${coDal()}
+
     ${blokyNaCeste()}
 
     <div class="sekce"><span class="sekce-text">Poznámka z cesty</span></div>
@@ -219,6 +247,12 @@ export function cestaHtml() {
     </div>
 
     ${achievementyCesty(c)}`
+}
+
+/** Karta „Co dál?" – jedno místo, kde se výchozí bod počítá. */
+function coDal() {
+  const odkud = vychoziBod()
+  return coDalHtml(odkud, odkud ? odkud.popis : '')
 }
 
 /**
@@ -478,6 +512,8 @@ export function napojCestu(wrap, prekresli) {
       prekresli()
     }
   }
+
+  napojCoDal(wrap, prekresli)
 
   for (const inp of wrap.querySelectorAll('.cesta-pozn')) {
     inp.oninput = () => {

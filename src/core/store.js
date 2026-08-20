@@ -101,6 +101,11 @@ export const store = nacti(KEY, {
    * protože výpravy vlastní id nemají a název je jejich klíč i jinde.
    */
   bloky: {},
+  /**
+   * Wishlist míst na výpravu, která ještě nejsou v trase: { [název]: [id] }.
+   * Klíčovaný názvem výpravy jako `bloky`. Viz views/plan/kosik.js.
+   */
+  kosik: {},
   /** Získané profilové achievementy: { [id]: ms }. Viz plan/achievementy.js. */
   achievementy: {},
   prio: {},

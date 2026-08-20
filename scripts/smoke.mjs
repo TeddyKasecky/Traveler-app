@@ -268,7 +268,9 @@ await kontrola('detail má poznámku', () => page.locator('#noteBox').count(), 1
 // Přestavba detailu: ikonová řada nahoře místo řádku pěti tlačítek dole,
 // vedlejší akce pod „…", Instagram jako karta (pole `ig` má 454 z 580 míst
 // a do teď to byl textový řádek úplně dole, kam nikdo nedoscrolloval).
-await kontrola('detail má ikonovou řadu', () => page.locator('#sheet .ikonrada .ikonbtn').count(), 4)
+// Pátá ikona je košík výpravy (srpen 2026) – „chci vidět, zatím nevím kdy",
+// na rozdíl od plánu, který je závazek s pořadím a dnem.
+await kontrola('detail má ikonovou řadu', () => page.locator('#sheet .ikonrada .ikonbtn').count(), 5)
 await page.evaluate(() => document.getElementById('dVice').click())
 await page.waitForTimeout(300)
 await kontrola('„…" nabízí vedlejší akce', () =>
@@ -337,7 +339,7 @@ await page.waitForTimeout(400)
 await page.click('#tabs button[data-tab="plan"]')
 await page.waitForTimeout(300)
 await kontrola('prázdná knihovna má hlášku', () => page.locator('#planWrap .empty').count(), 1)
-await kontrola('segment Na cestě · Výpravy · Itinerář', () => page.locator('#planSegment button').count(), 3)
+await kontrola('segment Na cestě · Výpravy · Itinerář · Košík', () => page.locator('#planSegment button').count(), 4)
 // Bez rozjeté cesty se začíná knihovnou Výpravy – ta je vstupní bod.
 await kontrola('začíná se Výpravami', () => page.locator('#planSegment button.on').innerText(), 'Výpravy')
 // Fantom se nevypisuje (srpen 2026): čerstvý uživatel žádnou výpravu nezaložil,
@@ -367,6 +369,60 @@ await kontrola('zastávka přibyla do plánu', () =>
 await kontrola('počítadlo nad záložkou Plán', () => page.locator('#planCount').innerText(), '1')
 // Vyjíždí se z otevřeného plánu, jako se v navigaci spouští otevřená trasa.
 await kontrola('Itinerář nabízí Vyjet', () => page.locator('#planVyjet').count(), 1)
+
+// Košík (srpen 2026): wishlist výpravy bez pořadí a bez dnů. Plní se
+// hvězdičkou v detailu místa, vysypává se do itineráře.
+await page.evaluate(() => document.querySelector('#planSegment button[data-seg="kosik"]')?.click())
+await page.waitForTimeout(400)
+await kontrola('prázdný košík vysvětluje, k čemu je', () =>
+  page.locator('.cesta-prazdno h3').innerText().then((x) => /prázdný/i.test(x))
+)
+// Do košíku z detailu místa – tam se člověk rozhoduje. Druhý řádek, ne první:
+// ten už je v plánu z předchozího kroku a přesun z košíku by se správně
+// odmítl hláškou „už v itineráři je".
+await page.click('#tabs button[data-tab="list"]')
+await page.waitForTimeout(500)
+const doKosiku = page.locator('#listInner .radek').nth(1)
+await doKosiku.scrollIntoViewIfNeeded()
+await doKosiku.click()
+await page.waitForTimeout(700)
+await kontrola('detail má tlačítko košíku', () => page.locator('#dKosik').count(), 1)
+await page.evaluate(() => document.getElementById('dKosik').click())
+await page.waitForTimeout(500)
+await kontrola('místo se uložilo do košíku', () =>
+  page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('vandrbuch:v1'))
+    return Object.values(s.kosik || {}).some((x) => x.length === 1)
+  })
+)
+await page.goBack()
+await page.waitForTimeout(500)
+await page.click('#tabs button[data-tab="plan"]')
+await page.waitForTimeout(300)
+await page.evaluate(() => document.querySelector('#planSegment button[data-seg="kosik"]')?.click())
+await page.waitForTimeout(500)
+await kontrola('košík ukazuje uložené místo', () => page.locator('.kosik-radek').count(), 1)
+// Přesun do itineráře košík vyprázdní – na dvou místech naráz by místo mátlo.
+await page.click('[data-kos-plan]')
+await page.waitForTimeout(800)
+await kontrola('místo z košíku přešlo do itineráře', () =>
+  page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('vandrbuch:v1'))
+    return s.plan.length === 2 && Object.values(s.kosik || {}).every((x) => x.length === 0)
+  })
+)
+// Zpátky na Itinerář – další kontroly (dny, bloky) žijí tam a na Košíku
+// by `#planPridat` neexistovalo. Zastávka přidaná z košíku se přitom musí
+// zase odebrat: následující kontroly stojí na plánu o jedné zastávce
+// a jinak by se sesypaly na posunutých počtech.
+await page.evaluate(() => document.querySelector('#planSegment button[data-seg="itinerar"]')?.click())
+await page.waitForTimeout(500)
+await page.locator('.zastavka').nth(1).locator('[data-act="vice"]').click()
+await page.waitForTimeout(300)
+await page.locator('.zastavka').nth(1).locator('[data-act="rm"]').click()
+await page.waitForTimeout(500)
+await kontrola('plán je zpátky na jedné zastávce', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).plan.length), 1)
 
 // Dny: „Přidat den" přidá prázdný den (dřív od druhého kliknutí tiché nic),
 // prázdný den jde táhnout za úchyt jako celá skupina, „Zrušit dny" uklidí.
