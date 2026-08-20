@@ -41,6 +41,7 @@ import {
   smazSlozku, presunVypravu, prejmenuj, smaz, duplikuj, BEZ_NAZVU,
 } from './vypravy.js'
 import { cestaHtml, napojCestu, jedeSe, vyjed, zamcenaCestaHtml, napojZamcenouCestu } from './cesta.js'
+import { zastavSledovani } from './cesta-zivot.js'
 import {
   blokyDneHtml, pridatBlokHtml, napojBloky, rozpocetCelkem, blokHtml, blok, bloky,
   vsechnyBody, pridejBod, hledejAdresu, rozpoznejSouradnice, DRUHY, souradniceBodu,
@@ -144,6 +145,12 @@ export function renderPlan() {
   pc.textContent = items.length
 
   if (!dil) dil = vychoziDil()
+
+  // Živé sledování polohy (cesta-zivot.js) smí běžet jen na téhle konkrétní
+  // kartě – jakmile appka opustí "Na cestě" (i uvnitř Plánu, i na jinou
+  // hlavní záložku), sledování se zastaví. napojCestu() ho níž zase
+  // spustí, pokud je dil==='cesta'.
+  if (dil !== 'cesta') zastavSledovani()
 
   wrap.innerHTML =
     segment(

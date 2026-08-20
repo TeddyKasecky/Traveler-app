@@ -120,7 +120,8 @@ Runtime závislosti jsou **dvě** a obě vědomě:
 **Moduly se nevolají napřímo — oznamují si změny událostmi** přes `on()`/`emit()` ze
 `src/core/store.js`. Mapa nesmí volat views a naopak; bez toho by přidání obrazovky znamenalo
 sahat do mapy. Události dnes: `prekresleno`, `otevriDetail`, `skoc`, `poloha`, `fotkyNacteny`,
-`ulozeniSelhalo`, `motivZmenen`.
+`ulozeniSelhalo`, `motivZmenen`, `zalozkaZmenena` (přepnutí hlavní záložky, `core/router.js`),
+`zivaProjekce` (throttlovaně z `views/plan/cesta-zivot.js`).
 
 **Žádné globální proměnné mimo `src/core/store.js`** (`S`, `F`, `store`, `prefs`, `PHOTOS`).
 
