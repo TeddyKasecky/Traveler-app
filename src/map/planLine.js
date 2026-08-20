@@ -45,6 +45,16 @@ function souradniceBodu(b) {
 }
 
 /**
+ * Otisk seznamu bodů – duplikát views/plan/routing.js#otiskBodu ze stejného
+ * důvodu jako souradniceBodu výš (mapa nesmí importovat views). Používá se
+ * jen na porovnání `===` s `store.aktivniPrepocet.otisk`, ne na zápis.
+ * @param {Array<{lat: number, lon: number, id?: string}>} body
+ */
+function otiskBodu(body) {
+  return body.map((b) => `${b.id || ''}:${b.lat.toFixed(5)},${b.lon.toFixed(5)}`).join('|')
+}
+
+/**
  * Vlastní místa aktivní výpravy (bloky typu `misto` s rozpoznatelnou polohou).
  *
  * Čtou se přímo ze `store.bloky` – jsou to data, ne view, takže mapa smí.
@@ -173,10 +183,16 @@ export function drawPlanLine(mapa) {
 
   if (body.length < 2) return
 
-  cara = L.polyline(
-    body.map((p) => [p.lat, p.lon]),
-    { color: token('--zvyrazneni', '#E1B152'), weight: 4.5, opacity: otisk ? 0.5 : 0.95, lineCap: 'round', lineJoin: 'round' }
-  ).addTo(mapa)
+  // Skutečná trasa z Mapy.com Routing API (views/plan/routing.js), pokud je
+  // pro TENHLE seznam bodů ještě platná – jinak (žádný přepočet, zastaralý,
+  // nebo se jede/prohlíží otisk cesty) zůstává fallback: rovná spojnice bodů.
+  const prepocet = !otisk && store.aktivniPrepocet
+  const platny = prepocet && prepocet.otisk === otiskBodu(body)
+  const carovaGeometrie = platny ? prepocet.polyline : body.map((p) => [p.lat, p.lon])
+
+  cara = L.polyline(carovaGeometrie, {
+    color: token('--zvyrazneni', '#E1B152'), weight: 4.5, opacity: otisk ? 0.5 : 0.95, lineCap: 'round', lineJoin: 'round',
+  }).addTo(mapa)
 
   // Ujetá část: plnou žlutou mezi odznačenými zastávkami v pořadí odznačení –
   // živé i ukončené cesty mají `odznacene` ve stejném tvaru. Bez GPS je to
