@@ -66,9 +66,9 @@ export function pocetAktivnich() {
   )
 }
 
-/** Vynuluje filtry. Hledání `q` se schválně nemaže – stejně jako dřív (N4). */
+/** Vynuluje filtry včetně hledání (N4). */
 export function resetFiltru() {
-  F.reg = F.zeme = F.typ = F.coll = ''
+  F.reg = F.zeme = F.typ = F.coll = F.q = ''
   F.free = F.kids = F.dogs = F.wow = F.fire = false
   F.ulozene = F.vPlanu = false
   F.stav = ''

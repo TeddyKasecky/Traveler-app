@@ -152,4 +152,11 @@ export function syncFiltersUI() {
   // `srovnejPocty()` ve `filterPanel.js` při každém překreslení.
   const stav = document.getElementById('fStav')
   if (stav) stav.value = F.stav || ''
+  // Hledání je na dvou obrazovkách (Mapa i Seznam) – po resetFiltru() (N4)
+  // musí zmizet text z obou, jinak by input dál ukazoval starou hodnotu,
+  // i když F.q je už prázdné.
+  for (const id of ['q', 'qMapa']) {
+    const el = document.getElementById(id)
+    if (el) el.value = F.q
+  }
 }
