@@ -235,7 +235,8 @@ await page.click('#tabs button[data-tab="disc"]')
 await page.waitForTimeout(300)
 // Objevuj má od přestavby rozvržení dlaždice `.dlazdice-kus` místo `.coll`
 // a nálady jako pilulky – přestěhovaly se sem z Domů, kde je předloha nemá.
-await kontrola('kolekce v Objevuj', () => page.locator('.dlazdice-kus').count(), 11)
+// 12 od N5 (srpen 2026) – kolekce „Se psem“ dřív v COLL chyběla.
+await kontrola('kolekce v Objevuj', () => page.locator('.dlazdice-kus').count(), 12)
 await kontrola('nálady v Objevuj', () => page.locator('.nalady .pilulka').count(), 6)
 // Karusel má od přestavby Domů dvě obrazovky, takže se musí počítat jen ten
 // na Objevuj – bez `#discInner` by se sečetly oba a číslo by nic neznamenalo.
@@ -841,7 +842,7 @@ await page.waitForTimeout(1300)
 
 await kontrola('formulář se otevřel', () => page.locator('#addPlace.show').count(), 1)
 await kontrola('dlaždice kategorií', () => page.locator('#addBody [data-kat]').count(), 10)
-await kontrola('dlaždice kolekcí', () => page.locator('#addBody [data-coll]').count(), 11)
+await kontrola('dlaždice kolekcí', () => page.locator('#addBody [data-coll]').count(), 12)
 await kontrola('mapka na výběr souřadnic', () => page.locator('#afMap.leaflet-container').count(), 1)
 await kontrola('prázdný formulář hlásí, co chybí', () =>
   page.locator('.afsouhrn b').innerText().then((t) => /je potřeba doplnit/.test(t))
