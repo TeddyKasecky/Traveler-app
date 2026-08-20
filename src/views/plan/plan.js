@@ -48,6 +48,7 @@ import {
 } from './bloky.js'
 import { zjistiPolohuJednorazove } from '../../core/geo.js'
 import { ulozenePozice } from '../../core/pozice.js'
+import { prepocitejTrasu } from './routing.js'
 import { archivRadkyHtml, napojArchivRadky } from './archiv.js'
 import { cislaPlanuHtml, napojCislaPlanu } from './prehled.js'
 
@@ -641,6 +642,7 @@ function akceItinerare(items) {
     ${!jedeSe() ? `<button class="btn primary" id="planVyjet">${IC('i-van')}Vyjet</button>` : ''}
     <button class="btn small" id="planNaMapu">${IC('i-map')}Na mapě</button>
     ${items.length > 2 ? `<button class="btn small" id="planOpt">${IC('i-sparkles')}Optimalizovat</button>` : ''}
+    <button class="btn small" id="planPrepocitat">${IC('i-route')}Přepočítat</button>
   </div>`
 }
 
@@ -990,6 +992,19 @@ function napoj(wrap, items) {
 
   const opt = document.getElementById('planOpt')
   if (opt) opt.onclick = optimalizuj
+
+  const prepocitat = document.getElementById('planPrepocitat')
+  if (prepocitat)
+    prepocitat.onclick = async () => {
+      toast('Počítám trasu…')
+      const v = await prepocitejTrasu()
+      // Chyba appku nesmí shodit – poslední známý store.aktivniPrepocet
+      // (pokud existuje) zůstává beze změny jako fallback, appka jen
+      // ohlásí, že se to nepovedlo.
+      toast(v.ok ? 'Trasa přepočítána' : v.chyba)
+      draw()
+      renderPlan()
+    }
 
   const den = document.getElementById('planDen')
   if (den)

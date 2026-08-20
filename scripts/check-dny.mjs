@@ -20,7 +20,7 @@
 // storage.js sahá na localStorage hned při načtení modulu.
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} }
 
-const { store } = await import('../src/core/store.js')
+const { store, S } = await import('../src/core/store.js')
 const { dnyPlanu, pridejDen, presunDoDne, zrusDny, nastavDny } =
   await import('../src/views/plan/dny.js')
 const { zalohaData, obnovZalohu } = await import('../src/core/csv.js')
@@ -122,7 +122,7 @@ const { seznamVyprav, prepniVypravu, novaVyprava, smazAktivniVypravu, BEZ_NAZVU 
   '../src/views/plan/vypravy.js'
 )
 const { pridejPozici } = await import('../src/core/pozice.js')
-const { souradniceBodu, maBod, pridejStartCil } = await import('../src/views/plan/body.js')
+const { souradniceBodu, maBod, pridejStartCil, serazenaTrasa } = await import('../src/views/plan/body.js')
 const { otiskBodu, pocetOdkazuNaPozici } = await import('../src/views/plan/routing.js')
 
 /** Nastaví stav včetně odložených výprav. */
@@ -501,6 +501,27 @@ priprav(['a', 'b'], [])
     const b = vsechnyBody().find((x) => x.zdroj && x.zdroj.typ === 'pozice')
     return souradniceBodu(b) === null
   })())
+}
+
+console.log('\nSeřazená trasa pro Routing API (srpen 2026)\n')
+
+priprav(['x', 'y'], [])
+{
+  store.vypravaNazev = 'Zkouška trasy'
+  store.bloky = {}
+  store.ulozenePozice = []
+  S.byId = { x: { id: 'x', lat: 50, lon: 14 }, y: { id: 'y', lat: 48, lon: 16 } }
+  const idStart = pridejStartCil('start', { nazev: 'Start', lat: 49, lon: 13 })
+  const idCil = pridejStartCil('cil', { nazev: 'Cíl', lat: 47, lon: 17 })
+  const trasa = serazenaTrasa()
+  t('trasa má start na začátku', trasa[0].id === idStart)
+  t('trasa má cíl na konci', trasa[trasa.length - 1].id === idCil)
+  t('zastávky jsou mezi start a cíl v pořadí store.plan', trasa[1].id === 'x' && trasa[2].id === 'y')
+  t('trasa má 4 body (start, 2 zastávky, cíl)', trasa.length === 4)
+
+  // Bod bez rozpoznatelné polohy (zatím bez polohy) se do trasy nepočítá.
+  pridejBod({ druh: 'vlastni', nazev: 'Bez polohy', po: 'x' })
+  t('bod bez polohy se v serazenaTrasa() přeskočí', serazenaTrasa().length === 4)
 }
 
 console.log('\nOtisk trasy a přepočet vázaný na výpravu (srpen 2026)\n')

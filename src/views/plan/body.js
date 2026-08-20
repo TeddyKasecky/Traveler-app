@@ -18,7 +18,7 @@
  * konec plánu – tak se chovají historické bloky bez těchhle polí).
  */
 
-import { store, save } from '../../core/store.js'
+import { store, S, save } from '../../core/store.js'
 import { BEZ_NAZVU } from './vypravy.js'
 import { pozice } from '../../core/pozice.js'
 
@@ -131,6 +131,45 @@ export function pridejStartCil(druh, { nazev = '', lat = null, lon = null, zdroj
   if (maBod(druh)) return null // volající to má zablokovat dřív (zašedlá volba) – tohle je pojistka
   if (druh === 'start') return pridejBod({ druh, nazev, lat, lon, den: 1, po: null, zdroj })
   return pridejBod({ druh, nazev, lat, lon, den: null, po: null, zdroj })
+}
+
+/**
+ * Zastávky a body trasy aktivní výpravy v pořadí, ve kterém appka kreslí
+ * trasu na mapě (map/planLine.js#drawPlanLine – stejné proplétání podle
+ * `po`/`den`, tady jen pro views, ne pro mapu). Body bez rozpoznatelné
+ * polohy (smazaná uložená pozice, „zatím bez polohy“) se PŘESKAKUJÍ – to
+ * je zamýšlené chování pro přepočet trasy (views/plan/routing.js), ne
+ * chyba: štítek bez lokace appka do routingu prostě nepočítá.
+ * @returns {Array<{lat: number, lon: number, id: string, zdroj: {typ:'pozice'|'gps', id?:string}|null}>}
+ */
+export function serazenaTrasa() {
+  const zastavky = store.plan.map((id) => S.byId[id]).filter(Boolean)
+  const mista = vsechnyBody()
+    .map((b) => {
+      const s = souradniceBodu(b)
+      return s ? { lat: s.lat, lon: s.lon, id: b.id, po: b.po, den: b.den, zdroj: b.zdroj || null } : null
+    })
+    .filter(Boolean)
+  const poZastavce = (id) => mista.filter((m) => m.po === id)
+  const delky = (store.planDny || []).length ? store.planDny : [zastavky.length]
+
+  const body = []
+  let od = 0
+  delky.forEach((delka, i) => {
+    for (const m of mista) if (!m.po && m.den === i + 1) body.push(m)
+    for (const z of zastavky.slice(od, od + delka)) {
+      body.push(z)
+      body.push(...poZastavce(z.id))
+    }
+    od += delka
+  })
+  for (const z of zastavky.slice(od)) {
+    body.push(z)
+    body.push(...poZastavce(z.id))
+  }
+  for (const m of mista) if (!m.po && m.den == null) body.push(m)
+
+  return body.map((b) => ({ lat: b.lat, lon: b.lon, id: b.id, zdroj: b.zdroj || null }))
 }
 
 /** Součet rozpočtu celého plánu – ukazuje se pod itinerářem. */
