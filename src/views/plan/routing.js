@@ -70,16 +70,14 @@ export async function sberBoduProRouting() {
 /**
  * proč: appka nemá backend, klíč Mapy.com je proto veřejná konstanta přímo
  * v kódu – stejně jako appka dnes volá Nominatim bez klíče (body.js
- * hledejAdresu()). MAPY_API_KLIC je záměrně prázdný placeholder: appka MUSÍ
- * fungovat i bez něj (přepočet selže srozumitelnou chybou a UI spadne na
- * vzdušný odhad) – klíč doplní uživatel sám.
+ * hledejAdresu()). Klíč má v administraci Mapy.com (developer.mapy.com)
+ * omezení na Referery (jen povolené domény), takže jeho zveřejnění v kódu
+ * neznamená, že by ho šlo použít odjinud.
  *
  * Volá se JEN na výslovnou akci (tlačítko Přepočítat), nikdy automaticky.
  */
 
-// TODO: doplnit skutečný veřejný klíč z účtu Mapy.com (Seznam.cz).
-// Prázdný řetězec je vědomý výchozí stav, ne chyba.
-const MAPY_API_KLIC = ''
+const MAPY_API_KLIC = 'BgblIMF4M6fhAqmBAEMFcKSZy6xw2O7PlZ9l4DPoXpE'
 const TIMEOUT_MS = 10000
 
 /**
@@ -95,13 +93,24 @@ export async function zavolejRouting(body) {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
   try {
-    const params = new URLSearchParams({ apikey: MAPY_API_KLIC, lang: 'cs', routeType: 'car_fast' })
-    for (const b of body) params.append('points', `${b.lon},${b.lat}`) // TODO ověřit formát/pořadí lon,lat
-    const url = `https://api.mapy.com/v1/routing/route?${params}` // TODO ověřit přesnou cestu API
+    // Routing API chce start/end/waypoints zvlášť, ne opakované points, a
+    // souřadnice jako "lon,lat" (ověřeno ručně – opačné pořadí než appka
+    // jinde používá pro Leaflet).
+    const [prvni, ...zbytek] = body
+    const posledni = zbytek.pop()
+    const params = new URLSearchParams({
+      apikey: MAPY_API_KLIC,
+      lang: 'cs',
+      routeType: 'car_fast',
+      start: `${prvni.lon},${prvni.lat}`,
+      end: `${posledni.lon},${posledni.lat}`,
+    })
+    if (zbytek.length) params.set('waypoints', zbytek.map((b) => `${b.lon},${b.lat}`).join(';'))
+    const url = `https://api.mapy.com/v1/routing/route?${params}`
     const odpoved = await fetch(url, { signal: ctrl.signal })
     if (!odpoved.ok) throw new Error(`Mapy.com odpověděly chybou ${odpoved.status}`)
     const data = await odpoved.json()
-    return zpracujOdpoved(data) // TODO namapovat skutečný tvar odpovědi
+    return zpracujOdpoved(data)
   } catch (e) {
     if (e.name === 'AbortError') throw new Error('Přepočet trasy vypršel – zkus to znovu')
     throw new Error(e.message || 'Přepočet trasy se nepovedl')
@@ -110,9 +119,20 @@ export async function zavolejRouting(body) {
   }
 }
 
-// TODO – závisí na skutečném tvaru JSON odpovědi Mapy.com Routing API.
+/**
+ * Namapuje odpověď Routing API na tvar, který appka ukládá do
+ * `store.aktivniPrepocet`. `coordinates` je GeoJSON `[lon, lat]`, appka
+ * (Leaflet) chce `[lat, lon]` – proto se pořadí otáčí. `length` je v metrech,
+ * `duration` v sekundách.
+ * @param {any} data
+ */
 function zpracujOdpoved(data) {
-  throw new Error('Zpracování odpovědi Mapy.com ještě není dopsané')
+  const polyline = data.geometry.geometry.coordinates.map(([lon, lat]) => [lat, lon])
+  return {
+    polyline,
+    vzdalenostKm: data.length / 1000,
+    casMin: Math.round(data.duration / 60),
+  }
 }
 
 /**

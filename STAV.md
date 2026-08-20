@@ -113,9 +113,9 @@ Kontroly: `validate` · `check-uloziste` 13/13 · `smoke` 133/133 · `smoke:sing
 
 ---
 
-## 3a. Uložené pozice, přepočet trasy a živé sledování — čeká na váš krok
+## 3a. Uložené pozice, přepočet trasy a živé sledování
 
-Hotovo a otestováno (10 commitů na `tadeas/work`): uložené pozice v Profilu
+Hotovo a otestováno (11 commitů na `tadeas/work`): uložené pozice v Profilu
 (přidat/upravit/smazat, ručně nebo výběrem na mapě), start a cíl trasy jdou
 vybrat z uložené pozice nebo z aktuální GPS polohy (nejvýš jeden na plán,
 pevně na začátku/konci, nejde přetáhnout jinam), tlačítko „Přepočítat" na
@@ -124,27 +124,26 @@ sledování zbývající vzdálenosti na kartě Na cestě a značka polohy na ma
 (jen na popředí appky, watchPosition se zastaví při zhasnutí displeje nebo
 přepnutí jinam — žádná pozadí, žádné wake locky).
 
-**Bez vás to nedokončí:** volání skutečné trasy jde přes Mapy.com Routing
-API, appka na něj ale zatím nemá klíč. `src/views/plan/routing.js` má
-`MAPY_API_KLIC = ''` (appka bez něj funguje normálně, jen tlačítko
-Přepočítat ukáže srozumitelnou chybu a zůstane u odhadu vzdušnou čarou).
-Až budete mít klíč z účtu Mapy.com (Seznam.cz):
+**Mapy.com Routing API je zapojené a ověřené naostro.** `src/views/plan/routing.js`
+má API klíč (`MAPY_API_KLIC`, veřejný — omezený referery v administraci
+Mapy.com, ne tajemství) a `zavolejRouting()`/`zpracujOdpoved()` odpovídají
+skutečnému tvaru API (parametry `start`/`end`/`waypoints` jako `"lon,lat"`,
+odpověď má `length` v metrech, `duration` v sekundách, `geometry.geometry.coordinates`
+jako `[lon,lat]` páry, appka je otáčí na `[lat,lon]` pro Leaflet). Ověřeno
+reálným voláním v `npm run dev` — appka dostala HTTP 200, uložila skutečnou
+trasu (7183 bodů polyline) a vykreslila ji na mapě. Appka bez klíče/offline
+pořád funguje – chyba se ukáže jako toast, poslední známý přepočet (nebo
+odhad vzdušnou čarou) zůstává jako fallback.
 
-1. Doplňte ho do `MAPY_API_KLIC` v `routing.js`.
-2. `zavolejRouting()` má tři místa označená `TODO` (přesná cesta API,
-   formát parametru `points`, tvar JSON odpovědi v `zpracujOdpoved()`) —
-   psaná bez dokumentace po ruce, jen aby appka bezpečně selhala, ne aby
-   fungovala. Bude potřeba je doladit podle skutečné odpovědi (stačí
-   jeden `curl` s reálným klíčem) a **ručně vyzkoušet Přepočítat** v appce
-   — tohle nejde automatizovat bez klíče, takže to žádný skript neověřil.
-3. Živé sledování na mobilu stojí za vyzkoušení naostro (ne jen v Edge
-   s mockovanou polohou) — `enableHighAccuracy: true` může znatelně
-   zatěžovat GPS čip/baterii, konstanty v `views/plan/cesta-zivot.js`
-   jsou vhodný start, ne nutně finální.
+Živé sledování stojí za vyzkoušení naostro na mobilu (ne jen v Edge
+s mockovanou polohou) — `enableHighAccuracy: true` může znatelně zatěžovat
+GPS čip/baterii, konstanty v `views/plan/cesta-zivot.js` jsou vhodný start,
+ne nutně finální.
 
 Kontroly: `check-dny` 113/113 (nové testy pro start/cíl, otisk trasy,
 seřazenou trasu), `check-projekce` 13/13 (nový skript, throttle a projekce
-polohy na trasu), `smoke` 203/203, `check-tokeny` 7/7, `parity` 26/26.
+polohy na trasu), `smoke` 203/203, `check-tokeny` 7/7, `parity` 26/26,
+ruční E2E test reálného volání Routing API.
 
 ## 4. Co je na řadě
 
