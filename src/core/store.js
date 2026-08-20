@@ -82,6 +82,22 @@ export const store = nacti(KEY, {
   /** Kdy aktivní výprava vznikla (ms). 0 = starý záznam bez data. */
   vypravaVytvoreno: 0,
   /**
+   * Termín aktivní výpravy – OBOJE NEPOVINNÉ (srpen 2026).
+   *
+   *   vypravaOd: 'YYYY-MM-DD' nebo '' … kdy vyrážíme
+   *   vypravaDnu: number nebo 0       … na kolik dní
+   *
+   * Prázdné je platný stav a nesmí nikde svítit jako nedodělek: „jsme páni
+   * svého času" znamená, že termín člověk často nezná a znát nemusí. Když
+   * ale vyplní, postaví se z toho rovnou kostra dnů, dopočítá se datum
+   * každého dne a naváže se na něj předpověď počasí.
+   *
+   * Datum jako 'YYYY-MM-DD', ne timestamp: cesta je o kalendářních dnech,
+   * ne o okamžicích, a timestamp by se posouval podle časové zóny.
+   */
+  vypravaOd: '',
+  vypravaDnu: 0,
+  /**
    * Probíhající cesta, nebo null. Viz views/plan/cesta.js.
    *
    * Čas se NIKDE NETIKÁ – počítá se vždy znovu z `zacatek` a součtu pauz,

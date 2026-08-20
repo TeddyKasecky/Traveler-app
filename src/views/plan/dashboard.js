@@ -25,6 +25,18 @@ import { IC } from '../../icons/sprite.js'
 import { ikonBtn } from '../../components/vzory.js'
 import { BEZ_NAZVU } from './vypravy.js'
 import { kosik, kotvy } from './kosik.js'
+import {
+  termin, datumDne, kratkeDatum, denVTydnu, kolikatyDenDnes, stihameTo, pocasiPodleKodu,
+} from './termin.js'
+
+/**
+ * Předpověď podle data: { 'YYYY-MM-DD': {kodPocasi, maxC, …} }.
+ *
+ * JEN V PAMĚTI, schválně. Počasí je ze všech dat nejrychleji zastaralé
+ * a uložené by lhalo – po restartu se radši natáhne znovu, nebo se prostě
+ * neukáže. Do `store` proto nepatří.
+ */
+export const pocasiDne = new Map()
 
 /**
  * Kostra cesty: pole dnů od jedničky, každý ví, jestli má kotvu a co v něm je.
@@ -58,6 +70,59 @@ export function kostraDnu(dny) {
   })
 }
 
+/**
+ * Pruh s termínem, nebo nabídka ho vyplnit.
+ *
+ * Prázdný termín NENÍ chyba – proto neutrální tón a žádná varovná barva.
+ * Nabídka existuje, protože z termínu se postaví kostra a naváže počasí.
+ */
+function terminPruh(od, dnu) {
+  if (!od && !dnu) {
+    return `<button class="termin-pruh prazdny" id="terminNastav">${IC('i-kalendar')}
+      <span><b>Kdy a na jak dlouho?</b>
+        <span class="meta">Nepovinné. Když to vyplníš, připravím dny i s daty a k nim počasí.</span></span>
+    </button>`
+  }
+  const popis = [
+    od ? `od ${kratkeDatum(od)}` : '',
+    dnu ? `${dnu} ${dnu === 1 ? 'den' : dnu < 5 ? 'dny' : 'dní'}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ')
+  return `<button class="termin-pruh" id="terminNastav">${IC('i-kalendar')}
+    <span><b>${esc(popis)}</b></span>
+    <span class="meta">upravit</span>
+  </button>`
+}
+
+/**
+ * Odhad „stíháme?" mezi dvěma po sobě jdoucími kotvami.
+ *
+ * VĚDOMĚ MĚKKÉ: věta, ne verdikt, a žádná červená. Když se to nevejde
+ * pohodlně, řekne se „bude to svižnější tempo" – rozhodnutí zůstává
+ * na posádce, viz `stihameTo()` v termin.js.
+ */
+function stihameHtml(kostra) {
+  const zacatky = kostra.flatMap((d) => d.kotvy.filter((k) => k.zacinaTady))
+  if (zacatky.length < 2) return ''
+
+  const radky = []
+  for (let i = 1; i < zacatky.length; i++) {
+    const a = zacatky[i - 1]
+    const b = zacatky[i]
+    // Nejtěsnější varianta: z posledního dne okna první kotvy do prvního dne
+    // okna druhé. Když vyjde i tahle jako pohoda, vyjde každá jiná taky.
+    const dnu = b.odeDne - a.doDne
+    const odhad = stihameTo(a.p, b.p, dnu)
+    if (!odhad) continue
+    radky.push(`<div class="stihame${odhad.pohoda ? '' : ' svizne'}">
+      ${IC(odhad.pohoda ? 'i-clock' : 'i-route')}
+      <span><b>${esc(a.p.n)} → ${esc(b.p.n)}</b><span class="meta">${esc(odhad.veta)}</span></span>
+    </div>`)
+  }
+  return radky.join('')
+}
+
 /** Jeden řádek kostry. */
 function radekDne({ cislo, zastavky, kotvy: kot, volny }) {
   const zacinajici = kot.filter((k) => k.zacinaTady)
@@ -76,10 +141,21 @@ function radekDne({ cislo, zastavky, kotvy: kot, volny }) {
         ? `<span class="kostra-pocet">${zastavky} ${zastavky === 1 ? 'zastávka' : zastavky < 5 ? 'zastávky' : 'zastávek'}</span>`
         : `<span class="kostra-volno">volno — ${IC('i-plus')}naplánovat</span>`
 
-  return `<button class="kostra-den${volny ? ' volny' : ''}${zacinajici.length ? ' kotva' : ''}"
-    data-kostra-den="${cislo}">
+  // Datum a počasí jen když je termín – bez něj řádek vypadá jako dosud.
+  const datum = datumDne(cislo)
+  const p = datum ? pocasiDne.get(datum) : null
+  const pocasiZnak = p
+    ? `<span class="kostra-pocasi" title="${esc(pocasiPodleKodu(p.kodPocasi).popis)}">
+         ${IC(pocasiPodleKodu(p.kodPocasi).ikona)}${Math.round(p.maxC)}°</span>`
+    : ''
+
+  return `<button class="kostra-den${volny ? ' volny' : ''}${zacinajici.length ? ' kotva' : ''}${
+    cislo === kolikatyDenDnes() ? ' dnes' : ''
+  }" data-kostra-den="${cislo}">
     <span class="kostra-cislo">${cislo}</span>
+    ${datum ? `<span class="kostra-datum">${denVTydnu(datum)}<b>${kratkeDatum(datum)}</b></span>` : ''}
     <span class="kostra-telo">${obsah}</span>
+    ${pocasiZnak}
   </button>`
 }
 
@@ -96,21 +172,31 @@ export function dashboardHtml(items, dny, statistika) {
   const volnych = kostra.filter((d) => d.volny).length
   const vKosiku = kosik().length
   const slozka = store.vypravaSlozka || ''
+  const { od, dnu } = termin()
+
+  // Popisek pod názvem: termín má přednost, protože odpovídá na „kdy".
+  // Bez termínu se ukáže to, co víme – dny a kilometry.
+  const casti = []
+  if (od) {
+    const konec = datumDne(dnu || kostra.length || 1)
+    casti.push(dnu > 1 ? `${kratkeDatum(od)} – ${kratkeDatum(konec)}` : kratkeDatum(od))
+  }
+  if (kostra.length) casti.push(`${kostra.length} ${kostra.length === 1 ? 'den' : kostra.length < 5 ? 'dny' : 'dní'}`)
+  if (items.length > 1) casti.push(fmtKm(statistika.road))
+  if (slozka) casti.push(esc(slozka))
 
   return `<div class="planhlava">
     <div class="planhlava-text">
       <h2>${esc(store.vypravaNazev || BEZ_NAZVU)}</h2>
-      <div class="meta">${
-        items.length
-          ? `${kostra.length} ${kostra.length === 1 ? 'den' : kostra.length < 5 ? 'dny' : 'dní'}${
-              items.length > 1 ? ` · ${fmtKm(statistika.road)}` : ''
-            }${slozka ? ` · ${esc(slozka)}` : ''}`
-          : 'Zatím prázdná'
-      }</div>
+      <div class="meta">${casti.length ? casti.join(' · ') : 'Zatím prázdná'}</div>
     </div>
     ${ikonBtn('i-vice', { id: 'planVice', titul: 'Další akce' })}
   </div>
   <div id="planMenu" hidden></div>
+
+  <div class="dash-mapa" id="dashMapa"></div>
+  ${terminPruh(od, dnu)}
+  ${stihameHtml(kostra)}
 
   <div class="dash-cisla">
     <button class="dash-dlazdice" data-dash="zastavky">

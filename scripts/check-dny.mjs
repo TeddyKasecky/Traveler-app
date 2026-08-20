@@ -618,5 +618,60 @@ pripravV(['a', 'b'], [], [{ nazev: 'Dolomity', plan: ['d'], planDny: [] }], 'Alp
   t('bez polohy se pořadí nesesype', kosikSeZajizdkou(null).length === 3)
 }
 
+/* ---------- termín cesty, kalendářní dny a „stíháme?" ---------- */
+// Obojí je NEPOVINNÉ – prázdný termín je platný stav, ne nedodělek.
+{
+  const { termin, nastavTermin, datumDne, kratkeDatum, denVTydnu, stihameTo, pocasiPodleKodu } =
+    await import('../src/views/plan/termin.js')
+
+  store.vypravaNazev = 'Zkouška termínu'
+  nastavTermin('', 0)
+  t('prázdný termín je platný stav', termin().od === '' && termin().dnu === 0)
+  t('bez termínu nemá den datum', datumDne(1) === '')
+
+  nastavTermin('2026-08-12', 10)
+  t('termín se uloží', termin().od === '2026-08-12' && termin().dnu === 10)
+  t('první den je datum začátku', datumDne(1) === '2026-08-12')
+  t('desátý den je o devět dnů dál', datumDne(10) === '2026-08-21')
+  t('den 0 a míň nemá datum', datumDne(0) === '' && datumDne(-3) === '')
+
+  // Přes UTC půlnoc, aby letní čas neposunul den o jedna.
+  nastavTermin('2026-10-24', 5)
+  t('přechod na zimní čas den neposune', datumDne(3) === '2026-10-26')
+
+  nastavTermin('2026-08-12', 10)
+  t('krátké datum je česky', kratkeDatum('2026-08-12') === '12. 8.')
+  t('prázdný vstup dá prázdné datum', kratkeDatum('') === '')
+  t('den v týdnu sedí', denVTydnu('2026-08-12') === 'st')
+
+  nastavTermin('nesmysl', 999)
+  t('nesmyslné datum se odmítne', termin().od === '')
+  t('počet dnů se zastropuje', termin().dnu === 365)
+  nastavTermin('2026-08-12', -5)
+  t('záporný počet dnů je nula', termin().dnu === 0)
+
+  // „Stíháme?" vrací větu, ne verdikt – cesta není závod.
+  const praha = { lat: 50.08, lon: 14.44 }
+  const brno = { lat: 49.2, lon: 16.61 }
+  const lisabon = { lat: 38.72, lon: -9.14 }
+  {
+    const blizko = stihameTo(praha, brno, 3)
+    t('blízký přejezd je pohoda', blizko.pohoda === true)
+    t('a věta to říká vlídně', /vejde/.test(blizko.veta) && !/nestíh/.test(blizko.veta))
+
+    const daleko = stihameTo(praha, lisabon, 1)
+    t('daleký přejezd na jeden den pohoda není', daleko.pohoda === false)
+    t('ale ani tak nikoho nekárá', /svižn/.test(daleko.veta) && !/nestíh|pozor/.test(daleko.veta))
+
+    t('bez dnů se odhad nepočítá', stihameTo(praha, brno, 0) === null)
+    t('bez bodu se odhad nepočítá', stihameTo(null, brno, 3) === null)
+    t('víc dnů znamená menší denní porci', stihameTo(praha, lisabon, 10).denne < stihameTo(praha, lisabon, 2).denne)
+  }
+
+  t('kód počasí 0 je jasno', pocasiPodleKodu(0).popis === 'jasno')
+  t('kód počasí 61 je déšť', pocasiPodleKodu(61).popis === 'déšť')
+  t('každý kód má ikonu', [0, 3, 45, 61, 71, 80, 85, 95].every((k) => !!pocasiPodleKodu(k).ikona))
+}
+
 console.log(`\n${ok}/${ok + chyb} kontrol prošlo`)
 process.exit(chyb ? 1 : 0)

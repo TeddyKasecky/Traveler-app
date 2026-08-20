@@ -56,7 +56,12 @@ import { archivRadkyHtml, napojArchivRadky } from './archiv.js'
 import { cislaPlanuHtml, napojCislaPlanu } from './prehled.js'
 import { kosik } from './kosik.js'
 import { kosikHtml, napojKosik, zavriMapuKosiku } from './kosikView.js'
-import { dashboardHtml } from './dashboard.js'
+import { dashboardHtml, pocasiDne } from './dashboard.js'
+import { termin, nastavTermin, datumDne, kratkeDatum, nactiPocasi } from './termin.js'
+import { kotvy } from './kosik.js'
+import { zahodKosikVrstvu } from '../../map/kosikVrstva.js'
+import { token } from '../../core/barvy.js'
+import L from 'leaflet'
 
 /** Kolik zastávek unese odkaz do Google Maps. */
 const MAX_DO_NAVIGACE = 10
@@ -969,9 +974,193 @@ function lista(items) {
   </div>`
 }
 
+/* ================= dashboard: mapa, termín, počasí ================= */
+
+/**
+ * Datum z lidského zápisu na 'YYYY-MM-DD'. Rozumí `12.8.2026`, `12. 8. 2026`
+ * i `2026-08-12`. Nerozpoznané vrací '' – volající to pozná a řekne to.
+ */
+function naIso(text) {
+  const t = (text || '').trim()
+  if (!t) return ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t
+  const m = /^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})$/.exec(t)
+  if (!m) return ''
+  return `${m[3]}-${String(Number(m[2])).padStart(2, '0')}-${String(Number(m[1])).padStart(2, '0')}`
+}
+
+/**
+ * Dorovná `planDny` na zadaný počet dnů. Prázdné dny jsou platný stav –
+ * „jedeme na deset dní, plnit budu na poslední chvíli".
+ * Existující rozdělení se NIKDY nezkracuje: to by snědlo zastávky.
+ */
+function pripravDny(kolik) {
+  if (!kolik) return
+  const ted = store.planDny || []
+  if (ted.length >= kolik) return
+  store.planDny = [...(ted.length ? ted : [store.plan.length]), ...Array(kolik - Math.max(1, ted.length)).fill(0)]
+  save()
+}
+
+/** Vlastní instance mapy na dashboardu. Jako u košíku se uklízí při odchodu. */
+let mapaDashboardu = null
+let koloDashMapy = 0
+
+export function zavriMapuDashboardu() {
+  koloDashMapy++
+  zahodKosikVrstvu()
+  if (mapaDashboardu) {
+    try {
+      mapaDashboardu.remove()
+    } catch {
+      /* prvek zmizel s překreslením */
+    }
+    mapaDashboardu = null
+  }
+}
+
+/**
+ * Mapa nad kostrou: zastávky výpravy, kotvy a tvoje poloha.
+ *
+ * Textová kostra odpovídá na „kolikátý den", mapa na „kde to vlastně je" –
+ * proto obojí naráz, ne jedno místo druhého.
+ */
+function vykresliMapuDashboardu(wrap) {
+  zavriMapuDashboardu()
+  const el = wrap.querySelector('#dashMapa')
+  if (!el || el._leaflet_id) return
+
+  const body = store.plan.map((id) => S.byId[id]).filter((p) => p && Number.isFinite(p.lat))
+  const odkud = vychoziBod()
+  if (!body.length && !odkud) {
+    el.innerHTML = '<div class="meta kosik-bezmapy">Zatím není co ukázat — přidej první zastávku.</div>'
+    return
+  }
+
+  const moje = ++koloDashMapy
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      if (moje !== koloDashMapy || !document.body.contains(el) || el._leaflet_id) return
+      try {
+        const stred = body[0] || odkud
+        mapaDashboardu = L.map(el, {
+          zoomControl: false,
+          attributionControl: false,
+          scrollWheelZoom: false,
+        }).setView([stred.lat, stred.lon], 7, { animate: false })
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mapaDashboardu)
+
+        if (body.length > 1) {
+          L.polyline(
+            body.map((p) => [p.lat, p.lon]),
+            { color: token('--akcent'), weight: 3, opacity: 0.75 }
+          ).addTo(mapaDashboardu)
+        }
+        const kotvyId = new Set(kotvy().map((k) => k.id))
+        for (const p of body) {
+          const jeKotva = kotvyId.has(p.id)
+          L.marker([p.lat, p.lon], {
+            icon: L.divIcon({
+              className: 'kos-pin-obal',
+              html: jeKotva
+                ? `<div class="kos-pin kotva" style="--kb:${token('--rust')}">★</div>`
+                : `<div class="kos-pin blizko" style="--kb:${token('--akcent')}"></div>`,
+              iconSize: [jeKotva ? 34 : 26, jeKotva ? 34 : 26],
+              iconAnchor: [jeKotva ? 17 : 13, jeKotva ? 17 : 13],
+            }),
+            zIndexOffset: jeKotva ? 1000 : 0,
+          })
+            .addTo(mapaDashboardu)
+            .bindTooltip(p.n, { direction: 'top' })
+        }
+        if (odkud) {
+          L.marker([odkud.lat, odkud.lon], {
+            icon: L.divIcon({ className: 'kos-pin-obal', html: '<div class="kos-ja"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
+            zIndexOffset: 2000,
+          })
+            .addTo(mapaDashboardu)
+            .bindTooltip('Tady jsi', { direction: 'top', offset: [0, -9] })
+        }
+
+        const vse = body.map((p) => [p.lat, p.lon])
+        if (odkud) vse.push([odkud.lat, odkud.lon])
+        if (vse.length > 1) mapaDashboardu.fitBounds(L.latLngBounds(vse), { padding: [30, 30], maxZoom: 10, animate: false })
+      } catch {
+        el.innerHTML = '<div class="meta kosik-bezmapy">Mapu se nepovedlo načíst.</div>'
+      }
+    }, 180)
+  })
+}
+
+/** Aby se počasí netahalo znovu při každém překreslení. */
+let pocasiProTermin = ''
+
+/**
+ * Dotáhne předpověď pro první zastávku a rozsah termínu.
+ *
+ * Jen když je termín a jen jednou pro danou kombinaci – druhé (a poslední)
+ * síťové volání za běhu vedle Nominatimu. Selhání je tichá: dashboard
+ * funguje dál, jen bez počasí. Bez signálu v horách je to běžný stav,
+ * ne chyba, kterou by bylo potřeba hlásit.
+ */
+function dotahniPocasi(prekresli) {
+  const { od, dnu } = termin()
+  const misto = store.plan.map((id) => S.byId[id]).find((p) => p && Number.isFinite(p.lat)) || vychoziBod()
+  if (!od || !misto) return
+  const klic = `${od}|${dnu}|${misto.lat.toFixed(2)},${misto.lon.toFixed(2)}`
+  if (pocasiProTermin === klic) return
+  pocasiProTermin = klic
+
+  // Open-Meteo dává předpověď na 16 dní dopředu, dál nemá smysl se ptát.
+  const konec = datumDne(Math.min(dnu || 1, 16))
+  nactiPocasi(misto, od, konec)
+    .then((dny) => {
+      for (const d of dny) pocasiDne.set(d.datum, d)
+      if (dny.length) prekresli()
+    })
+    .catch(() => {
+      /* offline nebo služba mlčí – dashboard funguje i bez počasí */
+    })
+}
+
 /* ================= obsluha ================= */
 
 function napoj(wrap, items) {
+  if (dil === 'itinerar' && S.otevrenaCesta == null) {
+    vykresliMapuDashboardu(wrap)
+    dotahniPocasi(renderPlan)
+  }
+
+  const terminBtn = wrap.querySelector('#terminNastav')
+  if (terminBtn)
+    terminBtn.onclick = async () => {
+      // Dvě otázky za sebou, obě smí zůstat prázdné – termín je nepovinný
+      // a prázdná odpověď ho zase zruší.
+      const { od, dnu } = termin()
+      const kdy = await zadej({
+        nadpis: 'Kdy vyrážíme?',
+        text: 'Ve tvaru 12.8.2026, nebo nech prázdné – termín je nepovinný.',
+        vychozi: od ? kratkeDatum(od).replace(/\s/g, '') + new Date(od).getFullYear() : '',
+        placeholder: '12.8.2026',
+      })
+      if (kdy === null) return
+      const kolik = await zadej({
+        nadpis: 'Na kolik dní?',
+        text: 'Připravím ti tolik dnů v kostře. Prázdné taky stačí.',
+        vychozi: dnu ? String(dnu) : '',
+        placeholder: '10',
+      })
+      if (kolik === null) return
+
+      const iso = naIso(kdy)
+      if (kdy.trim() && !iso) return toast('Datum nerozumím – zkus třeba 12.8.2026')
+      if (!nastavTermin(iso, Number(kolik) || 0)) return
+      // Termín mění, kolik dnů kostra ukazuje – bez zastávek by jinak
+      // zůstala prázdná i po zadání „na 10 dní".
+      pripravDny(Number(kolik) || 0)
+      renderPlan()
+    }
+
   // Dlaždice dashboardu vedou tam, kde se to řeší – číslo, na které se dá
   // ťuknout, musí něco udělat, jinak vypadá jako ovládací prvek a mlčí.
   for (const b of wrap.querySelectorAll('[data-dash]')) {
@@ -1003,6 +1192,7 @@ function napoj(wrap, items) {
       // Mapa košíku je vlastní instance Leafletu – bez úklidu by po odchodu
       // z karty zůstala viset na prvku, který zmizí překreslením.
       if (dil === 'kosik' && b.dataset.seg !== 'kosik') zavriMapuKosiku()
+      if (dil === 'itinerar') zavriMapuDashboardu()
       dil = b.dataset.seg
       renderPlan()
     }

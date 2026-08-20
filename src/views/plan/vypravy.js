@@ -56,6 +56,9 @@ const aktivniZaznam = () => ({
   planDny: store.planDny || [],
   slozka: store.vypravaSlozka || '',
   vytvoreno: store.vypravaVytvoreno || 0,
+  // Termín – obojí nepovinné, prázdné je platný stav.
+  od: store.vypravaOd || '',
+  dnu: store.vypravaDnu || 0,
   prepocet: store.aktivniPrepocet || undefined,
 })
 
@@ -135,6 +138,8 @@ export function prepniVypravu(i) {
   store.planDny = Array.isArray(cil.planDny) ? cil.planDny : []
   store.vypravaSlozka = typeof cil.slozka === 'string' ? cil.slozka : ''
   store.vypravaVytvoreno = cil.vytvoreno || 0
+  store.vypravaOd = typeof cil.od === 'string' ? cil.od : ''
+  store.vypravaDnu = cil.dnu || 0
   store.aktivniPrepocet = cil.prepocet || null
   sez[i] = odchazi
   return save()
@@ -156,6 +161,8 @@ export function novaVyprava(nazev) {
   store.planDny = []
   store.vypravaSlozka = ''
   store.vypravaVytvoreno = Date.now()
+  store.vypravaOd = ''
+  store.vypravaDnu = 0
   store.aktivniPrepocet = null
   return save()
 }
@@ -270,6 +277,8 @@ export function smaz(i) {
   store.planDny = dalsi && Array.isArray(dalsi.planDny) ? dalsi.planDny : []
   store.vypravaSlozka = dalsi && typeof dalsi.slozka === 'string' ? dalsi.slozka : ''
   store.vypravaVytvoreno = (dalsi && dalsi.vytvoreno) || 0
+  store.vypravaOd = (dalsi && typeof dalsi.od === 'string' ? dalsi.od : '')
+  store.vypravaDnu = (dalsi && dalsi.dnu) || 0
   store.aktivniPrepocet = (dalsi && dalsi.prepocet) || null
   return save()
 }

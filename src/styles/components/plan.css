@@ -544,3 +544,42 @@
 .kostra-volno svg.ic{font-size:12px;stroke:var(--moss);color:var(--moss)}
 .kostra-den.volny:hover{border-color:var(--moss);background:var(--plocha)}
 .kostra-pocet{color:var(--text2);font-size:.82rem}
+
+/* ---------- dashboard: mapa, termín, stíháme, počasí ---------- */
+
+.dash-mapa{height:210px;border-radius:var(--r-s);overflow:hidden;border:var(--line);
+  box-shadow:var(--stin-1);margin:0 0 10px;background:var(--plocha2)}
+
+/* Termín je NEPOVINNÝ – prázdný pruh proto nesmí vypadat jako nedodělek. */
+.termin-pruh{display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+  background:var(--plocha);border:var(--line);border-radius:var(--r-s);box-shadow:var(--stin-1);
+  padding:9px 11px;margin:0 0 8px;font:inherit;color:var(--text)}
+.termin-pruh > svg.ic{flex:0 0 auto;font-size:16px;color:var(--akcent);stroke:var(--akcent)}
+.termin-pruh > span{flex:1;min-width:0}
+.termin-pruh b{display:block;font-size:.87rem}
+.termin-pruh .meta{font-size:.75rem;line-height:1.4}
+.termin-pruh.prazdny{border-style:dashed;background:transparent;box-shadow:none}
+.termin-pruh.prazdny > svg.ic{color:var(--text3);stroke:var(--text3)}
+
+/* „Stíháme?" je věta, ne verdikt – žádná červená ani vykřičník. Svižnější
+   tempo se jen odliší okrovou, což není varování, ale odstín. */
+.stihame{display:flex;align-items:center;gap:9px;background:var(--plocha);border:var(--line);
+  border-left:3px solid var(--moss);border-radius:var(--r-s);box-shadow:var(--stin-1);
+  padding:9px 11px;margin:0 0 8px}
+.stihame > svg.ic{flex:0 0 auto;font-size:15px;color:var(--moss);stroke:var(--moss)}
+.stihame > span{flex:1;min-width:0}
+.stihame b{display:block;font-size:.85rem}
+.stihame .meta{font-size:.76rem;line-height:1.4}
+.stihame.svizne{border-left-color:var(--sun)}
+.stihame.svizne > svg.ic{color:var(--sun);stroke:var(--sun)}
+
+/* Datum a počasí v řádku dne – jen když je zadaný termín. */
+.kostra-datum{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;
+  line-height:1.15;color:var(--text3);font-size:.66rem;min-width:2.6rem}
+.kostra-datum b{color:var(--text2);font-size:.74rem;font-weight:600}
+.kostra-pocasi{flex:0 0 auto;display:inline-flex;align-items:center;gap:3px;
+  color:var(--text2);font-size:.76rem}
+.kostra-pocasi svg.ic{font-size:13px;stroke:var(--sky);color:var(--sky)}
+/* Dnešek se drží akcentem, ať ho oko najde bez hledání. */
+.kostra-den.dnes{border-color:var(--akcent)}
+.kostra-den.dnes .kostra-cislo{background:var(--akcent);color:var(--na-akcentu)}
