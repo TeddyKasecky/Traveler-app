@@ -25,13 +25,8 @@ export const COLL = [
   { k: 'zima',        n: 'I v zimě',         d: 'mimo sezónu',          i: 'i-snow',    c: 'var(--sky)' },
   { k: 'sunset',      n: 'Na západ slunce',  d: 'večerní výlety',       i: 'i-sun',     c: 'var(--sun)' },
   { k: 'paddleboard', n: 'Paddleboard',      d: 'jezera od parkoviště', i: 'i-paddle',  c: 'var(--lake)' },
+  { k: 'psi',         n: 'Se psem',          d: 'psi vítáni',           i: 'i-paw',     c: 'var(--rust)' },
 ]
 
-/**
- * Hodnoty, které smí být v poli `col` u místa.
- *
- * Kromě klíčů z COLL sem patří i `psi`, které je u 7 míst v datech, ale dlaždici
- * v Objevuj nemá – viz NAPADY.md N5. Validátor ho proto musí povolit,
- * jinak by hlásil chybu na datech, která jsou v pořádku.
- */
-export const COLL_KEYS = [...COLL.map((c) => c.k), 'psi']
+/** Hodnoty, které smí být v poli `col` u místa. */
+export const COLL_KEYS = COLL.map((c) => c.k)
