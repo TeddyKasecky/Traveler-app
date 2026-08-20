@@ -15,6 +15,7 @@ import { S, store } from '../core/store.js'
 import { esc } from '../core/html.js'
 import { dkm } from '../core/geo.js'
 import { token } from '../core/barvy.js'
+import { pozice } from '../core/pozice.js'
 import vanObr from '../assets/van.webp'
 
 /** @type {L.Polyline|null} */
@@ -27,16 +28,39 @@ let dodavka = null
 let vlastni = null
 
 /**
- * Vlastní místa aktivní výpravy (bloky typu `misto` se souřadnicemi).
+ * Aktuální souřadnice bodu trasy, nebo null.
+ *
+ * Duplikát views/plan/body.js#souradniceBodu – mapa nesmí importovat views
+ * (viz vlastnipin níž, kde je ze stejného důvodu podruhé výčet druhů), ale
+ * core/pozice.js smí, takže se dá dotáhnout živá hodnota uložené pozice, ne
+ * jen zastaralá kopie v `b.lat`/`b.lon`.
+ * @param {object} b  bod trasy (blok typu misto)
+ */
+function souradniceBodu(b) {
+  if (b.zdroj && b.zdroj.typ === 'pozice') {
+    const p = pozice(b.zdroj.id)
+    return p ? { lat: p.lat, lon: p.lon } : null
+  }
+  return Number.isFinite(b.lat) && Number.isFinite(b.lon) ? { lat: b.lat, lon: b.lon } : null
+}
+
+/**
+ * Vlastní místa aktivní výpravy (bloky typu `misto` s rozpoznatelnou polohou).
  *
  * Čtou se přímo ze `store.bloky` – jsou to data, ne view, takže mapa smí.
- * Vrací je v pořadí dnů, aby se daly vplést do trasy za zastávky svého dne.
+ * Vrací je v pořadí dnů, aby se daly vplést do trasy za zastávky svého dne;
+ * `lat`/`lon` jsou dosazené aktuální (viz souradniceBodu výš), ne nutně to,
+ * co má blok zapsané přímo na sobě.
  */
 function vlastniMista() {
   const klic = store.vypravaNazev || 'Náš plán'
-  return ((store.bloky || {})[klic] || []).filter(
-    (b) => b.typ === 'misto' && Number.isFinite(b.lat) && Number.isFinite(b.lon)
-  )
+  return ((store.bloky || {})[klic] || [])
+    .filter((b) => b.typ === 'misto')
+    .map((b) => {
+      const s = souradniceBodu(b)
+      return s ? { ...b, lat: s.lat, lon: s.lon } : null
+    })
+    .filter(Boolean)
 }
 
 /**

@@ -105,7 +105,10 @@ export async function zadej({ nadpis = '', text = '', vychozi = '', placeholder 
 
 /**
  * Výběr jedné položky ze seznamu. Vrací její id, zrušení null.
- * @param {{nadpis?: string, text?: string, polozky: Array<{id: string, popisek: string, ikona?: string, meta?: string, on?: boolean}>}} p
+ *
+ * `disabled` je pro volby, které appka nabízí jen jako informaci proč
+ * chybí ("Start už v plánu je") – needitovatelná, klik ji nezavře.
+ * @param {{nadpis?: string, text?: string, polozky: Array<{id: string, popisek: string, ikona?: string, meta?: string, on?: boolean, disabled?: boolean}>}} p
  * @returns {Promise<string|null>}
  */
 export async function vyberZeSeznamu({ nadpis = '', text = '', polozky }) {
@@ -114,14 +117,14 @@ export async function vyberZeSeznamu({ nadpis = '', text = '', polozky }) {
     ${text ? `<p class="dialog-text">${esc(text)}</p>` : ''}
     <div class="dialog-seznam">${polozky
       .map(
-        (p, i) => `<button class="dialog-volba${p.on ? ' on' : ''}" data-i="${i}">
+        (p, i) => `<button class="dialog-volba${p.on ? ' on' : ''}"${p.disabled ? ' disabled' : ''} data-i="${i}">
           ${p.ikona ? IC(p.ikona) : ''}${esc(p.popisek)}${p.meta ? `<span>${esc(p.meta)}</span>` : ''}
         </button>`
       )
       .join('')}</div>
     <div class="btnrow"><button class="btn" id="dialogNe">Zrušit</button></div>`)
   document.getElementById('dialogNe').onclick = () => zavriDialog(null)
-  for (const b of el().querySelectorAll('.dialog-volba'))
+  for (const b of el().querySelectorAll('.dialog-volba:not([disabled])'))
     b.onclick = () => zavriDialog(polozky[Number(b.dataset.i)].id)
   const v = await slib
   return typeof v === 'string' ? v : null

@@ -25,14 +25,21 @@ import { esc } from '../../core/html.js'
 import { IC } from '../../icons/sprite.js'
 import { toast } from '../../components/toast.js'
 import { potvrd, vyberZeSeznamu } from '../../components/dialog.js'
+import { zjistiPolohuJednorazove } from '../../core/geo.js'
+import { ulozenePozice, pozice } from '../../core/pozice.js'
 import {
   bloky, pridejBlok, smazBlok, blok, DRUHY, vsechnyBody, pridejBod,
-  hledejAdresu, rozpoznejSouradnice, rozpocetCelkem,
+  hledejAdresu, rozpoznejSouradnice, rozpocetCelkem, souradniceBodu,
+  maBod, pridejStartCil,
 } from './body.js'
 
 // Znovu vyvezené – plan.js a check-dny.mjs je berou odsud/z body.js podle toho,
 // jestli potřebují jen data (body.js) nebo i vzhled (tady).
-export { bloky, pridejBlok, smazBlok, blok, DRUHY, vsechnyBody, pridejBod, hledejAdresu, rozpoznejSouradnice, rozpocetCelkem }
+export {
+  bloky, pridejBlok, smazBlok, blok, DRUHY, vsechnyBody, pridejBod,
+  hledejAdresu, rozpoznejSouradnice, rozpocetCelkem, souradniceBodu,
+  maBod, pridejStartCil,
+}
 
 /* ================= vykreslení ================= */
 
@@ -109,7 +116,11 @@ function seznamTelo(b) {
 }
 
 function mistoTelo(b) {
-  const ma = Number.isFinite(b.lat) && Number.isFinite(b.lon)
+  const zPozice = b.zdroj && b.zdroj.typ === 'pozice' ? pozice(b.zdroj.id) : null
+  const zGps = !!(b.zdroj && b.zdroj.typ === 'gps')
+  const s = souradniceBodu(b)
+  const ma = !!s
+  const jeStartCil = b.druh === 'start' || b.druh === 'cil'
   const druhy = Object.entries(DRUHY)
     .map(
       ([id, d]) =>
@@ -119,10 +130,14 @@ function mistoTelo(b) {
   return `<input class="blok-nadpis" data-pole="nazev" placeholder="Název místa (třeba Nocleh u splavu)" value="${esc(b.nazev || '')}">
     <div class="vyprava-slozky" style="margin:2px 0 8px">${druhy}</div>
     ${
-      ma
-        ? `<div class="meta blok-gps">${IC('i-pinme')}${b.lat.toFixed(5)}, ${b.lon.toFixed(5)}
+      b.zdroj && b.zdroj.typ === 'pozice' && !zPozice
+        ? `<div class="meta blok-gps">${IC('i-x')}Uložená pozice byla smazána – doplň polohu znovu</div>`
+        : ma
+          ? `<div class="meta blok-gps">${IC(zPozice ? 'i-dum' : 'i-pinme')}${
+              zPozice ? `${esc(zPozice.nazev)} · ` : ''
+            }${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}${zGps ? ' · GPS z přepočtu' : ''}
              ${b.hotovo ? ' · odznačené' : ''}</div>`
-        : `<input class="blok-nadpis" data-pole="vlozeno" placeholder="Vlož odkaz z map nebo souřadnice…">
+          : `<input class="blok-nadpis" data-pole="vlozeno" placeholder="Vlož odkaz z map nebo souřadnice…">
            <div class="blok-gpsrucne">
              <input data-pole="lat" inputmode="decimal" placeholder="Šířka (50.08)">
              <input data-pole="lon" inputmode="decimal" placeholder="Délka (14.43)">
@@ -133,9 +148,14 @@ function mistoTelo(b) {
            </div>`
     }
     <div class="btnrow" style="margin:8px 0 0">
-      ${ma ? '' : `<button class="btn small" data-act="prevzit">${IC('i-check')}Převzít souřadnice</button>
-                   <button class="btn small" data-act="z-mapy">${IC('i-map')}Vybrat z mapy</button>`}
-      ${ma ? `<button class="btn small" data-act="zrusit-gps">Zadat znovu</button>` : ''}
+      ${
+        ma
+          ? `<button class="btn small" data-act="zrusit-gps">Zadat znovu</button>`
+          : `<button class="btn small" data-act="prevzit">${IC('i-check')}Převzít souřadnice</button>
+             <button class="btn small" data-act="z-mapy">${IC('i-map')}Vybrat z mapy</button>
+             ${jeStartCil ? `<button class="btn small" data-act="z-pozice">${IC('i-dum')}Uložená pozice</button>
+             <button class="btn small" data-act="z-polohy">${IC('i-compass')}Aktuální poloha</button>` : ''}`
+      }
     </div>
     <textarea class="blok-text" data-pole="poznamka" rows="1" placeholder="Poznámka k místu…">${esc(b.poznamka || '')}</textarea>`
 }
@@ -231,6 +251,7 @@ export function napojBloky(wrap, prekresli, vyberZMapy) {
         }
         b.lat = gps.lat
         b.lon = gps.lon
+        b.zdroj = null
         save()
         return prekresli()
       }
@@ -258,6 +279,7 @@ export function napojBloky(wrap, prekresli, vyberZMapy) {
         const v = vysledky[Number(vyber)]
         b.lat = v.lat
         b.lon = v.lon
+        b.zdroj = null
         if (!b.nazev) b.nazev = dotaz
         save()
         return prekresli()
@@ -266,13 +288,43 @@ export function napojBloky(wrap, prekresli, vyberZMapy) {
         vyberZMapy((lat, lon) => {
           b.lat = lat
           b.lon = lon
+          b.zdroj = null
           save()
           prekresli()
         })
         return
       }
+      if (act === 'z-pozice') {
+        const seznam = ulozenePozice()
+        if (!seznam.length) return toast('V profilu zatím nemáš žádnou uloženou pozici')
+        const vyber = await vyberZeSeznamu({
+          nadpis: 'Která pozice?',
+          polozky: seznam.map((p) => ({ id: p.id, popisek: p.nazev, ikona: 'i-dum' })),
+        })
+        if (vyber === null) return
+        b.zdroj = { typ: 'pozice', id: vyber }
+        b.lat = b.lon = null // souradniceBodu() čte živě ze zdroje, tahle pole se nepoužijí
+        save()
+        return prekresli()
+      }
+      if (act === 'z-polohy') {
+        toast('Zjišťuju polohu…')
+        let poz
+        try {
+          poz = await zjistiPolohuJednorazove()
+        } catch (e) {
+          toast(e.message || 'Polohu se nepodařilo zjistit')
+          return
+        }
+        b.zdroj = { typ: 'gps' }
+        b.lat = poz.lat
+        b.lon = poz.lon
+        save()
+        return prekresli()
+      }
       if (act === 'zrusit-gps') {
         b.lat = b.lon = null
+        b.zdroj = null
         b.hotovo = 0
         save()
         return prekresli()
@@ -288,6 +340,7 @@ export function napojBloky(wrap, prekresli, vyberZMapy) {
           if (gps) {
             b.lat = gps.lat
             b.lon = gps.lon
+            b.zdroj = null
             save()
             toast('Souřadnice převzaté')
             prekresli()

@@ -43,8 +43,11 @@ import {
 import { cestaHtml, napojCestu, jedeSe, vyjed, zamcenaCestaHtml, napojZamcenouCestu } from './cesta.js'
 import {
   blokyDneHtml, pridatBlokHtml, napojBloky, rozpocetCelkem, blokHtml, blok, bloky,
-  vsechnyBody, pridejBod, hledejAdresu, rozpoznejSouradnice, DRUHY,
+  vsechnyBody, pridejBod, hledejAdresu, rozpoznejSouradnice, DRUHY, souradniceBodu,
+  maBod, pridejStartCil,
 } from './bloky.js'
+import { zjistiPolohuJednorazove } from '../../core/geo.js'
+import { ulozenePozice } from '../../core/pozice.js'
 import { archivRadkyHtml, napojArchivRadky } from './archiv.js'
 import { cislaPlanuHtml, napojCislaPlanu } from './prehled.js'
 
@@ -730,7 +733,7 @@ function itinerar(items, dny) {
  */
 function bodRadek(b) {
   const d = DRUHY[b.druh] || DRUHY.vlastni
-  const ma = Number.isFinite(b.lat) && Number.isFinite(b.lon)
+  const ma = !!souradniceBodu(b)
   return `<div class="zastavka bod${rozbaleno === b.id ? ' otevrena' : ''}${b.hotovo ? ' hotova' : ''}" data-bod="${b.id}">
     <div class="zastavka-radek">
       <span class="uchyt" data-uchyt title="Táhni pro změnu pořadí">${IC('i-vice')}</span>
@@ -755,16 +758,32 @@ function bodRadek(b) {
 async function pridejBodPruvodce(den, po) {
   const druh = await vyberZeSeznamu({
     nadpis: 'Jaký bod přidat?',
-    polozky: Object.entries(DRUHY).map(([id, d]) => ({ id, popisek: d.popisek, ikona: d.ikona })),
+    // Start a cíl smí být nejvýš jeden na plán (R1) – když už existuje,
+    // volba se zašedne. Úprava jde jen přes kartu existujícího bodu.
+    polozky: Object.entries(DRUHY).map(([id, d]) => ({
+      id, popisek: d.popisek, ikona: d.ikona,
+      disabled: (id === 'start' || id === 'cil') && maBod(id),
+    })),
   })
   if (druh === null) return
   const nazev = await zadej({ nadpis: 'Název bodu', vychozi: DRUHY[druh].popisek, placeholder: 'třeba Kemp u splavu' })
   if (nazev === null) return
 
-  const zaloz = (lat, lon) => {
-    const id = pridejBod({ druh, nazev: nazev.trim(), lat, lon, den: po ? null : den, po })
-    if (lat == null) rozbaleno = id
-    toast(lat == null ? 'Bod přidaný – poloha se doplní v jeho kartě' : 'Bod přidaný do itineráře')
+  const jeStartCil = druh === 'start' || druh === 'cil'
+
+  // Start/cíl se zakládají VŽDY na pevné pozici (začátek/konec plánu),
+  // ne tam, kam by mířilo `den`/`po` z místa v itineráři, kde se průvodce
+  // otevřel – appka je nedovolí přetáhnout jinam (viz napojTahani výš).
+  const zaloz = (lat, lon, zdroj = null) => {
+    const id = jeStartCil
+      ? pridejStartCil(druh, { nazev: nazev.trim(), lat, lon, zdroj })
+      : pridejBod({ druh, nazev: nazev.trim(), lat, lon, den: po ? null : den, po, zdroj })
+    // Bez zdroje i bez souřadnic zůstává bod bez polohy – karta se rozbalí,
+    // ať ji člověk hned doplní. Zdroj pozice/gps polohu má, i když `lat`
+    // sem přišlo jako null (souradniceBodu() ji dotáhne živě).
+    const maPolohu = zdroj != null || lat != null
+    if (!maPolohu) rozbaleno = id
+    toast(maPolohu ? 'Bod přidaný do itineráře' : 'Bod přidaný – poloha se doplní v jeho kartě')
     draw()
   }
 
@@ -774,6 +793,12 @@ async function pridejBodPruvodce(den, po) {
       { id: 'odkaz', popisek: 'Vložit odkaz nebo souřadnice', ikona: 'i-copy', meta: 'Google, Mapy.cz, GPS' },
       { id: 'adresa', popisek: 'Najít adresu', ikona: 'i-hledat', meta: 'jen online' },
       { id: 'mapa', popisek: 'Ťuknout do mapy', ikona: 'i-map' },
+      ...(jeStartCil
+        ? [
+            { id: 'pozice', popisek: 'Uložená pozice', ikona: 'i-dum', meta: 'z profilu' },
+            { id: 'poloha', popisek: 'Aktuální poloha', ikona: 'i-compass', meta: 'GPS teď' },
+          ]
+        : []),
       { id: 'pozdeji', popisek: 'Zatím bez polohy', ikona: 'i-clock' },
     ],
   })
@@ -812,6 +837,31 @@ async function pridejBodPruvodce(den, po) {
     return zaloz(v.lat, v.lon)
   }
   if (zpusob === 'mapa') return vyberBod((lat, lon) => zaloz(lat, lon))
+  if (zpusob === 'pozice') {
+    const seznam = ulozenePozice()
+    if (!seznam.length) {
+      toast('V profilu zatím nemáš žádnou uloženou pozici')
+      return zaloz(null, null)
+    }
+    const vyber = await vyberZeSeznamu({
+      nadpis: 'Která pozice?',
+      polozky: seznam.map((p) => ({ id: p.id, popisek: p.nazev, ikona: 'i-dum' })),
+    })
+    if (vyber === null) return
+    return zaloz(null, null, { typ: 'pozice', id: vyber })
+  }
+  if (zpusob === 'poloha') {
+    // JEDNORÁZOVÉ zjištění, NE watchPosition – core/geo.js zjistiPolohuJednorazove().
+    toast('Zjišťuju polohu…')
+    let poz
+    try {
+      poz = await zjistiPolohuJednorazove()
+    } catch (e) {
+      toast(e.message || 'Polohu se nepodařilo zjistit')
+      return zaloz(null, null)
+    }
+    return zaloz(poz.lat, poz.lon, { typ: 'gps' })
+  }
 }
 
 /**
@@ -1166,6 +1216,10 @@ function napojTahani(wrap) {
       if (el.dataset.bod) {
         const b = blok(el.dataset.bod)
         if (!b) return
+        // Start a cíl jsou pevně připnuté na začátek/konec plánu (R1) –
+        // appka tažení za ně ignoruje, žádná změna po/den. Zakládá je jen
+        // pridejStartCil() v body.js a mění jen karta bodu v Itineráři.
+        if (b.druh === 'start' || b.druh === 'cil') return
         if (kotva) {
           b.po = kotva
           b.den = null

@@ -574,7 +574,9 @@ await page.click('.dialog-volba[data-i="0"]') // start
 await page.waitForTimeout(400)
 await page.click('#dialogAno') // ponechat výchozí název „Start“
 await page.waitForTimeout(400)
-await kontrola('krok polohy nabízí čtyři cesty', () => page.locator('#dialog .dialog-volba').count(), 4)
+// Start/cíl mají navíc Uloženou pozici a Aktuální polohu (srpen 2026) –
+// u prostředních bodů (nocleh/vlastní) jich zůstávají čtyři.
+await kontrola('krok polohy pro start nabízí šest cest', () => page.locator('#dialog .dialog-volba').count(), 6)
 await page.click('.dialog-volba[data-i="0"]') // vložit odkaz/souřadnice
 await page.waitForTimeout(400)
 await page.locator('#dialogVstup').fill('50.0755, 14.4378')
