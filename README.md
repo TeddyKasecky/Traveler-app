@@ -1,6 +1,7 @@
 # Traveler-app
 
-https://traveler-app.teddykasecky.workers.dev
+Produkce: https://traveler-app.teddykasecky.workers.dev
+Beta (vývoj, aktualizuje se automaticky): https://traveler-app-beta.teddykasecky.workers.dev
 
 **Vandrbuch** – cestovatelská databáze a wishlist míst po Evropě. 580 míst, mapa,
 plánovač trasy, poznámky a hodnocení. Funguje i bez signálu.
@@ -38,7 +39,15 @@ Kód je na <https://github.com/TeddyKasecky/Traveler-app>.
 
 ### Jak je to nastavené
 
-Na Cloudflare běží projekt `traveler-app` napojený na tenhle repozitář:
+Od srpna 2026 na Cloudflare běží **dva** projekty napojené na tenhle repozitář,
+každý na jinou větev:
+
+| Projekt | Větev | Doména | Aktualizace |
+|---|---|---|---|
+| `traveler-app` | `production` | traveler-app.teddykasecky.workers.dev | jen ruční, zřídka |
+| `traveler-app-beta` | `main` | traveler-app-beta.teddykasecky.workers.dev | automaticky, každý push |
+
+Oba mají stejné nastavení buildu:
 
 | Položka | Hodnota |
 |---|---|
@@ -51,11 +60,19 @@ Node se nenastavuje, verzi si Cloudflare přečte ze souboru `.node-version`.
 Co se nasadí, říká [`wrangler.jsonc`](wrangler.jsonc): žádný kód, jen rozdávání
 hotových souborů ze složky `dist`. Cloudflare dnes zakládá všechno jako Worker,
 i když jde o obyčejnou statickou stránku – bez toho souboru `wrangler deploy`
-neví, co má nahrát, a spadne.
+neví, co má nahrát, a spadne. Stejný soubor slouží oběma projektům – rozlišuje
+je jen to, na kterou větev je Cloudflare projekt napojený, ne obsah repozitáře.
+
+Appka na ploše telefonu pozná betu podle jména – `traveler-app-beta` má build
+proměnnou `VANDRBUCH_BETA=1` (Settings → Environment variables v Cloudflare
+dashboardu), která přepíše `short_name` v manifestu na „Vandrbuch beta"
+(`vite.config.js#pluginBetaManifest`).
 
 ### Potom
 
-Každý `git push` web sám přestaví a nasadí. Nic dalšího se nedělá.
+Push na `main` web sám přestaví a nasadí na betu. Produkce (`production`) se
+neaktualizuje sama – posouvá se jen ručně, viz `CLAUDE.md` sekce „Nasazení na
+produkci".
 
 > **Repozitář je veřejný.** Kód i seznam míst si může přečíst kdokoli. Poznámky,
 > hodnocení a vlastní fotky v něm nejsou – ty zůstávají jen v telefonu. Kdyby měl

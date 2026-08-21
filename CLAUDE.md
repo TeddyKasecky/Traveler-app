@@ -36,9 +36,14 @@ záměrně**; `check-css` je proto odstavené a nahradilo ho `check-tokeny`.
 - **`src/pwa/sw.js` je šablona, ne hotový soubor.** Seznam souborů k uložení do cache a číslo
   verze do ní doplní až `vite.config.js` při buildu (`__PRECACHE__`, `__VERSION__`).
   `dist/sw.js` je generovaný — nikdy ho needituj.
-- **`git push` na `main` = nasazení do produkce.** Cloudflare projekt `traveler-app` staví
-  a nasazuje každý push automaticky. Pracuj a pushuj samostatně, bez ptaní — postup je
+- **`git push` na `main` nasazuje na betu** (`traveler-app-beta.teddykasecky.workers.dev`),
+  **ne na ostrou appku.** Cloudflare projekt `traveler-app-beta` staví a nasazuje každý push
+  na `main` automaticky. Pracuj a pushuj na `main` samostatně, bez ptaní — postup je
   v sekci „Git workflow (autonomní, bez PR)" níž. Na `main` se nikdy nepracuje přímo.
+  **Produkce (`traveler-app.teddykasecky.workers.dev`) sleduje samostatnou větev
+  `production`**, kterou se z `main` posouvá jen na výslovné vyžádání („nasaď na
+  produkci", „pushni to do produkce") — postup je v sekci „Nasazení na produkci" níž.
+  Nikdy nemerguj/nepushuj do `production` jako součást běžného „pushni to na main".
 - **Žádný linter ani formatter není nastavený** — `.eslintrc`, `.prettierrc`, `.editorconfig`
   ani tsconfig v repu nejsou. Styl níž vynucuje jen review. Nevymýšlej `npm run lint`,
   `npm run format` ani `npm test`, neexistují.
@@ -54,7 +59,7 @@ Vše ze složky `vandrbuch/`, kde leží `package.json`. Poprvé jednou `npm ins
 
 ```bash
 npm run dev              # vývojový server, dostupný i z mobilu na stejné wifi
-npm run build            # → dist/ ; tohle nasazuje Cloudflare
+npm run build            # → dist/ ; tohle stejné buildy nasazuje Cloudflare (main → beta, production → ostrá appka)
 npm run build:single     # → dist-single/index.html ; jeden offline soubor
 npm run preview          # prohlédnutí sestaveného webu
 
@@ -189,6 +194,33 @@ Doplňkově, ať ke konfliktům dochází co nejméně:
   až když je jistota, že s daty zrovna nikdo jiný nepracuje.
 - V konfliktu v JSON nikdy „vzít moje"/„vzít jeho" naslepo — ověřit, že se nesmazalo
   cizí místo nebo poznámka.
+
+## Nasazení na produkci (`production`)
+
+Od srpna 2026 appka běží na **dvou** Cloudflare projektech: `traveler-app-beta`
+sleduje `main` kontinuálně (každý push nasadí novou verzi automaticky — proto
+je `main` jen beta, ne ostrá appka), `traveler-app` sleduje samostatnou větev
+**`production`**, kterou nikdo netlačí automaticky.
+
+- **Nikdy neposouvej `production` jako součást běžného „pushni to na main".**
+  Merge do `production` dělej JEN na výslovné vyžádání uživatele („nasaď na
+  produkci", „pushni betu do produkce", „vydej to ostrým uživatelům" apod.).
+- Postup, když je vyžádáno:
+  a) `git fetch origin`
+  b) `git checkout production && git merge origin/production` (pro jistotu,
+     kdyby ho mezitím posunul někdo jiný)
+  c) `git merge main` — konflikty řeš stejně opatrně jako při mergi do `main`
+     (žádné „vzít moje/jeho" naslepo u `places.json`)
+  d) spusť kontrolní skripty (`npm run smoke`, `check-filters`, `parity`,
+     `check-images`, `perf` – podle toho, co v repu existuje). Pokud cokoliv
+     selže, NEPOKRAČUJ, oprav to nebo nahlas problém.
+  e) vytvoř bezpečnostní tag na aktuálním `production` před mergem, formát:
+     `backup/production-YYYYMMDD-HHmm`
+  f) pushni `production`. Bez Pull Requestu, bez čekání na potvrzení (jakmile
+     je vyžádáno, provádíš to samostatně jako u `main`).
+- Nikdy force-push do `production`, nikdy nepřepisuj jeho historii.
+- Repozitáři nechybí branch protection na `production` na GitHubu — spoléhá se
+  čistě na tohle pravidlo v `CLAUDE.md` (stejně jako u `main`).
 
 ## Rozvržení podle předloh (srpen 2026)
 

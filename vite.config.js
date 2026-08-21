@@ -122,6 +122,30 @@ function pluginSingleFilePwa() {
   }
 }
 
+/**
+ * Na Cloudflare projektu `traveler-app-beta` appka na ploše (PWA `short_name`)
+ * ukazuje „Vandrbuch beta“ místo „Vandrbuch“, ať jde na telefonu poznat, které
+ * PWA je která – appka je jinak bajtově stejná jako produkce, jen se sleduje
+ * `main` (kontinuálně) místo `production` (jen na ruční nasazení).
+ *
+ * `writeBundle` běží až po zápisu do `dist/`, protože Vite `public/*` jen
+ * kopíruje beze zpracování – úprava manifestu tedy musí přijít jako
+ * post-processing krok, ne transformace zdroje.
+ */
+function pluginBetaManifest(outDir) {
+  return {
+    name: 'vandrbuch-beta-manifest',
+    apply: 'build',
+    writeBundle() {
+      if (!process.env.VANDRBUCH_BETA) return
+      const cesta = path.join(ROOT, outDir, 'manifest.webmanifest')
+      const manifest = JSON.parse(fs.readFileSync(cesta, 'utf8'))
+      manifest.short_name = 'Vandrbuch beta'
+      fs.writeFileSync(cesta, JSON.stringify(manifest, null, 2))
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const single = mode === 'single'
 
@@ -129,7 +153,9 @@ export default defineConfig(({ mode }) => {
     // Relativní cesty jsou nutné pro obě varianty: hosting v podadresáři i file://
     base: './',
 
-    plugins: single ? [viteSingleFile(), pluginSingleFilePwa()] : [pluginServiceWorker()],
+    plugins: single
+      ? [viteSingleFile(), pluginSingleFilePwa()]
+      : [pluginServiceWorker(), pluginBetaManifest('dist')],
 
     define: {
       'import.meta.env.SINGLE_FILE': JSON.stringify(single),

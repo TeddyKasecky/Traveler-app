@@ -39,7 +39,12 @@ Kdyby v bodě 3 něco chybělo, řekněte to hned — jde vrátit commit i obnov
 
 ## 2. Co je nasazené a živé
 
-<https://traveler-app.teddykasecky.workers.dev>
+Od srpna 2026 dvě prostředí (viz `CLAUDE.md` sekce „Nasazení na produkci"):
+
+- **Produkce** (stabilní, ruční nasazení z větve `production`):
+  <https://traveler-app.teddykasecky.workers.dev>
+- **Beta** (průběžná, automaticky z `main` při každém pushi):
+  <https://traveler-app-beta.teddykasecky.workers.dev>
 
 | Co | Proč to bylo potřeba |
 |---|---|
@@ -255,6 +260,8 @@ veřejného repa. Opraveno explicitním řádkem v `.gitignore`.
 
 - **`git` přes PowerShell na tomhle stroji nefunguje** („Přístup byl odepřen"), jde jen
   přes Bash. Binárka existuje, blokuje to nejspíš antivirus.
-- **Push je nasazení do produkce.** Cloudflare sleduje repozitář a při každém pushi do
-  `main` si sám spustí build. Commit sám o sobě neudělá nic. Jak ověřit, že nasazení
-  opravdu proběhlo, je v [`.claude/rules/nasazeni.md`](.claude/rules/nasazeni.md).
+- **Push na `main` nasazuje na betu, ne na produkci.** Cloudflare sleduje repozitář
+  a při každém pushi do `main` si sám spustí build pro `traveler-app-beta`. Produkce
+  (`traveler-app`) se aktualizuje jen ručně z větve `production`, viz `CLAUDE.md`
+  sekce „Nasazení na produkci". Commit sám o sobě neudělá nic. Jak ověřit, že
+  nasazení opravdu proběhlo, je v [`.claude/rules/nasazeni.md`](.claude/rules/nasazeni.md).

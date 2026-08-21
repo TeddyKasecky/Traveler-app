@@ -73,7 +73,15 @@ offline mapa by nebyla k ničemu.
 
 ## Cloudflare
 
-Projekt `traveler-app` (Worker, ne Pages) napojený na `github.com/TeddyKasecky/Traveler-app`.
+Od srpna 2026 **dva** projekty (oba Worker, ne Pages) napojené na
+`github.com/TeddyKasecky/Traveler-app`, každý na jinou větev:
+
+| Projekt | Větev | Doména | Aktualizace |
+|---|---|---|---|
+| `traveler-app` | `production` | traveler-app.teddykasecky.workers.dev | jen ruční, zřídka |
+| `traveler-app-beta` | `main` | traveler-app-beta.teddykasecky.workers.dev | automaticky, každý push |
+
+Oba mají stejné nastavení buildu:
 
 | Položka | Hodnota |
 |---|---|
@@ -82,9 +90,17 @@ Projekt `traveler-app` (Worker, ne Pages) napojený na `github.com/TeddyKasecky/
 | Root directory | `/` |
 | Node | ze souboru `.node-version` (22) |
 
+`traveler-app-beta` má navíc build proměnnou `VANDRBUCH_BETA=1` (Settings →
+Environment variables) — `vite.config.js#pluginBetaManifest` podle ní přepíše
+`short_name` v manifestu na „Vandrbuch beta", ať appka na ploše telefonu jde
+poznat od produkce. Bez proměnné (produkce) manifest zůstává beze změny.
+
 Worker nemá žádný kód — `wrangler.jsonc` nemá `main`, jen `assets.directory: "./dist"`.
 Bez toho souboru `wrangler deploy` neví, co nasadit, začne hledat konfiguraci sám
-a zakopne o `vite.config.js`.
+a zakopne o `vite.config.js`. Stejný `wrangler.jsonc` (s `name: "traveler-app"`)
+slouží oběma projektům — `name` v souboru neurčuje, na kterou Cloudflare
+appku push jde, to řídí výhradně větev, na kterou je projekt v dashboardu
+napojený.
 
 **`not_found_handling: "none"` se nesmí přepnout na `single-page-application".** Aplikace si
 při instalaci ukládá do cache soubory s otiskem obsahu v názvu; kdyby některý chyběl, dostal
@@ -108,13 +124,19 @@ Když se shodují, je venku přesně ten build, který jsi testoval. Stojí za t
 že jde stáhnout **podklad offline mapy** (`assets/basemap-*.js`) a že ho `sw.js` má
 v předukládaném seznamu — bez něj by offline mapa tiše nefungovala.
 
-## Push = produkce
+## Push = beta, ne produkce
 
-**Každý `git push` na `main` web sám přestaví a nasadí.** Push do `main` jde
-jen podle postupu v `CLAUDE.md` sekci „Git workflow (autonomní, bez PR)" —
-osobní větev, fetch, merge/rebase `main` do ní, kontrolní skripty, bezpečnostní
-tag, teprve pak merge a push. Napřed vždycky projeď aspoň `npm run validate`
-a `npm run smoke`; pokud něco selže, do `main` se nepokračuje.
+**Každý `git push` na `main` web sám přestaví a nasadí na betu**
+(`traveler-app-beta`). Push do `main` jde jen podle postupu v `CLAUDE.md`
+sekci „Git workflow (autonomní, bez PR)" — osobní větev, fetch, merge/rebase
+`main` do ní, kontrolní skripty, bezpečnostní tag, teprve pak merge a push.
+Napřed vždycky projeď aspoň `npm run validate` a `npm run smoke`; pokud něco
+selže, do `main` se nepokračuje.
+
+**Produkce (`traveler-app`) se aktualizuje jen ručně** z větve `production`,
+a to jen na výslovné vyžádání uživatele — postup je v `CLAUDE.md` sekci
+„Nasazení na produkci". Nikdy neposouvej `production` jako automatickou
+součást běžného mergování do `main`.
 
 Repozitář je **veřejný** — kód i seznam míst si může přečíst kdokoli. Poznámky, hodnocení
 a vlastní fotky v něm nejsou, ty zůstávají v localStorage telefonu. Do repozitáře nepatří
