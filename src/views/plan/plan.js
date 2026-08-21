@@ -54,11 +54,10 @@ import { ulozenePozice } from '../../core/pozice.js'
 import { prepocitejTrasu } from './routing.js'
 import { archivRadkyHtml, napojArchivRadky } from './archiv.js'
 import { cislaPlanuHtml, napojCislaPlanu } from './prehled.js'
-import { kosik } from './kosik.js'
+import { kosik, kotvy, pridejDoKosiku } from './kosik.js'
 import { kosikHtml, napojKosik, zavriMapuKosiku } from './kosikView.js'
 import { dashboardHtml, pocasiDne } from './dashboard.js'
 import { termin, nastavTermin, datumDne, kratkeDatum, nactiPocasi } from './termin.js'
-import { kotvy } from './kosik.js'
 import { zahodKosikVrstvu } from '../../map/kosikVrstva.js'
 import { token } from '../../core/barvy.js'
 import L from 'leaflet'
@@ -177,9 +176,13 @@ export function renderPlan() {
         { id: 'vypravy', popisek: 'V plánu' },
         { id: 'archiv', popisek: 'Za námi' },
       ],
-      dil,
+      // Itinerář a Košík jsou vnitřky výpravy, ne samostatné díly – segment
+      // je proto zvýrazní jako „V plánu". Bez toho nesvítilo nic a vypadalo
+      // to, že aplikace na ťuknutí vůbec nezareagovala.
+      dil === 'itinerar' || dil === 'kosik' ? 'vypravy' : dil,
       'planSegment'
     ) +
+    (dil === 'itinerar' || dil === 'kosik' ? drobeckyHtml() : '') +
     (dil === 'cesta'
       ? cestaHtml()
       : dil === 'vypravy'
@@ -250,6 +253,23 @@ export function otevriItinerar() {
  */
 function hlava(items, dny) {
   return dashboardHtml(items, dny, planStats(items))
+}
+
+/**
+ * Řádek „kde jsem a jak zpátky" nad Itinerářem a Košíkem.
+ *
+ * Obojí je vnitřek jedné výpravy, ne díl segmentu – bez tohohle řádku nebylo
+ * z obrazovky poznat, kde člověk je, ani jak se dostat ven. Segment nesvítil
+ * a vypadalo to, že appka nereaguje.
+ */
+function drobeckyHtml() {
+  const nazev = S.otevrenaCesta != null && store.cesty[S.otevrenaCesta]
+    ? store.cesty[S.otevrenaCesta].nazev
+    : store.vypravaNazev || BEZ_NAZVU
+  return `<div class="drobecky">
+    <button class="drobecky-zpet" id="planZpet">${IC('i-sipka')}Zpět na výpravy</button>
+    <span class="drobecky-kde">${esc(nazev)}<b>${dil === 'kosik' ? 'Košík' : 'Itinerář'}</b></span>
+  </div>`
 }
 
 /* ---------- Výpravy (knihovna) ---------- */
@@ -704,8 +724,11 @@ function akceItinerare(items) {
 /** Prázdná výprava. Nabídne obojí, čím se dá začít. */
 function prazdno() {
   return `<div class="empty">${IC('i-van')}Ve výpravě zatím nejsou žádné zastávky.
+    <div class="meta" style="margin:6px 0 10px">Kam určitě pojedete, dej jako zastávku.
+      Co je zatím jen nápad, ulož na potom — do košíku.</div>
     <div class="btnrow" style="justify-content:center;margin-bottom:0">
       <button class="btn small primary" id="planPridat">${IC('i-plus')}Přidat zastávku</button>
+      <button class="btn small" id="planNaPotom">${IC('i-star')}Uložit na potom</button>
     </div></div>`
 }
 
@@ -773,6 +796,13 @@ function itinerar(items, dny) {
     `<div class="itinerar" id="itinerar">${telo}${zbyleBody}</div>
     ${vicDnu ? blokyDneHtml(null) : ''}
     <button class="pridatzastavku" id="planPridat">${IC('i-plus')}Přidat zastávku</button>
+    <!-- Dvě tlačítka vedle sebe vysvětlují rozdíl v okamžiku rozhodování:
+         zastávka = pojedeme tam, košík = možná. Do teď se do košíku dalo
+         přidat JEN z detailu místa mimo Plán, což nikdo neuhodl. -->
+    <button class="pridatzastavku napotom" id="planNaPotom">${IC('i-star')}Uložit na potom</button>
+    <button class="pridatzastavku dokosiku" id="planDoKosiku">${IC('i-batoh')}Košík výpravy${
+      kosik().length ? ` (${kosik().length})` : ''
+    }</button>
     ${pridatBlokHtml()}
     ${rozpocet ? `<div class="meta" style="margin:6px 2px">${IC('i-euro')}Rozpočet plánu celkem: <b>${rozpocet.toLocaleString('cs-CZ')} €</b></div>` : ''}` +
     (items.length > 1
@@ -1231,6 +1261,41 @@ function napoj(wrap, items) {
         draw()
         toast(`${p.n.split(/\s[–(]/)[0]} přidáno do plánu`)
       })
+
+  // Totéž vybírátko jako u zastávky, jen výsledek jde do košíku. Sdílená
+  // cesta je záměr: člověk vybírá stejně, mění se jen závaznost.
+  const naPotom = wrap.querySelector('#planNaPotom')
+  if (naPotom)
+    naPotom.onclick = () =>
+      otevriVyber((p) => {
+        if (store.plan.includes(p.id)) return toast('Tohle místo už je v itineráři')
+        if (!pridejDoKosiku(p.id)) return toast('Tohle už v košíku máš')
+        toast(`${p.n.split(/\s[–(]/)[0]} uloženo na potom`)
+        renderPlan()
+      })
+
+  const doKosiku = wrap.querySelector('#planDoKosiku')
+  if (doKosiku)
+    doKosiku.onclick = () => {
+      dil = 'kosik'
+      renderPlan()
+    }
+
+  const zpet = wrap.querySelector('#planZpet')
+  if (zpet)
+    zpet.onclick = () => {
+      // Z košíku zpět do itineráře, z itineráře do knihovny – o patro výš,
+      // ne rovnou ven. Mapa košíku je vlastní Leaflet, musí se uklidit.
+      if (dil === 'kosik') {
+        zavriMapuKosiku()
+        dil = 'itinerar'
+      } else {
+        zavriMapuDashboardu()
+        S.otevrenaCesta = null
+        dil = 'vypravy'
+      }
+      renderPlan()
+    }
 
   for (const b of wrap.querySelectorAll('.pridatbod'))
     b.onclick = () => pridejBodPruvodce(Number(b.dataset.den), b.dataset.po || null)

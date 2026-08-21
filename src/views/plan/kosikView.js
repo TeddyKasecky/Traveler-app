@@ -181,7 +181,8 @@ function prazdnyKosik() {
       <h3>Košík je prázdný</h3>
       <p>Sem patří místa, která na týhle výpravě chceš vidět, ale ještě nevíš kdy.
          Naházej jich klidně padesát – pořadí ani dny řešit nemusíš.</p>
-      <p class="meta">Přidávají se hvězdičkou v detailu místa, v Seznamu nebo v Objevuj.</p>
+      <p class="meta">Naplníš ho tlačítkem <b>Uložit na potom</b> dole v itineráři,
+         nebo hvězdičkou v detailu kteréhokoli místa.</p>
     </div>`
 }
 

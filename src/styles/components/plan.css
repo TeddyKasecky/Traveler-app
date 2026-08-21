@@ -583,3 +583,24 @@
 /* Dnešek se drží akcentem, ať ho oko najde bez hledání. */
 .kostra-den.dnes{border-color:var(--akcent)}
 .kostra-den.dnes .kostra-cislo{background:var(--akcent);color:var(--na-akcentu)}
+
+/* ---------- drobečky a cesta zpět ---------- */
+/* Itinerář a Košík jsou vnitřky výpravy, ne díly segmentu. Bez tohohle řádku
+   nebylo poznat, kde člověk je, ani jak ven – segment nesvítil a vypadalo to,
+   že appka nereaguje. */
+
+.drobecky{display:flex;align-items:center;gap:10px;margin:0 0 10px}
+.drobecky-zpet{display:inline-flex;align-items:center;gap:5px;background:none;border:0;
+  padding:4px 2px;font:inherit;font-size:.82rem;color:var(--akcent)}
+.drobecky-zpet svg.ic{font-size:13px;transform:rotate(180deg);stroke:var(--akcent)}
+.drobecky-zpet:active{opacity:.6}
+.drobecky-kde{margin-left:auto;text-align:right;font-size:.74rem;color:var(--text3);line-height:1.25}
+.drobecky-kde b{display:block;font-size:.82rem;color:var(--text2);font-weight:600}
+
+/* „Uložit na potom" a „Košík výpravy" vedle „Přidat zastávku". Rozdíl
+   v závaznosti se tím vysvětlí v okamžiku rozhodování: zastávka = pojedeme,
+   košík = možná. */
+.pridatzastavku.napotom{margin-top:6px}
+.pridatzastavku.napotom svg.ic{color:var(--sun);stroke:var(--sun)}
+.pridatzastavku.dokosiku{margin-top:6px;border-style:solid;background:var(--plocha2)}
+.pridatzastavku.dokosiku svg.ic{color:var(--moss);stroke:var(--moss)}
