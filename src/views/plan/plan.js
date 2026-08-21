@@ -1114,6 +1114,30 @@ function vykresliMapuDashboardu(wrap) {
             .addTo(mapaDashboardu)
             .bindTooltip(p.n, { direction: 'top' })
         }
+        // Vlastní body trasy (start/nocleh/cíl/vlastní z bloků) – poloviční
+        // průměr běžné zastávky (.kos-pin.blizko je 20px, tohle 10px). Start
+        // a cíl mají vlastní barvu (žlutá/červená), zbytek stejnou barvu jako
+        // běžné zastávky – jen menší, ať je jasné, že nejde o místo z databáze.
+        const vlastni = vsechnyBody()
+          .map((b) => {
+            const s = souradniceBodu(b)
+            return s ? { ...b, lat: s.lat, lon: s.lon } : null
+          })
+          .filter(Boolean)
+        for (const m of vlastni) {
+          const barva = m.druh === 'start' ? token('--sun') : m.druh === 'cil' ? token('--upozorneni') : token('--akcent')
+          L.marker([m.lat, m.lon], {
+            icon: L.divIcon({
+              className: 'kos-pin-obal',
+              html: `<div class="kos-pin vlastni" style="--kb:${barva}"></div>`,
+              iconSize: [10, 10],
+              iconAnchor: [5, 5],
+            }),
+          })
+            .addTo(mapaDashboardu)
+            .bindTooltip(m.nazev || 'Vlastní místo', { direction: 'top' })
+        }
+
         if (odkud) {
           L.marker([odkud.lat, odkud.lon], {
             icon: L.divIcon({ className: 'kos-pin-obal', html: '<div class="kos-ja"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
@@ -1123,7 +1147,7 @@ function vykresliMapuDashboardu(wrap) {
             .bindTooltip('Tady jsi', { direction: 'top', offset: [0, -9] })
         }
 
-        const vse = body.map((p) => [p.lat, p.lon])
+        const vse = [...body.map((p) => [p.lat, p.lon]), ...vlastni.map((m) => [m.lat, m.lon])]
         if (odkud) vse.push([odkud.lat, odkud.lon])
         if (vse.length > 1) mapaDashboardu.fitBounds(L.latLngBounds(vse), { padding: [30, 30], maxZoom: 10, animate: false })
       } catch {

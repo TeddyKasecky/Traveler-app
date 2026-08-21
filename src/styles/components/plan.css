@@ -485,6 +485,11 @@
 .kos-pin.blizko{width:20px;height:20px;margin:3px}
 .kos-pin.kotva{width:30px;height:30px;margin:2px;display:grid;place-items:center;
   color:var(--na-akcentu);font-size:15px;line-height:1}
+/* Vlastní body trasy (start/nocleh/cíl/vlastní) – poloviční průměr běžné
+ * zastávky (.kos-pin.blizko), ať je na první pohled jasné, že nejde
+ * o místo z databáze. Barvu podle druhu (start žlutá, cíl červená) dosazuje
+ * JS přes --kb, stejně jako u kotvy/blizko výš. */
+.kos-pin.vlastni{width:10px;height:10px;margin:3px;border-width:1.5px}
 .kos-ja{width:14px;height:14px;border-radius:50%;background:var(--sky);
   border:3px solid var(--plocha);box-shadow:var(--stin-2);margin:2px}
 
