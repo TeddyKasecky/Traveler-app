@@ -192,7 +192,11 @@ export async function prepocitejTrasu() {
 export async function prepocitejOtiskCesty() {
   const c = store.cesta
   if (!c) return { ok: false, chyba: 'Appka zrovna nejede' }
-  const body = await sesbirejGpsBody(serazenaTrasa(c.zastavky, c.dny))
+  // zahrnoutVlastniBody=false – map/planLine.js u otisku cesty vlastní body
+  // nekreslí (mista = otisk ? [] : vlastniMista()), takže musí zůstat mimo
+  // i tady, jinak by se otisk přepočtu nikdy neshodl s tím, co mapa počítá
+  // při kreslení, a appka by tiše spadla na vzdušný fallback.
+  const body = await sesbirejGpsBody(serazenaTrasa(c.zastavky, c.dny, false))
   if (body.length < 2) return { ok: false, chyba: 'Trasa nemá aspoň dva body s polohou' }
   try {
     const vysledek = await zavolejRouting(body)

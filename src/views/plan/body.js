@@ -145,21 +145,27 @@ export function pridejStartCil(druh, { nazev = '', lat = null, lon = null, zdroj
  * odjakživa. Parametry existují kvůli otisku ROZJETÉ CESTY
  * (views/plan/routing.js#prepocitejOtiskCesty): `store.cesta.zastavky`/`dny`
  * se od živého `store.plan`/`planDny` za jízdy může lišit (plán se dá dál
- * upravovat), ale vlastní body trasy (`vsechnyBody()`) čte pořád aktivní
- * výprava beze změny – cesta k ní patří i za jízdy.
+ * upravovat). `zahrnoutVlastniBody = false` pro otisk cesty – `map/planLine.js`
+ * u otisku vlastní body NEKRESLÍ (`mista = otisk ? [] : vlastniMista()`), takže
+ * i tady musí zůstat mimo, jinak by se otisk uloženého přepočtu nikdy neshodl
+ * s `otiskBodu(body)` počítaným při kreslení a appka by tiše spadla na
+ * vzdušný fallback.
  *
  * @param {string[]} [zastavkyId]  výchozí `store.plan`
  * @param {number[]} [dny]  výchozí `store.planDny`
+ * @param {boolean} [zahrnoutVlastniBody]  výchozí `true` (živý plán)
  * @returns {Array<{lat: number, lon: number, id: string, zdroj: {typ:'pozice'|'gps', id?:string}|null}>}
  */
-export function serazenaTrasa(zastavkyId = store.plan, dny = store.planDny) {
+export function serazenaTrasa(zastavkyId = store.plan, dny = store.planDny, zahrnoutVlastniBody = true) {
   const zastavky = zastavkyId.map((id) => S.byId[id]).filter(Boolean)
-  const mista = vsechnyBody()
-    .map((b) => {
-      const s = souradniceBodu(b)
-      return s ? { lat: s.lat, lon: s.lon, id: b.id, po: b.po, den: b.den, zdroj: b.zdroj || null } : null
-    })
-    .filter(Boolean)
+  const mista = zahrnoutVlastniBody
+    ? vsechnyBody()
+        .map((b) => {
+          const s = souradniceBodu(b)
+          return s ? { lat: s.lat, lon: s.lon, id: b.id, po: b.po, den: b.den, zdroj: b.zdroj || null } : null
+        })
+        .filter(Boolean)
+    : []
   const poZastavce = (id) => mista.filter((m) => m.po === id)
   const delky = (dny || []).length ? dny : [zastavky.length]
 

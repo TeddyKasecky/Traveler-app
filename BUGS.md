@@ -67,3 +67,30 @@ nekreslily ani předtím, mění se jen zdroj pro čáru/otisk. Ověřeno E2E
 (Playwright, mock API): výprava s vlastním bodem trasy má
 `store.aktivniPrepocet.otisk === otiskBodu(serazenaTrasa())` po přepočtu,
 dashboard vykreslí skutečnou `polyline`.
+
+---
+
+**B3 — Přepočet otisku cesty se nikdy nezobrazil s vlastními body v plánu — ~~VYŘEŠENO~~**
+Zjištěno: 21. 8. 2026, uživatel po zavedení `prepocitejOtiskCesty()` –
+appka hlásila „Trasa přepočítána", ale na mapě v módu „Na cestě" zůstávala
+vzdušná čára.
+
+Opačná chyba než B2: `prepocitejOtiskCesty()` počítala otisk přes
+`serazenaTrasa(c.zastavky, c.dny)` **se** zapnutými vlastními body
+(`zahrnoutVlastniBody` výchozí `true`), ale `map/planLine.js#drawPlanLine()`
+u otisku cesty vlastní body do `body` NEZAHRNUJE (`mista = otisk ? [] :
+vlastniMista()`, řádek 144) — takže `otiskBodu(body)` počítaný při kreslení
+nikdy neodpovídal uloženému `otisk` v `store.cesta.prepocet`, `platny` bylo
+vždy `false` a appka tiše spadla na fallback. Projevilo se jen u výprav
+s aspoň jedním vlastním bodem (start/nocleh/cíl/vlastní) — bez nich měl
+`serazenaTrasa()` v obou variantách stejný výsledek, takže první ruční test
+(bez vlastních bodů) chybu neodhalil.
+
+Opraveno přidáním parametru `zahrnoutVlastniBody` do
+`views/plan/body.js#serazenaTrasa()` (výchozí `true`, beze změny pro živý
+plán) a voláním `serazenaTrasa(c.zastavky, c.dny, false)` v
+`prepocitejOtiskCesty()` — stejná množina bodů, jakou `planLine.js` používá
+pro otisk. Ověřeno E2E (Playwright, mock API): výprava s vlastním bodem
+(`druh: 'start'`) má po přepočtu `store.cesta.prepocet.otisk` shodný s
+`otiskBodu(serazenaTrasa(c.zastavky, c.dny, false))`, na mapě se v módu
+„Na cestě" vykreslí skutečná polyline (ne fallback).
