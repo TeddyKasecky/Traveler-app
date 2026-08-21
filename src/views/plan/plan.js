@@ -1149,7 +1149,9 @@ function vykresliMapuDashboardu(wrap) {
 
         const vse = [...body.map((p) => [p.lat, p.lon]), ...vlastni.map((m) => [m.lat, m.lon])]
         if (odkud) vse.push([odkud.lat, odkud.lon])
-        if (vse.length > 1) mapaDashboardu.fitBounds(L.latLngBounds(vse), { padding: [30, 30], maxZoom: 10, animate: false })
+        // Menší okraj a vyšší strop přiblížení než dřív (30px/zoom 10) – trasa
+        // vyplní víc mapy, body nezůstávají daleko od okrajů plovoucího náhledu.
+        if (vse.length > 1) mapaDashboardu.fitBounds(L.latLngBounds(vse), { padding: [14, 14], maxZoom: 13, animate: false })
       } catch {
         el.innerHTML = '<div class="meta kosik-bezmapy">Mapu se nepovedlo načíst.</div>'
       }
