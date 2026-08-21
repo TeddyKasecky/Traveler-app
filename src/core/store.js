@@ -106,7 +106,14 @@ export const store = nacti(KEY, {
    *
    *   { nazev, zacatek, zastavky: [id], dny: [délky], pauzy: [{od, do}],
    *     pauzaOd: null|ms, odznacene: {id: ms}, poznamky: {id: text},
-   *     poznamka: '', ziskane: [id achievementů] }
+   *     poznamka: '', ziskane: [id achievementů],
+   *     prepocet: {otisk, polyline, vzdalenostKm, casMin, spocitanoV}|undefined }
+   *
+   * `prepocet` je skutečná trasa OTISKU z Mapy.com Routing API
+   * (views/plan/routing.js#prepocitejOtiskCesty) – oddělené od
+   * `store.aktivniPrepocet` níž, protože ten patří aktivní VÝPRAVĚ (živému
+   * plánu), ne rozjeté CESTĚ. Vzniká až při prvním přepočtu na kartě Na
+   * cestě, `ukonciCestu()` ho kopíruje do archivu.
    */
   cesta: null,
   /** Ukončené cesty, nejnovější první. Souhrny počítá `ukonciCestu()`. */

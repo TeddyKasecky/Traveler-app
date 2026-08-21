@@ -41,16 +41,17 @@ export function pocetOdkazuNaPozici(pozId) {
 }
 
 /**
- * Sesbírá body aktivní trasy pro Routing API. Pro body se `zdroj.typ==='gps'`
- * zjistí AKTUÁLNÍ polohu ZNOVU (jednorázově) – to je „aktuální poloha
- * uživatele v okamžiku přepočtu“, ne uložená hodnota z chvíle, kdy se bod
- * zakládal. Když se GPS nepodaří zjistit, bod se v tichosti přeskočí (stejné
- * pravidlo jako u bodu bez rozpoznatelné polohy) – appka kvůli tomu
- * nezastaví celý přepočet.
+ * Doplní do bodů AKTUÁLNÍ GPS polohu tam, kde je potřeba. Pro body se
+ * `zdroj.typ==='gps'` zjistí polohu ZNOVU (jednorázově) – to je „aktuální
+ * poloha uživatele v okamžiku přepočtu“, ne uložená hodnota z chvíle, kdy se
+ * bod zakládal. Když se GPS nepodaří zjistit, bod se v tichosti přeskočí
+ * (stejné pravidlo jako u bodu bez rozpoznatelné polohy) – appka kvůli tomu
+ * nezastaví celý přepočet. Sdílené mezi `sberBoduProRouting()` (živý plán)
+ * a `prepocitejOtiskCesty()` (otisk rozjeté cesty) – obojí potřebuje totéž.
+ * @param {Array<{lat: number, lon: number, id: string, zdroj?: {typ:string}|null}>} body
  * @returns {Promise<Array<{lat: number, lon: number, id: string}>>}
  */
-export async function sberBoduProRouting() {
-  const body = serazenaTrasa()
+async function sesbirejGpsBody(body) {
   const vysledek = []
   for (const b of body) {
     if (b.zdroj && b.zdroj.typ === 'gps') {
@@ -65,6 +66,14 @@ export async function sberBoduProRouting() {
     vysledek.push({ lat: b.lat, lon: b.lon, id: b.id })
   }
   return vysledek
+}
+
+/**
+ * Sesbírá body ŽIVÉHO plánu aktivní výpravy pro Routing API.
+ * @returns {Promise<Array<{lat: number, lon: number, id: string}>>}
+ */
+export async function sberBoduProRouting() {
+  return sesbirejGpsBody(serazenaTrasa())
 }
 
 /**
@@ -164,6 +173,30 @@ export async function prepocitejTrasu() {
   try {
     const vysledek = await zavolejRouting(body)
     store.aktivniPrepocet = { ...vysledek, otisk: otiskBodu(body), spocitanoV: Date.now() }
+    save()
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, chyba: e.message || 'Přepočet trasy se nepovedl' }
+  }
+}
+
+/**
+ * Přepočte trasu OTISKU aktivní cesty (`store.cesta.zastavky`/`dny`) a uloží
+ * výsledek do `store.cesta.prepocet` – NE do `store.aktivniPrepocet`, ten
+ * patří aktivní VÝPRAVĚ (živému plánu), který appka za jízdy dál upravuje.
+ * Cesta jede podle otisku z okamžiku Vyjet, takže i její přepočítaná trasa
+ * musí zůstat u otisku, ne u živého plánu. Volá tlačítko Přepočítat na
+ * kartě Na cestě (views/plan/cesta.js).
+ * @returns {Promise<{ok: true}|{ok: false, chyba: string}>}
+ */
+export async function prepocitejOtiskCesty() {
+  const c = store.cesta
+  if (!c) return { ok: false, chyba: 'Appka zrovna nejede' }
+  const body = await sesbirejGpsBody(serazenaTrasa(c.zastavky, c.dny))
+  if (body.length < 2) return { ok: false, chyba: 'Trasa nemá aspoň dva body s polohou' }
+  try {
+    const vysledek = await zavolejRouting(body)
+    c.prepocet = { ...vysledek, otisk: otiskBodu(body), spocitanoV: Date.now() }
     save()
     return { ok: true }
   } catch (e) {

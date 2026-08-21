@@ -30,7 +30,7 @@ import { detailCestyHtml } from './archiv.js'
 import { bloky, blok } from './bloky.js'
 import { coDalHtml, napojCoDal, tipyOdsud } from './kosikView.js'
 import { spustSledovani, zastavSledovani, aktualniProjekce } from './cesta-zivot.js'
-import { prepocitejTrasu } from './routing.js'
+import { prepocitejOtiskCesty } from './routing.js'
 
 /** Silnice bývá delší než vzdušná čára – týž koeficient jako v plan.js. */
 const KLIKATOST = 1.35
@@ -143,6 +143,9 @@ export function ukonciCestu() {
     kategorie,
     hodnoceni,
     ziskane: c.ziskane || [],
+    // Otisk mohl mít vlastní přepočet z Mapy.com (#cestaPrepocitat) – bez
+    // téhle kopie by ukončená cesta v knihovně o spočítanou trasu přišla.
+    prepocet: c.prepocet,
   })
   store.cesta = null
   // Stejný důvod jako u zrusCestu() výš – bez aktivní cesty nemá mód
@@ -609,12 +612,14 @@ export function napojCestu(wrap, prekresli) {
 
   const prepocitat = wrap.querySelector('#cestaPrepocitat')
   if (prepocitat)
-    // Stejné volání jako v plan.js#akceItinerare – přepočítává vždy živý
-    // store.plan (routing.js), ne otisk cesty. Na mapě se projeví, jen
-    // když je zrovna zvolený mód „Itinerář" (S.mapaMod), ne „Na cestě".
+    // Na rozdíl od plan.js#akceItinerare (ten počítá živý store.plan do
+    // store.aktivniPrepocet) tohle počítá OTISK cesty (store.cesta.zastavky/
+    // dny) do store.cesta.prepocet – appka za jízdy plán dál upravuje, ale
+    // cesta jede podle otisku. Na mapě se projeví v módu „Na cestě"
+    // (S.mapaMod), viz map/planLine.js.
     prepocitat.onclick = async () => {
       toast('Počítám trasu…')
-      const v = await prepocitejTrasu()
+      const v = await prepocitejOtiskCesty()
       toast(v.ok ? 'Trasa přepočítána' : v.chyba)
       draw()
       prekresli()

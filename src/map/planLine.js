@@ -194,9 +194,12 @@ export function drawPlanLine(mapa) {
   if (body.length < 2) return
 
   // Skutečná trasa z Mapy.com Routing API (views/plan/routing.js), pokud je
-  // pro TENHLE seznam bodů ještě platná – jinak (žádný přepočet, zastaralý,
-  // nebo se jede/prohlíží otisk cesty) zůstává fallback: rovná spojnice bodů.
-  const prepocet = !otisk && store.aktivniPrepocet
+  // pro TENHLE seznam bodů ještě platná – jinak fallback: rovná spojnice
+  // bodů. Zdroj přepočtu se liší podle toho, co se kreslí: otisk (rozjetá
+  // nebo prohlížená cesta) má svůj vlastní `otisk.prepocet`
+  // (#prepocitejOtiskCesty), živý plán `store.aktivniPrepocet` jako dřív –
+  // jsou to nezávislé sloty, appka za jízdy plán dál upravuje.
+  const prepocet = otisk ? otisk.prepocet : store.aktivniPrepocet
   const platny = prepocet && prepocet.otisk === otiskBodu(body)
   const carovaGeometrie = platny ? prepocet.polyline : body.map((p) => [p.lat, p.lon])
 

@@ -234,6 +234,24 @@ Tři menší věci z jedné dávky (srpen 2026), navazující na N12:
    kategorii „co sis sám vybral" jako košík/tipy. `draw()` teď skládá
    `navic` ze všech tří zdrojů najednou (`store.plan`, `store.kosik`,
    `S.coDalId`).
+
+   **Čtvrtý dovětek** (21. 8. 2026, na přání přepočítat OTISK cesty, ne živý
+   plán): tlačítko `#cestaPrepocitat` na kartě Na cestě do teď volalo stejnou
+   `prepocitejTrasu()` jako Itinerář – počítalo `store.plan`, i když appka
+   jela podle otisku (`store.cesta.zastavky`), který se za jízdy nemění.
+   Nová funkce `prepocitejOtiskCesty()` (`views/plan/routing.js`) počítá
+   `serazenaTrasa(store.cesta.zastavky, store.cesta.dny)` (funkce teď bere
+   volitelné parametry, výchozí `store.plan`/`store.planDny` beze změny pro
+   Itinerář) a zapisuje do **nového pole `store.cesta.prepocet`** – oddělené
+   od `store.aktivniPrepocet`, který patří aktivní VÝPRAVĚ (živému plánu), ne
+   rozjeté CESTĚ. `ukonciCestu()` kopíruje `prepocet` do archivu, ať o
+   spočítanou trasu nepřijde ani ukončená cesta. `map/planLine.js` dřív navíc
+   nikdy nepoužil skutečnou trasu pro čáru v módu „Na cestě" (`prepocet` byl
+   vždy `false`, protože `otisk` je tam vždy pravdivé) – teď čte
+   `otisk.prepocet` místo `store.aktivniPrepocet`, když se kreslí otisk.
+   Ověřeno E2E (mock Mapy.com API): úprava živého plánu za jízdy nemá vliv
+   na přepočet cesty, otisky se shodují se zastávkami cesty, ne s upraveným
+   plánem, a skutečná trasa se v módu „Na cestě" vykreslí na mapě.
 2. **`prefs.routeType`** (`core/store.js`) — globální předvolba typu dopravy
    pro přepočet trasy (auto/kolo/pěšky), segment v Nastavení, čte ji
    `zavolejRouting()` v `views/plan/routing.js` místo natvrdo `'car_fast'`.

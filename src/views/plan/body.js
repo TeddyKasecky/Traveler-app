@@ -134,16 +134,26 @@ export function pridejStartCil(druh, { nazev = '', lat = null, lon = null, zdroj
 }
 
 /**
- * Zastávky a body trasy aktivní výpravy v pořadí, ve kterém appka kreslí
- * trasu na mapě (map/planLine.js#drawPlanLine – stejné proplétání podle
- * `po`/`den`, tady jen pro views, ne pro mapu). Body bez rozpoznatelné
- * polohy (smazaná uložená pozice, „zatím bez polohy“) se PŘESKAKUJÍ – to
- * je zamýšlené chování pro přepočet trasy (views/plan/routing.js), ne
- * chyba: štítek bez lokace appka do routingu prostě nepočítá.
+ * Zastávky a body trasy v pořadí, ve kterém appka kreslí trasu na mapě
+ * (map/planLine.js#drawPlanLine – stejné proplétání podle `po`/`den`, tady
+ * jen pro views, ne pro mapu). Body bez rozpoznatelné polohy (smazaná
+ * uložená pozice, „zatím bez polohy“) se PŘESKAKUJÍ – to je zamýšlené
+ * chování pro přepočet trasy (views/plan/routing.js), ne chyba: štítek bez
+ * lokace appka do routingu prostě nepočítá.
+ *
+ * Výchozí volání (bez parametrů) je živý plán aktivní výpravy – tak to bylo
+ * odjakživa. Parametry existují kvůli otisku ROZJETÉ CESTY
+ * (views/plan/routing.js#prepocitejOtiskCesty): `store.cesta.zastavky`/`dny`
+ * se od živého `store.plan`/`planDny` za jízdy může lišit (plán se dá dál
+ * upravovat), ale vlastní body trasy (`vsechnyBody()`) čte pořád aktivní
+ * výprava beze změny – cesta k ní patří i za jízdy.
+ *
+ * @param {string[]} [zastavkyId]  výchozí `store.plan`
+ * @param {number[]} [dny]  výchozí `store.planDny`
  * @returns {Array<{lat: number, lon: number, id: string, zdroj: {typ:'pozice'|'gps', id?:string}|null}>}
  */
-export function serazenaTrasa() {
-  const zastavky = store.plan.map((id) => S.byId[id]).filter(Boolean)
+export function serazenaTrasa(zastavkyId = store.plan, dny = store.planDny) {
+  const zastavky = zastavkyId.map((id) => S.byId[id]).filter(Boolean)
   const mista = vsechnyBody()
     .map((b) => {
       const s = souradniceBodu(b)
@@ -151,7 +161,7 @@ export function serazenaTrasa() {
     })
     .filter(Boolean)
   const poZastavce = (id) => mista.filter((m) => m.po === id)
-  const delky = (store.planDny || []).length ? store.planDny : [zastavky.length]
+  const delky = (dny || []).length ? dny : [zastavky.length]
 
   const body = []
   let od = 0
