@@ -355,15 +355,22 @@ export const S = {
   zivaPoloha: null,
   /**
    * Mód mapy: 'plna' (výchozí – Itinerář, živý `store.plan` i za jízdy) nebo
-   * 'nacesta' (jen prvky aktivní cesty – otisk `store.cesta`). Přepínač
-   * (bublina u #podkladBtn, components/chip.js) je vidět a dostupný jen
-   * když `store.cesta` existuje – bez jízdy nemá co přepínat, appka kreslí
-   * vždy živý plán jako dřív. Řídí i to, co `drawPlanLine()`
-   * (map/planLine.js) použije jako zdroj bodů/čáry, ne jen viditelnost
-   * běžných špendlíků (map/map.js#draw()). Jen v paměti – nepřežívá restart,
-   * ukončení/zrušení cesty ho vrací na 'plna' (views/plan/cesta.js).
+   * 'nacesta' (otisk aktivní cesty – `store.cesta`). Přepíná levá část
+   * tlačítka u #podkladBtn (components/chip.js), dostupná jen když
+   * `store.cesta` existuje – bez jízdy nemá co přepínat, appka kreslí vždy
+   * živý plán. Řídí JEN zdroj trasy v `drawPlanLine()` (map/planLine.js) –
+   * viditelnost běžných špendlíků řídí nezávisle `S.mistaSkryta` níž. Jen
+   * v paměti – nepřežívá restart, ukončení/zrušení cesty ho vrací na 'plna'
+   * (views/plan/cesta.js).
    */
   mapaMod: 'plna',
+  /**
+   * Skrytá běžná místa na mapě (580 špendlíků) – nezávislé na `S.mapaMod`.
+   * Přepíná pravá (oko) část tlačítka u #podkladBtn (components/chip.js).
+   * Funguje vždy, i bez aktivní cesty – na rozdíl od `S.mapaMod`, který má
+   * smysl jen za jízdy. Jen v paměti, nepřežívá restart.
+   */
+  mistaSkryta: false,
 }
 
 /**

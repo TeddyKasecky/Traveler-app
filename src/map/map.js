@@ -137,18 +137,17 @@ export function draw() {
   // doplňuje a odebírá, viz `srovnejVyrez()`.
   vrstva.clearLayers()
   naMape.clear()
-  // Mód „Na cestě“ (S.mapaMod, přepínač u #podkladBtn v components/chip.js)
+  // Oko (S.mistaSkryta, pravá část tlačítka u #podkladBtn v components/chip.js)
   // schová běžné špendlíky – na mapě zůstává jen to, co kreslí drawPlanLine()
-  // (otisk cesty: čára, vlastní body, dodávka, živá značka). Dostupný jen
-  // s aktivní cestou (store.cesta); S.mapaMod navíc mění i ZDROJ trasy, viz
-  // map/planLine.js#kresliOtiskCesty.
-  const naCeste = S.mapaMod === 'nacesta'
-  vFiltru = naCeste ? [] : visible()
+  // (čára, vlastní body, dodávka, živá značka). Nezávislé na S.mapaMod, ten
+  // řídí jen ZDROJ trasy (viz map/planLine.js#kresliOtiskCesty), ne
+  // viditelnost špendlíků.
+  vFiltru = S.mistaSkryta ? [] : visible()
   srovnejVyrez(false)
   drawPlanLine(mapa)
 
   const c = document.getElementById('count')
-  document.getElementById('countN').textContent = naCeste ? 'jen trasa' : `${vFiltru.length} míst`
+  document.getElementById('countN').textContent = S.mistaSkryta ? 'jen trasa' : `${vFiltru.length} míst`
   c.classList.remove('bump')
   void c.offsetWidth // vynutí restart animace
   c.classList.add('bump')

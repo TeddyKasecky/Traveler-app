@@ -116,48 +116,49 @@ function prepniRychly(r) {
 }
 
 /**
- * Přepínač Itinerář/Na cestě vedle #podkladBtn (ne pilulka v #chips – to je
- * mód mapy, ne filtr). Vidět jen s aktivní cestou (`store.cesta`) – appka bez
- * jízdy nemá co přepínat, mapa vždy kreslí živý plán. „Itinerář“ = živý
- * `store.plan`, i za jízdy; „Na cestě“ = otisk `store.cesta`
- * (`map/planLine.js#kresliOtiskCesty`). Obojí schová běžné špendlíky mimo
- * otisk/plán (`map/map.js#draw()`), to se módy neliší.
+ * Sloučené tlačítko u mapy, ve stylu #podkladBtn: levá část (#modMapyText)
+ * cykluje `S.mapaMod` (zdroj trasy – živý plán/otisk cesty,
+ * `map/planLine.js#kresliOtiskCesty`), pravá čtvercová ikona oka
+ * (#modMapyOko) nezávisle přepíná `S.mistaSkryta` (viditelnost běžných
+ * špendlíků, `map/map.js#draw()`). Levá část bez aktivní cesty zašedne
+ * a neklikne se na ni – cyklování nemá smysl bez jízdy, mapa stejně vždy
+ * kreslí živý plán. Pravé oko funguje vždy, nezávisle na cestě.
  */
 function vykresliModMapy() {
-  const el = document.getElementById('modMapy')
-  if (!el) return
-  el.hidden = !store.cesta
-  if (!store.cesta) return
-  el.querySelector('[data-mod="plna"]').classList.toggle('on', S.mapaMod !== 'nacesta')
-  el.querySelector('[data-mod="nacesta"]').classList.toggle('on', S.mapaMod === 'nacesta')
+  const text = document.getElementById('modMapyText')
+  const oko = document.getElementById('modMapyOko')
+  if (!text || !oko) return
+  const jedeSe = !!store.cesta
+  text.textContent = jedeSe && S.mapaMod === 'nacesta' ? 'Na cestě' : 'Itinerář'
+  text.classList.toggle('nejde', !jedeSe)
+  oko.classList.toggle('on', S.mistaSkryta)
 }
 
 /**
- * Znovu vykreslí přepínač Itinerář/Na cestě beze změny módu – volá se
- * z `main.js` po `prekresleno`, aby se bublina objevila/schovala podle
- * Vyjet/Ukončit/Zrušit cestu, ne jen jednou při startu.
+ * Znovu vykreslí tlačítko beze změny stavu – volá se z `main.js` po
+ * `prekresleno`, aby levá část zašedla/ožila podle Vyjet/Ukončit/Zrušit
+ * cestu, ne jen jednou při startu.
  */
 export function obnovModMapy() {
   vykresliModMapy()
 }
 
-/** Napojí obsluhu tlačítek přepínače. Volá se jednou při startu. */
+/** Napojí obsluhu obou částí tlačítka. Volá se jednou při startu. */
 export function initModMapy() {
   vykresliModMapy()
-  const el = document.getElementById('modMapy')
-  if (!el) return
-  for (const b of el.querySelectorAll('button')) {
-    b.onclick = () => prepniModMapy(b.dataset.mod)
+  document.getElementById('modMapyText').onclick = () => {
+    if (!store.cesta) return
+    S.mapaMod = S.mapaMod === 'nacesta' ? 'plna' : 'nacesta'
+    vykresliModMapy()
+    draw()
+    toast(S.mapaMod === 'nacesta' ? 'Na mapě: otisk cesty' : 'Na mapě: živý itinerář')
   }
-}
-
-/** @param {'plna'|'nacesta'} mod */
-function prepniModMapy(mod) {
-  if (S.mapaMod === mod) return
-  S.mapaMod = mod
-  vykresliModMapy()
-  draw()
-  toast(mod === 'nacesta' ? 'Na mapě: otisk cesty' : 'Na mapě: živý itinerář')
+  document.getElementById('modMapyOko').onclick = () => {
+    S.mistaSkryta = !S.mistaSkryta
+    vykresliModMapy()
+    draw()
+    toast(S.mistaSkryta ? 'Ostatní místa schovaná' : 'Ostatní místa zpátky na mapě')
+  }
 }
 
 /** Deset kategorií do panelu Filtry. Seznam se bere z KAT, ať se nepíše dvakrát. */

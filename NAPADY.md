@@ -199,6 +199,21 @@ Tři menší věci z jedné dávky (srpen 2026), navazující na N12:
    (`views/plan/cesta.js`, `#cestaPrepocitat`, vedle „Navigovat") – počítá
    pořád `store.plan` přes stávající `prepocitejTrasu()` (`views/plan/routing.js`,
    beze změny), jen bylo dřív dosažitelné jen z karty Itinerář.
+
+   **Druhý dovětek** (21. 8. 2026, na přání sloučit s tlačítkem online/offline):
+   `#modMapy` už není samostatná dvoustavová bublina, ale jedno tlačítko
+   ve stylu `#podkladBtn` se dvěma klikacími zónami. Levá obdélníková
+   (`#modMapyText`) cykluje `S.mapaMod` přesně jako dřív – dostupná jen se
+   `store.cesta`, jinak zašedlá (`.nejde`, stejná třída jako
+   `.volbakresby.nejde`) a ukazuje natvrdo „Itinerář". Pravá čtvercová
+   (`#modMapyOko`, nová ikona `i-oko-ne` ve `sprite.svg`) je **nový nezávislý
+   stav `S.mistaSkryta`** (`core/store.js`) – schovává/ukazuje běžná místa
+   (580 špendlíků) a funguje VŽDY, i bez cesty, nezávisle na `S.mapaMod`.
+   Dřív `S.mapaMod==='nacesta'` řídilo obojí najednou (zdroj trasy
+   i viditelnost špendlíků); teď `map/map.js#draw()` čte jen `S.mistaSkryta`
+   pro viditelnost, `map/planLine.js#kresliOtiskCesty` dál jen `S.mapaMod`
+   pro zdroj – dají se kombinovat libovolně (např. „Itinerář" se
+   schovanými špendlíky).
 2. **`prefs.routeType`** (`core/store.js`) — globální předvolba typu dopravy
    pro přepočet trasy (auto/kolo/pěšky), segment v Nastavení, čte ji
    `zavolejRouting()` v `views/plan/routing.js` místo natvrdo `'car_fast'`.

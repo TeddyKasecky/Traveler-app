@@ -105,9 +105,10 @@ const kontrola = async (popis, fn, ocekavano) => {
 
 // 57 z původní aplikace + `i-filtr` (trychtýř podle listu „SADA PIKTOGRAMŮ",
 // viz VZHLED.md) + `i-zalozka` + `i-slozka` + `i-zamek` (ukončené cesty
-// v knihovně, srpen 2026) + `i-dum` (uložené pozice v profilu, srpen 2026).
+// v knihovně, srpen 2026) + `i-dum` (uložené pozice v profilu, srpen 2026)
+// + `i-oko-ne` (schování běžných míst u mapy, srpen 2026).
 // Číslo se mění jen s vědomým přidáním do sprite.svg.
-await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 62)
+await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 63)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
 // Nad mapou jsou čtyři rychlé pilulky „moje věci" (Vše, Uložená, Musíme!,
