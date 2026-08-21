@@ -126,12 +126,15 @@ export function drawPlanLine(mapa) {
     zivaZnacka = null
   }
 
-  // Za jízdy se kreslí otisk ROZJETÉ cesty; při prohlížení ukončené cesty
-  // z knihovny (S.otevrenaCesta) otisk TÉ; jinak živý plán – ten se dá
-  // upravovat i s rozjetou cestou a trasa na mapě má ukazovat, co se jede.
+  // Za jízdy kreslí otisk ROZJETÉ cesty jen mód mapy „Na cestě“ (S.mapaMod,
+  // components/chip.js) – mód „Itinerář“ (výchozí) kreslí živý plán i za
+  // jízdy, ať jde upravovat trasu a rovnou to vidět na mapě. Při prohlížení
+  // ukončené cesty z knihovny (S.otevrenaCesta) se kreslí otisk TÉ, nezávisle
+  // na S.mapaMod – to je jiný stav (appka nejede).
   const jedeSe = !!store.cesta
+  const kresliOtiskCesty = jedeSe && S.mapaMod === 'nacesta'
   const cestaOtevrena = !jedeSe && S.otevrenaCesta != null ? store.cesty[S.otevrenaCesta] : null
-  const otisk = jedeSe ? store.cesta : cestaOtevrena
+  const otisk = kresliOtiskCesty ? store.cesta : cestaOtevrena
   const zdrojIds = otisk ? otisk.zastavky : store.plan
   const zastavky = zdrojIds.map((id) => S.byId[id]).filter(Boolean)
 

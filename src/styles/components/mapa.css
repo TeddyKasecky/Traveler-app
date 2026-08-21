@@ -13,6 +13,7 @@ body:not([data-tab='map']) #mapHledani,
 body:not([data-tab='map']) #chips,
 body:not([data-tab='map']) #fabLoc,
 body:not([data-tab='map']) #podkladBtn,
+body:not([data-tab='map']) #modMapy,
 body:not([data-tab='map']) #offlineStitek,
 body:not([data-tab='map']) #mapDolu{display:none}
 
@@ -48,6 +49,20 @@ body:not([data-tab='map']) #mapDolu{display:none}
 #podkladBtn:active{transform:var(--stisk)}
 #podkladBtn.on{background:var(--akcent);color:var(--na-akcentu)}
 #podkladBtn.on svg.ic{color:var(--na-akcentu);stroke:var(--na-akcentu)}
+
+/* ---------- přepínač Itinerář / Na cestě ---------- */
+/* Pod #podkladBtn, jen s aktivní cestou (components/chip.js#vykresliModMapy).
+ * Dvoustavová pilulka jako segment(), ale menší – dvě tlačítka v jedné
+ * obrysové ploše, ne dvě samostatné pilulky vedle sebe. #offlineStitek má
+ * stejné X a `margin-top:56px` – o kus níž, ať se nikdy nepřekryjí, když
+ * appka jede BEZ stažené dlaždice zrovna ve výřezu. */
+.modmapy{position:absolute;left:14px;top:100%;margin-top:54px;display:flex;
+  border-radius:var(--r-pill);border:var(--line);background:var(--plocha);box-shadow:var(--stin-2);
+  overflow:hidden}
+.modmapy[hidden]{display:none}
+.modmapy button{border:0;background:none;font:inherit;font-size:.72rem;font-weight:800;
+  letter-spacing:.3px;color:var(--text2);padding:8px 12px;transition:background .18s,color .18s}
+.modmapy button.on{background:var(--akcent);color:var(--na-akcentu)}
 
 /* ---------- spodní část ---------- */
 

@@ -5,8 +5,8 @@
  * Deset chipů se na telefon nevešlo a lišta se musela posouvat, takže poslední
  * čtyři nikdo neviděl.
  *
- * CO V NICH JE: od srpna 2026 „moje věci“ (uložená, Musíme!, v plánu, byli
- * jsme), ne kategorie. Zdůvodnění je u `RYCHLE` níž. Kategorie zůstávají
+ * CO V NICH JE: od srpna 2026 „moje věci“ (uložená, Musíme!, byli jsme), ne
+ * kategorie. Zdůvodnění je u `RYCHLE` níž. Kategorie zůstávají
  * v panelu Filtry (`#katRow`) a `t` (typ) jako pilulka na Seznamu — rychlá
  * pilulka je zkratka, ne zmenšení.
  *
@@ -55,15 +55,6 @@ export const RYCHLE = [
   { id: 'byli', popisek: 'Byli jsme', ikona: 'i-check', ulozene: false, fire: false, stav: 'visited' },
 ]
 
-/**
- * Pilulka „Na cestě“ – NENÍ filtr jako `RYCHLE`, přepíná `S.mapaMod`
- * (map/map.js), ne pole `F`. Zobrazí se jen, když opravdu jede se
- * (`store.cesta` existuje, po stisku Vyjet) – appka bez rozjeté cesty
- * nemá co přepínat. Odděleně od `RYCHLE`, protože se vzájemně nevylučuje
- * s běžnými filtry (filtr + mód mapy jsou dvě různé věci).
- */
-const NA_CESTE = { id: 'nacesta', popisek: 'Na cestě', ikona: 'i-route' }
-
 /** Pole filtru, kterými se rychlé pilulky přepínají. */
 const POLE = ['ulozene', 'fire']
 
@@ -73,27 +64,21 @@ function jeAktivni(r) {
   return POLE.every((k) => !!F[k] === !!r[k])
 }
 
-/**
- * Vykreslí pilulky nad mapou. Volá se při startu a znovu při každé změně
- * `store.cesta` (`vykresliChipy()`) – pilulka „Na cestě“ se objevuje/mizí
- * podle toho, jestli appka právě jede, ne jen jednou při startu.
- */
+/** Vykreslí pilulky „moje věci“ nad mapou. */
 function vykresliChipy() {
   const el = document.getElementById('chips')
   if (!el) return
   const polozky = RYCHLE.map((r) => ({ id: r.id, popisek: r.popisek, ikona: r.ikona, on: jeAktivni(r) }))
-  if (store.cesta) polozky.push({ id: NA_CESTE.id, popisek: NA_CESTE.popisek, ikona: NA_CESTE.ikona, on: S.mapaMod === 'nacesta' })
   el.innerHTML = pilulky(polozky, 'vodorovne')
 
   for (const b of el.querySelectorAll('.pilulka')) {
-    b.onclick = () => (b.dataset.id === NA_CESTE.id ? prepniModMapy() : prepniRychly(RYCHLE.find((r) => r.id === b.dataset.id)))
+    b.onclick = () => prepniRychly(RYCHLE.find((r) => r.id === b.dataset.id))
   }
 }
 
 /**
- * Znovu vykreslí pilulky nad mapou beze ztráty stavu ostatních panelů –
- * volá se z `main.js` po `prekresleno`, aby pilulka „Na cestě“ reagovala
- * na Vyjet/Ukončit/Zrušit cestu, ne jen na start appky.
+ * Znovu vykreslí pilulky nad mapou beze ztráty stavu ostatních panelů.
+ * Volá se z `main.js` po `prekresleno`.
  */
 export function obnovChipy() {
   vykresliChipy()
@@ -131,14 +116,48 @@ function prepniRychly(r) {
 }
 
 /**
- * Přepne mód mapy mezi „plná“ (všechna filtrovaná místa) a „na cestě“ (jen
- * čára/vlastní body aktivní cesty, žádné běžné špendlíky) – `map/map.js#draw()`.
+ * Přepínač Itinerář/Na cestě vedle #podkladBtn (ne pilulka v #chips – to je
+ * mód mapy, ne filtr). Vidět jen s aktivní cestou (`store.cesta`) – appka bez
+ * jízdy nemá co přepínat, mapa vždy kreslí živý plán. „Itinerář“ = živý
+ * `store.plan`, i za jízdy; „Na cestě“ = otisk `store.cesta`
+ * (`map/planLine.js#kresliOtiskCesty`). Obojí schová běžné špendlíky mimo
+ * otisk/plán (`map/map.js#draw()`), to se módy neliší.
  */
-function prepniModMapy() {
-  S.mapaMod = S.mapaMod === 'nacesta' ? 'plna' : 'nacesta'
-  vykresliChipy()
+function vykresliModMapy() {
+  const el = document.getElementById('modMapy')
+  if (!el) return
+  el.hidden = !store.cesta
+  if (!store.cesta) return
+  el.querySelector('[data-mod="plna"]').classList.toggle('on', S.mapaMod !== 'nacesta')
+  el.querySelector('[data-mod="nacesta"]').classList.toggle('on', S.mapaMod === 'nacesta')
+}
+
+/**
+ * Znovu vykreslí přepínač Itinerář/Na cestě beze změny módu – volá se
+ * z `main.js` po `prekresleno`, aby se bublina objevila/schovala podle
+ * Vyjet/Ukončit/Zrušit cestu, ne jen jednou při startu.
+ */
+export function obnovModMapy() {
+  vykresliModMapy()
+}
+
+/** Napojí obsluhu tlačítek přepínače. Volá se jednou při startu. */
+export function initModMapy() {
+  vykresliModMapy()
+  const el = document.getElementById('modMapy')
+  if (!el) return
+  for (const b of el.querySelectorAll('button')) {
+    b.onclick = () => prepniModMapy(b.dataset.mod)
+  }
+}
+
+/** @param {'plna'|'nacesta'} mod */
+function prepniModMapy(mod) {
+  if (S.mapaMod === mod) return
+  S.mapaMod = mod
+  vykresliModMapy()
   draw()
-  toast(S.mapaMod === 'nacesta' ? 'Na mapě jen trasa' : 'Na mapě všechna místa')
+  toast(mod === 'nacesta' ? 'Na mapě: otisk cesty' : 'Na mapě: živý itinerář')
 }
 
 /** Deset kategorií do panelu Filtry. Seznam se bere z KAT, ať se nepíše dvakrát. */
@@ -163,13 +182,9 @@ function postavKategorie() {
   }
 }
 
-/** Srovná zvýraznění rychlých pilulek se stavem filtrů/módu mapy. */
+/** Srovná zvýraznění rychlých pilulek se stavem filtrů. */
 function srovnejRychle() {
   for (const b of document.querySelectorAll('#chips .pilulka')) {
-    if (b.dataset.id === NA_CESTE.id) {
-      b.classList.toggle('on', S.mapaMod === 'nacesta')
-      continue
-    }
     b.classList.toggle('on', jeAktivni(RYCHLE.find((r) => r.id === b.dataset.id)))
   }
 }

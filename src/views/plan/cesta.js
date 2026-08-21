@@ -29,6 +29,7 @@ import { planoveAchievementy, pripisPlanove, pripisProfilove } from './achieveme
 import { detailCestyHtml } from './archiv.js'
 import { bloky, blok } from './bloky.js'
 import { spustSledovani, zastavSledovani, aktualniProjekce } from './cesta-zivot.js'
+import { prepocitejTrasu } from './routing.js'
 
 /** Silnice bývá delší než vzdušná čára – týž koeficient jako v plan.js. */
 const KLIKATOST = 1.35
@@ -212,6 +213,7 @@ export function cestaHtml() {
         ? `<div class="cesta-dalsi">
             <div><span class="meta">Další cíl</span><b>${esc(dalsiCil.n)}</b></div>
             <button class="btn small primary" id="cestaNavigovat" data-lat="${dalsiCil.lat}" data-lon="${dalsiCil.lon}">${IC('i-nav')}Navigovat</button>
+            <button class="btn small" id="cestaPrepocitat">${IC('i-route')}Přepočítat</button>
           </div>`
         : ''
     }
@@ -526,6 +528,19 @@ export function napojCestu(wrap, prekresli) {
     navigovat.onclick = () => {
       const { lat, lon } = navigovat.dataset
       window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, '_blank')
+    }
+
+  const prepocitat = wrap.querySelector('#cestaPrepocitat')
+  if (prepocitat)
+    // Stejné volání jako v plan.js#akceItinerare – přepočítává vždy živý
+    // store.plan (routing.js), ne otisk cesty. Na mapě se projeví, jen
+    // když je zrovna zvolený mód „Itinerář" (S.mapaMod), ne „Na cestě".
+    prepocitat.onclick = async () => {
+      toast('Počítám trasu…')
+      const v = await prepocitejTrasu()
+      toast(v.ok ? 'Trasa přepočítána' : v.chyba)
+      draw()
+      prekresli()
     }
 
   const zrusit = wrap.querySelector('#cestaZrusit')

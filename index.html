@@ -42,6 +42,12 @@
   <!-- Přepínač podkladu. Výchozí je běžná mapa z OpenStreetMap; malovaná mapa
        je offline varianta – funguje bez signálu, ale nemá silnice. -->
   <button id="podkladBtn" title="Přepnout na offline mapu"><svg class="ic"><use href="#i-map"/></svg><span>Online</span></button>
+  <!-- Přepínač Itinerář/Na cestě. Vidět jen s aktivní cestou (store.cesta) –
+       components/chip.js#vykresliModMapy() ho schová/ukáže i napojí kliknutí. -->
+  <div class="modmapy" id="modMapy" hidden>
+    <button data-mod="plna" class="on">Itinerář</button>
+    <button data-mod="nacesta">Na cestě</button>
+  </div>
   <!-- Hlásí, že zrovna chybí dlaždice. Obsah plní map/offlineMap.js. Visí pod
        hlavičkou stejně jako kolečko polohy – dole už je karta výpravy. -->
   <div id="offlineStitek" hidden></div>

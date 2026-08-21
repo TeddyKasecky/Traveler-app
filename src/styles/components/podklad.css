@@ -52,9 +52,12 @@
 
 /* ---------- štítek offline ---------- */
 /* Vlevo nahoře pod hlavičkou naproti kolečku polohy. Dole ho mít nejde, tam
- * je od přestavby rozvržení karta výpravy. Jen hlásí, nepřepíná. */
+ * je od přestavby rozvržení karta výpravy. Jen hlásí, nepřepíná. Margin je
+ * o kus větší než u #podkladBtn, aby se štítek nepřekryl s přepínačem
+ * Itinerář/Na cestě (.modmapy, mapa.css) – ten se zobrazuje jen za jízdy,
+ * ale obojí najednou nastat může. */
 #offlineStitek{
-  position:absolute;left:14px;top:100%;margin-top:56px;z-index:1100;
+  position:absolute;left:14px;top:100%;margin-top:96px;z-index:1100;
   background:var(--sand);color:var(--ink);border:var(--line);border-radius:var(--r-pill);
   padding:6px 12px;font-size:.7rem;font-weight:800;
   box-shadow:var(--stin-1);pointer-events:none

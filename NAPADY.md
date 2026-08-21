@@ -176,16 +176,29 @@ konzistentní se zbytkem appky):*
 Tři menší věci z jedné dávky (srpen 2026), navazující na N12:
 
 1. **Mód mapy „Na cestě"** (`S.mapaMod`, `core/store.js`) nahradil rychlý filtr
-   „V plánu" (`F.vPlanu`, smazaný). Pilulka „Na cestě" v `components/chip.js`
-   se ukáže jen když existuje `store.cesta` (opravdu se jede, po stisku Vyjet)
-   a přepíná `S.mapaMod` mezi `'plna'`/`'nacesta'`, ne `F.*` — je to mód
-   mapy, ne filtr viditelnosti. `map/map.js#draw()` v módu `'nacesta'` pošle
-   `srovnejVyrez()` prázdné pole místo `visible()`, takže zmizí běžné
-   špendlíky a zůstane jen to, co kreslí `drawPlanLine()` (čára, vlastní
-   body, dodávka, živá značka) — ta se volá stejně jako dřív, beze změny.
-   `views/plan/cesta.js` (`zrusCestu()`, `ukonciCestu()`) mód vrací na
-   `'plna'`, jakmile cesta zanikne. `core/filters.js` už `F.vPlanu`
-   nezná (`visible()`, `pocetAktivnich()`, `resetFiltru()` upravené).
+   „V plánu" (`F.vPlanu`, smazaný). `core/filters.js` už `F.vPlanu` nezná
+   (`visible()`, `pocetAktivnich()`, `resetFiltru()` upravené). `map/map.js#draw()`
+   v módu `'nacesta'` pošle `srovnejVyrez()` prázdné pole místo `visible()`,
+   takže zmizí běžné špendlíky. `views/plan/cesta.js` (`zrusCestu()`,
+   `ukonciCestu()`) mód vrací na `'plna'`, jakmile cesta zanikne.
+
+   **Dovětek** (21. 8. 2026, po zpětné vazbě že přepínač „vůbec nefunguje" –
+   ve skutečnosti fungoval, ale byl schovaný jako další pilulka v řadě
+   rychlých filtrů `#chips` a neměnil zdroj trasy, jen viditelnost špendlíků):
+   přepínač se přesunul z `#chips` do samostatné dvoustavové bubliny
+   `#modMapy` pod `#podkladBtn` (online/offline), popisky „Itinerář"/„Na
+   cestě" (`components/chip.js#vykresliModMapy`/`initModMapy`/`obnovModMapy`).
+   Zásadní změna: `S.mapaMod` teď řídí i **zdroj trasy**, ne jen viditelnost
+   špendlíků – `map/planLine.js#kresliOtiskCesty` (`jedeSe && S.mapaMod ===
+   'nacesta'`) rozhoduje, jestli `drawPlanLine()` kreslí otisk `store.cesta`
+   (mód „Na cestě") nebo živý `store.plan` (mód „Itinerář", i za jízdy –
+   dřív appka za jízdy vždy kreslila jen otisk, živý upravovaný plán nešlo
+   na mapě vůbec vidět). Prohlížení ukončené cesty z knihovny
+   (`S.otevrenaCesta`) zůstává nezávislé na `S.mapaMod` – jiný stav, appka
+   tou dobou nejede. Tlačítko **Přepočítat** přibylo i na kartu Na cestě
+   (`views/plan/cesta.js`, `#cestaPrepocitat`, vedle „Navigovat") – počítá
+   pořád `store.plan` přes stávající `prepocitejTrasu()` (`views/plan/routing.js`,
+   beze změny), jen bylo dřív dosažitelné jen z karty Itinerář.
 2. **`prefs.routeType`** (`core/store.js`) — globální předvolba typu dopravy
    pro přepočet trasy (auto/kolo/pěšky), segment v Nastavení, čte ji
    `zavolejRouting()` v `views/plan/routing.js` místo natvrdo `'car_fast'`.

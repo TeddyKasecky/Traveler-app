@@ -137,9 +137,11 @@ export function draw() {
   // doplňuje a odebírá, viz `srovnejVyrez()`.
   vrstva.clearLayers()
   naMape.clear()
-  // Mód „Na cestě“ (S.mapaMod, components/chip.js) schová běžné špendlíky –
-  // na mapě zůstává jen to, co kreslí drawPlanLine() (čára, vlastní body,
-  // dodávka, živá značka). Dostupný jen s aktivní cestou (store.cesta).
+  // Mód „Na cestě“ (S.mapaMod, přepínač u #podkladBtn v components/chip.js)
+  // schová běžné špendlíky – na mapě zůstává jen to, co kreslí drawPlanLine()
+  // (otisk cesty: čára, vlastní body, dodávka, živá značka). Dostupný jen
+  // s aktivní cestou (store.cesta); S.mapaMod navíc mění i ZDROJ trasy, viz
+  // map/planLine.js#kresliOtiskCesty.
   const naCeste = S.mapaMod === 'nacesta'
   vFiltru = naCeste ? [] : visible()
   srovnejVyrez(false)

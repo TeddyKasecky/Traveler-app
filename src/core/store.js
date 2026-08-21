@@ -354,10 +354,13 @@ export const S = {
    */
   zivaPoloha: null,
   /**
-   * Mód mapy: 'plna' (výchozí, všechna filtrovaná místa) nebo 'nacesta'
-   * (jen prvky aktivní cesty – čára, vlastní body, dodávka, žádné běžné
-   * špendlíky). Přepíná se pilulkou „Na cestě“ (components/chip.js), vidět
-   * jen když `store.cesta` existuje. Jen v paměti – nepřežívá restart,
+   * Mód mapy: 'plna' (výchozí – Itinerář, živý `store.plan` i za jízdy) nebo
+   * 'nacesta' (jen prvky aktivní cesty – otisk `store.cesta`). Přepínač
+   * (bublina u #podkladBtn, components/chip.js) je vidět a dostupný jen
+   * když `store.cesta` existuje – bez jízdy nemá co přepínat, appka kreslí
+   * vždy živý plán jako dřív. Řídí i to, co `drawPlanLine()`
+   * (map/planLine.js) použije jako zdroj bodů/čáry, ne jen viditelnost
+   * běžných špendlíků (map/map.js#draw()). Jen v paměti – nepřežívá restart,
    * ukončení/zrušení cesty ho vrací na 'plna' (views/plan/cesta.js).
    */
   mapaMod: 'plna',

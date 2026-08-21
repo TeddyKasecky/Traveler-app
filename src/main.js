@@ -16,7 +16,7 @@ import { vlozSprite } from './icons/sprite.js'
 
 import { initMapa, draw, goTo, zobrazPolohu, prepniPodklad, mapa, vybiraSeMista, prepniVKosiku } from './map/map.js'
 import { prebarviPodklad } from './map/podklad.js'
-import { initChipy, obnovChipy } from './components/chip.js'
+import { initChipy, obnovChipy, initModMapy, obnovModMapy } from './components/chip.js'
 import { initFilterPanel, fillSelects, srovnejPocty, stahniZalohu } from './components/filterPanel.js'
 import { ukazPruh } from './components/pruh.js'
 import { toast } from './components/toast.js'
@@ -53,6 +53,7 @@ initMotiv()
 
 initMapa()
 initChipy()
+initModMapy()
 initSheet()
 initFilterPanel()
 initWizard()
@@ -105,9 +106,11 @@ on('prekresleno', () => {
   // Počty ve filtrech na Seznamu závisí na ostatních filtrech i na hledání,
   // takže se přepočítávají s každým překreslením, ne jen při výměně dat.
   srovnejPocty()
-  // Pilulka „Na cestě“ se objevuje/mizí podle store.cesta – Vyjet, Ukončit
-  // i Zrušit cestu volají draw()/save(), po kterých appka posílá prekresleno.
   obnovChipy()
+  // Přepínač Itinerář/Na cestě se objevuje/mizí podle store.cesta – Vyjet,
+  // Ukončit i Zrušit cestu volají draw()/save(), po kterých appka posílá
+  // prekresleno.
+  obnovModMapy()
   if (S.activeTab === 'list') renderList()
   if (S.activeTab === 'disc') renderDisc()
   if (S.activeTab === 'map') renderMapaDole()
