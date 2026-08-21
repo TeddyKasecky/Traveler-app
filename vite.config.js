@@ -137,6 +137,10 @@ function pluginBetaManifest(outDir) {
     name: 'vandrbuch-beta-manifest',
     apply: 'build',
     writeBundle() {
+      // DOČASNÁ DIAGNOSTIKA – uvidíme v Cloudflare build logu, co appka vidí.
+      console.log('[vandrbuch-beta-manifest] VANDRBUCH_BETA =', JSON.stringify(process.env.VANDRBUCH_BETA))
+      console.log('[vandrbuch-beta-manifest] klíče obsahující BETA:',
+        Object.keys(process.env).filter((k) => k.includes('BETA')))
       if (!process.env.VANDRBUCH_BETA) return
       const cesta = path.join(ROOT, outDir, 'manifest.webmanifest')
       const manifest = JSON.parse(fs.readFileSync(cesta, 'utf8'))
