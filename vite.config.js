@@ -126,7 +126,10 @@ function pluginSingleFilePwa() {
  * Na Cloudflare projektu `traveler-app-beta` appka na ploše (PWA `short_name`)
  * ukazuje „Vandrbuch beta“ místo „Vandrbuch“, ať jde na telefonu poznat, které
  * PWA je která – appka je jinak bajtově stejná jako produkce, jen se sleduje
- * `main` (kontinuálně) místo `production` (jen na ruční nasazení).
+ * `main` (kontinuálně) místo `production` (jen na ruční nasazení). Stejná
+ * proměnná (`VANDRBUCH_BETA`, nastavená jako Build variable v Cloudflare)
+ * zapíná i červený štítek „BETA“ v hlavičce – viz `import.meta.env.VANDRBUCH_BETA`
+ * v `define` níž a `main.js`.
  *
  * `writeBundle` běží až po zápisu do `dist/`, protože Vite `public/*` jen
  * kopíruje beze zpracování – úprava manifestu tedy musí přijít jako
@@ -137,10 +140,6 @@ function pluginBetaManifest(outDir) {
     name: 'vandrbuch-beta-manifest',
     apply: 'build',
     writeBundle() {
-      // DOČASNÁ DIAGNOSTIKA – uvidíme v Cloudflare build logu, co appka vidí.
-      console.log('[vandrbuch-beta-manifest] VANDRBUCH_BETA =', JSON.stringify(process.env.VANDRBUCH_BETA))
-      console.log('[vandrbuch-beta-manifest] klíče obsahující BETA:',
-        Object.keys(process.env).filter((k) => k.includes('BETA')))
       if (!process.env.VANDRBUCH_BETA) return
       const cesta = path.join(ROOT, outDir, 'manifest.webmanifest')
       const manifest = JSON.parse(fs.readFileSync(cesta, 'utf8'))
@@ -163,6 +162,11 @@ export default defineConfig(({ mode }) => {
 
     define: {
       'import.meta.env.SINGLE_FILE': JSON.stringify(single),
+      // Zapečeno při buildu jako statická hodnota (ne runtime process.env,
+      // který v prohlížeči neexistuje) – stejný vzor jako SINGLE_FILE výš.
+      // Single-file appka nemá prostředí, ke kterému by se vztahovala, proto
+      // `false` bez ohledu na proměnnou.
+      'import.meta.env.VANDRBUCH_BETA': JSON.stringify(!single && !!process.env.VANDRBUCH_BETA),
     },
 
     build: {

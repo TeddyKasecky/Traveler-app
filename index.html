@@ -19,6 +19,9 @@
   <div id="brand">
     <img id="logo" src="/src/assets/icon-192.png" alt="">
     <h1>Vandrbuch</h1>
+    <!-- Jen na betě (main → traveler-app-beta), viz main.js. Nikdy na produkci
+         (production → traveler-app) – VANDRBUCH_BETA je tam vždy false. -->
+    <span id="betaZnacka" hidden>BETA</span>
     <!-- Počty zůstávají v DOM: visí na nich smoke i parity. Vidět jsou
          v Profilu a v řádku výsledků na Seznamu, v hlavičce je předloha nemá. -->
     <span class="sub" hidden><span id="totalN"></span> míst · <span id="visitedN">0</span> navštíveno</span>

@@ -6,6 +6,12 @@
 #logo{width:28px;height:28px;border-radius:9px;flex:0 0 auto}
 #brand h1{font-family:var(--f-body);font-weight:800;font-size:.78rem;letter-spacing:3.4px;
   text-transform:uppercase;margin:0;line-height:1;color:var(--text2)}
+/* Jen na betě (main.js#VANDRBUCH_BETA), nikdy na produkci – viz vite.config.js.
+ * --upozorneni je nejbližší appka má k „červené“, sémanticky sedí i tady:
+ * testovací verze, může být nestabilní. */
+#betaZnacka{flex:0 0 auto;font-family:var(--f-body);font-weight:800;font-size:.62rem;
+  letter-spacing:1px;text-transform:uppercase;color:var(--na-upozorneni);background:var(--upozorneni);
+  border-radius:var(--r-pill);padding:2px 7px;line-height:1.4}
 /* Dvě kolečka vpravo, zleva profil a nastavení. Odsazení dostane jen to první,
  * druhé se k němu přilepí na vzdálenost, kterou drží `gap` v `#brand`. */
 #profilOpen{margin-left:auto}

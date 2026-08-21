@@ -46,6 +46,13 @@ import { registrujServiceWorker } from './pwa/register.js'
 
 vlozSprite()
 
+// Štítek „BETA“ v hlavičce – jen na Cloudflare projektu traveler-app-beta
+// (build proměnná VANDRBUCH_BETA, viz vite.config.js). Na produkci
+// (traveler-app, větev production) je import.meta.env.VANDRBUCH_BETA vždy
+// false, protože appka tam builduje bez té proměnné – štítek se tam nikdy
+// neukáže, i kdyby se main omylem smergoval s tímhle kódem.
+if (import.meta.env.VANDRBUCH_BETA) document.getElementById('betaZnacka').hidden = false
+
 // Před postavením mapy: Leaflet si barvy čte z CSS při stavbě vrstev.
 initMotiv()
 

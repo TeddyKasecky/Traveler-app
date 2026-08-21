@@ -66,7 +66,12 @@ je jen to, na kterou větev je Cloudflare projekt napojený, ne obsah repozitá�
 Appka na ploše telefonu pozná betu podle jména – `traveler-app-beta` má build
 proměnnou `VANDRBUCH_BETA=1` (Settings → Environment variables v Cloudflare
 dashboardu), která přepíše `short_name` v manifestu na „Vandrbuch beta"
-(`vite.config.js#pluginBetaManifest`).
+(`vite.config.js#pluginBetaManifest`). Stejná proměnná v hlavičce appky
+rozsvítí i červený štítek „BETA" vedle nápisu Vandrbuch, ať je to vidět
+hned po otevření, ne až po instalaci na plochu (`main.js`, `#betaZnacka`
+v `index.html`). Na produkci (`traveler-app`) proměnná nikdy není nastavená,
+takže se štítek nemůže objevit, ani kdyby se `production` omylem smergovala
+se stejným kódem jako `main`.
 
 ### Potom
 

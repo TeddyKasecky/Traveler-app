@@ -95,6 +95,16 @@ Environment variables) — `vite.config.js#pluginBetaManifest` podle ní přepí
 `short_name` v manifestu na „Vandrbuch beta", ať appka na ploše telefonu jde
 poznat od produkce. Bez proměnné (produkce) manifest zůstává beze změny.
 
+Stejná proměnná zapíná i **červený štítek „BETA"** v hlavičce (`#betaZnacka`
+v `index.html`, obsluha v `main.js`) — na rozdíl od manifestu (post-processing
+`dist/` po buildu) je tohle zapečené do JS buildu přes
+`define: { 'import.meta.env.VANDRBUCH_BETA': ... }` ve `vite.config.js`,
+stejný vzor jako `SINGLE_FILE`. Beze proměnné appka zkompiluje `false` natvrdo
+a mrtvý kód zmizí úplně — na produkci tedy `VANDRBUCH_BETA` neexistuje
+v žádné podobě ve výsledném JS, ne jen že je vypnutá. Bezpečné i pro
+`build:single`: štítek se tam nikdy nezobrazí bez ohledu na proměnnou,
+protože offline soubor nemá „prostředí", ke kterému by se vztahoval.
+
 Worker nemá žádný kód — `wrangler.jsonc` nemá `main`, jen `assets.directory: "./dist"`.
 Bez toho souboru `wrangler deploy` neví, co nasadit, začne hledat konfiguraci sám
 a zakopne o `vite.config.js`. Stejný `wrangler.jsonc` (s `name: "traveler-app"`)
