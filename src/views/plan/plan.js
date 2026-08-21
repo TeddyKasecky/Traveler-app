@@ -51,7 +51,7 @@ import {
 } from './bloky.js'
 import { zjistiPolohuJednorazove } from '../../core/geo.js'
 import { ulozenePozice } from '../../core/pozice.js'
-import { prepocitejTrasu } from './routing.js'
+import { prepocitejTrasu, otiskBodu } from './routing.js'
 import { archivRadkyHtml, napojArchivRadky } from './archiv.js'
 import { cislaPlanuHtml, napojCislaPlanu } from './prehled.js'
 import { kosik, kotvy, pridejDoKosiku } from './kosik.js'
@@ -1081,8 +1081,14 @@ function vykresliMapuDashboardu(wrap) {
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mapaDashboardu)
 
         if (body.length > 1) {
+          // Skutečná trasa z Mapy.com Routing API (views/plan/routing.js),
+          // pokud je pro TENHLE seznam zastávek ještě platná – stejné
+          // pravidlo jako na hlavní mapě (map/planLine.js). Jinak fallback:
+          // rovná spojnice bodů, jak to dashboard dělal dřív.
+          const prepocet = store.aktivniPrepocet
+          const platny = prepocet && prepocet.otisk === otiskBodu(body)
           L.polyline(
-            body.map((p) => [p.lat, p.lon]),
+            platny ? prepocet.polyline : body.map((p) => [p.lat, p.lon]),
             { color: token('--akcent'), weight: 3, opacity: 0.75 }
           ).addTo(mapaDashboardu)
         }
