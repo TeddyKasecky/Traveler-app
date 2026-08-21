@@ -398,6 +398,15 @@ export const S = {
    * smysl jen za jízdy. Jen v paměti, nepřežívá restart.
    */
   mistaSkryta: false,
+  /**
+   * Id míst z aktuálních tipů „Co dál?" (views/plan/kosikView.js#tipyOdsud()),
+   * zapisuje views/plan/cesta.js#coDal() při každém vykreslení karty Na cestě.
+   * map/map.js#draw() ho čte, aby tahle místa zůstala vidět i v módu
+   * S.mistaSkryta (oko) – mapa nesmí importovat views/, proto se předává přes
+   * store jako čistá data, ne přímým importem tipyOdsud(). Jen v paměti,
+   * nepřežívá restart – tipy jsou stejně platné jen pro aktuální polohu/otisk.
+   */
+  coDalId: [],
 }
 
 /**

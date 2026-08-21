@@ -42,6 +42,18 @@ const REZERVA_VYREZU = 0.4
 /** Místa, která prošla filtry. Drží se mezi překresleními kvůli posunu mapy. */
 let vFiltru = []
 
+/**
+ * Id v košíku aktivní výpravy – duplikát čtecí logiky z
+ * `views/plan/kosik.js#kosik()` (mapa nesmí importovat views, stejný důvod
+ * jako `'Náš plán'` duplikované v `map/planLine.js#vlastniMista()` místo
+ * importu `BEZ_NAZVU` z `views/plan/vypravy.js`). Používá se jen ke čtení
+ * v `draw()`, aby košíková místa zůstala vidět i v módu „oko" (S.mistaSkryta).
+ */
+function idVKosiku() {
+  const klic = store.vypravaNazev || 'Náš plán'
+  return (store.kosik || {})[klic] || []
+}
+
 /** @type {Map<string, L.Marker>} id místa → špendlík, který je právě na mapě */
 const naMape = new Map()
 
@@ -139,15 +151,26 @@ export function draw() {
   naMape.clear()
   // Oko (S.mistaSkryta, pravá část tlačítka u #podkladBtn v components/chip.js)
   // schová běžné špendlíky – na mapě zůstává jen to, co kreslí drawPlanLine()
-  // (čára, vlastní body, dodávka, živá značka). Nezávislé na S.mapaMod, ten
-  // řídí jen ZDROJ trasy (viz map/planLine.js#kresliOtiskCesty), ne
-  // viditelnost špendlíků.
-  vFiltru = S.mistaSkryta ? [] : visible()
+  // (čára, vlastní body, dodávka, živá značka), PLUS místa z košíku aktivní
+  // výpravy a aktuální tipy „Co dál?" (S.coDalId) – ty zůstávají vidět
+  // schválně, ať appka nezakryje, co si člověk chce zapamatovat/kam by mohl
+  // příště. Nezávislé na S.mapaMod, ten řídí jen ZDROJ trasy (viz
+  // map/planLine.js#kresliOtiskCesty), ne viditelnost špendlíků.
+  if (S.mistaSkryta) {
+    const navic = new Set([...idVKosiku(), ...S.coDalId])
+    vFiltru = S.places.filter((p) => navic.has(p.id))
+  } else {
+    vFiltru = visible()
+  }
   srovnejVyrez(false)
   drawPlanLine(mapa)
 
   const c = document.getElementById('count')
-  document.getElementById('countN').textContent = S.mistaSkryta ? 'jen trasa' : `${vFiltru.length} míst`
+  document.getElementById('countN').textContent = S.mistaSkryta
+    ? vFiltru.length
+      ? `${vFiltru.length} z košíku/Co dál`
+      : 'jen trasa'
+    : `${vFiltru.length} míst`
   c.classList.remove('bump')
   void c.offsetWidth // vynutí restart animace
   c.classList.add('bump')

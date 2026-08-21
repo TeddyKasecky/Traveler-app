@@ -28,7 +28,7 @@ import { draw } from '../../map/map.js'
 import { planoveAchievementy, pripisPlanove, pripisProfilove } from './achievementy.js'
 import { detailCestyHtml } from './archiv.js'
 import { bloky, blok } from './bloky.js'
-import { coDalHtml, napojCoDal } from './kosikView.js'
+import { coDalHtml, napojCoDal, tipyOdsud } from './kosikView.js'
 import { spustSledovani, zastavSledovani, aktualniProjekce } from './cesta-zivot.js'
 import { prepocitejTrasu } from './routing.js'
 
@@ -97,6 +97,9 @@ function zrusCestu() {
   // Bez aktivní cesty nemá mód „Na cestě“ (S.mapaMod) co zobrazovat –
   // jinak by appka po zrušení dál schovávala běžné špendlíky bezdůvodně.
   S.mapaMod = 'plna'
+  // Tipy „Co dál?“ patřily k rozjeté cestě (vychoziBod() bez ní vrací null) –
+  // vynulovat hned, ne čekat na další vykreslení karty Na cestě.
+  S.coDalId = []
   save()
 }
 
@@ -143,8 +146,9 @@ export function ukonciCestu() {
   })
   store.cesta = null
   // Stejný důvod jako u zrusCestu() výš – bez aktivní cesty nemá mód
-  // „Na cestě“ co zobrazovat.
+  // „Na cestě“ co zobrazovat, a tipy „Co dál?“ patřily k rozjeté cestě.
   S.mapaMod = 'plna'
+  S.coDalId = []
   return save()
 }
 
@@ -269,10 +273,18 @@ export function cestaHtml() {
     ${achievementyCesty(c)}`
 }
 
-/** Karta „Co dál?" – jedno místo, kde se výchozí bod počítá. */
+/**
+ * Karta „Co dál?" – jedno místo, kde se výchozí bod počítá.
+ *
+ * `S.coDalId` se zapisuje i bez aktivní cesty (odkud === null → tipy === [] →
+ * S.coDalId = []) – map/map.js#draw() v módu „oko" tak vždy vidí aktuální
+ * stav, ne zastaralý seznam z předchozí jízdy.
+ */
 function coDal() {
   const odkud = vychoziBod()
-  return coDalHtml(odkud, odkud ? odkud.popis : '')
+  const tipy = tipyOdsud(odkud)
+  S.coDalId = tipy.map((t) => t.p.id)
+  return coDalHtml(odkud, tipy, odkud ? odkud.popis : '')
 }
 
 /**

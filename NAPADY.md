@@ -214,6 +214,21 @@ Tři menší věci z jedné dávky (srpen 2026), navazující na N12:
    pro viditelnost, `map/planLine.js#kresliOtiskCesty` dál jen `S.mapaMod`
    pro zdroj – dají se kombinovat libovolně (např. „Itinerář" se
    schovanými špendlíky).
+
+   **Třetí dovětek** (21. 8. 2026, na přání nechat vidět „to podstatné" i po
+   zapnutí oka): mód `S.mistaSkryta` dřív schoval úplně všechna běžná místa.
+   Teď `map/map.js#draw()` v tomhle módu nechá vidět i **místa z košíku
+   aktivní výpravy** (`store.kosik`, `views/plan/kosik.js`) a **aktuální tipy
+   „Co dál?"** (`S.coDalId`, nový runtime stav v `core/store.js`) – appka
+   schová jen to, co si člověk sám nevybral. `S.coDalId` zapisuje
+   `views/plan/cesta.js#coDal()` při každém vykreslení karty Na cestě
+   (`tipyOdsud()` z `views/plan/kosikView.js` se počítá jednou, výsledek jde
+   do HTML i do `S.coDalId` zároveň) a nuluje se při Ukončit/Zrušit cestu.
+   `map.js` čte `store.kosik` přímo (duplikuje malou čtecí logiku z
+   `views/plan/kosik.js#kosik()`, stejný důvod jako `'Náš plán'` duplikované
+   v `map/planLine.js#vlastniMista()` – mapa nesmí importovat views).
+   Košíková místa a tipy se vykreslí úplně stejně jako běžné špendlíky
+   (kapka, barva podle kategorie) – appka je nemá důvod vizuálně odlišovat.
 2. **`prefs.routeType`** (`core/store.js`) — globální předvolba typu dopravy
    pro přepočet trasy (auto/kolo/pěšky), segment v Nastavení, čte ji
    `zavolejRouting()` v `views/plan/routing.js` místo natvrdo `'car_fast'`.

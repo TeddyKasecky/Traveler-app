@@ -417,13 +417,18 @@ function tipRadek({ p, km, vKosiku: vKos }) {
  * (viz `vychoziBod()` v cesta.js). Bez obojího se karta nekreslí – tipy
  * odnikud nedávají smysl.
  *
+ * `tipy` počítá volající (`cesta.js#coDal()`) přes `tipyOdsud(odkud)` – ne
+ * tahle funkce sama, protože stejný výsledek potřebuje i zapsat do
+ * `S.coDalId` (map/map.js#draw() ho čte pro mód „oko"), a počítat tipy
+ * dvakrát by bylo zbytečné.
+ *
  * @param {{lat:number, lon:number}|null} odkud
+ * @param {Array<{p: Record<string, any>, km: number, vKosiku: boolean}>} tipy
  * @param {string} popisOdkud  odkud se měří, do popisku
  * @returns {string}
  */
-export function coDalHtml(odkud, popisOdkud = '') {
+export function coDalHtml(odkud, tipy, popisOdkud = '') {
   if (!odkud) return ''
-  const tipy = tipyOdsud(odkud)
 
   const pilulky = CHUTE.map(
     (c) => `<button class="chut-pill${chut === c.id ? ' on' : ''}" data-chut="${c.id}"
