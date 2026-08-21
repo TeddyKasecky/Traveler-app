@@ -229,6 +229,11 @@ Tři menší věci z jedné dávky (srpen 2026), navazující na N12:
    v `map/planLine.js#vlastniMista()` – mapa nesmí importovat views).
    Košíková místa a tipy se vykreslí úplně stejně jako běžné špendlíky
    (kapka, barva podle kategorie) – appka je nemá důvod vizuálně odlišovat.
+   **Doplněno hned poté**: první verze zapomněla na **zastávky živého
+   itineráře samotné** (`store.plan`) – uživatel je logicky čekal ve stejné
+   kategorii „co sis sám vybral" jako košík/tipy. `draw()` teď skládá
+   `navic` ze všech tří zdrojů najednou (`store.plan`, `store.kosik`,
+   `S.coDalId`).
 2. **`prefs.routeType`** (`core/store.js`) — globální předvolba typu dopravy
    pro přepočet trasy (auto/kolo/pěšky), segment v Nastavení, čte ji
    `zavolejRouting()` v `views/plan/routing.js` místo natvrdo `'car_fast'`.

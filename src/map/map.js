@@ -151,13 +151,13 @@ export function draw() {
   naMape.clear()
   // Oko (S.mistaSkryta, pravá část tlačítka u #podkladBtn v components/chip.js)
   // schová běžné špendlíky – na mapě zůstává jen to, co kreslí drawPlanLine()
-  // (čára, vlastní body, dodávka, živá značka), PLUS místa z košíku aktivní
-  // výpravy a aktuální tipy „Co dál?" (S.coDalId) – ty zůstávají vidět
-  // schválně, ať appka nezakryje, co si člověk chce zapamatovat/kam by mohl
-  // příště. Nezávislé na S.mapaMod, ten řídí jen ZDROJ trasy (viz
+  // (čára, vlastní body, dodávka, živá značka), PLUS zastávky živého plánu
+  // (store.plan), místa z košíku aktivní výpravy a aktuální tipy „Co dál?"
+  // (S.coDalId) – appka schová jen to, co si člověk sám nevybral. Nezávislé
+  // na S.mapaMod, ten řídí jen ZDROJ trasy (viz
   // map/planLine.js#kresliOtiskCesty), ne viditelnost špendlíků.
   if (S.mistaSkryta) {
-    const navic = new Set([...idVKosiku(), ...S.coDalId])
+    const navic = new Set([...store.plan, ...idVKosiku(), ...S.coDalId])
     vFiltru = S.places.filter((p) => navic.has(p.id))
   } else {
     vFiltru = visible()
@@ -168,7 +168,7 @@ export function draw() {
   const c = document.getElementById('count')
   document.getElementById('countN').textContent = S.mistaSkryta
     ? vFiltru.length
-      ? `${vFiltru.length} z košíku/Co dál`
+      ? `${vFiltru.length} vybraných`
       : 'jen trasa'
     : `${vFiltru.length} míst`
   c.classList.remove('bump')
