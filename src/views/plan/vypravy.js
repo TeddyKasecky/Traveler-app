@@ -56,6 +56,9 @@ const aktivniZaznam = () => ({
   planDny: store.planDny || [],
   slozka: store.vypravaSlozka || '',
   vytvoreno: store.vypravaVytvoreno || 0,
+  // Termín – obojí nepovinné, prázdné je platný stav.
+  od: store.vypravaOd || '',
+  dnu: store.vypravaDnu || 0,
   prepocet: store.aktivniPrepocet || undefined,
 })
 
@@ -135,6 +138,8 @@ export function prepniVypravu(i) {
   store.planDny = Array.isArray(cil.planDny) ? cil.planDny : []
   store.vypravaSlozka = typeof cil.slozka === 'string' ? cil.slozka : ''
   store.vypravaVytvoreno = cil.vytvoreno || 0
+  store.vypravaOd = typeof cil.od === 'string' ? cil.od : ''
+  store.vypravaDnu = cil.dnu || 0
   store.aktivniPrepocet = cil.prepocet || null
   sez[i] = odchazi
   return save()
@@ -156,6 +161,8 @@ export function novaVyprava(nazev) {
   store.planDny = []
   store.vypravaSlozka = ''
   store.vypravaVytvoreno = Date.now()
+  store.vypravaOd = ''
+  store.vypravaDnu = 0
   store.aktivniPrepocet = null
   return save()
 }
@@ -183,6 +190,11 @@ export function duplikuj(i) {
   })
   const bloky = store.bloky && store.bloky[puvodni]
   if (Array.isArray(bloky)) store.bloky[novy] = JSON.parse(JSON.stringify(bloky))
+  // Košík a kotvy se kopírují taky – patří k výpravě stejně jako bloky.
+  const kos = store.kosik && store.kosik[puvodni]
+  if (Array.isArray(kos)) store.kosik[novy] = [...kos]
+  const kot = store.kotvy && store.kotvy[puvodni]
+  if (Array.isArray(kot)) store.kotvy[novy] = kot.map((k) => ({ ...k }))
   save()
   return novy
 }
@@ -194,11 +206,30 @@ export function duplikuj(i) {
  * se – smazat se nesmí nic.
  */
 function prestehujBloky(stary, novy) {
-  if (stary === novy || !store.bloky || !Array.isArray(store.bloky[stary])) return
-  store.bloky[novy] = Array.isArray(store.bloky[novy])
-    ? [...store.bloky[novy], ...store.bloky[stary]]
-    : store.bloky[stary]
-  delete store.bloky[stary]
+  if (stary === novy) return
+  if (store.bloky && Array.isArray(store.bloky[stary])) {
+    store.bloky[novy] = Array.isArray(store.bloky[novy])
+      ? [...store.bloky[novy], ...store.bloky[stary]]
+      : store.bloky[stary]
+    delete store.bloky[stary]
+  }
+  // Košík je klíčovaný názvem stejně jako bloky, takže má stejnou past.
+  // Slučuje se přes Set – po sloučení dvou stejnojmenných výprav by jinak
+  // bylo jedno místo v košíku dvakrát.
+  if (store.kosik && Array.isArray(store.kosik[stary])) {
+    store.kosik[novy] = Array.isArray(store.kosik[novy])
+      ? [...new Set([...store.kosik[novy], ...store.kosik[stary]])]
+      : store.kosik[stary]
+    delete store.kosik[stary]
+  }
+  // Kotvy taky – stejný klíč, stejná past. Slučují se podle id místa,
+  // aby po sloučení nevznikly dvě kotvy na tomtéž bodě.
+  if (store.kotvy && Array.isArray(store.kotvy[stary])) {
+    const cile = Array.isArray(store.kotvy[novy]) ? store.kotvy[novy] : []
+    const maji = new Set(cile.map((k) => k.id))
+    store.kotvy[novy] = [...cile, ...store.kotvy[stary].filter((k) => !maji.has(k.id))]
+    delete store.kotvy[stary]
+  }
 }
 
 /**
@@ -246,6 +277,8 @@ export function smaz(i) {
   store.planDny = dalsi && Array.isArray(dalsi.planDny) ? dalsi.planDny : []
   store.vypravaSlozka = dalsi && typeof dalsi.slozka === 'string' ? dalsi.slozka : ''
   store.vypravaVytvoreno = (dalsi && dalsi.vytvoreno) || 0
+  store.vypravaOd = (dalsi && typeof dalsi.od === 'string' ? dalsi.od : '')
+  store.vypravaDnu = (dalsi && dalsi.dnu) || 0
   store.aktivniPrepocet = (dalsi && dalsi.prepocet) || null
   return save()
 }

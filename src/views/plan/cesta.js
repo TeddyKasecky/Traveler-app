@@ -28,6 +28,7 @@ import { draw } from '../../map/map.js'
 import { planoveAchievementy, pripisPlanove, pripisProfilove } from './achievementy.js'
 import { detailCestyHtml } from './archiv.js'
 import { bloky, blok } from './bloky.js'
+import { coDalHtml, napojCoDal } from './kosikView.js'
 import { spustSledovani, zastavSledovani, aktualniProjekce } from './cesta-zivot.js'
 import { prepocitejTrasu } from './routing.js'
 
@@ -147,6 +148,31 @@ export function ukonciCestu() {
   return save()
 }
 
+/**
+ * Odkud se měří „co je poblíž" – pro tipy Co dál? i pro vzdálenosti v košíku.
+ *
+ * GPS má přednost, protože je to opravdu tam, kde stojíš. Když není (bez
+ * signálu, zamítnuté oprávnění, prohlížeč bez polohy), nastoupí poslední
+ * odznačená zastávka: na cestě je to nejlepší odhad, kde jsi. Bez obojího
+ * vrací null a volající karty se prostě nevykreslí.
+ *
+ * @returns {{lat:number, lon:number, popis:string}|null}
+ */
+export function vychoziBod() {
+  if (S.userPos && Number.isFinite(S.userPos.lat)) {
+    return { lat: S.userPos.lat, lon: S.userPos.lon, popis: 'od tebe' }
+  }
+  const c = store.cesta
+  if (c) {
+    // Poslední v pořadí odznačení, ne poslední v plánu – odznačovat se dá
+    // na přeskáčku a zajímá nás, kde jsme skončili.
+    const posledni = odznaceneVPoradi().slice(-1)[0]
+    const p = posledni && S.byId[posledni]
+    if (p) return { lat: p.lat, lon: p.lon, popis: `od: ${p.n}` }
+  }
+  return null
+}
+
 /** Pořadí odznačení – pro čáru ujeté trasy na mapě. */
 export function odznaceneVPoradi() {
   const c = store.cesta
@@ -201,10 +227,10 @@ export function cestaHtml() {
       <div class="cesta-cisla"><b>${hotovo}</b><span>z ${mista.length}</span></div>
     </div>
     <div class="cesta-pruh"><span style="width:${podil}%"></span></div>
-    ${mista.length > 1 ? `<div class="meta cesta-zbyva">${hotovo === mista.length ? 'Hotovo, celá cesta objetá' : `zbývá ${fmtKm(zbyva)}`}</div>` : ''}
+    ${mista.length > 1 ? `<div class="meta cesta-zbyva">${hotovo === mista.length ? 'Projeli jsme celou trasu' : `v plánu je ještě ${fmtKm(zbyva)}`}</div>` : ''}
     ${
       proj
-        ? `<div class="meta cesta-ziva">${IC('i-compass')}Podle polohy zbývá ${fmtKm(proj.zbyvaKm)} do cíle trasy</div>`
+        ? `<div class="meta cesta-ziva">${IC('i-compass')}Podle polohy je do konce trasy ${fmtKm(proj.zbyvaKm)}</div>`
         : ''
     }
 
@@ -226,6 +252,8 @@ export function cestaHtml() {
       )
       .join('')}
 
+    ${coDal()}
+
     ${blokyNaCeste()}
 
     <div class="sekce"><span class="sekce-text">Poznámka z cesty</span></div>
@@ -239,6 +267,12 @@ export function cestaHtml() {
     </div>
 
     ${achievementyCesty(c)}`
+}
+
+/** Karta „Co dál?" – jedno místo, kde se výchozí bod počítá. */
+function coDal() {
+  const odkud = vychoziBod()
+  return coDalHtml(odkud, odkud ? odkud.popis : '')
 }
 
 /**
@@ -269,7 +303,7 @@ function blokyNaCeste() {
     .map(
       (b) => `
       <div class="cesta-zastavka vlastni${b.hotovo ? ' hotova' : ''}">
-        <button class="cesta-fajfka" data-vlastni="${b.id}" title="${b.hotovo ? 'Byli jsme tu' : 'Odznačit'}">${IC('i-check')}</button>
+        <button class="cesta-fajfka" data-vlastni="${b.id}" title="${b.hotovo ? 'Odznačit' : 'Byli jsme tu'}">${IC('i-check')}</button>
         <div class="cesta-telo">
           <b>★ ${esc(b.nazev || 'Vlastní místo')}</b>
           <span class="meta">${b.lat.toFixed(4)}, ${b.lon.toFixed(4)}${b.den ? ` · ${b.den}. den` : ''}</span>
@@ -461,7 +495,9 @@ export function napojCestu(wrap, prekresli) {
       }
     }
 
-  for (const b of wrap.querySelectorAll('.cesta-fajfka')) {
+  // Jen zastávky z otisku – vlastní místa mají vlastní fajfku o kus níž.
+  // Bez `[data-id]` by sem spadla i ta jejich a zapsala `odznacene[undefined]`.
+  for (const b of wrap.querySelectorAll('.cesta-fajfka[data-id]')) {
     b.onclick = () => {
       const c = store.cesta
       if (!c) return
@@ -475,6 +511,35 @@ export function napojCestu(wrap, prekresli) {
       prekresli()
     }
   }
+
+  // Vlastní místa se odškrtávají na bloku (`hotovo`), ne do `cesta.odznacene`:
+  // otisk cesty klíčuje id míst z databáze a vlastní bod v ní není. Díky tomu
+  // odškrtnutí rovnou vidí i Itinerář, který čte týž blok.
+  for (const b of wrap.querySelectorAll('.cesta-fajfka[data-vlastni]')) {
+    b.onclick = () => {
+      const bod = blok(b.dataset.vlastni)
+      if (!bod) return
+      // `hotovo` je časové razítko, ne boolean – nula znamená neodškrtnuto.
+      bod.hotovo = bod.hotovo ? 0 : Date.now()
+      if (!save()) return
+      // Znak bodu na mapě se odznačením mění, tak se překreslí i trasa.
+      draw()
+      prekresli()
+    }
+  }
+
+  for (const r of wrap.querySelectorAll('.cesta-radek-seznamu')) {
+    r.onclick = () => {
+      const b = blok(r.dataset.blok)
+      const i = Number(r.dataset.i)
+      if (!b || !b.polozky || !b.polozky[i]) return
+      b.polozky[i].hotovo = b.polozky[i].hotovo ? 0 : Date.now()
+      if (!save()) return
+      prekresli()
+    }
+  }
+
+  napojCoDal(wrap, prekresli)
 
   for (const inp of wrap.querySelectorAll('.cesta-pozn')) {
     inp.oninput = () => {

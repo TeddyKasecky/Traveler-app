@@ -431,9 +431,14 @@ await zkus('„Kopírovat“ dá text do schránky', async () => {
   // „Kopírovat“ se přestavbou Plánu přesunulo z řádku tlačítek do nabídky pod
   // „…“ – vedlejší akce tam patří podle předlohy. Cesta se tím prodloužila
   // o jedno ťuknutí a kontrola ji musí projít stejně jako uživatel.
-  // Od srpna 2026 nabídka bydlí na dílu Itinerář, ne nad všemi kartami.
-  await page.click('#planSegment button[data-seg="itinerar"]')
-  await page.waitForTimeout(400)
+  // Nabídka bydlí v Itineráři konkrétní výpravy. Ten od srpna 2026 UŽ NENÍ
+  // díl segmentu (ten má jen Na cestě · V plánu · Za námi) – je to vnitřek
+  // jedné cesty a otevírá se z knihovny přes „…" → „Otevřít itinerář".
+  // Výprava tu existuje: předchozí kontrola do ní přidala zastávku.
+  await page.click('.vypravaradek [data-vyprava-vice]')
+  await page.waitForTimeout(300)
+  await page.click('[data-act="v-otevrit"]')
+  await page.waitForTimeout(500)
   await page.click('#planVice')
   await page.waitForTimeout(300)
   await page.click('#planShare')

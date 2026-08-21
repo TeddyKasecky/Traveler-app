@@ -552,5 +552,126 @@ pripravV(['a', 'b'], [], [{ nazev: 'Dolomity', plan: ['d'], planDny: [] }], 'Alp
   t('přepočet se vrátí zpátky při opětovném přepnutí', store.aktivniPrepocet && store.aktivniPrepocet.otisk === 'x')
 }
 
+/* ---------- košík, kotva a zajížďka ---------- */
+// Čistá logika bez DOM, proto se dá testovat tady. Vykreslení mapy košíku
+// a koridoru se testuje v prohlížeči (smoke.mjs).
+{
+  const { S } = await import('../src/core/store.js')
+  const {
+    pridejDoKosiku, vyhodZKosiku, vKosiku, kosik, nastavKotvu, zrusKotvu,
+    hlavniKotva, kotvaMista, zajizdka, kosikSeZajizdkou, KORIDOR_KM,
+  } = await import('../src/views/plan/kosik.js')
+
+  store.vypravaNazev = 'Zkouška košíku'
+  store.kosik = {}
+  store.kotvy = {}
+
+  // Tři místa v řadě: A --- B --- C. B leží přesně mezi, takže zajížďka ~0.
+  S.places = [
+    { id: 'A', n: 'Ačko', k: 'Jezera', z: 'Rakousko', lat: 47.0, lon: 11.0 },
+    { id: 'B', n: 'Bčko', k: 'Jezera', z: 'Rakousko', lat: 47.5, lon: 11.0 },
+    { id: 'C', n: 'Cčko', k: 'Jezera', z: 'Itálie', lat: 48.0, lon: 11.0 },
+    { id: 'D', n: 'Déčko', k: 'Hory a túry', z: 'Itálie', lat: 47.5, lon: 14.0 },
+  ]
+  S.byId = Object.fromEntries(S.places.map((p) => [p.id, p]))
+
+  t('košík je zprvu prázdný', kosik().length === 0)
+  pridejDoKosiku('B')
+  t('místo se přidá', vKosiku('B'))
+  pridejDoKosiku('B')
+  t('duplicita se ignoruje', kosik().length === 1)
+  pridejDoKosiku('C')
+  pridejDoKosiku('D')
+  vyhodZKosiku('C')
+  t('místo jde vyhodit', !vKosiku('C') && kosik().length === 2)
+
+  const a = S.byId.A
+  const c = S.byId.C
+  t('bod přesně na trase má zajížďku ~0', zajizdka(a, S.byId.B, c) < 0.5)
+  t('bod stranou má zajížďku znatelnou', zajizdka(a, S.byId.D, c) > 100)
+  t('zajížďka není nikdy záporná', zajizdka(a, c, c) >= 0)
+
+  t('bez kotvy není hlavní kotva', hlavniKotva() === null)
+  pridejDoKosiku('C')
+  nastavKotvu('C', 3, 5)
+  t('kotva se uloží s oknem dnů', kotvaMista('C').odeDne === 3 && kotvaMista('C').doDne === 5)
+  nastavKotvu('C', 4, 6)
+  t('stejné místo kotvu přepíše, nezdvojí', store.kotvy['Zkouška košíku'].length === 1)
+  t('obrácené pořadí dnů se srovná', (nastavKotvu('C', 5, 2), kotvaMista('C').doDne >= kotvaMista('C').odeDne))
+
+  nastavKotvu('B', 1, 2)
+  t('hlavní kotva je ta nejbližší v čase', hlavniKotva().id === 'B')
+  zrusKotvu('B')
+  t('kotva jde zrušit', kotvaMista('B') == null && hlavniKotva().id === 'C')
+
+  {
+    const razeno = kosikSeZajizdkou(a)
+    t('kotva je v seznamu první', razeno[0].kotva != null && razeno[0].p.id === 'C')
+    t('kotva sama zajížďku nemá', razeno[0].zajizdka === null)
+    const bcko = razeno.find((x) => x.p.id === 'B')
+    const dcko = razeno.find((x) => x.p.id === 'D')
+    t('místo na trase je v koridoru', bcko.vKoridoru === true)
+    t('místo stranou v koridoru není', dcko.vKoridoru === false)
+    t('koridor má rozumnou šířku', KORIDOR_KM > 0 && KORIDOR_KM < 200)
+  }
+
+  t('bez polohy se pořadí nesesype', kosikSeZajizdkou(null).length === 3)
+}
+
+/* ---------- termín cesty, kalendářní dny a „stíháme?" ---------- */
+// Obojí je NEPOVINNÉ – prázdný termín je platný stav, ne nedodělek.
+{
+  const { termin, nastavTermin, datumDne, kratkeDatum, denVTydnu, stihameTo, pocasiPodleKodu } =
+    await import('../src/views/plan/termin.js')
+
+  store.vypravaNazev = 'Zkouška termínu'
+  nastavTermin('', 0)
+  t('prázdný termín je platný stav', termin().od === '' && termin().dnu === 0)
+  t('bez termínu nemá den datum', datumDne(1) === '')
+
+  nastavTermin('2026-08-12', 10)
+  t('termín se uloží', termin().od === '2026-08-12' && termin().dnu === 10)
+  t('první den je datum začátku', datumDne(1) === '2026-08-12')
+  t('desátý den je o devět dnů dál', datumDne(10) === '2026-08-21')
+  t('den 0 a míň nemá datum', datumDne(0) === '' && datumDne(-3) === '')
+
+  // Přes UTC půlnoc, aby letní čas neposunul den o jedna.
+  nastavTermin('2026-10-24', 5)
+  t('přechod na zimní čas den neposune', datumDne(3) === '2026-10-26')
+
+  nastavTermin('2026-08-12', 10)
+  t('krátké datum je česky', kratkeDatum('2026-08-12') === '12. 8.')
+  t('prázdný vstup dá prázdné datum', kratkeDatum('') === '')
+  t('den v týdnu sedí', denVTydnu('2026-08-12') === 'st')
+
+  nastavTermin('nesmysl', 999)
+  t('nesmyslné datum se odmítne', termin().od === '')
+  t('počet dnů se zastropuje', termin().dnu === 365)
+  nastavTermin('2026-08-12', -5)
+  t('záporný počet dnů je nula', termin().dnu === 0)
+
+  // „Stíháme?" vrací větu, ne verdikt – cesta není závod.
+  const praha = { lat: 50.08, lon: 14.44 }
+  const brno = { lat: 49.2, lon: 16.61 }
+  const lisabon = { lat: 38.72, lon: -9.14 }
+  {
+    const blizko = stihameTo(praha, brno, 3)
+    t('blízký přejezd je pohoda', blizko.pohoda === true)
+    t('a věta to říká vlídně', /vejde/.test(blizko.veta) && !/nestíh/.test(blizko.veta))
+
+    const daleko = stihameTo(praha, lisabon, 1)
+    t('daleký přejezd na jeden den pohoda není', daleko.pohoda === false)
+    t('ale ani tak nikoho nekárá', /svižn/.test(daleko.veta) && !/nestíh|pozor/.test(daleko.veta))
+
+    t('bez dnů se odhad nepočítá', stihameTo(praha, brno, 0) === null)
+    t('bez bodu se odhad nepočítá', stihameTo(null, brno, 3) === null)
+    t('víc dnů znamená menší denní porci', stihameTo(praha, lisabon, 10).denne < stihameTo(praha, lisabon, 2).denne)
+  }
+
+  t('kód počasí 0 je jasno', pocasiPodleKodu(0).popis === 'jasno')
+  t('kód počasí 61 je déšť', pocasiPodleKodu(61).popis === 'déšť')
+  t('každý kód má ikonu', [0, 3, 45, 61, 71, 80, 85, 95].every((k) => !!pocasiPodleKodu(k).ikona))
+}
+
 console.log(`\n${ok}/${ok + chyb} kontrol prošlo`)
 process.exit(chyb ? 1 : 0)

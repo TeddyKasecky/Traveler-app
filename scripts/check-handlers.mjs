@@ -82,11 +82,23 @@ async function projdi(page) {
   // jinak by kontrola hlásila, že tlačítka z originálu nemají protějšek,
   // a měla by pravdu jen proto, že se na ně nedostala.
   // V originále `#planVice` neexistuje, takže se na staré verzi nic nestane.
-  // Od srpna 2026 nabídka bydlí na dílu Itinerář – nejdřív se tam přepnout.
+  // Nabídka bydlí v Itineráři konkrétní výpravy. Ten od srpna 2026 UŽ NENÍ
+  // díl segmentu (ten má jen Na cestě · V plánu · Za námi) – je to vnitřek
+  // jedné cesty a otevírá se z knihovny přes „…" → „Otevřít itinerář".
   await page.evaluate(() => document.querySelector('#tabs button[data-tab="plan"]')?.click())
   await page.waitForTimeout(500)
-  await page.evaluate(() => document.querySelector('#planSegment button[data-seg="itinerar"]')?.click())
+  // Čerstvá aplikace nemá žádnou výpravu, takže knihovna je prázdná a řádek,
+  // přes který se do Itineráře chodí, neexistuje. Jednu proto založíme –
+  // „Nová výprava" otevře Itinerář rovnou. (Na staré verzi `#vypNova`
+  // neexistuje, takže se nic nestane, stejně jako u `#planVice` níž.)
+  await page.evaluate(() => document.getElementById('vypNova')?.click())
   await page.waitForTimeout(400)
+  await page.evaluate(() => {
+    const v = document.getElementById('dialogVstup')
+    if (v) v.value = 'Kontrola napojení'
+    document.getElementById('dialogAno')?.click()
+  })
+  await page.waitForTimeout(600)
   await page.evaluate(() => document.getElementById('planVice')?.click())
   await page.waitForTimeout(400)
 }

@@ -176,6 +176,9 @@ on('poloha', () => {
   if (S.activeTab === 'list') renderList()
   if (S.activeTab === 'disc') renderDisc()
   if (S.activeTab === 'home') renderHome()
+  // Košík a tipy „Co dál?" počítají zajížďku od polohy – bez překreslení
+  // by po jejím zapnutí zůstala karta prázdná.
+  if (S.activeTab === 'plan') renderPlan()
 })
 
 /**

@@ -22,6 +22,7 @@ import { zadej } from '../../components/dialog.js'
 import { vytvorMiniMapu, zavriMiniMapu } from '../../map/detailMap.js'
 import { goTo, draw } from '../../map/map.js'
 import { togglePlan } from '../plan/plan.js'
+import { vKosiku, prepniKosik } from '../plan/kosik.js'
 import { renderHome } from '../home/home.js'
 
 /** Popisky stavu parkoviště pro Transit vysoký 2,6 m. */
@@ -145,6 +146,8 @@ export function openDetail(p, focus) {
       <button class="ikonbtn${store.stav[p.id] === 'wish' ? ' on' : ''}" id="dWish" title="Uložit místo">${IC('i-zalozka')}</button>
       <button class="ikonbtn${visited ? ' on' : ''}" id="dVisit" title="Byli jsme tu">${IC('i-check')}</button>
       <button class="ikonbtn${inPlan ? ' on' : ''}" id="dPlan" title="Do plánu">${IC('i-route')}</button>
+      <button class="ikonbtn${vKosiku(p.id) ? ' on' : ''}" id="dKosik"
+        title="${vKosiku(p.id) ? 'V košíku výpravy' : 'Do košíku – chci vidět, zatím nevím kdy'}">${IC('i-star')}</button>
       <button class="ikonbtn" id="dVice" title="Další akce">${IC('i-vice')}</button>
     </div>
     <div id="dViceMenu" hidden>
@@ -302,6 +305,12 @@ export function openDetail(p, focus) {
 
   document.getElementById('dPlan').onclick = () => {
     togglePlan(p.id)
+    openDetail(p)
+  }
+  // Košík je „chci vidět, zatím nevím kdy" – proti plánu, který je závazek
+  // s pořadím a dnem. Viz views/plan/kosik.js.
+  document.getElementById('dKosik').onclick = () => {
+    toast(prepniKosik(p.id) ? 'Uloženo do košíku výpravy' : 'Vyhozeno z košíku')
     openDetail(p)
   }
   document.getElementById('dVisit').onclick = () => {
