@@ -232,6 +232,27 @@ vyvolal, nebyl chyba v kódu — appka kreslila otisk aktivní cesty
 (`store.cesta.zastavky`) místo živého plánu, a bez vizuálního rozlišení to
 splynulo. Podrobně v `BUGS.md` B1.
 
+**N14 — „Co dál?" na kartě Na cestě počítá jen vzdušnou vzdálenost**
+
+Tipy na pokračování (`src/views/plan/kosikView.js#tipyOdsud()`/`coDalHtml()`,
+řádky 375-444) ukazují tři nejbližší místa mimo itinerář, seřazená a popsaná
+podle vzdušné vzdálenosti (`dkm()` × `KLIKATOST` / `RYCHLOST`, funkce
+`dobaJizdy()` na řádku 54) — ne podle skutečné trasy po silnici.
+
+Není to nedodělek: appka pro tyhle body nikdy nevolala Mapy.com Routing API.
+`store.aktivniPrepocet` je trasa jen **mezi zastávkami itineráře**
+(start→waypoints→cíl, `views/plan/routing.js`), ne k libovolnému bodu mimo
+plán — tipy jsou právě takové body, takže žádná uložená trasa pro ně
+neexistuje. Vzdušný odhad je navíc konzistentní se zbytkem appky (dashboard,
+`views/plan/plan.js` dělají totéž).
+
+Aby se u tipů ukázala skutečná vzdálenost po silnici, musela by appka poslat
+**samostatné volání `zavolejRouting()`** pro dvojici odkud→tip, u každého ze
+tří tipů zvlášť — tedy až tři nová síťová volání na Mapy.com při každém
+otevření karty Na cestě. Než se do toho půjde, zvážit dopad na limity API
+a zpoždění vykreslení karty (dnes se tipy počítají synchronně, bez čekání
+na síť).
+
 ---
 
 ## Vzhled a UX
