@@ -52,6 +52,7 @@ import {
 import { zjistiPolohuJednorazove } from '../../core/geo.js'
 import { ulozenePozice } from '../../core/pozice.js'
 import { prepocitejTrasu, otiskBodu } from './routing.js'
+import { serazenaTrasa } from './body.js'
 import { archivRadkyHtml, napojArchivRadky } from './archiv.js'
 import { cislaPlanuHtml, napojCislaPlanu } from './prehled.js'
 import { kosik, kotvy, pridejDoKosiku } from './kosik.js'
@@ -1082,11 +1083,15 @@ function vykresliMapuDashboardu(wrap) {
 
         if (body.length > 1) {
           // Skutečná trasa z Mapy.com Routing API (views/plan/routing.js),
-          // pokud je pro TENHLE seznam zastávek ještě platná – stejné
-          // pravidlo jako na hlavní mapě (map/planLine.js). Jinak fallback:
-          // rovná spojnice bodů, jak to dashboard dělal dřív.
+          // pokud je pro TENHLE seznam bodů ještě platná – stejné pravidlo
+          // jako na hlavní mapě (map/planLine.js). Otisk se počítá ze
+          // serazenaTrasa() (views/plan/body.js), NE jen ze `body` (zastávky
+          // bez vlastních míst) – to je přesně množina bodů, kterou
+          // prepocitejTrasu() posílá do Mapy.com, takže se otisky vždy
+          // shodují i u výprav s vlastním startem/noclehem/cílem. Bez toho
+          // by dashboard u takových výprav navždy zůstal na fallbacku.
           const prepocet = store.aktivniPrepocet
-          const platny = prepocet && prepocet.otisk === otiskBodu(body)
+          const platny = prepocet && prepocet.otisk === otiskBodu(serazenaTrasa())
           L.polyline(
             platny ? prepocet.polyline : body.map((p) => [p.lat, p.lon]),
             { color: token('--akcent'), weight: 3, opacity: 0.75 }

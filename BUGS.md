@@ -53,14 +53,17 @@ importuje `otiskBodu` z `routing.js` a před vykreslením čáry porovná otisk
 zastávek s `store.aktivniPrepocet.otisk` — když sedí, kreslí se skutečná
 `polyline`, jinak fallback (vzdušná spojnice, jak dřív).
 
-**Známé omezení, ne chyba:** dashboard kreslí čáru jen mezi `store.plan`
-zastávkami (`body = store.plan.map(...)`, `plan.js:1063`), zatímco skutečný
-přepočet (`views/plan/routing.js#serazenaTrasa()` → `views/plan/body.js`)
-počítá i s vlastními body trasy (start/nocleh/cíl/vlastní z `store.bloky`).
-U výpravy s vlastními body se proto otisky nikdy neshodnou a dashboard tiše
-spadne na fallback — stejné bezpečné chování jako při jakémkoli jiném
-neplatném/zastaralém přepočtu, appka nespadne, jen mini-mapa neukáže
-nejnovější skutečnou trasu. Hlavní mapa (`map/planLine.js`) vlastní body
-počítá (`vlastniMista()`), takže tam je vidět vždy — pokud by bylo žádoucí
-sjednotit i dashboard, znamenalo by to dashboardu přidat totéž vyplétání
-podle `po`/`den`, což dnes nemá.
+**Dovětek** (21. 8. 2026): první verze opravy počítala otisk jen ze
+`store.plan` zastávek (`body`), takže u výprav s vlastními body trasy
+(start/nocleh/cíl z `store.bloky`) se otisk nikdy neshodoval se skutečným
+přepočtem — `views/plan/routing.js#sberBoduProRouting()` totiž posílá do
+Mapy.com API množinu bodů ze `serazenaTrasa()` (`views/plan/body.js`), NE
+jen zastávky. Opraveno importem `serazenaTrasa` přímo do `plan.js` (views/
+smí importovat views/, na rozdíl od `map/`, které `serazenaTrasa()` proto
+duplikuje jako `vlastniMista()` v `planLine.js`) a počítáním otisku z ní
+místo z `body`. Markery (špendlíky) na dashboardu dál kreslí jen `body`
+(`store.plan` zastávky) beze změny — ty vlastní body jako špendlíky
+nekreslily ani předtím, mění se jen zdroj pro čáru/otisk. Ověřeno E2E
+(Playwright, mock API): výprava s vlastním bodem trasy má
+`store.aktivniPrepocet.otisk === otiskBodu(serazenaTrasa())` po přepočtu,
+dashboard vykreslí skutečnou `polyline`.
