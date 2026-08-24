@@ -35,10 +35,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
-import { bezLemu, zmekcit, najdiMrizku, najdiKresbu } from './rezani.mjs'
+import { bezLemu, zmekcit, najdiMrizku, najdiKresbu, slozkaGrafiky } from './rezani.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const GRAFIKA = path.join(ROOT, '..', 'grafika')
+const GRAFIKA = slozkaGrafiky(ROOT)
 const TEREN = path.join(GRAFIKA, 'terén')
 const ASSETS = path.join(ROOT, 'src', 'assets')
 const KRESBY = path.join(ASSETS, 'kresba')

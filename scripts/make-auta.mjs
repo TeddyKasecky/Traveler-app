@@ -17,10 +17,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
-import { bezLemu, zmekcit, najdiMrizku, najdiKresbu } from './rezani.mjs'
+import { bezLemu, zmekcit, najdiMrizku, najdiKresbu, slozkaGrafiky } from './rezani.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const ZDROJE = path.join(ROOT, '..', 'grafika', 'ikony aut')
+const ZDROJE = path.join(slozkaGrafiky(ROOT), 'ikony aut')
 const CIL = path.join(ROOT, 'src', 'assets', 'auta')
 
 /**
@@ -32,6 +32,9 @@ const LISTY = [
   { soubor: 'ChatGPT Image 18. 8. 2026 16_21_55 (2).png', predpona: 'terenni' },
   { soubor: 'ChatGPT Image 18. 8. 2026 16_21_55 (3).png', predpona: 'mala' },
   { soubor: 'ChatGPT Image 18. 8. 2026 16_22_08 (4).png', predpona: 'velka' },
+  // Jeden model ve čtyřech barvách, ne čtyři různá auta – proto jméno podle
+  // modelu, ne podle velikosti jako u listů výš. Zadání je v `PROMPT.md`.
+  { soubor: 'ChatGPT Image 24. 8. 2026 17_03_06.png', predpona: 'vwt4' },
 ]
 
 /**
