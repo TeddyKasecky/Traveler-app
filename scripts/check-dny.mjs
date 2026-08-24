@@ -122,7 +122,9 @@ const { seznamVyprav, prepniVypravu, novaVyprava, smazAktivniVypravu, BEZ_NAZVU 
   '../src/views/plan/vypravy.js'
 )
 const { pridejPozici } = await import('../src/core/pozice.js')
-const { souradniceBodu, maBod, pridejStartCil, serazenaTrasa } = await import('../src/views/plan/body.js')
+const { souradniceBodu, maBod, pridejStartCil, serazenaTrasa, serazenePolozky } =
+  await import('../src/views/plan/body.js')
+const { vyjed, pridejDoCesty, vynechZCesty, cestaZmenena } = await import('../src/views/plan/cestaData.js')
 const { otiskBodu, pocetOdkazuNaPozici } = await import('../src/views/plan/routing.js')
 
 /** Nastaví stav včetně odložených výprav. */
@@ -569,8 +571,56 @@ priprav(['x', 'y'], [])
   t('trasa má 4 body (start, 2 zastávky, cíl)', trasa.length === 4)
 
   // Bod bez rozpoznatelné polohy (zatím bez polohy) se do trasy nepočítá.
-  pridejBod({ druh: 'vlastni', nazev: 'Bez polohy', po: 'x' })
+  const idBezPolohy = pridejBod({ druh: 'vlastni', nazev: 'Bez polohy', po: 'x' })
   t('bod bez polohy se v serazenaTrasa() přeskočí', serazenaTrasa().length === 4)
+
+  // `serazenePolozky()` je opak: kreslí se z ní, takže bod bez polohy vidět
+  // MÁ – „doplním, až budu vědět" je platný stav. `serazenaTrasa()` je od
+  // srpna 2026 jen její mapování, takže se pořadí počítá na jednom místě.
+  const polozky = serazenePolozky()
+  t('serazenePolozky vrací i bod bez polohy', polozky.length === 5)
+  t('serazenePolozky rozlišují zastávku a bod',
+    polozky.filter((x) => x.typ === 'zastavka').length === 2 && polozky.filter((x) => x.typ === 'bod').length === 3)
+  t('bod bez polohy stojí za svou kotvou', (() => {
+    const i = polozky.findIndex((x) => x.b && x.b.id === idBezPolohy)
+    return i > 0 && polozky[i - 1].typ === 'zastavka' && polozky[i - 1].p.id === 'x'
+  })())
+  t('každá položka ví, do kterého dne patří', polozky.every((x) => x.den >= 1))
+}
+
+console.log('\nÚpravy rozjeté cesty (srpen 2026)\n')
+
+/* Cesta byla do teď zmrazený otisk – plán se dal upravovat, cesta ne.
+ * Jenže právě to se na roadtripu dělá: večer se něco přidá a něco vynechá. */
+{
+  priprav(['a', 'b', 'c'], [2, 1])
+  S.byId = {
+    a: { id: 'a', n: 'A', lat: 50, lon: 14 },
+    b: { id: 'b', n: 'B', lat: 49, lon: 15 },
+    c: { id: 'c', n: 'C', lat: 48, lon: 16 },
+    d: { id: 'd', n: 'D', lat: 47, lon: 17 },
+  }
+  store.vypravaNazev = 'Zkouška cesty'
+  store.kosik = {}
+  store.bloky = {}
+  store.cesta = null
+
+  t('vyjed() si uloží původní trasu', vyjed() && store.cesta.puvodni.join() === 'a,b,c')
+  t('čerstvá cesta se od plánu neliší', cestaZmenena(store.cesta) === false)
+
+  t('přidání jako další cíl jde na začátek', pridejDoCesty('d', 'dalsi') && store.cesta.zastavky.join() === 'd,a,b,c')
+  t('délky dnů se přepočítaly', store.cesta.dny.reduce((x, y) => x + y, 0) === 4)
+  t('změněná cesta se pozná', cestaZmenena(store.cesta))
+  t('totéž místo podruhé neprojde', pridejDoCesty('d', 'dalsi') === false)
+
+  t('vynechání zastávku odebere', vynechZCesty('a') && store.cesta.zastavky.join() === 'd,b,c')
+  t('součet délek dnů pořád sedí',
+    store.cesta.dny.reduce((x, y) => x + y, 0) === store.cesta.zastavky.length)
+  t('vynechané se vrátilo do košíku', (store.kosik['Zkouška cesty'] || []).includes('a'))
+  t('vynechání neznámého nic neudělá', vynechZCesty('zzz') === false)
+
+  t('přidání do konkrétního dne', pridejDoCesty('a', 2) && store.cesta.zastavky.includes('a'))
+  store.cesta = null
 }
 
 console.log('\nOtisk trasy a přepočet vázaný na výpravu (srpen 2026)\n')

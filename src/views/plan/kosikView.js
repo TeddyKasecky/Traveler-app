@@ -27,7 +27,7 @@ import {
 } from './kosik.js'
 import { zahodKosikVrstvu } from '../../map/kosikVrstva.js'
 import { zadej, vyberZeSeznamu } from '../../components/dialog.js'
-import { vychoziBod } from './cesta.js'
+import { vychoziBod, jedeSe, pridejDoCesty, kolikatyDenCesty } from './cesta.js'
 import { sklonuj } from './plan.js'
 import { dnyPlanu, nastavDny } from './dny.js'
 import { DRUHY, bodyVKosiku, prehodBod, pridejBod, rozpoznejSouradnice, hledejAdresu } from './body.js'
@@ -298,6 +298,50 @@ export function napojKosik(wrap, prekresli) {
     b.onclick = async (e) => {
       e.stopPropagation()
       const id = b.dataset.kosPlan
+
+      // ZA JÍZDY SE PŘIDÁVÁ DO CESTY, NE DO PLÁNU. Košík na kartě Na cestě
+      // odpovídá na „kam teď", ne „jak to naplánujeme" – zapsat to do plánu
+      // výpravy by znamenalo, že se změna na trase, kterou zrovna jedeme,
+      // neprojeví vůbec.
+      if (jedeSe() && S.activeTab === 'plan') {
+        const kam = await vyberZeSeznamu({
+          nadpis: 'Kam to zařadit?',
+          polozky: [
+            { id: 'dalsi', popisek: 'Jako další cíl', ikona: 'i-nav', meta: 'hned teď' },
+            { id: 'konecDne', popisek: 'Na konec dnešního dne', ikona: 'i-clock' },
+            { id: 'den', popisek: 'Do konkrétního dne…', ikona: 'i-kalendar' },
+          ],
+        })
+        if (kam === null) return
+        let cil = kam
+        if (kam === 'den') {
+          const dnyCesty = store.cesta.dny && store.cesta.dny.length ? store.cesta.dny : [store.cesta.zastavky.length]
+          const vybrany = await vyberZeSeznamu({
+            nadpis: 'Do kterého dne?',
+            polozky: dnyCesty.map((d, i) => ({
+              id: String(i + 1),
+              popisek: `Den ${i + 1}`,
+              ikona: 'i-kalendar',
+              meta: d ? `${d} ${sklonuj(d, 'zastávka', 'zastávky', 'zastávek')}` : 'volno',
+            })),
+          })
+          if (vybrany === null) return
+          cil = Number(vybrany)
+        }
+        // Vlastní bod v cestě nefunguje – otisk klíčuje id míst z databáze.
+        // Nejdřív se tedy vrátí do trasy jako bod a pak se ukáže na mapě.
+        const bodVKosiku = bodyVKosiku().find((x) => x.id === id)
+        if (bodVKosiku) {
+          if (!prehodBod(id, { den: kolikatyDenCesty(store.cesta) })) return
+        } else if (!pridejDoCesty(id, cil)) {
+          return toast('Tohle místo na cestě už je')
+        }
+        vyhodZKosiku(id)
+        toast(cil === 'dalsi' ? 'Jedeme tam – je to další cíl' : 'Přidáno na cestu')
+        prekresli()
+        return
+      }
+
       // Do kterého dne? U jednodenního plánu je odpověď jediná, u víc dnů
       // se musí zeptat – bez toho by všechno padalo do posledního dne.
       const dny = dnyPlanu()

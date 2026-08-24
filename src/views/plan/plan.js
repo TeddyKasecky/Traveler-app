@@ -22,7 +22,7 @@
  */
 
 import { S, store, save, prefs, savePrefs, PHOTOS } from '../../core/store.js'
-import { esc } from '../../core/html.js'
+import { esc, sklonuj } from '../../core/html.js'
 import { dkm, fmtKm } from '../../core/geo.js'
 import { KAT } from '../../data/categories.js'
 import { obrazekMista } from '../../data/kategorieFoto.js'
@@ -44,6 +44,7 @@ import {
 } from './vypravy.js'
 import {
   cestaHtml, napojCestu, jedeSe, vyjed, zamcenaCestaHtml, napojZamcenouCestu, vychoziBod,
+  zavriMapuCesty,
 } from './cesta.js'
 import { zastavSledovani } from './cesta-zivot.js'
 import {
@@ -63,8 +64,7 @@ import { nastavKosikFab, otevriKosikPlat } from '../../components/kosikFab.js'
 import { dashboardHtml, kotvyPodleDnu } from './dashboard.js'
 import { termin, nastavTermin, datumDne, kratkeDatum, denVTydnu, kolikatyDenDnes } from './termin.js'
 import { zahodKosikVrstvu } from '../../map/kosikVrstva.js'
-import { token } from '../../core/barvy.js'
-import L from 'leaflet'
+import { vykresliDashMapu, zavriDashMapu } from './dashMapa.js'
 
 /** Kolik zastávek unese odkaz do Google Maps. */
 const MAX_DO_NAVIGACE = 10
@@ -145,8 +145,11 @@ function fmtCas(hrs) {
   return m ? `${h} h ${m} min` : `${h} h`
 }
 
-// Nula skloňuje jako pět a víc: „0 výprav", ne „0 výpravy".
-export const sklonuj = (n, a, b, c) => (n === 1 ? a : n >= 2 && n < 5 ? b : c)
+// Skloňování se přestěhovalo do core/html.js (textová utilita jako esc()),
+// aby ho mohla používat i datová vrstva cesty – `plan.js` veze obrázky
+// kategorií a čistý Node ho kvůli nim nenačte. Reexport, ať se nemusí
+// přepisovat všechny importy.
+export { sklonuj }
 
 /* ================= vykreslení ================= */
 
@@ -1074,130 +1077,38 @@ async function upravTermin() {
   renderPlan()
 }
 
-/** Vlastní instance mapy na dashboardu. Jako u košíku se uklízí při odchodu. */
-let mapaDashboardu = null
-let koloDashMapy = 0
-
-export function zavriMapuDashboardu() {
-  koloDashMapy++
-  zahodKosikVrstvu()
-  if (mapaDashboardu) {
-    try {
-      mapaDashboardu.remove()
-    } catch {
-      /* prvek zmizel s překreslením */
-    }
-    mapaDashboardu = null
-  }
-}
-
 /**
- * Mapa nad kostrou: zastávky výpravy, kotvy a tvoje poloha.
- *
- * Textová kostra odpovídá na „kolikátý den", mapa na „kde to vlastně je" –
- * proto obojí naráz, ne jedno místo druhého.
+ * Mini-mapa nad itinerářem: zastávky výpravy, vlastní body, kotvy a tvoje
+ * poloha. Kreslení dělá sdílená `dashMapa.js` – tatáž mapa je na kartě
+ * Na cestě, jen z otisku cesty místo živého plánu.
  */
 function vykresliMapuDashboardu(wrap) {
-  zavriMapuDashboardu()
   const el = wrap.querySelector('#dashMapa')
-  if (!el || el._leaflet_id) return
-
-  const body = store.plan.map((id) => S.byId[id]).filter((p) => p && Number.isFinite(p.lat))
-  const odkud = vychoziBod()
-  if (!body.length && !odkud) {
-    el.innerHTML = '<div class="meta kosik-bezmapy">Zatím není co ukázat — přidej první zastávku.</div>'
-    return
-  }
-
-  const moje = ++koloDashMapy
-  requestAnimationFrame(() => {
-    setTimeout(() => {
-      if (moje !== koloDashMapy || !document.body.contains(el) || el._leaflet_id) return
-      try {
-        const stred = body[0] || odkud
-        mapaDashboardu = L.map(el, {
-          zoomControl: false,
-          attributionControl: false,
-          scrollWheelZoom: false,
-        }).setView([stred.lat, stred.lon], 7, { animate: false })
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mapaDashboardu)
-
-        if (body.length > 1) {
-          // Skutečná trasa z Mapy.com Routing API (views/plan/routing.js),
-          // pokud je pro TENHLE seznam bodů ještě platná – stejné pravidlo
-          // jako na hlavní mapě (map/planLine.js). Otisk se počítá ze
-          // serazenaTrasa() (views/plan/body.js), NE jen ze `body` (zastávky
-          // bez vlastních míst) – to je přesně množina bodů, kterou
-          // prepocitejTrasu() posílá do Mapy.com, takže se otisky vždy
-          // shodují i u výprav s vlastním startem/noclehem/cílem. Bez toho
-          // by dashboard u takových výprav navždy zůstal na fallbacku.
-          const prepocet = store.aktivniPrepocet
-          const platny = prepocet && prepocet.otisk === otiskBodu(serazenaTrasa())
-          L.polyline(
-            platny ? prepocet.polyline : body.map((p) => [p.lat, p.lon]),
-            { color: token('--akcent'), weight: 3, opacity: 0.75 }
-          ).addTo(mapaDashboardu)
-        }
-        const kotvyId = new Set(kotvy().map((k) => k.id))
-        for (const p of body) {
-          const jeKotva = kotvyId.has(p.id)
-          L.marker([p.lat, p.lon], {
-            icon: L.divIcon({
-              className: 'kos-pin-obal',
-              html: jeKotva
-                ? `<div class="kos-pin kotva" style="--kb:${token('--rust')}">★</div>`
-                : `<div class="kos-pin blizko" style="--kb:${token('--akcent')}"></div>`,
-              iconSize: [jeKotva ? 34 : 26, jeKotva ? 34 : 26],
-              iconAnchor: [jeKotva ? 17 : 13, jeKotva ? 17 : 13],
-            }),
-            zIndexOffset: jeKotva ? 1000 : 0,
-          })
-            .addTo(mapaDashboardu)
-            .bindTooltip(p.n, { direction: 'top' })
-        }
-        // Vlastní body trasy (start/nocleh/cíl/vlastní z bloků) – poloviční
-        // průměr běžné zastávky (.kos-pin.blizko je 20px, tohle 10px). Start
-        // a cíl mají vlastní barvu (žlutá/červená), zbytek stejnou barvu jako
-        // běžné zastávky – jen menší, ať je jasné, že nejde o místo z databáze.
-        const vlastni = vsechnyBody()
-          .map((b) => {
-            const s = souradniceBodu(b)
-            return s ? { ...b, lat: s.lat, lon: s.lon } : null
-          })
-          .filter(Boolean)
-        for (const m of vlastni) {
-          const barva = m.druh === 'start' ? token('--sun') : m.druh === 'cil' ? token('--upozorneni') : token('--akcent')
-          L.marker([m.lat, m.lon], {
-            icon: L.divIcon({
-              className: 'kos-pin-obal',
-              html: `<div class="kos-pin vlastni" style="--kb:${barva}"></div>`,
-              iconSize: [10, 10],
-              iconAnchor: [5, 5],
-            }),
-          })
-            .addTo(mapaDashboardu)
-            .bindTooltip(m.nazev || 'Vlastní místo', { direction: 'top' })
-        }
-
-        if (odkud) {
-          L.marker([odkud.lat, odkud.lon], {
-            icon: L.divIcon({ className: 'kos-pin-obal', html: '<div class="kos-ja"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
-            zIndexOffset: 2000,
-          })
-            .addTo(mapaDashboardu)
-            .bindTooltip('Tady jsi', { direction: 'top', offset: [0, -9] })
-        }
-
-        const vse = [...body.map((p) => [p.lat, p.lon]), ...vlastni.map((m) => [m.lat, m.lon])]
-        if (odkud) vse.push([odkud.lat, odkud.lon])
-        // Menší okraj a vyšší strop přiblížení než dřív (30px/zoom 10) – trasa
-        // vyplní víc mapy, body nezůstávají daleko od okrajů plovoucího náhledu.
-        if (vse.length > 1) mapaDashboardu.fitBounds(L.latLngBounds(vse), { padding: [14, 14], maxZoom: 13, animate: false })
-      } catch {
-        el.innerHTML = '<div class="meta kosik-bezmapy">Mapu se nepovedlo načíst.</div>'
-      }
-    }, 180)
+  if (!el) return
+  vykresliDashMapu(el, {
+    zastavky: store.plan.map((id) => S.byId[id]).filter(Boolean),
+    body: vsechnyBody()
+      .map((b) => {
+        const s = souradniceBodu(b)
+        return s ? { ...b, lat: s.lat, lon: s.lon } : null
+      })
+      .filter(Boolean),
+    prepocet: store.aktivniPrepocet,
+    // Otisk se počítá ze `serazenaTrasa()`, ne jen ze zastávek – to je
+    // přesně množina bodů, kterou `prepocitejTrasu()` posílá do Mapy.com.
+    // Bez toho by dashboard u výprav s vlastním startem/noclehem/cílem
+    // navždy zůstal na vzdušném fallbacku (BUGS.md B2).
+    proOtisk: serazenaTrasa(),
+    odkud: vychoziBod(),
+    kotvy: new Set(kotvy().map((k) => k.id)),
   })
+}
+
+/** Uklidí mini-mapu itineráře i vrstvu košíku na hlavní mapě. */
+export function zavriMapuDashboardu() {
+  zahodKosikVrstvu()
+  const el = document.getElementById('dashMapa')
+  if (el) zavriDashMapu(el)
 }
 
 /* ================= obsluha ================= */
@@ -1222,10 +1133,11 @@ function napoj(wrap, items) {
 
   for (const b of wrap.querySelectorAll('#planSegment button')) {
     b.onclick = () => {
-      // Mapa košíku i dashboardu jsou vlastní instance Leafletu – bez úklidu
-      // by zůstaly viset na prvku, který zmizí překreslením.
+      // Mini-mapy jsou vlastní instance Leafletu – bez úklidu by zůstaly
+      // viset na prvku, který zmizí překreslením. Obě karty mají svou.
       zavriMapuKosiku()
       if (dil === 'itinerar') zavriMapuDashboardu()
+      if (dil === 'cesta') zavriMapuCesty()
       dil = b.dataset.seg
       renderPlan()
     }

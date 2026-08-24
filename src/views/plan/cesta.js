@@ -1,18 +1,14 @@
 /**
- * Aktuální cesta – z plánu se vyjede a odznačuje se, kde jsme byli.
+ * Aktuální cesta – vykreslení karty Na cestě a její obsluha.
  *
- * BEZ GPS, A JE TO ROZHODNUTÍ, NE NEDODĚLEK: prohlížeč na zhasnutém displeji
- * sledování polohy zastaví, takže by „ujetá trasa" byla děravá podle toho,
- * kdy byla aplikace zrovna otevřená – a děravá čára je horší než žádná.
- * Ujetou trasu kreslí čára mezi odznačenými zastávkami (`map/planLine.js`).
+ * DATA JSOU VE `cestaData.js`, tenhle soubor je vzhled. Rozděleno stejně
+ * jako `body.js`/`bloky.js` a `kosik.js`/`kosikView.js`: odsud se importuje
+ * `IC`, který čte `sprite.svg?raw` (Vite syntaxe, kterou čistý Node neumí),
+ * takže by `check-dny.mjs` na téhle větvi spadl hned při importu.
  *
- * ČAS SE NIKDE NETIKÁ. Čistý čas = teď − začátek − součet pauz; počítá se
- * při každém vykreslení znovu, takže přežije zavření aplikace i restart
- * telefonu a nikde neběží žádný interval.
- *
- * Otisk plánu: `cesta.zastavky` se plní při vyjetí a plán se za jízdy klidně
- * může upravovat – cesta jede podle svého otisku. Bez toho by smazání
- * zastávky z plánu tiše přepsalo i rozjetou cestu.
+ * Datové funkce se odsud **reexportují** – volajících je hodně (plan.js,
+ * kosikView.js, map/planLine.js, home.js) a přepisovat jim všem cestu
+ * importu by bylo dražší než jeden řádek tady.
  */
 
 import { S, store, save, saveOdlozene } from '../../core/store.js'
@@ -28,55 +24,26 @@ import { draw } from '../../map/map.js'
 import { planoveAchievementy, pripisPlanove, pripisProfilove } from './achievementy.js'
 import { detailCestyHtml } from './archiv.js'
 import { bloky, blok } from './bloky.js'
+import { serazenePolozky, serazenaTrasa, vsechnyBody, souradniceBodu, DRUHY } from './body.js'
+import { vykresliDashMapu, zavriDashMapu } from './dashMapa.js'
+import { kotvy, pridejDoKosiku } from './kosik.js'
 import { coDalHtml, napojCoDal, tipyOdsud } from './kosikView.js'
 import { spustSledovani, zastavSledovani, aktualniProjekce } from './cesta-zivot.js'
 import { prepocitejOtiskCesty } from './routing.js'
+import {
+  fmtDoba, cistyCas, jedeSe, vyjed, ukonciCestu, vychoziBod, odznaceneVPoradi,
+  pridejDoCesty, vynechZCesty, kolikatyDenCesty, cestaZmenena,
+} from './cestaData.js'
+
+// Reexport datové vrstvy: volající (plan.js, kosikView.js, map/planLine.js)
+// sahali sem odjakživa a rozdělení souboru není důvod je všechny přepsat.
+export {
+  fmtDoba, cistyCas, jedeSe, vyjed, ukonciCestu, vychoziBod, odznaceneVPoradi,
+  pridejDoCesty, vynechZCesty, kolikatyDenCesty, cestaZmenena,
+}
 
 /** Silnice bývá delší než vzdušná čára – týž koeficient jako v plan.js. */
 const KLIKATOST = 1.35
-
-/** Formát času cesty: dny a hodiny, pod hodinu minuty. */
-export function fmtDoba(ms) {
-  const minut = Math.max(0, Math.round(ms / 60000))
-  if (minut < 60) return `${minut} min`
-  const hodin = Math.floor(minut / 60)
-  if (hodin < 24) return `${hodin} h ${String(minut % 60).padStart(2, '0')} min`
-  const dni = Math.floor(hodin / 24)
-  return `${dni} ${sklonuj(dni, 'den', 'dny', 'dní')} ${hodin % 24} h`
-}
-
-/** Čistý čas probíhající cesty v ms. Pauza se počítá do svého začátku. */
-export function cistyCas(c) {
-  const konec = c.pauzaOd || Date.now()
-  const pauzy = (c.pauzy || []).reduce((a, p) => a + (p.do - p.od), 0)
-  return Math.max(0, konec - c.zacatek - pauzy)
-}
-
-/** Probíhá cesta? Čte to i planLine, ať ví, jestli kreslit ujetou trasu. */
-export const jedeSe = () => !!store.cesta
-
-/**
- * Vyjede podle aktivní výpravy. Vrací false, když není z čeho.
- * @returns {boolean}
- */
-export function vyjed() {
-  if (store.cesta || !store.plan.length) return false
-  store.cesta = {
-    nazev: store.vypravaNazev || BEZ_NAZVU,
-    zacatek: Date.now(),
-    zastavky: [...store.plan],
-    // Délky dnů, ne seznamy id: `dnyPlanu()` vrací pole zastávek po dnech
-    // a otisk potřebuje jen řez – id už nese `zastavky`.
-    dny: dnyPlanu().map((d) => d.length),
-    pauzy: [],
-    pauzaOd: null,
-    odznacene: {},
-    poznamky: {},
-    poznamka: '',
-    ziskane: [],
-  }
-  return save()
-}
 
 /** Pauza ↔ pokračování. */
 function prepniPauzu() {
@@ -101,92 +68,6 @@ function zrusCestu() {
   // vynulovat hned, ne čekat na další vykreslení karty Na cestě.
   S.coDalId = []
   save()
-}
-
-/**
- * Ukončí cestu: spočítá souhrn a přesune ji do archivu (`store.cesty`).
- *
- * Souhrn se počítá TEĎ, ne při čtení archivu – data míst se můžou změnit
- * (CSV import) a archiv má držet, jaká cesta BYLA.
- */
-export function ukonciCestu() {
-  const c = store.cesta
-  if (!c) return false
-  if (c.pauzaOd) {
-    c.pauzy.push({ od: c.pauzaOd, do: Date.now() })
-    c.pauzaOd = null
-  }
-
-  const mista = c.zastavky.map((id) => S.byId[id]).filter(Boolean)
-  const navstivena = mista.filter((p) => c.odznacene[p.id])
-  const zeme = [...new Set(navstivena.map((p) => p.z))]
-  const kraje = [...new Set(navstivena.map((p) => p.r).filter(Boolean))]
-  const kategorie = {}
-  for (const p of navstivena) kategorie[p.k] = (kategorie[p.k] || 0) + 1
-  const hodnoceni = {}
-  for (const p of navstivena) if (store.rating[p.id]) hodnoceni[p.id] = store.rating[p.id]
-
-  store.cesty.unshift({
-    nazev: c.nazev,
-    zacatek: c.zacatek,
-    konec: Date.now(),
-    cistyMs: cistyCas(c),
-    zastavek: c.zastavky.length,
-    navstiveno: navstivena.length,
-    vynechano: c.zastavky.length - navstivena.length,
-    zastavky: c.zastavky,
-    odznacene: c.odznacene,
-    poznamky: c.poznamky,
-    poznamka: c.poznamka,
-    zeme,
-    kraje,
-    kategorie,
-    hodnoceni,
-    ziskane: c.ziskane || [],
-    // Otisk mohl mít vlastní přepočet z Mapy.com (#cestaPrepocitat) – bez
-    // téhle kopie by ukončená cesta v knihovně o spočítanou trasu přišla.
-    prepocet: c.prepocet,
-  })
-  store.cesta = null
-  // Stejný důvod jako u zrusCestu() výš – bez aktivní cesty nemá mód
-  // „Na cestě“ co zobrazovat, a tipy „Co dál?“ patřily k rozjeté cestě.
-  S.mapaMod = 'plna'
-  S.coDalId = []
-  return save()
-}
-
-/**
- * Odkud se měří „co je poblíž" – pro tipy Co dál? i pro vzdálenosti v košíku.
- *
- * GPS má přednost, protože je to opravdu tam, kde stojíš. Když není (bez
- * signálu, zamítnuté oprávnění, prohlížeč bez polohy), nastoupí poslední
- * odznačená zastávka: na cestě je to nejlepší odhad, kde jsi. Bez obojího
- * vrací null a volající karty se prostě nevykreslí.
- *
- * @returns {{lat:number, lon:number, popis:string}|null}
- */
-export function vychoziBod() {
-  if (S.userPos && Number.isFinite(S.userPos.lat)) {
-    return { lat: S.userPos.lat, lon: S.userPos.lon, popis: 'od tebe' }
-  }
-  const c = store.cesta
-  if (c) {
-    // Poslední v pořadí odznačení, ne poslední v plánu – odznačovat se dá
-    // na přeskáčku a zajímá nás, kde jsme skončili.
-    const posledni = odznaceneVPoradi().slice(-1)[0]
-    const p = posledni && S.byId[posledni]
-    if (p) return { lat: p.lat, lon: p.lon, popis: `od: ${p.n}` }
-  }
-  return null
-}
-
-/** Pořadí odznačení – pro čáru ujeté trasy na mapě. */
-export function odznaceneVPoradi() {
-  const c = store.cesta
-  if (!c) return []
-  return Object.entries(c.odznacene)
-    .sort((a, b) => a[1] - b[1])
-    .map(([id]) => id)
 }
 
 /* ================= vykreslení ================= */
@@ -215,21 +96,33 @@ export function cestaHtml() {
   // pole výš. Vidí to jen ten, kdo appku drží na popředí na kartě Na cestě.
   const proj = aktualniProjekce(store.aktivniPrepocet)
 
-  // Dny podle otisku: délky se převedou na úseky seznamu.
+  // ZASTÁVKY A VLASTNÍ BODY V JEDNOM POŘADÍ (srpen 2026). Do teď se body
+  // kreslily v jedné sekci úplně dole, mimo dny, a jejich kotvení `po`/`den`
+  // se ignorovalo – nocleh mezi druhou a třetí zastávkou tak na cestě stál
+  // za vším ostatním. Řadí je `serazenePolozky()` v body.js, tedy tatáž
+  // funkce jako v Itineráři.
+  //
+  // Bloky se čtou pod `store.cesta.nazev`, ne pod aktivní výpravou: po
+  // přepnutí výpravy za jízdy by cesta ukazovala cizí body.
   const dny = c.dny && c.dny.length ? c.dny : [mista.length]
-  let od = 0
-  const poDnech = dny.map((delka, i) => {
-    const kus = mista.slice(od, od + delka)
-    od += delka
-    return { den: i + 1, kus }
-  })
+  const polozky = serazenePolozky(c.zastavky, dny, vsechnyBody(c.nazev))
+  const poDnech = dny.map((_, i) => ({
+    den: i + 1,
+    kus: polozky.filter((x) => x.den === i + 1),
+  }))
+
+  // Kolikátý den cesty je dnes – počítá se z okamžiku vyjetí, ne z termínu
+  // výpravy: cesta může vyjet jindy, než se plánovalo, a „3. den" má být
+  // pravda o cestě, ne o plánu.
+  const denCesty = Math.floor((Date.now() - c.zacatek) / 86400000) + 1
 
   return `
     <div class="cesta-hlava${c.pauzaOd ? ' pauza' : ''}">
-      <div>
+      <div class="cesta-hlava-text">
+        <span class="cesta-stitek">${c.pauzaOd ? 'Pauza' : 'Na cestě'} · ${denCesty}. den</span>
         <h3>${esc(c.nazev)}</h3>
         <div class="meta">Vyjeli jsme ${new Date(c.zacatek).toLocaleDateString('cs-CZ')} ·
-          na cestě ${fmtDoba(cistyCas(c))}${c.pauzaOd ? ' · pauza' : ''}</div>
+          na cestě ${fmtDoba(cistyCas(c))}</div>
       </div>
       <div class="cesta-cisla"><b>${hotovo}</b><span>z ${mista.length}</span></div>
     </div>
@@ -240,6 +133,11 @@ export function cestaHtml() {
         ? `<div class="meta cesta-ziva">${IC('i-compass')}Podle polohy je do konce trasy ${fmtKm(proj.zbyvaKm)}</div>`
         : ''
     }
+
+    <!-- Mapa až pod čísly: „jak nám to jede" je první otázka, „kde to je"
+         druhá. Kreslí ji tatáž dashMapa.js jako v Itineráři, jen z otisku
+         cesty a se zvýrazněným dalším cílem. -->
+    <div class="dash-mapa" id="cestaMapa"></div>
 
     ${
       dalsiCil
@@ -255,13 +153,13 @@ export function cestaHtml() {
       .map(
         ({ den, kus }) => `
       ${dny.length > 1 ? `<div class="sekce"><span class="sekce-text">${den}. den</span></div>` : ''}
-      ${kus.map((p) => zastavkaCesty(p, c)).join('')}`
+      ${kus.map((x) => (x.typ === 'bod' ? bodCesty(x.b) : zastavkaCesty(x.p, c))).join('')}`
       )
       .join('')}
 
     ${coDal()}
 
-    ${blokyNaCeste()}
+    ${seznamyNaCeste()}
 
     <div class="sekce"><span class="sekce-text">Poznámka z cesty</span></div>
     <textarea class="cesta-poznamka" id="cestaPoznamka" rows="3"
@@ -291,13 +189,37 @@ function coDal() {
 }
 
 /**
- * Bloky, které mají na cestě co dělat: zaškrtávací seznamy a vlastní místa.
- * Odškrtává se přímo na bloku (`hotovo`), takže to vidí i editor plánu.
+ * Vlastní bod trasy na cestě – řádek mezi zastávkami, kam podle `po`/`den`
+ * patří. Do srpna 2026 se kreslil v jedné sekci úplně dole a jeho kotvení se
+ * ignorovalo, takže nocleh mezi druhou a třetí zastávkou stál za vším.
+ *
+ * Odškrtává se přímo na bloku (`hotovo`), ne do `cesta.odznacene`: otisk
+ * cesty klíčuje id míst z databáze a vlastní bod v ní není. Díky tomu
+ * odškrtnutí rovnou vidí i Itinerář, který čte týž blok.
  */
-function blokyNaCeste() {
-  const seznamy = bloky().filter((b) => b.typ === 'seznam' && (b.polozky || []).length)
-  const mista = bloky().filter((b) => b.typ === 'misto' && Number.isFinite(b.lat))
-  if (!seznamy.length && !mista.length) return ''
+function bodCesty(b) {
+  const d = DRUHY[b.druh] || DRUHY.vlastni
+  // `souradniceBodu()`, ne `b.lat` – bod se `zdroj: pozice`/`gps` má
+  // `lat: null` a dřívější `Number.isFinite(b.lat)` ho z cesty vyhodilo úplně.
+  const s = souradniceBodu(b)
+  return `
+    <div class="cesta-zastavka vlastni${b.hotovo ? ' hotova' : ''}">
+      <button class="cesta-fajfka" data-vlastni="${b.id}" title="${b.hotovo ? 'Odznačit' : 'Byli jsme tu'}">${IC('i-check')}</button>
+      <div class="cesta-telo">
+        <b>${esc(b.nazev || d.popisek)}</b>
+        <span class="meta">${d.popisek}${s ? ` · ${s.lat.toFixed(3)}, ${s.lon.toFixed(3)}` : ' · bez polohy'}</span>
+      </div>
+    </div>`
+}
+
+/**
+ * Zaškrtávací seznamy z bloků výpravy – jediný druh bloku, který se na cestě
+ * odškrtává. Vlastní místa odsud odešla mezi zastávky (`bodCesty()` výš).
+ */
+function seznamyNaCeste() {
+  const c = store.cesta
+  const seznamy = bloky(c ? c.nazev : null).filter((b) => b.typ === 'seznam' && (b.polozky || []).length)
+  if (!seznamy.length) return ''
 
   const seznamyHtml = seznamy
     .map(
@@ -314,22 +236,7 @@ function blokyNaCeste() {
     )
     .join('')
 
-  const mistaHtml = mista
-    .map(
-      (b) => `
-      <div class="cesta-zastavka vlastni${b.hotovo ? ' hotova' : ''}">
-        <button class="cesta-fajfka" data-vlastni="${b.id}" title="${b.hotovo ? 'Odznačit' : 'Byli jsme tu'}">${IC('i-check')}</button>
-        <div class="cesta-telo">
-          <b>★ ${esc(b.nazev || 'Vlastní místo')}</b>
-          <span class="meta">${b.lat.toFixed(4)}, ${b.lon.toFixed(4)}${b.den ? ` · ${b.den}. den` : ''}</span>
-        </div>
-      </div>`
-    )
-    .join('')
-
-  return `
-    ${mista.length ? `<div class="sekce"><span class="sekce-text">Vlastní místa</span></div>${mistaHtml}` : ''}
-    ${seznamy.length ? `<div class="sekce"><span class="sekce-text">Seznamy</span></div>${seznamyHtml}` : ''}`
+  return `<div class="sekce"><span class="sekce-text">Seznamy</span></div>${seznamyHtml}`
 }
 
 /**
@@ -374,6 +281,13 @@ function zastavkaCesty(p, c, { zamceno = false, poznEditovatelna = true } = {}) 
             : ''
         }
       </div>
+      ${
+        // Vynechat jen u neodznačené zastávky rozjeté cesty: co jsme projeli,
+        // se z cesty nemaže, a ukončená cesta je záznam, ne plán.
+        zamceno || odznacena
+          ? ''
+          : `<button class="cesta-vynech" data-vynech="${p.id}" title="Dneska ne – vrátit do košíku">${IC('i-x')}</button>`
+      }
     </div>`
 }
 
@@ -489,6 +403,47 @@ export function napojZamcenouCestu(wrap, prekresli, i) {
 }
 
 /**
+ * Mini-mapa karty Na cestě.
+ *
+ * Kreslí OTISK cesty (`c.zastavky`, `c.prepocet`), ne živý plán – ten se za
+ * jízdy dál upravuje a mapa by ukazovala trasu, kterou nikdo nejede.
+ * Zvýrazněný je další cíl: to je jediná otázka, na kterou se na mapě za
+ * volantem někdo dívá.
+ */
+function vykresliMapuCesty(wrap) {
+  const el = wrap.querySelector('#cestaMapa')
+  const c = store.cesta
+  if (!el || !c) return
+
+  const mista = c.zastavky.map((id) => S.byId[id]).filter(Boolean)
+  const dalsiCil = mista.find((p) => !c.odznacene[p.id])
+  vykresliDashMapu(el, {
+    zastavky: mista,
+    body: vsechnyBody(c.nazev)
+      .map((b) => {
+        const s = souradniceBodu(b)
+        return s ? { ...b, lat: s.lat, lon: s.lon } : null
+      })
+      .filter(Boolean),
+    prepocet: c.prepocet,
+    // Otisk se počítá BEZ vlastních bodů – přesně jak je posílá do Mapy.com
+    // `prepocitejOtiskCesty()`. Kdyby se braly, otisky by se nikdy neshodly
+    // a mapa by navždy zůstala na vzdušné čáře (BUGS.md B3).
+    proOtisk: serazenaTrasa(c.zastavky, c.dny, false),
+    odkud: vychoziBod(),
+    kotvy: new Set(kotvy().map((k) => k.id)),
+    zvyraznit: dalsiCil ? dalsiCil.id : '',
+    prazdno: 'Cesta zatím nemá zastávku s polohou.',
+  })
+}
+
+/** Uklidí mini-mapu karty Na cestě. */
+export function zavriMapuCesty() {
+  const el = document.getElementById('cestaMapa')
+  if (el) zavriDashMapu(el)
+}
+
+/**
  * Naváže obsluhu karty. Volá se z `renderPlan()` po vložení HTML.
  * @param {HTMLElement} wrap
  * @param {() => void} prekresli
@@ -499,6 +454,8 @@ export function napojCestu(wrap, prekresli) {
   // zastavSledovani() je idempotentní, bezpečné volat, i když už neběží.
   if (store.cesta && S.activeTab === 'plan') spustSledovani()
   else zastavSledovani()
+
+  vykresliMapuCesty(wrap)
 
   const vyjedBtn = wrap.querySelector('#cestaVyjed')
   if (vyjedBtn)
@@ -538,6 +495,25 @@ export function napojCestu(wrap, prekresli) {
       bod.hotovo = bod.hotovo ? 0 : Date.now()
       if (!save()) return
       // Znak bodu na mapě se odznačením mění, tak se překreslí i trasa.
+      draw()
+      prekresli()
+    }
+  }
+
+  // „Dneska ne" – zastávka z cesty ven a zpátky do košíku. Bez toho by se
+  // vynechané místo ztratilo úplně, přitom „dneska ne" není „už nikdy".
+  for (const b of wrap.querySelectorAll('[data-vynech]')) {
+    b.onclick = async () => {
+      const id = b.dataset.vynech
+      const p = S.byId[id]
+      const dal = await potvrd({
+        nadpis: `Vynechat ${p ? p.n : 'zastávku'}?`,
+        text: 'Z téhle cesty zmizí a vrátí se do košíku výpravy. Plán výpravy zůstane, jak je.',
+        ano: 'Vynechat',
+      })
+      if (!dal) return
+      if (!vynechZCesty(id)) return
+      toast('Vynecháno – je zpátky v košíku')
       draw()
       prekresli()
     }
@@ -591,6 +567,24 @@ export function napojCestu(wrap, prekresli) {
         ano: 'Ukončit',
       })
       if (!dal) return
+
+      // Trasa se za jízdy mohla změnit (přidání z košíku, vynechání).
+      // Plán výpravy se přitom nedotkl – je to „jak jsme to chtěli", cesta
+      // „jak to fakt bylo". Nabídnout srovnání má smysl jen u výpravy, ze
+      // které se vyjelo; po přepnutí na jinou by se přepsal cizí plán.
+      if (c && cestaZmenena(c) && store.vypravaNazev === c.nazev) {
+        const promitnout = await potvrd({
+          nadpis: 'Promítnout změny do plánu výpravy?',
+          text: 'Na cestě jsi trasu upravil. Mám podle ní srovnat i plán výpravy, ať ho máš příště aktuální?',
+          ano: 'Promítnout',
+          ne: 'Nechat plán, jak byl',
+        })
+        if (promitnout) {
+          store.plan = [...c.zastavky]
+          store.planDny = c.dny && c.dny.length > 1 ? [...c.dny] : []
+        }
+      }
+
       if (ukonciCestu()) {
         // Ukončená cesta se může propsat do profilových achievementů
         // (první cesta, týden na kolech…), tak se rovnou připíšou.

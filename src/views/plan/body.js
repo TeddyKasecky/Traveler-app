@@ -25,10 +25,17 @@ import { pozice } from '../../core/pozice.js'
 /** Klíč aktivní výpravy v `store.bloky`. */
 const klic = () => store.vypravaNazev || BEZ_NAZVU
 
-/** Bloky aktivní výpravy, vždycky pole. */
-export function bloky() {
+/**
+ * Bloky výpravy, vždycky pole. Bez parametru ty aktivní.
+ *
+ * `nazev` potřebuje karta Na cestě: bloky se klíčují názvem výpravy, takže
+ * po přepnutí výpravy za jízdy by cesta ukazovala cizí body. Ta jede pod
+ * `store.cesta.nazev` a čte si je pod ním.
+ * @param {string|null} [nazev]
+ */
+export function bloky(nazev = null) {
   if (!store.bloky || typeof store.bloky !== 'object') store.bloky = {}
-  return store.bloky[klic()] || []
+  return store.bloky[nazev || klic()] || []
 }
 
 /** Zapíše bloky aktivní výpravy. */
@@ -76,7 +83,7 @@ export const DRUHY = {
  * Bod odložený do košíku má `vKosiku: 1` a v trase být nemá – je to nápad,
  * ne zastávka. Staré bloky pole nemají, takže se chovají přesně jako dřív.
  */
-export const vsechnyBody = () => bloky().filter((b) => b.typ === 'misto' && !b.vKosiku)
+export const vsechnyBody = (nazev = null) => bloky(nazev).filter((b) => b.typ === 'misto' && !b.vKosiku)
 
 /**
  * Vlastní body odložené v košíku aktivní výpravy.
@@ -206,35 +213,60 @@ export function pridejStartCil(druh, { nazev = '', lat = null, lon = null, zdroj
  * @returns {Array<{lat: number, lon: number, id: string, zdroj: {typ:'pozice'|'gps', id?:string}|null}>}
  */
 export function serazenaTrasa(zastavkyId = store.plan, dny = store.planDny, zahrnoutVlastniBody = true) {
+  return serazenePolozky(zastavkyId, dny, zahrnoutVlastniBody ? vsechnyBody() : [])
+    .map((x) => {
+      if (x.typ === 'zastavka') return { lat: x.p.lat, lon: x.p.lon, id: x.p.id, zdroj: null }
+      const s = souradniceBodu(x.b)
+      return s ? { lat: s.lat, lon: s.lon, id: x.b.id, zdroj: x.b.zdroj || null } : null
+    })
+    .filter(Boolean)
+}
+
+/**
+ * Zastávky a body v pořadí trasy, ale S TYPEM a s dnem – pro vykreslení.
+ *
+ * PROČ VEDLE `serazenaTrasa()`: ta vrací holé souřadnice pro routing a body
+ * bez polohy zahazuje. Vykreslení potřebuje opak – vědět, co je zastávka
+ * a co bod, a bod bez polohy ukázat taky („polohu doplním, až budu vědět"
+ * je platný stav). `serazenaTrasa()` je od srpna 2026 jen mapování téhle
+ * funkce, takže se pořadí počítá na JEDNOM místě místo tří.
+ *
+ * Karta Na cestě si sem posílá vlastní `body` (bloky pod `store.cesta.nazev`)
+ * a otisk cesty místo živého plánu.
+ *
+ * @param {string[]} [zastavkyId]  výchozí `store.plan`
+ * @param {number[]} [dny]  výchozí `store.planDny`
+ * @param {Array<object>} [body]  bloky typu misto; výchozí ty aktivní výpravy
+ * @returns {Array<{typ:'zastavka'|'bod', p?:object, b?:object, den:number}>}
+ */
+export function serazenePolozky(zastavkyId = store.plan, dny = store.planDny, body = vsechnyBody()) {
   const zastavky = zastavkyId.map((id) => S.byId[id]).filter(Boolean)
-  const mista = zahrnoutVlastniBody
-    ? vsechnyBody()
-        .map((b) => {
-          const s = souradniceBodu(b)
-          return s ? { lat: s.lat, lon: s.lon, id: b.id, po: b.po, den: b.den, zdroj: b.zdroj || null } : null
-        })
-        .filter(Boolean)
-    : []
-  const poZastavce = (id) => mista.filter((m) => m.po === id)
+  const poZastavce = (id) => body.filter((b) => b.po === id)
   const delky = (dny || []).length ? dny : [zastavky.length]
 
-  const body = []
+  const out = []
   let od = 0
   delky.forEach((delka, i) => {
-    for (const m of mista) if (!m.po && m.den === i + 1) body.push(m)
+    const den = i + 1
+    for (const b of body) if (!b.po && b.den === den) out.push({ typ: 'bod', b, den })
     for (const z of zastavky.slice(od, od + delka)) {
-      body.push(z)
-      body.push(...poZastavce(z.id))
+      out.push({ typ: 'zastavka', p: z, den })
+      for (const b of poZastavce(z.id)) out.push({ typ: 'bod', b, den })
     }
     od += delka
   })
-  for (const z of zastavky.slice(od)) {
-    body.push(z)
-    body.push(...poZastavce(z.id))
-  }
-  for (const m of mista) if (!m.po && m.den == null) body.push(m)
 
-  return body.map((b) => ({ lat: b.lat, lon: b.lon, id: b.id, zdroj: b.zdroj || null }))
+  // Co se nevešlo do rozdělení, padá do posledního dne – stejné pravidlo
+  // jako v `dnyPlanu()`, takže se zastávka nemůže ztratit.
+  const posledni = delky.length
+  for (const z of zastavky.slice(od)) {
+    out.push({ typ: 'zastavka', p: z, den: posledni })
+    for (const b of poZastavce(z.id)) out.push({ typ: 'bod', b, den: posledni })
+  }
+  // Historické body bez kotvy (po i den prázdné) patří na konec plánu.
+  for (const b of body) if (!b.po && b.den == null) out.push({ typ: 'bod', b, den: posledni })
+
+  return out
 }
 
 /** Součet rozpočtu celého plánu – ukazuje se pod itinerářem. */

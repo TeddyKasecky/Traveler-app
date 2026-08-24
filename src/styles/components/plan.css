@@ -147,8 +147,17 @@
  *
  * Karta „jede se": odznačování zastávek, čas, pauza. Čas se nikde netiká,
  * počítá se při vykreslení – proto tu není žádná animace běžícího času. */
+/* Záhlaví karty Na cestě. Do srpna 2026 to byl obyčejný nadpis, který se
+   v pauze jen zešedil – z obrazovky nešlo poznat, že appka JEDE. Teď to
+   říká štítek nahoře, stejným tvaroslovím jako „ITINERÁŘ" v drobečcích. */
 .cesta-hlava{display:flex;align-items:center;gap:12px;margin:14px 2px 10px}
-.cesta-hlava h3{margin:0;font-family:var(--f-disp);font-weight:700;font-size:1.22rem;line-height:1.15}
+.cesta-hlava-text{flex:1;min-width:0}
+.cesta-hlava h3{margin:2px 0 0;font-family:var(--f-disp);font-weight:700;font-size:1.22rem;line-height:1.15}
+.cesta-stitek{display:inline-block;background:var(--akcent);color:var(--na-akcentu);
+  border-radius:var(--r-pill);padding:3px 10px;
+  font-size:.6rem;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+/* V pauze ustoupí barva – appka pořád jede, ale zrovna se nikam nejede. */
+.cesta-hlava.pauza .cesta-stitek{background:var(--plocha2);color:var(--text2)}
 .cesta-hlava.pauza h3{color:var(--text2)}
 .cesta-cisla{margin-left:auto;text-align:center;background:var(--plocha);border:var(--line);
   border-radius:var(--r-s);box-shadow:var(--stin-1);padding:7px 12px}
@@ -276,6 +285,12 @@
 .cesta-radek-seznamu.ma svg.ic{stroke:var(--na-akcentu);background:var(--akcent);border-color:var(--akcent)}
 .cesta-radek-seznamu.ma span{text-decoration:line-through;color:var(--text3)}
 .cesta-zastavka.vlastni .cesta-telo b{color:var(--rust)}
+/* „Dneska ne" – zastávka z cesty ven a zpátky do košíku. Tiché tlačítko na
+   kraji řádku: je to výjimka, ne akce, kterou se odškrtává. */
+.cesta-vynech{flex:0 0 auto;width:30px;height:30px;border-radius:50%;border:0;background:none;
+  display:grid;place-items:center;transition:background .18s}
+.cesta-vynech svg.ic{font-size:14px;color:var(--text3);stroke:var(--text3)}
+.cesta-vynech:active{background:var(--plocha2)}
 
 /* Špendlík bodu trasy – barva podle druhu (start/nocleh/cíl/vlastní). */
 .vlastnipin{width:22px;height:22px;border-radius:50%;background:var(--rust);color:var(--na-akcentu);
@@ -488,6 +503,10 @@
 .kos-pin{width:16px;height:16px;border-radius:50%;background:var(--kb);
   border:2.5px solid var(--plocha);box-shadow:var(--stin-1);margin:5px}
 .kos-pin.blizko{width:20px;height:20px;margin:3px}
+/* Další cíl na kartě Na cestě – jediná otázka, na kterou se na mapě za
+   volantem někdo dívá, takže o něco větší a s prstencem kolem. */
+.kos-pin.cil{width:24px;height:24px;margin:1px;border-width:3px;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--kb) 35%,transparent),var(--stin-1)}
 .kos-pin.kotva{width:30px;height:30px;margin:2px;display:grid;place-items:center;
   color:var(--na-akcentu);font-size:15px;line-height:1}
 /* Vlastní body trasy (start/nocleh/cíl/vlastní) – poloviční průměr běžné

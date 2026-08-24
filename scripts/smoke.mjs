@@ -744,13 +744,30 @@ await page.click('#cestaVyjed')
 await page.waitForTimeout(500)
 await kontrola('cesta se rozjela', () =>
   page.evaluate(() => !!JSON.parse(localStorage.getItem('vandrbuch:v1')).cesta))
+// Karta Na cestě dostala v srpnu 2026 vlastní mini-mapu (tutéž jako
+// Itinerář, jen z otisku cesty) a štítek, ze kterého je poznat, že appka
+// JEDE – dřív to byl obyčejný nadpis, co se v pauze jen zešedil.
+await kontrola('Na cestě má mini-mapu', () => page.locator('#cestaMapa').count(), 1)
+// `innerText` vrací text po `text-transform: uppercase`, tedy „NA CESTĚ · 1. DEN“.
+await kontrola('štítek říká, že jedeme a kolikátý je den', () =>
+  page.locator('.cesta-stitek').innerText().then((t) => /^NA CESTĚ · \d+\. DEN$/i.test(t)))
+// Otisk se od vyjetí dá měnit, takže si drží kopii toho, jak byl naplánovaný.
+await kontrola('cesta si pamatuje původní trasu', () =>
+  page.evaluate(() => {
+    const c = JSON.parse(localStorage.getItem('vandrbuch:v1')).cesta
+    return Array.isArray(c.puvodni) && c.puvodni.join() === c.zastavky.join()
+  }))
 await kontrola('zastávka jde odznačit', () => page.locator('.cesta-fajfka').count(), 1)
+// Neodznačená zastávka jde vynechat – „dneska ne" není „už nikdy", takže
+// se vrací do košíku. Po odznačení tlačítko mizí: co jsme projeli, se nemaže.
+await kontrola('neodznačená zastávka jde vynechat', () => page.locator('[data-vynech]').count(), 1)
 await page.click('.cesta-fajfka')
 await page.waitForTimeout(500)
 await kontrola('odznačení se zapsalo', () =>
   page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('vandrbuch:v1')).cesta.odznacene).length), 1)
 await kontrola('odznačené je i navštívené', () =>
   page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('vandrbuch:v1')).stav).filter((x) => x === 'visited').length), 1)
+await kontrola('projetá zastávka už nejde vynechat', () => page.locator('[data-vynech]').count(), 0)
 // S jedinou zastávkou v plánu (odznačenou) není „Další cíl“ ani co ukazovat
 // jako zbývá – doplňky se ověřují samostatně v ruční kontrole vzhledu.
 await kontrola('u hotové jednozastávkové cesty není Další cíl', () => page.locator('.cesta-dalsi').count(), 0)
