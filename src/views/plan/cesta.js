@@ -426,10 +426,11 @@ function vykresliMapuCesty(wrap) {
       })
       .filter(Boolean),
     prepocet: c.prepocet,
-    // Otisk se počítá BEZ vlastních bodů – přesně jak je posílá do Mapy.com
-    // `prepocitejOtiskCesty()`. Kdyby se braly, otisky by se nikdy neshodly
-    // a mapa by navždy zůstala na vzdušné čáře (BUGS.md B3).
-    proOtisk: serazenaTrasa(c.zastavky, c.dny, false),
+    // Přesně ta množina bodů, kterou posílá do Mapy.com
+    // `prepocitejOtiskCesty()` – včetně vlastních bodů pod názvem CESTY.
+    // Slouží dvakrát: k ověření, jestli je uložený přepočet ještě platný,
+    // a jako pořadí pro vzdušnou čáru, když platný není.
+    proOtisk: serazenaTrasa(c.zastavky, c.dny, vsechnyBody(c.nazev)),
     odkud: vychoziBod(),
     kotvy: new Set(kotvy().map((k) => k.id)),
     zvyraznit: dalsiCil ? dalsiCil.id : '',

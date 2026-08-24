@@ -70,7 +70,7 @@ dashboard vykreslí skutečnou `polyline`.
 
 ---
 
-**B3 — Přepočet otisku cesty se nikdy nezobrazil s vlastními body v plánu — ~~VYŘEŠENO~~**
+**B3 — Přepočet otisku cesty se nikdy nezobrazil s vlastními body v plánu — ~~VYŘEŠENO~~, ale řešení se v srpnu 2026 obrátilo (viz dovětek)**
 Zjištěno: 21. 8. 2026, uživatel po zavedení `prepocitejOtiskCesty()` –
 appka hlásila „Trasa přepočítána", ale na mapě v módu „Na cestě" zůstávala
 vzdušná čára.
@@ -135,3 +135,41 @@ v seznamu nikoho nepřeskočí, a dřívější `if (cil !== start)` ji zahodilo
 Ověřeno `npm run check-dny` (10 nových bodů, 167/167): přesun do dne
 s jedinou zastávkou, do prázdného dne, přes dva dny zpět, bez kotvy, s kotvou
 z cizího dne, puštění na místě (nezapisuje), den mimo rozsah, neznámé id.
+
+
+---
+
+**B5 — Trasa rozjeté cesty vedla mimo nocleh, start i cíl — ~~VYŘEŠENO~~**
+Zjištěno: 24. 8. 2026, uživatel po zavedení mini-mapy na kartě Na cestě —
+„stále dashboard v Na cestě ukazuje trasu jen mezi uloženými lokacemi;
+co vlastní body, start, cíl, nocleh a podobně".
+
+Vlastní body se u OTISKU cesty ignorovaly na všech třech místech naráz:
+
+1. `map/planLine.js:144` — `const mista = otisk ? [] : vlastniMista()`,
+   takže hlavní mapa je u rozjeté i ukončené cesty nekreslila vůbec;
+2. `views/plan/routing.js#prepocitejOtiskCesty()` posílala do Mapy.com
+   `serazenaTrasa(c.zastavky, c.dny, false)`, tedy jen zastávky z databáze —
+   skutečná trasa tedy vedla mimo nocleh, i když se přes něj jede;
+3. mini-mapa (`views/plan/dashMapa.js`) skládala vzdušný fallback z `mista`,
+   tedy zase jen ze zastávek.
+
+Body 1 a 2 se držely navzájem: bod 2 byl **oprava B3** a stál na tom, že
+mapa vlastní body u otisku nekreslí. Bylo to konzistentní, ale konzistentně
+špatně — cesta jede přes start, nocleh i cíl, takže na trase být mají.
+
+Opraveno obrácením původního rozhodnutí: `planLine.js` kreslí vlastní body
+i u otisku (pod `otisk.nazev`, ne pod aktivní výpravou — za jízdy se dá
+výprava přepnout a připletly by se cizí body), `prepocitejOtiskCesty()` je
+posílá do routingu a mini-mapa staví vzdušný fallback z `proOtisk`, tedy
+z přesně té množiny bodů, která šla do Mapy.com. Otisky se tak pořád
+shodují — jen na vyšší, správnější množině.
+
+Třetí parametr `serazenaTrasa()` se přitom změnil z booleanu na **seznam
+bodů**: karta Na cestě potřebuje bloky pod `store.cesta.nazev`, ne pod
+aktivní výpravou, a přepínač „ano/ne" na to nestačil.
+
+Ověřeno `npm run check-dny` (5 nových bodů, 187/187): trasa cesty
+s noclehem má tři body a nocleh stojí za svou zastávkou; s prázdným
+seznamem bodů zůstanou jen zastávky; bod odložený do košíku (`vKosiku`)
+se do trasy nepočítá.

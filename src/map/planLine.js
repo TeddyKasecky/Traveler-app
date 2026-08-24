@@ -65,10 +65,12 @@ function otiskBodu(body) {
  * `lat`/`lon` jsou dosazené aktuální (viz souradniceBodu výš), ne nutně to,
  * co má blok zapsané přímo na sobě.
  */
-function vlastniMista() {
-  const klic = store.vypravaNazev || 'Náš plán'
+function vlastniMista(nazev = null) {
+  const klic = nazev || store.vypravaNazev || 'Náš plán'
   return ((store.bloky || {})[klic] || [])
-    .filter((b) => b.typ === 'misto')
+    // `vKosiku` je bod odložený do košíku – nápad, ne zastávka. Do trasy
+    // nepatří (views/plan/body.js#vsechnyBody), mapa nesmí importovat views.
+    .filter((b) => b.typ === 'misto' && !b.vKosiku)
     .map((b) => {
       const s = souradniceBodu(b)
       return s ? { ...b, lat: s.lat, lon: s.lon } : null
@@ -139,9 +141,14 @@ export function drawPlanLine(mapa) {
   const zastavky = zdrojIds.map((id) => S.byId[id]).filter(Boolean)
 
   // Body trasy z bloků: bod s `po` hned za svou zastávkou, bod se `den`
-  // na začátek dne, historické bez obojího na konec plánu. Cesty (živé
-  // i ukončené) jsou otisk – vlastní místa se do nich nepletou.
-  const mista = otisk ? [] : vlastniMista()
+  // na začátek dne, historické bez obojího na konec plánu.
+  //
+  // KRESLÍ SE I U OTISKU CESTY (srpen 2026). Do teď tu stálo `otisk ? []`,
+  // takže trasa rozjeté cesty vedla jen mezi zastávkami z databáze –
+  // nocleh, start ani cíl na ní nebyly, přitom právě přes ně se jede.
+  // Bloky cesty se čtou pod JEJÍM názvem: po přepnutí výpravy za jízdy by
+  // se jinak na trasu připletly body cizí výpravy.
+  const mista = vlastniMista(otisk ? otisk.nazev : null)
   const poZastavce = (id) => mista.filter((m) => m.po === id)
   const delky = otisk
     ? otisk.dny && otisk.dny.length

@@ -201,19 +201,21 @@ export function pridejStartCil(druh, { nazev = '', lat = null, lon = null, zdroj
  * odjakživa. Parametry existují kvůli otisku ROZJETÉ CESTY
  * (views/plan/routing.js#prepocitejOtiskCesty): `store.cesta.zastavky`/`dny`
  * se od živého `store.plan`/`planDny` za jízdy může lišit (plán se dá dál
- * upravovat). `zahrnoutVlastniBody = false` pro otisk cesty – `map/planLine.js`
- * u otisku vlastní body NEKRESLÍ (`mista = otisk ? [] : vlastniMista()`), takže
- * i tady musí zůstat mimo, jinak by se otisk uloženého přepočtu nikdy neshodl
- * s `otiskBodu(body)` počítaným při kreslení a appka by tiše spadla na
- * vzdušný fallback.
+ * upravovat) a její bloky se čtou pod `store.cesta.nazev`.
+ *
+ * TŘETÍ PARAMETR JE SEZNAM BODŮ, ne přepínač. Do srpna 2026 to byl boolean
+ * a otisk cesty se počítal BEZ vlastních bodů, protože je `map/planLine.js`
+ * u otisku vůbec nekreslil. Trasa cesty tak vedla jen mezi zastávkami
+ * z databáze a nocleh ani start na ní nebyly – přitom právě přes ně se
+ * jede. Teď je kreslí obojí a otisk se počítá ze stejné množiny.
  *
  * @param {string[]} [zastavkyId]  výchozí `store.plan`
  * @param {number[]} [dny]  výchozí `store.planDny`
- * @param {boolean} [zahrnoutVlastniBody]  výchozí `true` (živý plán)
+ * @param {Array<object>} [body]  bloky typu misto; `[]` = jen zastávky
  * @returns {Array<{lat: number, lon: number, id: string, zdroj: {typ:'pozice'|'gps', id?:string}|null}>}
  */
-export function serazenaTrasa(zastavkyId = store.plan, dny = store.planDny, zahrnoutVlastniBody = true) {
-  return serazenePolozky(zastavkyId, dny, zahrnoutVlastniBody ? vsechnyBody() : [])
+export function serazenaTrasa(zastavkyId = store.plan, dny = store.planDny, body = vsechnyBody()) {
+  return serazenePolozky(zastavkyId, dny, body)
     .map((x) => {
       if (x.typ === 'zastavka') return { lat: x.p.lat, lon: x.p.lon, id: x.p.id, zdroj: null }
       const s = souradniceBodu(x.b)

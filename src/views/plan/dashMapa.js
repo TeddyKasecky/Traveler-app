@@ -96,10 +96,16 @@ export function vykresliDashMapu(el, {
         // (map/planLine.js). Otisk se počítá z `proOtisk`, tedy z přesně té
         // množiny bodů, kterou volající poslal do routingu; jinak by se
         // otisky nikdy neshodly a mapa by navždy zůstala na vzdušné čáře.
-        if (mista.length > 1) {
+        //
+        // FALLBACK VEDE PŘES TYTÉŽ BODY, ne jen přes zastávky. Do srpna 2026
+        // se vzdušná čára skládala z `mista`, tedy z míst z databáze –
+        // nocleh, start ani cíl na ní nebyly, přestože se jede přes ně.
+        // `proOtisk` je přesně to správné pořadí i s nimi.
+        const proCaru = proOtisk && proOtisk.length > 1 ? proOtisk : mista
+        if (proCaru.length > 1) {
           const platny = prepocet && proOtisk && prepocet.otisk === otiskBodu(proOtisk)
           L.polyline(
-            platny ? prepocet.polyline : mista.map((p) => [p.lat, p.lon]),
+            platny ? prepocet.polyline : proCaru.map((p) => [p.lat, p.lon]),
             { color: token('--akcent'), weight: 3, opacity: 0.75 }
           ).addTo(z.mapa)
         }

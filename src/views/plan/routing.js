@@ -11,7 +11,7 @@
 
 import { store, save, prefs } from '../../core/store.js'
 import { zjistiPolohuJednorazove } from '../../core/geo.js'
-import { serazenaTrasa } from './body.js'
+import { serazenaTrasa, vsechnyBody } from './body.js'
 
 /**
  * Otisk aktuálního pořadí a polohy bodů trasy – levný „hash“ k poznání, že
@@ -192,11 +192,16 @@ export async function prepocitejTrasu() {
 export async function prepocitejOtiskCesty() {
   const c = store.cesta
   if (!c) return { ok: false, chyba: 'Appka zrovna nejede' }
-  // zahrnoutVlastniBody=false – map/planLine.js u otisku cesty vlastní body
-  // nekreslí (mista = otisk ? [] : vlastniMista()), takže musí zůstat mimo
-  // i tady, jinak by se otisk přepočtu nikdy neshodl s tím, co mapa počítá
-  // při kreslení, a appka by tiše spadla na vzdušný fallback.
-  const body = await sesbirejGpsBody(serazenaTrasa(c.zastavky, c.dny, false))
+  // VLASTNÍ BODY SE POČÍTAJÍ (srpen 2026). Do teď se sem posílaly jen
+  // zastávky z databáze, protože `map/planLine.js` u otisku cesty vlastní
+  // body vůbec nekreslil – trasa tak vedla mimo nocleh i start, přestože
+  // se jede přes ně. Mapa je teď kreslí a otisk se musí počítat ze stejné
+  // množiny, jinak by se nikdy neshodly a appka by spadla na vzdušný
+  // fallback (BUGS.md B3).
+  //
+  // Bloky pod `c.nazev`, ne pod aktivní výpravou: za jízdy se dá výprava
+  // přepnout a do trasy cesty by se připletly cizí body.
+  const body = await sesbirejGpsBody(serazenaTrasa(c.zastavky, c.dny, vsechnyBody(c.nazev)))
   if (body.length < 2) return { ok: false, chyba: 'Trasa nemá aspoň dva body s polohou' }
   try {
     const vysledek = await zavolejRouting(body)

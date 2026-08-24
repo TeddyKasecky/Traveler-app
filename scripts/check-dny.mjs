@@ -122,7 +122,7 @@ const { seznamVyprav, prepniVypravu, novaVyprava, smazAktivniVypravu, BEZ_NAZVU 
   '../src/views/plan/vypravy.js'
 )
 const { pridejPozici } = await import('../src/core/pozice.js')
-const { souradniceBodu, maBod, pridejStartCil, serazenaTrasa, serazenePolozky } =
+const { souradniceBodu, maBod, pridejStartCil, serazenaTrasa, serazenePolozky, bodyVKosiku } =
   await import('../src/views/plan/body.js')
 const { vyjed, pridejDoCesty, vynechZCesty, cestaZmenena } = await import('../src/views/plan/cestaData.js')
 const { otiskBodu, pocetOdkazuNaPozici } = await import('../src/views/plan/routing.js')
@@ -620,6 +620,33 @@ console.log('\nÚpravy rozjeté cesty (srpen 2026)\n')
   t('vynechání neznámého nic neudělá', vynechZCesty('zzz') === false)
 
   t('přidání do konkrétního dne', pridejDoCesty('a', 2) && store.cesta.zastavky.includes('a'))
+  store.cesta = null
+}
+
+/* Trasa cesty vede i přes vlastní body – nocleh, start a cíl. Do srpna 2026
+ * je otisk cesty vynechával (`map/planLine.js` je u otisku nekreslil a
+ * `prepocitejOtiskCesty()` je proto neposílala do routingu), takže čára
+ * vedla mimo místa, přes která se jede. */
+{
+  priprav(['a', 'b'], [])
+  S.byId = { a: { id: 'a', n: 'A', lat: 50, lon: 14 }, b: { id: 'b', n: 'B', lat: 48, lon: 16 } }
+  store.vypravaNazev = 'Cesta s noclehem'
+  store.bloky = {}
+  store.kosik = {}
+  store.cesta = null
+  const idNocleh = pridejBod({ druh: 'nocleh', nazev: 'Kemp', lat: 49, lon: 15, po: 'a' })
+  vyjed()
+
+  const trasa = serazenaTrasa(store.cesta.zastavky, store.cesta.dny, vsechnyBody(store.cesta.nazev))
+  t('trasa cesty vede i přes vlastní bod', trasa.length === 3)
+  t('nocleh stojí za svou zastávkou', trasa[1].id === idNocleh)
+  t('bez bodů zůstanou jen zastávky', serazenaTrasa(store.cesta.zastavky, store.cesta.dny, []).length === 2)
+
+  // Bod odložený do košíku do trasy nepatří – je to nápad, ne zastávka.
+  const idVKosiku = pridejBod({ druh: 'vlastni', nazev: 'Nápad', lat: 47, lon: 17, vKosiku: true })
+  t('bod v košíku se do trasy nepočítá',
+    serazenaTrasa(store.cesta.zastavky, store.cesta.dny, vsechnyBody(store.cesta.nazev)).length === 3)
+  t('a v seznamu bodů košíku je', bodyVKosiku().some((b) => b.id === idVKosiku))
   store.cesta = null
 }
 
