@@ -35,6 +35,7 @@ const LISTY = [
   // Jeden model ve čtyřech barvách, ne čtyři různá auta – proto jméno podle
   // modelu, ne podle velikosti jako u listů výš. Zadání je v `PROMPT.md`.
   { soubor: 'ChatGPT Image 24. 8. 2026 17_03_06.png', predpona: 'vwt4' },
+  { soubor: 'ChatGPT Image 24. 8. 2026 17_13_30.png', predpona: 'vwt6' },
 ]
 
 /**
