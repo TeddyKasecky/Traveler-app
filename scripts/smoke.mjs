@@ -787,6 +787,24 @@ await kontrola('u hotové jednozastávkové cesty není Další cíl', () => pag
 await kontrola('plánové achievementy: aspoň 20', () =>
   page.locator('#planWrap .achv').count().then((n) => n >= 20))
 await kontrola('něco už je získané', () => page.locator('#planWrap .achv.ma').count().then((n) => n >= 1))
+
+// Domů se za jízdy ptá jinak: „jak nám to jede", ne „co máme naplánované".
+// Do srpna 2026 o rozjeté cestě nevědělo vůbec (`store.cesta` se v home.js
+// nevyskytoval ani jednou) a ukazovalo plán otevřený v Itineráři.
+await page.click('#tabs button[data-tab="home"]')
+await page.waitForTimeout(600)
+await kontrola('Domů ukazuje kartu rozjeté cesty', () => page.locator('.vkarta.jede').count(), 1)
+await kontrola('a říká, že se jede', () => page.locator('.vk-stitek').innerText().then((t) => /NA CESTĚ/i.test(t)))
+await kontrola('sekce se jmenuje podle toho', () =>
+  page.locator('#homeInner .sekce').first().innerText().then((t) => /PRÁVĚ JEDEME/i.test(t)))
+// Karta má vlastní pruh z `cesta.odznacene`; ten druhý ze `store.stav` by
+// vedle něj hlásil jiná čísla, takže se za jízdy nekreslí.
+await kontrola('pruh průběhu je jen jeden', () => page.locator('#homeInner .prubeh').count(), 1)
+await page.click('.vkarta.jede')
+await page.waitForTimeout(600)
+await kontrola('ťuknutí vede na kartu Na cestě', () =>
+  page.locator('#planSegment button.on').innerText().then((t) => t.startsWith('Na cestě')))
+
 await page.click('#cestaKonec')
 await page.waitForTimeout(300)
 await page.click('#dialogAno')

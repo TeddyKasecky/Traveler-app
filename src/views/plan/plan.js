@@ -266,6 +266,19 @@ export function otevriItinerar() {
 }
 
 /**
+ * Otevře kartu Na cestě. Vstup zvenku: karta výpravy na Domů a Mapě, když
+ * se zrovna jede – tam člověk ťuká na „jak nám to jede", ne na „jak to
+ * naplánujeme". Bez rozjeté cesty by karta ukázala jen pozvánku k vyjetí,
+ * takže se volá jedině s `jedeSe()`.
+ */
+export function otevriNaCeste() {
+  dil = 'cesta'
+  S.otevrenaCesta = null
+  aktivujZalozku('plan')
+  renderPlan()
+}
+
+/**
  * Hlavička Itineráře. Od srpna 2026 je to dashboard cesty (dashboard.js):
  * jméno, termín, mapa a tři čísla. Šedý řádek textu, který tu byl do teď,
  * neodpovídal na jedinou otázku, kterou si člověk nad plánem klade. Kostra

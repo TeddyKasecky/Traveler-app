@@ -20,7 +20,7 @@ import { IC } from '../../icons/sprite.js'
 import { obrazekMista } from '../../data/kategorieFoto.js'
 import { radek, ikonBtn } from '../../components/vzory.js'
 import { vypravaKarta, napojVypravu } from '../../components/vypravaKarta.js'
-import { otevriItinerar } from '../plan/plan.js'
+import { otevriItinerar, otevriNaCeste } from '../plan/plan.js'
 import { aktivujZalozku } from '../../core/router.js'
 import { resetFiltru } from '../../core/filters.js'
 import { goTo, draw } from '../../map/map.js'
@@ -182,7 +182,11 @@ export function renderMapaDole() {
     : `<div class="mapdolu-prazdno">${IC('i-zalozka')}Uložená místa se sem ukládají záložkou v Seznamu.</div>`
 
   /* ---- obsluha ---- */
-  napojVypravu(karta, { naPlan: () => otevriItinerar(), naPruvodce: () => openWizard() })
+  napojVypravu(karta, {
+    naPlan: () => otevriItinerar(),
+    naCestu: () => otevriNaCeste(),
+    naPruvodce: () => openWizard(),
+  })
 
   // Šipka i tažení sbalují kartu. Věší se při každém překreslení, protože se
   // karta překresluje celá; `stopPropagation` je nutné, pod šipkou je obsluha

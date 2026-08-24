@@ -67,12 +67,12 @@ npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
 
-npm run smoke            # proklikání v prohlížeči, 203 kontrol
+npm run smoke            # proklikání v prohlížeči, 245 kontrol
 npm run smoke:single     # totéž pro single-file variantu, 189 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
-npm run check-dny        # dny, výpravy, složky, záloha a body trasy, 94 bodů
+npm run check-dny        # dny, výpravy, body trasy, tažení a úpravy cesty, 187 bodů
 npm run check-filters    # 134 kombinací filtrů
 npm run check-handlers   # napojení tlačítek, 61/61
 npm run check-form       # že formulář vyrábí platná místa, 18/18
@@ -267,19 +267,32 @@ Co se kam přestěhovalo a proč, je v [VZHLED.md](VZHLED.md) v části
 
 ## Plán, cesty a bloky (srpen 2026)
 
-Plán má tři karty: **Na cestě** (probíhající cesta – odznačování, pauzy,
-plánové achievementy, Další cíl + Navigovat + zbývá km), **Výpravy**
-(knihovna: sbalitelné složky, akce na řádku, tažení dlouhým podržením,
-nastavitelné řazení, ukončené cesty po letech) a **Itinerář** (všechno
-o otevřené výpravě: tažení za prstem i celých dnů, prázdné dny, vlastní
-body a bloky, Vyjet, dole čísla výpravy se srovnáním). Výběr je jedině
-v knihovně; ťuknutí na výpravu ji jen AKTIVUJE NA MAPĚ (datově dnešní
-aktivní výprava) – do Itineráře vede „Otevřít itinerář" v akcích řádku.
+Plán má tři karty: **Na cestě** (probíhající cesta – mini-mapa, odznačování,
+pauzy, plánové achievementy, Další cíl + Navigovat + zbývá km), **V plánu**
+(knihovna: sbalitelné složky, tažení dlouhým podržením, nastavitelné řazení)
+a **Za námi** (ukončené cesty po letech). **Itinerář** není díl segmentu –
+je to vnitřek jedné výpravy (dny, zastávky, vlastní body, bloky, Vyjet, dole
+čísla výpravy se srovnáním) a **otevírá ho ŤUKNUTÍ na výpravu v knihovně**,
+které ji zároveň aktivuje na mapě. Zpátky vedou drobečky nahoře.
 
+**Košík je plovoucí plát, ne obrazovka** – kolečko vpravo dole (jen v Plánu,
+na kartách Itinerář a Na cestě) vytáhne plát přes spodek obrazovky a při
+otevření do jeho pravého horního rohu doletí. Dny nad ním zůstávají vidět,
+protože se z košíku do nich tahá.
+
+- **Akce výpravy jsou JEN v Itineráři** pod „…" (`prepniMenu()`) –
+  přejmenovat, duplikovat, do složky, vyprázdnit, smazat. Řádek v knihovně
+  žádnou nabídku nemá; do srpna 2026 existovaly obě sady vedle sebe dvěma
+  nezávislými kódy.
+- **Itinerář neřeší, kde jsme byli.** Fajfka „byli jsme tady" ani ztlumení
+  odjeté zastávky tam nejsou – odpovídá na „jak to pojedeme". Odškrtává se
+  na kartě Na cestě. `store.stav` se nemění, jen se v Itineráři nečte.
 - **Dialogy místo `prompt()`/`confirm()`/`alert()`**: `components/dialog.js`
-  (`potvrd`, `zadej`, `vyberZeSeznamu`, `oznam`) – jedna karta nad `#backdrop`,
-  promise, zrušení vrací `null`/`false`. Smoke/parity na ně sahají přes
-  `#dialog.show`, ne `page.once('dialog')`.
+  (`potvrd`, `zadej`, `vyberZeSeznamu`, `vyberVice`, `vyberDatum`,
+  `vyberPocetDni`, `oznam`) – jedna karta nad `#backdrop`, promise, zrušení
+  vrací `null`/`false`. Smoke/parity na ně sahají přes `#dialog.show`, ne
+  `page.once('dialog')`. **Datum se vybírá z kalendáře, nikdy nepíše** –
+  z mřížky se neplatná hodnota vzít nedá.
 - **Nové klíče ve `store`**: `cesta` (probíhající, čas se počítá ze začátku
   a pauz, nikde se netiká), `cesty` (archiv, souhrn se počítá při ukončení),
   `bloky` (klíčované názvem výpravy), `achievementy` (získaná id), `slozky`
@@ -294,8 +307,21 @@ aktivní výprava) – do Itineráře vede „Otevřít itinerář" v akcích ř
   `store.bloky` klíčuje názvem a bez stěhování by osiřely. Fantomová prázdná
   bezejmenná výprava se v seznamech nevypisuje, dokud žádná jiná není;
   Itinerář ji ale dál edituje a první zastávkou se zhmotní.
-- **Cesta je otisk plánu** z okamžiku vyjetí (`zastavky`, `dny` jako délky) –
-  plán se dá za jízdy upravovat a cesta se nerozbije.
+- **Cesta se za jízdy MĚNÍ** (srpen 2026). `zastavky` byl do teď zmrazený
+  otisk z okamžiku vyjetí – plán šlo upravovat, cestu ne. Jenže právě to se
+  na roadtripu dělá: večer se něco přidá z košíku a něco vynechá. Nové pole
+  `puvodni` drží, jak to bylo naplánované, takže se při ukončení dá zeptat,
+  jestli změny promítnout zpátky do plánu; archiv ukládá obojí. **`store.plan`
+  se za jízdy nemění** – plán je „jak jsme to chtěli", cesta „jak to fakt
+  bylo". Vynechaná zastávka se vrací do košíku.
+- **Trasa cesty vede i přes vlastní body** – start, nocleh, cíl. Do srpna
+  2026 je otisk vynechával na třech místech naráz (mapa, routing, mini-mapa),
+  takže čára vedla mimo místa, přes která se jede. Viz `BUGS.md` B5. Bloky
+  cesty se čtou pod `store.cesta.nazev`, ne pod aktivní výpravou.
+- **Domů a Mapa se za jízdy ptají jinak.** `vypravaKarta()` pozná `jedeSe()`
+  a nakreslí kartu cesty (další cíl, průběh, čas), ne plán otevřený
+  v Itineráři. Čísla jdou z `cesta.odznacene`, ne ze `store.stav` – to je
+  „byli jsme tam někdy", ne „projeli jsme to na téhle cestě".
 - **Achievementy**: definice je datová, uložená jsou jen id získaných.
   Id se NIKDY nemění – stejné pravidlo jako u id míst. Profilové v Profilu,
   plánové generuje `planoveAchievementy()` (vždy aspoň 20 na plán).
@@ -310,6 +336,16 @@ aktivní výprava) – do Itineráře vede „Otevřít itinerář" v akcích ř
   neimportuje `IC`/`icons/sprite.js` (čte `sprite.svg?raw`, Vite syntaxe, kterou
   čistý Node neumí), takže `rozpoznejSouradnice()` a `pridejBod()` jde testovat
   v `check-dny.mjs` bez prohlížeče. `bloky.js` z něj čerpá a přidává vykreslení.
+  **Stejně je rozdělená cesta**: `cestaData.js` (data) a `cesta.js` (vzhled,
+  reexportuje datovou vrstvu). Ze stejného důvodu bydlí `sklonuj()`
+  v `core/html.js`, ne v `plan.js` – ten veze obrázky kategorií (`.webp`).
+- **Pořadí trasy se počítá na JEDNOM místě** – `serazenePolozky()` v `body.js`
+  vrací zastávky i body s typem a dnem; `serazenaTrasa()` je jen její
+  mapování na souřadnice pro routing. Třetí parametr je **seznam bodů**, ne
+  přepínač: karta Na cestě potřebuje bloky pod názvem cesty.
+- **Košík umí i vlastní body.** Blok typu `misto` smí mít `vKosiku: 1` a jeho
+  `id` být ve `store.kosik`; pozná se tím, že ho `S.byId` nezná. Do trasy
+  nepatří (`vsechnyBody()` ho filtruje), dokud se nepřesune do dne.
 - **Ukončené cesty žijí v knihovně Výprav**, ne na kartě Na cestě: sekce po
   letech (`archiv.js`), řádek se zámkem. Ťuknutí cestu AKTIVUJE NA MAPĚ přes
   `S.otevrenaCesta` (index do `store.cesty`, jen v paměti) – přesně jako

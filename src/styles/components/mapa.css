@@ -158,6 +158,31 @@ body:not([data-tab='map']) #mapDolu{display:none}
 .vk-pod{margin-top:4px;font-size:.78rem;font-weight:600;color:var(--text2);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+/* ---------- karta ROZJETÉ cesty ---------- */
+/* Když se jede, karta odpovídá na „jak nám to jede", ne na „co máme
+   naplánované" – a musí to být poznat dřív, než si člověk přečte text.
+   Mechový lem po straně je stejný signál jako štítek na kartě Na cestě. */
+.vkarta.jede{border-left:4px solid var(--akcent);cursor:pointer;gap:11px}
+.vkarta.jede:active{transform:var(--stisk)}
+.vk-stitek{flex:0 0 auto;align-self:flex-start;background:var(--akcent);color:var(--na-akcentu);
+  border-radius:var(--r-pill);padding:4px 10px;
+  font-size:.6rem;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+
+/* Další cíl je to hlavní, na co se za volantem kouká – vlastní plocha,
+   ne řádek meta textu. */
+.vk-dalsi{display:flex;gap:10px;align-items:center;background:var(--plocha-zelena);
+  border-radius:var(--r-s);padding:10px 12px}
+.vk-dalsi > svg.ic{flex:0 0 auto;font-size:18px;color:var(--akcent);stroke:var(--akcent)}
+.vk-dalsi > span{flex:1;min-width:0}
+.vk-dalsi b{display:block;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vk-dalsi .meta{font-size:.72rem}
+/* Projetá trasa už nikam nemíří – ustoupí do neutrální plochy. */
+.vk-dalsi.hotovo{background:var(--plocha2)}
+.vk-dalsi.hotovo > svg.ic{color:var(--text2);stroke:var(--text2)}
+
+/* Pruh uvnitř karty nemá vlastní okraje – ty už má karta. */
+.vk-prubeh{margin:0}
+
 /* ---------- tlačítko „+“ ---------- */
 /* Okrové kolečko vpravo nad kartou. V předloze Plánu sedí uprostřed spodní
  * lišty, jenže tam máme pět záložek a šesté místo by je zmáčklo pod čitelnost.

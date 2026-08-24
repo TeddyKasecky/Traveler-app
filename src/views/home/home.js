@@ -21,7 +21,8 @@ import { S, store, prefs, savePrefs } from '../../core/store.js'
 import { esc } from '../../core/html.js'
 import { dkm, fmtKm } from '../../core/geo.js'
 import { aktivujZalozku } from '../../core/router.js'
-import { prubehVypravy, otevriItinerar } from '../plan/plan.js'
+import { prubehVypravy, otevriItinerar, otevriNaCeste } from '../plan/plan.js'
+import { jedeSe } from '../plan/cestaData.js'
 import { IC } from '../../icons/sprite.js'
 import { hash } from '../../components/postcard.js'
 import { openWizard } from '../../components/wizard.js'
@@ -123,8 +124,15 @@ function nejlepsi() {
     .map((id) => S.byId[id])
 }
 
-/** Pruh průběhu aktivní výpravy. Stejná čísla jako na Plánu, jeden výpočet. */
+/**
+ * Pruh průběhu aktivní výpravy. Stejná čísla jako na Plánu, jeden výpočet.
+ *
+ * Za jízdy se nekreslí: karta cesty má vlastní pruh počítaný z toho, co se
+ * odškrtlo NA TÉHLE CESTĚ, kdežto tenhle jede ze `store.stav` („byli jsme
+ * tam někdy"). Dva pruhy s různými čísly pod sebou by si odporovaly.
+ */
 function pruhVypravy() {
+  if (jedeSe()) return ''
   const items = store.plan.map((id) => S.byId[id]).filter(Boolean)
   if (items.length < 2) return ''
   const { hotovo, celkem, zbyva } = prubehVypravy(items)
@@ -171,7 +179,12 @@ export function renderHome() {
   el.innerHTML =
     heroPas({ obrazek: heroObr, nadpis: greeting(), podtitulek: 'Ťukni na pozdrav a nastav si oslovení.' }) +
     `<div class="list">` +
-    sekce('Naše výprava', { akce: 'Otevřít plán', akceId: 'homePlan' }) +
+    // Za jízdy se ptáme jinak: „jak nám to jede", ne „co máme naplánované".
+    // Tomu odpovídá i akce vpravo – do plánu se za volantem nechodí.
+    sekce(jedeSe() ? 'Právě jedeme' : 'Naše výprava', {
+      akce: jedeSe() ? 'Na cestě' : 'Otevřít plán',
+      akceId: 'homePlan',
+    }) +
     vypravaKarta() +
     pruhVypravy() +
     (blizko
@@ -249,10 +262,14 @@ export function renderHome() {
     pozdrav.onclick = () => zeptejSeNaJmeno(pozdrav)
   }
 
-  napojVypravu(el, { naPlan: () => otevriItinerar(), naPruvodce: () => openWizard() })
+  napojVypravu(el, {
+    naPlan: () => otevriItinerar(),
+    naCestu: () => otevriNaCeste(),
+    naPruvodce: () => openWizard(),
+  })
 
   const doPlanu = document.getElementById('homePlan')
-  if (doPlanu) doPlanu.onclick = () => otevriItinerar()
+  if (doPlanu) doPlanu.onclick = () => (jedeSe() ? otevriNaCeste() : otevriItinerar())
 
   for (const k of el.querySelectorAll('.fotokarta[data-id]')) {
     k.onclick = () => goTo(S.byId[k.dataset.id])

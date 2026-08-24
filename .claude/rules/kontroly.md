@@ -23,14 +23,14 @@ bez vyžádání. Místo nich je 27 samostatných spustitelných `.mjs` skriptů
 | `extract-places.mjs` | `npm run check-data` | že `places.json` je 1:1 s originálem |
 | `check-css-parity.mjs` | `npm run check-css:original` | 338 CSS pravidel proti originálu — **odstaveno redesignem** |
 | `check-tokeny.mjs` | `npm run check-tokeny` | barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů |
-| `check-dny.mjs` | `npm run check-dny` | dny, výpravy, složky, záloha, body trasy a automatické dělení, 113 bodů |
+| `check-dny.mjs` | `npm run check-dny` | dny, výpravy, složky, záloha, body trasy, přesun tažením a úpravy cesty, 187 bodů |
 | `check-projekce.mjs` | `npm run check-projekce` | throttle a projekce polohy na trasu (živé sledování, srpen 2026), 13 bodů |
 | `check-filters-parity.mjs` | `npm run check-filters` | 134 kombinací filtrů |
 | `check-handlers.mjs` | `npm run check-handlers` | napojení tlačítek za běhu, 61/61 |
 | `check-form.mjs` | `npm run check-form` | že formulář vyrábí platná místa, 18/18 |
 | `check-ikony.mjs` | `npm run check-ikony` | jedna věc = jedno jméno = jedna ikona, 8 bodů |
 | `check-images.mjs` | `npm run check-images` | existenci odkazů na fotky — **chodí na síť** |
-| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 203 / 189 kontrol |
+| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 245 / 189 kontrol |
 | `parity.mjs` | `npm run parity` | kontrolní seznam z `PARITA.md`, 26 bodů |
 | `perf.mjs` | `npm run perf` | rychlost startu při zpomaleném procesoru |
 | `perf-mapa.mjs` | ručně | plynulost posunu a přiblížení **stažené** malované mapy |
