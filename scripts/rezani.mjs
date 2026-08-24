@@ -13,6 +13,30 @@
  *     největší souvislý ostrůvek, ne jako obal všeho neprůhledného.
  */
 
+import fs from 'node:fs'
+import path from 'node:path'
+
+/**
+ * Kde leží složka `grafika/` s podklady.
+ *
+ * Hledá se na dvou místech, protože se za život projektu stěhovala: dřív
+ * ležela vedle repozitáře (`Traveler/grafika/`), dnes je uvnitř
+ * (`vandrbuch/grafika/`). Skripty na ni měly cestu napsanou natvrdo na to
+ * první místo a po přesunu spadly na „chybí list", i když list byl na disku.
+ * Do repozitáře se nekomituje (89 MB, `.gitignore`), takže se na tom nedá
+ * spolehnout ani na čerstvém klonu – proto zkouška, ne pevná cesta.
+ *
+ * @param {string} root  kořen repozitáře (`vandrbuch/`)
+ * @returns {string} cesta ke složce; když není ani jedna, ta uvnitř repa
+ */
+export function slozkaGrafiky(root) {
+  const uvnitr = path.join(root, 'grafika')
+  const vedle = path.join(root, '..', 'grafika')
+  if (fs.existsSync(uvnitr)) return uvnitr
+  if (fs.existsSync(vedle)) return vedle
+  return uvnitr
+}
+
 /** Od jaké průhlednosti se pixel počítá za kresbu. */
 export const PRAH = 32
 /** Menší ostrůvky než tolik pixelů jsou tečky po klíčování, ne kresba. */

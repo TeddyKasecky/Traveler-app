@@ -28,9 +28,10 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
 import { KAT_KEYS } from '../src/data/categories.js'
+import { slozkaGrafiky } from './rezani.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const ZDROJ = path.join(ROOT, '..', 'grafika', 'zástupná foto podle kategorií')
+const ZDROJ = path.join(slozkaGrafiky(ROOT), 'zástupná foto podle kategorií')
 const CIL = path.join(ROOT, 'src', 'assets', 'kategorie')
 
 /**
