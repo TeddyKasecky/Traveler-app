@@ -26,6 +26,7 @@ import { store, save } from '../../core/store.js'
 import { S } from '../../core/store.js'
 import { dkm } from '../../core/geo.js'
 import { BEZ_NAZVU } from './vypravy.js'
+import { bodyVKosiku, souradniceBodu, DRUHY } from './body.js'
 
 /** Klíč aktivní výpravy v `store.kosik`. */
 const klic = () => store.vypravaNazev || BEZ_NAZVU
@@ -75,6 +76,32 @@ export function vyprazdniKosik() {
 }
 
 /**
+ * Přidá nebo odebere místo v košíku KONKRÉTNÍ výpravy, i té neotevřené.
+ *
+ * Košík je klíčovaný názvem výpravy, takže na rozdíl od zastávek
+ * (`vypravy.js#nastavZastavkuVeVyprave`) stačí název – žádný index.
+ *
+ * @param {string} nazev  název výpravy; prázdný = „Náš plán"
+ * @param {string} id
+ * @param {boolean} ma
+ * @returns {boolean} výsledek uložení
+ */
+export function nastavVKosikuVypravy(nazev, id, ma) {
+  if (!store.kosik || typeof store.kosik !== 'object') store.kosik = {}
+  const k = nazev || BEZ_NAZVU
+  const soucasny = store.kosik[k] || []
+  if (ma === soucasny.includes(id)) return true
+  store.kosik[k] = ma ? [...soucasny, id] : soucasny.filter((x) => x !== id)
+  return save()
+}
+
+/** V košících kterých výprav (podle názvu) tohle místo je? */
+export function vypravySMistemVKosiku(id) {
+  if (!store.kosik || typeof store.kosik !== 'object') return []
+  return Object.entries(store.kosik).filter(([, ids]) => (ids || []).includes(id)).map(([nazev]) => nazev)
+}
+
+/**
  * Přestěhuje košík pod nový název výpravy. Volá `prejmenuj()` ve `vypravy.js`
  * – bez toho by wishlist po přejmenování osiřel, stejně jako kdysi bloky.
  */
@@ -97,6 +124,45 @@ export function zahodKosik(nazev) {
  * @returns {Array<Record<string, any>>}
  */
 export const mistaVKosiku = () => kosik().map((id) => S.byId[id]).filter(Boolean)
+
+/**
+ * Obsah košíku jako jednotné položky – místa z databáze i vlastní body.
+ *
+ * PROČ SPOLEČNĚ: „kemp u známých" a „Lago di Braies" jsou pro plánování
+ * totéž – nápad, u kterého ještě nevím kdy. Košík do srpna 2026 uměl jen
+ * `id` z `places.json`, takže vlastní místo se muselo rovnou zařadit do dne.
+ *
+ * Vlastní bod se pozná tak, že `S.byId` ho nezná – id bloků mají tvar `b…`
+ * a s id míst se nepotkají. Body bez polohy se přeskakují stejně jako
+ * v `serazenaTrasa()`: bez souřadnic se nedá spočítat zajížďka ani je
+ * vykreslit na mapu.
+ *
+ * @returns {Array<{id: string, nazev: string, lat: number, lon: number, misto: object|null, bod: object|null}>}
+ */
+export function polozkyKosiku() {
+  const out = []
+  for (const id of kosik()) {
+    const p = S.byId[id]
+    if (p) {
+      out.push({ id, nazev: p.n, lat: p.lat, lon: p.lon, misto: p, bod: null })
+      continue
+    }
+    const b = bodyVKosiku().find((x) => x.id === id)
+    if (!b) continue
+    const s = souradniceBodu(b)
+    if (!s) continue
+    out.push({ id, nazev: b.nazev || DRUHY[b.druh]?.popisek || 'Vlastní místo', lat: s.lat, lon: s.lon, misto: null, bod: b })
+  }
+  return out
+}
+
+/**
+ * Vlastní body v košíku, které nemají polohu, takže je `polozkyKosiku()`
+ * přeskakuje. Vykreslují se zvlášť, ať se člověku neztratí – bod bez
+ * souřadnic je platný stav („polohu doplním, až budu vědět").
+ */
+export const bodyBezPolohy = () =>
+  bodyVKosiku().filter((b) => kosik().includes(b.id) && !souradniceBodu(b))
 
 /* ================= kotva ================= */
 
@@ -210,18 +276,23 @@ export const KORIDOR_KM = 30
  */
 export function kosikSeZajizdkou(odkud = null) {
   const kotva = hlavniKotva()
-  const cil = kotva ? S.byId[kotva.id] : null
+  const vsechny = polozkyKosiku()
+  const cil = kotva ? vsechny.find((x) => x.id === kotva.id) : null
 
-  const out = mistaVKosiku().map((p) => {
-    const km = odkud ? dkm(odkud, p) : null
+  // `p` drží tvar, na který stojí vykreslení i mapa: má vždy `id`, `n`,
+  // `lat`, `lon`. U místa z databáze je to rovnou ono, u vlastního bodu
+  // obálka nad blokem – zbytek kódu tak nemusí řešit, co drží v ruce.
+  const out = vsechny.map((x) => {
+    const p = x.misto || { id: x.id, n: x.nazev, lat: x.lat, lon: x.lon, k: '', z: '', vlastni: x.bod }
+    const km = odkud ? dkm(odkud, x) : null
     // Kotva sama zajížďku nemá – je to cíl, ne odbočka.
-    const z = odkud && cil && p.id !== cil.id ? zajizdka(odkud, p, cil) : null
+    const z = odkud && cil && x.id !== cil.id ? zajizdka(odkud, x, cil) : null
     return {
       p,
       km,
       zajizdka: z,
       vKoridoru: z != null ? z / 2 <= KORIDOR_KM : false,
-      kotva: kotvaMista(p.id) || null,
+      kotva: kotvaMista(x.id) || null,
     }
   })
 

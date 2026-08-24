@@ -27,6 +27,7 @@ import { initVyberMista, otevriVyber } from './components/vyberMista.js'
 import { initIntro } from './components/intro.js'
 import { initAddForm } from './components/addForm.js'
 import { initDialog } from './components/dialog.js'
+import { initKosikFab } from './components/kosikFab.js'
 import { initPorovnani } from './views/porovnani/porovnani.js'
 import { initMapaKeStazeni } from './views/nastaveni/mapaKeStazeni.js'
 
@@ -67,6 +68,7 @@ initWizard()
 initVyberMista()
 initDialog()
 initPlusMenu()
+initKosikFab()
 // Sbalování spodku Mapy. Úchyt i bublina jsou staticky v index.html, takže
 // se obsluha věší jednou tady, ne v renderMapaDole().
 initMapaDole()

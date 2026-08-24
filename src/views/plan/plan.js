@@ -59,6 +59,7 @@ import { archivRadkyHtml, napojArchivRadky } from './archiv.js'
 import { cislaPlanuHtml, napojCislaPlanu } from './prehled.js'
 import { kosik, kotvy, pridejDoKosiku } from './kosik.js'
 import { kosikHtml, napojKosik, zavriMapuKosiku } from './kosikView.js'
+import { nastavKosikFab, otevriKosikPlat } from '../../components/kosikFab.js'
 import { dashboardHtml, kotvyPodleDnu } from './dashboard.js'
 import { termin, nastavTermin, datumDne, kratkeDatum, denVTydnu, kolikatyDenDnes } from './termin.js'
 import { zahodKosikVrstvu } from '../../map/kosikVrstva.js'
@@ -168,14 +169,25 @@ export function renderPlan() {
   // spustí, pokud je dil==='cesta'.
   if (dil !== 'cesta') zastavSledovani()
 
+  // Košík je plovoucí plát, ne obrazovka – vidí ho jedině Itinerář a karta
+  // Na cestě, tedy tam, odkud se z něj tahá do plánu. Nastavuje se PŘED
+  // vykreslením, aby odznak seděl na to, co se zrovna kreslí.
+  nastavKosikFab({
+    vidno: (dil === 'itinerar' && S.otevrenaCesta == null) || dil === 'cesta',
+    pocet: kosik().length,
+    kresli: (el) => {
+      el.innerHTML = kosikHtml(vychoziBod())
+      napojKosik(el, renderPlan)
+    },
+  })
+
   wrap.innerHTML =
     segment(
       // TŘI ZÁLOŽKY PODLE ČASU, ne podle funkce (srpen 2026). Do teď se
       // dělilo na Na cestě · Výpravy · Itinerář · Košík, tedy podle toho, CO
       // s plánem děláš. Člověk ale přemýšlí v čase: jedu, chystám se, mám za
-      // sebou. Itinerář a Košík proto zmizely ze segmentu – nejsou to
-      // samostatné obrazovky, ale části JEDNÉ konkrétní cesty a otevírají se
-      // z jejího dashboardu.
+      // sebou. Itinerář zmizel ze segmentu – není to samostatná obrazovka,
+      // ale vnitřek JEDNÉ výpravy; košík se stal plovoucím plátem.
       [
         // Tečka u Na cestě říká „něco běží" – jinak by se na rozjetou
         // cestu dalo zapomenout v jiném dílu.
@@ -183,26 +195,23 @@ export function renderPlan() {
         { id: 'vypravy', popisek: 'V plánu' },
         { id: 'archiv', popisek: 'Za námi' },
       ],
-      // Itinerář a Košík jsou vnitřky výpravy, ne samostatné díly – segment
-      // je proto zvýrazní jako „V plánu". Bez toho nesvítilo nic a vypadalo
-      // to, že aplikace na ťuknutí vůbec nezareagovala.
-      dil === 'itinerar' || dil === 'kosik' ? 'vypravy' : dil,
+      // Itinerář je vnitřek výpravy, ne samostatný díl – segment ho proto
+      // zvýrazní jako „V plánu". Bez toho nesvítilo nic a vypadalo to,
+      // že aplikace na ťuknutí vůbec nezareagovala.
+      dil === 'itinerar' ? 'vypravy' : dil,
       'planSegment'
     ) +
-    (dil === 'itinerar' || dil === 'kosik' ? drobeckyHtml() : '') +
+    (dil === 'itinerar' ? drobeckyHtml() : '') +
     (dil === 'cesta'
       ? cestaHtml()
       : dil === 'vypravy'
         ? knihovna()
         : dil === 'archiv'
           ? archivHtml()
-          : dil === 'kosik'
-            ? kosikHtml(vychoziBod())
-            : kartaItinerare(items, dny)) +
+          : kartaItinerare(items, dny)) +
     (dil === 'itinerar' && S.otevrenaCesta == null ? lista(items) : '')
 
   napoj(wrap, items)
-  if (dil === 'kosik') napojKosik(wrap, renderPlan)
   if (dil === 'cesta') napojCestu(wrap, renderPlan)
   if (dil === 'archiv')
     // JEDNO ŤUKNUTÍ OTEVŘE, na rozdíl od knihovny Výprav. Tam ťuknutí výpravu
@@ -278,7 +287,7 @@ function drobeckyHtml() {
   // šedý text to dřív neuměl.
   return `<div class="drobecky">
     <button class="drobecky-zpet" id="planZpet">${IC('i-sipka')}Výpravy</button>
-    <span class="drobecky-kde">${dil === 'kosik' ? 'Košík' : 'Itinerář'}</span>
+    <span class="drobecky-kde">Itinerář</span>
   </div>`
 }
 
@@ -1203,11 +1212,8 @@ function napoj(wrap, items) {
   // ťuknout, musí něco udělat, jinak vypadá jako ovládací prvek a mlčí.
   for (const b of wrap.querySelectorAll('[data-dash]')) {
     b.onclick = () => {
-      if (b.dataset.dash === 'kosik') {
-        dil = 'kosik'
-        renderPlan()
-        return
-      }
+      // Košík už není obrazovka, ale plát – vytáhne se nad tím, co je vidět.
+      if (b.dataset.dash === 'kosik') return otevriKosikPlat()
       // Zastávky i volné dny žijí v itineráři pod dashboardem – stačí sjet.
       const cil = wrap.querySelector(b.dataset.dash === 'volno' ? '.denhd.volny' : '.zastavka')
       if (cil) cil.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -1216,9 +1222,9 @@ function napoj(wrap, items) {
 
   for (const b of wrap.querySelectorAll('#planSegment button')) {
     b.onclick = () => {
-      // Mapa košíku je vlastní instance Leafletu – bez úklidu by po odchodu
-      // z karty zůstala viset na prvku, který zmizí překreslením.
-      if (dil === 'kosik' && b.dataset.seg !== 'kosik') zavriMapuKosiku()
+      // Mapa košíku i dashboardu jsou vlastní instance Leafletu – bez úklidu
+      // by zůstaly viset na prvku, který zmizí překreslením.
+      zavriMapuKosiku()
       if (dil === 'itinerar') zavriMapuDashboardu()
       dil = b.dataset.seg
       renderPlan()
@@ -1266,25 +1272,14 @@ function napoj(wrap, items) {
   if (pridatBod) pridatBod.onclick = () => pridejBodPruvodce()
 
   const doKosiku = wrap.querySelector('#planDoKosiku')
-  if (doKosiku)
-    doKosiku.onclick = () => {
-      dil = 'kosik'
-      renderPlan()
-    }
+  if (doKosiku) doKosiku.onclick = () => otevriKosikPlat()
 
   const zpet = wrap.querySelector('#planZpet')
   if (zpet)
     zpet.onclick = () => {
-      // Z košíku zpět do itineráře, z itineráře do knihovny – o patro výš,
-      // ne rovnou ven. Mapa košíku je vlastní Leaflet, musí se uklidit.
-      if (dil === 'kosik') {
-        zavriMapuKosiku()
-        dil = 'itinerar'
-      } else {
-        zavriMapuDashboardu()
-        S.otevrenaCesta = null
-        dil = 'vypravy'
-      }
+      zavriMapuDashboardu()
+      S.otevrenaCesta = null
+      dil = 'vypravy'
       renderPlan()
     }
 

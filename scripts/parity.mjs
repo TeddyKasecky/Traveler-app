@@ -419,6 +419,11 @@ await zkus('místo jde přidat do plánu', async () => {
   // Tlačítko je hluboko v rolovacím panelu, kam Playwright nedoscrolluje.
   await page.evaluate(() => document.getElementById('dPlan').click())
   await page.waitForTimeout(500)
+  // Od srpna 2026 se tlačítko ptá, DO KTERÉ výpravy – otevřená je zkratka
+  // na prvním řádku a jedno ťuknutí dialog zavře. Dřív sahalo rovnou na
+  // `store.plan`, takže „chci to na dvě výpravy" znamenalo přepínat sem a tam.
+  await page.click('#dialog.show #dialogHlavni')
+  await page.waitForTimeout(500)
   const n = await page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).plan.length)
   return { ok: n === 1, dukaz: `${n} zastávka v plánu` }
 })

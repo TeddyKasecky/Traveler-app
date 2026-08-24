@@ -23,13 +23,16 @@ import { toast } from '../../components/toast.js'
 import { potvrd } from '../../components/dialog.js'
 import {
   kosik, mistaVKosiku, pridejDoKosiku, vyhodZKosiku, vyprazdniKosik, vKosiku,
-  kosikSeZajizdkou, hlavniKotva, nastavKotvu, zrusKotvu,
+  kosikSeZajizdkou, hlavniKotva, nastavKotvu, zrusKotvu, bodyBezPolohy,
 } from './kosik.js'
 import L from 'leaflet'
 import { drawKosik, zahodKosikVrstvu, priblizNaKosik, maCoKreslit } from '../../map/kosikVrstva.js'
-import { zadej } from '../../components/dialog.js'
+import { zadej, vyberZeSeznamu } from '../../components/dialog.js'
 import { vychoziBod } from './cesta.js'
 import { sklonuj } from './plan.js'
+import { dnyPlanu, nastavDny } from './dny.js'
+import { DRUHY, bodyVKosiku, prehodBod, pridejBod, rozpoznejSouradnice, hledejAdresu } from './body.js'
+import { vyberBod } from '../../map/map.js'
 
 /** Silnice bývá delší než vzdušná čára – týž koeficient jako v plan.js. */
 const KLIKATOST = 1.35
@@ -64,17 +67,26 @@ const dobaJizdy = (km) => {
  * u večeře klademe, ne „jak je to daleko vzdušnou čarou".
  */
 function kosikRadek({ p, km, zajizdka: z, vKoridoru, kotva }, odkud) {
+  // Vlastní bod nemá fotku ani kategorii – místo náhledu dostane ikonu svého
+  // druhu, ať je na první pohled poznat, že to není místo z databáze.
+  const bod = p.vlastni || null
   const kat = KAT[p.k] || {}
-  const o = obrazekMista(p, PHOTOS)
+  const o = bod ? null : obrazekMista(p, PHOTOS)
+  const druh = bod ? DRUHY[bod.druh] || DRUHY.vlastni : null
+
   return `<div class="kosik-radek${kotva ? ' je-kotva' : ''}${z != null && !vKoridoru && !kotva ? ' daleko' : ''}"
     data-kos="${p.id}">
-    <img class="kosik-obr" src="${o.src}" alt="" loading="lazy" decoding="async" width="56" height="56"
-      style="object-position:${o.vyrez}"
-      ${o.zaloha ? `data-zaloha="${o.zaloha}" onerror="this.onerror=null;this.src=this.dataset.zaloha"` : ''}>
+    ${bod
+      ? `<span class="kosik-znak">${IC(druh.ikona)}</span>`
+      : `<img class="kosik-obr" src="${o.src}" alt="" loading="lazy" decoding="async" width="56" height="56"
+          style="object-position:${o.vyrez}"
+          ${o.zaloha ? `data-zaloha="${o.zaloha}" onerror="this.onerror=null;this.src=this.dataset.zaloha"` : ''}>`}
     <div class="kosik-text">
       <h3>${esc(p.n)}${kotva ? ` <span class="kosik-kotva-znak">${IC('i-flag')}</span>` : ''}</h3>
       <div class="kosik-meta">
-        <span style="color:${kat.c || 'var(--text2)'}">${IC(kat.i || 'i-spark')}${esc(p.k || '')}</span>
+        ${bod
+          ? `<span style="color:var(--rust)">${IC(druh.ikona)}${esc(druh.popisek)}</span>`
+          : `<span style="color:${kat.c || 'var(--text2)'}">${IC(kat.i || 'i-spark')}${esc(p.k || '')}</span>`}
         ${
           kotva
             ? `<span class="tecka">•</span><b>${kotva.odeDne}.–${kotva.doDne}. den</b>`
@@ -99,24 +111,46 @@ function kosikRadek({ p, km, zajizdka: z, vKoridoru, kotva }, odkud) {
 }
 
 /**
+ * Vlastní bod v košíku, který ještě nemá polohu.
+ *
+ * Bez souřadnic se nedá spočítat zajížďka ani vykreslit na mapu, takže ho
+ * `polozkyKosiku()` přeskakuje – ale zmizet nesmí. „Polohu doplním, až budu
+ * vědět" je platný stav a bod bez ní je pořád nápad, na který se nemá
+ * zapomenout.
+ */
+function radekBezPolohy(b) {
+  const druh = DRUHY[b.druh] || DRUHY.vlastni
+  return `<div class="kosik-radek bezpolohy" data-kos="${b.id}">
+    <span class="kosik-znak">${IC(druh.ikona)}</span>
+    <div class="kosik-text">
+      <h3>${esc(b.nazev || druh.popisek)}</h3>
+      <div class="kosik-meta"><span>${IC('i-clock')}zatím bez polohy</span></div>
+    </div>
+    <button class="ikonbtn kosik-do-planu" data-kos-plan="${b.id}" title="Přidat do itineráře">${IC('i-plus')}</button>
+    <button class="ikonbtn kosik-ven" data-kos-ven="${b.id}" title="Vyhodit z košíku">${IC('i-x')}</button>
+  </div>`
+}
+
+/**
  * Obsah karty Košík.
  * @param {{lat:number, lon:number}|null} odkud  odkud se měří vzdálenosti
  * @returns {string}
  */
 export function kosikHtml(odkud = null) {
-  const mista = mistaVKosiku()
-  if (!mista.length) return prazdnyKosik()
-
   const polozky = kosikSeZajizdkou(odkud)
+  const bezPolohy = bodyBezPolohy()
+  const celkem = polozky.length + bezPolohy.length
+  if (!celkem) return prazdnyKosik() + pridatVlastniHtml()
+
   const kotva = hlavniKotva()
-  const cil = kotva ? S.byId[kotva.id] : null
+  const cil = kotva ? (polozky.find((x) => x.p.id === kotva.id) || {}).p || null : null
   const poCeste = polozky.filter((x) => x.vKoridoru && !x.kotva).length
 
   return `
     <div class="kosik-hlava">
       <div>
         <h3>Košík výpravy</h3>
-        <div class="meta">${mista.length} ${sklonuj(mista.length, 'místo', 'místa', 'míst')} ·
+        <div class="meta">${celkem} ${sklonuj(celkem, 'místo', 'místa', 'míst')} ·
           bez pořadí a bez dnů</div>
       </div>
       <button class="btn small nebezpecne" id="kosikVyprazdnit">Vysypat</button>
@@ -147,9 +181,25 @@ export function kosikHtml(odkud = null) {
       pozn: cil ? 'seřazeno podle zajížďky' : '',
     })}
     ${polozky.map((x) => kosikRadek(x, odkud)).join('')}
+    ${bezPolohy.length
+      ? sekce('Bez polohy', { pozn: 'doplň ji, až budeš vědět' }) + bezPolohy.map(radekBezPolohy).join('')
+      : ''}
+
+    ${pridatVlastniHtml()}
 
     <div class="meta kosik-napoveda">${IC('i-plus')} přesune místo do itineráře,
       ${IC('i-star')} z něj udělá kotvu, ${IC('i-x')} ho vyhodí.</div>`
+}
+
+/**
+ * Jediné tlačítko, kterým se do košíku dostane vlastní místo.
+ *
+ * Do srpna 2026 šlo vlastní místo založit jen v itineráři, tedy rovnou do
+ * konkrétního dne – plánovalo se tím dřív, než bylo co plánovat. Přitom
+ * „kemp u známých" je přesně ten druh bodu, u kterého člověk nejdřív neví kdy.
+ */
+function pridatVlastniHtml() {
+  return `<button class="pridatzastavku napotom" id="kosikPridatVlastni">${IC('i-pinme')}Přidat vlastní místo</button>`
 }
 
 /** Pruh s kotvou, nebo výzva ji nastavit. */
@@ -319,21 +369,50 @@ export function napojKosik(wrap, prekresli) {
   }
 
   for (const b of wrap.querySelectorAll('[data-kos-plan]')) {
-    b.onclick = (e) => {
+    b.onclick = async (e) => {
       e.stopPropagation()
       const id = b.dataset.kosPlan
-      if (store.plan.includes(id)) {
-        toast('Tohle místo už v itineráři je')
-        return
+      // Do kterého dne? U jednodenního plánu je odpověď jediná, u víc dnů
+      // se musí zeptat – bez toho by všechno padalo do posledního dne.
+      const dny = dnyPlanu()
+      let den = 1
+      if (dny.length > 1) {
+        const vybrany = await vyberZeSeznamu({
+          nadpis: 'Do kterého dne?',
+          polozky: dny.map((d, i) => ({
+            id: String(i + 1),
+            popisek: `Den ${i + 1}`,
+            ikona: 'i-kalendar',
+            meta: d.length ? `${d.length} ${sklonuj(d.length, 'zastávka', 'zastávky', 'zastávek')}` : 'volno',
+          })),
+        })
+        if (vybrany === null) return
+        den = Number(vybrany)
       }
-      store.plan.push(id)
+
+      // Vlastní bod není v `store.plan` – je to blok, kterému se jen sundá
+      // `vKosiku` a nastaví den. Místo z databáze jde do plánu jako dřív.
+      const bod = bodyVKosiku().find((x) => x.id === id)
+      if (bod) {
+        if (!prehodBod(id, { den })) return
+      } else {
+        if (store.plan.includes(id)) return toast('Tohle místo už v itineráři je')
+        // Nová zastávka patří na konec zvoleného dne, ne na konec plánu –
+        // jinak by výběr dne nic neznamenal.
+        const cil = Math.min(den, dny.length) - 1
+        dny[cil].push(id)
+        store.plan = dny.flat()
+        if (!nastavDny(dny.map((d) => d.length))) return
+      }
       // Z košíku ven: místo je teď v trase a na dvou místech naráz by mátlo.
       vyhodZKosiku(id)
-      if (!save()) return
-      toast('Přidáno do itineráře')
+      toast(`Přidáno do ${den}. dne`)
       prekresli()
     }
   }
+
+  const pridatVlastni = wrap.querySelector('#kosikPridatVlastni')
+  if (pridatVlastni) pridatVlastni.onclick = () => pruvodceVlastnihoMista(prekresli)
 
   const vysyp = wrap.querySelector('#kosikVyprazdnit')
   if (vysyp)
@@ -348,6 +427,89 @@ export function napojKosik(wrap, prekresli) {
       if (!vyprazdniKosik()) return
       prekresli()
     }
+}
+
+/**
+ * Průvodce vlastním místem DO KOŠÍKU: druh → název → poloha.
+ *
+ * Proti průvodci v Itineráři (`plan.js#pridejBodPruvodce`) chybí dvě věci
+ * a obojí schválně: **den** (v košíku pořadí ani dny nejsou, to je celý jeho
+ * smysl) a **start/cíl** (ty mají pevné místo na krajích plánu, do hromádky
+ * nápadů nepatří).
+ *
+ * @param {() => void} prekresli
+ */
+async function pruvodceVlastnihoMista(prekresli) {
+  const druhy = ['nocleh', 'vlastni']
+  const druh = await vyberZeSeznamu({
+    nadpis: 'Jaké místo přidat?',
+    polozky: druhy.map((id) => ({ id, popisek: DRUHY[id].popisek, ikona: DRUHY[id].ikona })),
+  })
+  if (druh === null) return
+
+  const nazev = await zadej({
+    nadpis: 'Jak se to jmenuje?',
+    vychozi: DRUHY[druh].popisek,
+    placeholder: 'třeba Kemp u splavu',
+  })
+  if (nazev === null) return
+
+  const zaloz = (lat, lon) => {
+    const id = pridejBod({ druh, nazev: nazev.trim(), lat, lon, vKosiku: true })
+    if (!pridejDoKosiku(id)) return
+    toast(lat != null ? 'Přidáno do košíku' : 'Přidáno do košíku – polohu doplň, až budeš vědět')
+    prekresli()
+  }
+
+  const zpusob = await vyberZeSeznamu({
+    nadpis: 'Kde to je?',
+    polozky: [
+      { id: 'odkaz', popisek: 'Vložit odkaz nebo souřadnice', ikona: 'i-copy', meta: 'Google, Mapy.cz, GPS' },
+      { id: 'adresa', popisek: 'Najít adresu', ikona: 'i-hledat', meta: 'jen online' },
+      { id: 'mapa', popisek: 'Ťuknout do mapy', ikona: 'i-map' },
+      { id: 'pozdeji', popisek: 'Zatím bez polohy', ikona: 'i-clock' },
+    ],
+  })
+  if (zpusob === null) return
+  if (zpusob === 'pozdeji') return zaloz(null, null)
+
+  if (zpusob === 'odkaz') {
+    const text = await zadej({ nadpis: 'Odkaz nebo souřadnice', placeholder: 'https://maps.app… nebo 46.138, 12.435' })
+    if (text === null) return
+    const gps = rozpoznejSouradnice(text)
+    if (!gps) {
+      toast('Souřadnice se nepodařilo rozpoznat – doplníš je později')
+      return zaloz(null, null)
+    }
+    return zaloz(gps.lat, gps.lon)
+  }
+
+  if (zpusob === 'adresa') {
+    const dotaz = await zadej({ nadpis: 'Hledat adresu', placeholder: 'Riva del Garda, kemp…' })
+    if (dotaz === null || !dotaz.trim()) return
+    let vysledky
+    try {
+      vysledky = await hledejAdresu(dotaz)
+    } catch {
+      toast('Hledání adresy potřebuje internet')
+      return zaloz(null, null)
+    }
+    if (!vysledky.length) {
+      toast('Adresa se nenašla – zkus to jinak, nebo ťukni do mapy')
+      return zaloz(null, null)
+    }
+    const vyber = await vyberZeSeznamu({
+      nadpis: 'Který z nich?',
+      polozky: vysledky.map((v, i) => ({ id: String(i), popisek: v.popisek, ikona: 'i-pinme' })),
+    })
+    if (vyber === null) return zaloz(null, null)
+    const v = vysledky[Number(vyber)]
+    return zaloz(v.lat, v.lon)
+  }
+
+  // Ťuknutí do mapy odvede pryč z Plánu; plát se schová sám (CSS podle
+  // body[data-tab]) a po návratu se zase ukáže s novým místem uvnitř.
+  if (zpusob === 'mapa') return vyberBod((lat, lon) => zaloz(lat, lon))
 }
 
 /* ================= Co dál? ================= */

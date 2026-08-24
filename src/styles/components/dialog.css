@@ -22,6 +22,22 @@
 #dialog .dialog-volba svg.ic{font-size:17px;color:var(--text3);flex:0 0 auto}
 #dialog .dialog-volba span{font-weight:600;font-size:.74rem;color:var(--text2);margin-left:auto}
 
+/* ---------- vícenásobný výběr (vyberVice) ---------- */
+/* Rychlá volba nahoře zavírá dialog hned, zaškrtávátka se potvrzují – proto
+   dvě různé podoby téhož řádku a oddělovač mezi nimi. */
+#dialog .dialog-volba.hlavni{margin-bottom:10px;background:var(--plocha-zelena);border-color:var(--akcent)}
+#dialog .dialog-volba.hlavni.on{background:var(--akcent);color:var(--na-akcentu)}
+#dialog .dialog-volba.hlavni.on svg.ic{color:var(--na-akcentu);stroke:var(--na-akcentu)}
+#dialog .dialog-del{margin:0 0 8px;font-size:.62rem;font-weight:800;letter-spacing:1.2px;
+  text-transform:uppercase;color:var(--text3)}
+/* Zaškrtávátko je button s ikonou – <input type="checkbox"> v appce není
+   ani jednou a nešel by sladit se zbytkem. */
+#dialog .dialog-box{flex:0 0 auto;width:22px;height:22px;border-radius:6px;
+  border:1.5px solid var(--obrys-silny);display:grid;place-items:center}
+#dialog .dialog-box svg.ic{font-size:13px;color:transparent;stroke:transparent}
+#dialog .dialog-volba.zaskrt.on .dialog-box{background:var(--akcent);border-color:var(--akcent)}
+#dialog .dialog-volba.zaskrt.on .dialog-box svg.ic{color:var(--na-akcentu);stroke:var(--na-akcentu)}
+
 /* ---------- kalendář (vyberDatum) ---------- */
 /* Datum se vybírá, nepíše – z mřížky se neplatná hodnota vzít nedá.
    Mřížka je pevných sedm sloupců, aby řádky týdnů seděly pod zkratkami. */

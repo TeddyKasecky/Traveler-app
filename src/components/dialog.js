@@ -130,6 +130,83 @@ export async function vyberZeSeznamu({ nadpis = '', text = '', polozky }) {
   return typeof v === 'string' ? v : null
 }
 
+/**
+ * Výběr VÍCE položek naráz, s volitelnou rychlou volbou nahoře.
+ *
+ * PROČ VZNIKL: `vyberZeSeznamu()` zavírá po prvním kliku, takže „přidej to
+ * místo do téhle a téhle výpravy" znamenalo otevřít dialog tolikrát, kolik
+ * je výprav. `on: true` v něm je jen obarvení, ne stav.
+ *
+ * `hlavni` je nepovinná zkratka na první řádek – typicky otevřená výprava.
+ * Jedno ťuknutí ji přepne a dialog rovnou zavře, protože v devíti případech
+ * z deseti je odpověď právě tahle. Ostatní se zaškrtávají a potvrzují.
+ *
+ * Zaškrtávátko je `<button>` s ikonou, ne `<input type="checkbox">` – ten
+ * v appce není ani jednou a nešel by sladit se zbytkem.
+ *
+ * @param {{nadpis?: string, text?: string, ikona?: string,
+ *   polozky: Array<{id: string, popisek: string, ikona?: string, meta?: string}>,
+ *   vybrane?: string[],
+ *   hlavni?: {id: string, popisek: string, meta?: string, on?: boolean}|null,
+ *   ano?: string}} p
+ * @returns {Promise<string[]|null>} vybraná id, nebo null při zrušení
+ */
+export async function vyberVice({
+  nadpis = '', text = '', ikona = 'i-slozka', polozky, vybrane = [], hlavni = null, ano = 'Hotovo',
+}) {
+  const stav = new Set(vybrane)
+
+  const slib = otevri(`
+    ${hlava(nadpis, ikona)}
+    ${text ? `<p class="dialog-text">${esc(text)}</p>` : ''}
+    ${hlavni
+      ? `<button class="dialog-volba hlavni${hlavni.on ? ' on' : ''}" id="dialogHlavni">
+           ${IC(hlavni.on ? 'i-check' : 'i-plus')}${esc(hlavni.popisek)}
+           ${hlavni.meta ? `<span>${esc(hlavni.meta)}</span>` : ''}
+         </button>
+         ${polozky.length ? '<div class="dialog-del">nebo do jiné výpravy</div>' : ''}`
+      : ''}
+    <div class="dialog-seznam" id="dialogVice"></div>
+    <div class="btnrow">
+      <button class="btn" id="dialogNe">Zrušit</button>
+      <button class="btn primary" id="dialogAno">${esc(ano)}</button>
+    </div>`)
+
+  const box = document.getElementById('dialogVice')
+  const kresli = () => {
+    box.innerHTML = polozky
+      .map(
+        (p) => `<button class="dialog-volba zaskrt${stav.has(p.id) ? ' on' : ''}" data-id="${p.id}"
+          role="checkbox" aria-checked="${stav.has(p.id)}">
+          <i class="dialog-box">${IC('i-check')}</i>${esc(p.popisek)}
+          ${p.meta ? `<span>${esc(p.meta)}</span>` : ''}
+        </button>`
+      )
+      .join('')
+    for (const b of box.querySelectorAll('[data-id]')) {
+      b.onclick = () => {
+        const id = b.dataset.id
+        stav.has(id) ? stav.delete(id) : stav.add(id)
+        kresli()
+      }
+    }
+  }
+  kresli()
+
+  if (hlavni) {
+    // Rychlá volba zavírá hned – je to zkratka, ne položka seznamu. Vrací
+    // se s ní i to, co je zaškrtané, aby jedno ťuknutí nezahodilo zbytek.
+    document.getElementById('dialogHlavni').onclick = () => {
+      hlavni.on ? stav.delete(hlavni.id) : stav.add(hlavni.id)
+      zavriDialog([...stav])
+    }
+  }
+  document.getElementById('dialogNe').onclick = () => zavriDialog(null)
+  document.getElementById('dialogAno').onclick = () => zavriDialog([...stav])
+  const v = await slib
+  return Array.isArray(v) ? v : null
+}
+
 /* ================= kalendář a počet dnů ================= */
 
 /**

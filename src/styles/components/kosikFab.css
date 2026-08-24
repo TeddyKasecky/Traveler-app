@@ -1,0 +1,63 @@
+/* Košík výpravy: plovoucí tlačítko a plát, který se z něj vytáhne.
+ *
+ * PROČ PLOVOUCÍ, A NE KARTA V SEGMENTU: košík byl do srpna 2026 pod-obrazovka
+ * Itineráře – došlo se do něj přes dlaždici nebo řádkové tlačítko, obrazovka
+ * se vyměnila a cesta zpátky vedla přes drobečky. Jenže z košíku se do plánu
+ * TAHÁ, takže obojí musí být vidět naráz. Plát překrývá jen spodek obrazovky
+ * a dny nad ním zůstávají jako cíl.
+ *
+ * JEN V PLÁNU. Na Mapě, v Seznamu ani na Objevuj tlačítko není: tam se místa
+ * prohlížejí, nesbírají do konkrétní výpravy. Do košíku se odtamtud dostane
+ * přes detail místa, kde se navíc dá vybrat, do KTERÉ výpravy.
+ */
+
+/* Z-index mezi panelem (1150) a spodní lištou (1200): nad obsahem Plánu,
+   ale ne přes záložky – ty musí zůstat dosažitelné. Nižší hodnota by
+   nestačila, panel je `position:fixed` přes celou obrazovku a tlačítko by
+   pod ním zmizelo (ověřeno smoke testem, který na něj nedoklikal). */
+#kosikFab{position:fixed;right:14px;z-index:1160;
+  bottom:calc(env(safe-area-inset-bottom) + 78px);
+  width:54px;height:54px;border-radius:50%;border:0;background:var(--akcent);
+  display:grid;place-items:center;box-shadow:var(--stin-3);
+  transition:transform .16s var(--pop),opacity .18s}
+#kosikFab[hidden]{display:none}
+#kosikFab svg.ic{font-size:23px;color:var(--na-akcentu);stroke:var(--na-akcentu)}
+#kosikFab:active{transform:var(--stisk)}
+/* Mimo Plán se neukazuje ani omylem – JS ho schovává taky, tohle je pojistka
+   pro případ, že se překreslení nestihne. */
+body:not([data-tab='plan']) #kosikFab,
+body:not([data-tab='plan']) #kosikPlat{display:none}
+
+#kosikFab .pocet{position:absolute;top:-2px;right:-2px;min-width:21px;height:21px;padding:0 5px;
+  border-radius:var(--r-pill);background:var(--zvyrazneni);color:var(--na-zvyrazneni);
+  font-size:.66rem;font-weight:800;display:grid;place-items:center;
+  border:2px solid var(--plocha)}
+#kosikFab .pocet[hidden]{display:none}
+
+/* Plát vytažený zdola. Nekryje celou obrazovku schválně: nad ním musí
+   zůstat vidět dny, do kterých se z košíku tahá. */
+#kosikPlat{position:fixed;left:0;right:0;bottom:0;z-index:1170;
+  max-height:min(72svh,640px);display:flex;flex-direction:column;
+  background:var(--plocha);border-radius:var(--r) var(--r) 0 0;
+  border-top:var(--line);box-shadow:var(--stin-3);
+  padding:6px 14px calc(env(safe-area-inset-bottom) + 84px);
+  transform:translateY(100%);transition:transform .22s var(--pop)}
+#kosikPlat[hidden]{display:none}
+#kosikPlat.show{transform:none}
+
+/* Úchyt je tlačítko, ne dekorace – ťuknutí na něj plát zavře, což je gesto,
+   které lidi na plátech čekají. */
+.plat-uchyt{flex:0 0 auto;width:44px;height:22px;margin:0 auto 4px;border:0;background:none;
+  display:grid;place-items:center}
+.plat-uchyt::before{content:'';width:38px;height:4px;border-radius:var(--r-pill);background:var(--obrys-silny)}
+.plat-uchyt:active::before{background:var(--text3)}
+
+.plat-obsah{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
+
+/* Vlastní bod v košíku nemá fotku – místo ní ikona druhu, ať je na první
+   pohled poznat, že to není místo z databáze. */
+.kosik-znak{flex:0 0 auto;width:56px;height:56px;border-radius:var(--r-s);
+  display:grid;place-items:center;background:var(--plocha2);color:var(--text2)}
+.kosik-znak svg.ic{font-size:22px}
+.kosik-radek.bezpolohy{opacity:.7}
+.kosik-radek.bezpolohy .kosik-znak{border:1.5px dashed var(--obrys-silny);background:none}

@@ -124,6 +124,22 @@
   </div>
 </section>
 <section class="panel" id="panelPlan"><div class="inner" id="planWrap"></div></section>
+
+<!-- KOŠÍK VÝPRAVY. Plovoucí tlačítko nad spodní lištou a plát, který se z něj
+     vytáhne. Staticky tady, ne v renderPlan(): obsluha se věší při startu
+     (components/kosikFab.js) a překreslení Plánu by ji smazalo – stejné
+     pravidlo jako u Nastavení níž.
+
+     Košík je JEN v Plánu (Itinerář a Na cestě) a schovává ho CSS podle
+     body[data-tab]. Jinde by překážel: na Mapě a v Seznamu se místa
+     prohlížejí, nesbírají do konkrétní výpravy. -->
+<button id="kosikFab" hidden aria-label="Košík výpravy">
+  <svg class="ic"><use href="#i-batoh"/></svg><span class="pocet" id="kosikFabPocet" hidden></span>
+</button>
+<section id="kosikPlat" hidden aria-label="Košík výpravy">
+  <button class="plat-uchyt" id="kosikPlatZavri" aria-label="Zavřít košík"></button>
+  <div class="plat-obsah" id="kosikPlatObsah"></div>
+</section>
 <section class="panel" id="panelProfil">
   <div class="inner">
     <div id="profilInner"></div>

@@ -90,6 +90,50 @@ export function seznamVyprav() {
 }
 
 /**
+ * Přidá nebo odebere zastávku ve výpravě podle indexu – i v té, která zrovna
+ * není otevřená.
+ *
+ * PROČ: do srpna 2026 šlo místo přidat jedině do OTEVŘENÉ výpravy
+ * (`togglePlan()` sahá na `store.plan`), takže „tohle chci na jarní Alpy
+ * i na podzimní Dolomity" znamenalo výpravu přepnout, přidat, přepnout zpět.
+ *
+ * `planDny` se schválně NEUPRAVUJE: `dnyPlanu()` přebytek vždycky přiřkne
+ * poslednímu dni, takže se zastávka nemůže ztratit, a rozhodnutí, do kterého
+ * dne patří, se dělá až v itineráři té výpravy.
+ *
+ * Uložený přepočet trasy (`prepocet`) se nemaže – jeho otisk prostě přestane
+ * sedět a `map/planLine.js` spadne na vzdušný odhad, což je zamýšlený
+ * fallback (viz views/plan/routing.js).
+ *
+ * @param {number} i  index v `store.vypravy`, -1 = aktivní výprava
+ * @param {string} id  id místa
+ * @param {boolean} ma  true = má tam být, false = nemá
+ * @returns {boolean} výsledek uložení
+ */
+export function nastavZastavkuVeVyprave(i, id, ma) {
+  if (i < 0) {
+    const kde = store.plan.indexOf(id)
+    if (ma && kde < 0) store.plan.push(id)
+    else if (!ma && kde >= 0) store.plan.splice(kde, 1)
+    else return true
+    return save()
+  }
+  const v = odlozene()[i]
+  if (!v) return false
+  if (!Array.isArray(v.plan)) v.plan = []
+  const kde = v.plan.indexOf(id)
+  if (ma && kde < 0) v.plan.push(id)
+  else if (!ma && kde >= 0) v.plan.splice(kde, 1)
+  else return true
+  return save()
+}
+
+/** Ve kterých výpravách (indexy) je tohle místo jako zastávka? */
+export function vypravySMistem(id) {
+  return seznamVyprav().filter((v) => v.plan.includes(id)).map((v) => String(v.index))
+}
+
+/**
  * Řazení pro zobrazení. Data v poli se NIKDY nepřeskládávají (výměna na
  * místě při přepnutí je bezpečnostní záruka) – řadí se až tady, takže se
  * pořadí v knihovně nemění tím, kterou výpravu si člověk zrovna otevřel.

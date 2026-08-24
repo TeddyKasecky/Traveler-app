@@ -394,7 +394,13 @@ await doKosiku.scrollIntoViewIfNeeded()
 await doKosiku.click()
 await page.waitForTimeout(700)
 await kontrola('detail má tlačítko košíku', () => page.locator('#dKosik').count(), 1)
+// Tlačítko se od srpna 2026 ptá, DO KTERÉ výpravy – dřív sahalo rovnou na
+// otevřenou, takže „chci to na dvě výpravy" znamenalo přepínat sem a tam.
+// Otevřená výprava je zkratka na prvním řádku a dialog zavře.
 await page.evaluate(() => document.getElementById('dKosik').click())
+await page.waitForTimeout(500)
+await kontrola('košík se ptá, do které výpravy', () => page.locator('#dialog.show #dialogHlavni').count(), 1)
+await page.click('#dialogHlavni')
 await page.waitForTimeout(500)
 await kontrola('místo se uložilo do košíku', () =>
   page.evaluate(() => {
@@ -406,9 +412,15 @@ await page.goBack()
 await page.waitForTimeout(500)
 await page.click('#tabs button[data-tab="plan"]')
 await page.waitForTimeout(300)
-await page.evaluate(() => document.querySelector('[data-dash="kosik"]')?.click())
-await page.waitForTimeout(500)
+// Košík je plovoucí plát nad obrazovkou, ne karta segmentu – tahá se z něj
+// do dnů, takže obojí musí být vidět naráz.
+await kontrola('košík má plovoucí tlačítko', () => page.locator('#kosikFab:not([hidden])').count(), 1)
+await kontrola('odznak ukazuje počet', () => page.locator('#kosikFabPocet').innerText(), '1')
+await page.click('#kosikFab')
+await page.waitForTimeout(600)
+await kontrola('plát se vytáhl', () => page.locator('#kosikPlat.show').count(), 1)
 await kontrola('košík ukazuje uložené místo', () => page.locator('.kosik-radek').count(), 1)
+await kontrola('košík nabízí vlastní místo', () => page.locator('#kosikPridatVlastni').count(), 1)
 // Přesun do itineráře košík vyprázdní – na dvou místech naráz by místo mátlo.
 await page.click('[data-kos-plan]')
 await page.waitForTimeout(800)

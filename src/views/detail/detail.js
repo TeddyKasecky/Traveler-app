@@ -18,11 +18,13 @@ import { fotoKategorie, vyrez } from '../../data/kategorieFoto.js'
 import { pridejDoPorovnani } from '../porovnani/porovnani.js'
 import { addPhoto, smazFotku } from '../../components/photos.js'
 import { toast } from '../../components/toast.js'
-import { zadej } from '../../components/dialog.js'
+import { zadej, vyberVice } from '../../components/dialog.js'
 import { vytvorMiniMapu, zavriMiniMapu } from '../../map/detailMap.js'
 import { goTo, draw } from '../../map/map.js'
-import { togglePlan } from '../plan/plan.js'
-import { vKosiku, prepniKosik } from '../plan/kosik.js'
+import { vKosiku, nastavVKosikuVypravy, vypravySMistemVKosiku } from '../plan/kosik.js'
+import {
+  seznamVyprav, nastavZastavkuVeVyprave, vypravySMistem, BEZ_NAZVU,
+} from '../plan/vypravy.js'
 import { renderHome } from '../home/home.js'
 
 /** Popisky stavu parkoviště pro Transit vysoký 2,6 m. */
@@ -35,6 +37,82 @@ const TRANSIT = {
 
 /** Pořadové číslo mini-mapy, ať má každé otevření vlastní id prvku. */
 let mmSeq = 0
+
+/**
+ * Zeptá se, do kterých výprav místo patří – jako zastávka, nebo do košíku.
+ *
+ * Otevřená výprava je zkratka na prvním řádku (jedno ťuknutí, dialog se
+ * zavře); ostatní se zaškrtávají a potvrzují „Hotovo". Zaškrtnutí i
+ * odškrtnutí se zapisuje, takže tímtéž listem jde místo i odebrat.
+ *
+ * ZASTÁVKY se klíčují indexem (`store.vypravy[i].plan`), KOŠÍK názvem
+ * (`store.kosik[nazev]`) – tak to obojí bylo odjakživa a přepisovat identitu
+ * výpravy kvůli jednomu dialogu by bylo dražší než dvě větve tady.
+ *
+ * @param {Record<string, any>} p  místo
+ * @param {'plan'|'kosik'} kam
+ */
+async function vyberVypravy(p, kam) {
+  // Fantom (prázdný bezejmenný slot, dokud si člověk nezaložil první
+  // výpravu) se v `seznamVyprav()` schválně nevypisuje – knihovna mu nemá
+  // vnucovat výpravu, kterou nezaložil. Tady ale musí být: bez něj by první
+  // přidání do plánu otevřelo dialog bez jediné volby. První zastávkou se
+  // stejně zhmotní jako plnohodnotná výprava.
+  const vypravy = seznamVyprav()
+  if (!vypravy.length) {
+    vypravy.push({
+      nazev: store.vypravaNazev || BEZ_NAZVU,
+      plan: store.plan,
+      planDny: [],
+      slozka: '',
+      aktivni: true,
+      index: -1,
+    })
+  }
+  const aktivni = vypravy.find((v) => v.aktivni)
+  const ostatni = vypravy.filter((v) => !v.aktivni)
+  const doPlanu = kam === 'plan'
+
+  // Identita položky: index pro zastávky, název pro košík.
+  const klic = (v) => (doPlanu ? String(v.index) : v.nazev)
+  const uz = doPlanu ? vypravySMistem(p.id) : vypravySMistemVKosiku(p.id)
+  const jeUvnitr = (v) => uz.includes(klic(v))
+
+  const vysledek = await vyberVice({
+    nadpis: doPlanu ? 'Do itineráře které výpravy?' : 'Do košíku které výpravy?',
+    text: doPlanu
+      ? 'Zastávka je závazek – dostane pořadí a den.'
+      : 'Košík je „chci vidět, zatím nevím kdy" – bez pořadí a bez dnů.',
+    ikona: doPlanu ? 'i-route' : 'i-batoh',
+    hlavni: aktivni
+      ? { id: klic(aktivni), popisek: aktivni.nazev || BEZ_NAZVU, meta: 'otevřená', on: jeUvnitr(aktivni) }
+      : null,
+    polozky: ostatni.map((v) => ({
+      id: klic(v),
+      popisek: v.nazev,
+      meta: v.slozka || '',
+    })),
+    vybrane: uz,
+  })
+  if (vysledek === null) return
+
+  const chtene = new Set(vysledek)
+  let zmeny = 0
+  for (const v of vypravy) {
+    const k = klic(v)
+    const ma = chtene.has(k)
+    if (ma === jeUvnitr(v)) continue
+    zmeny++
+    if (doPlanu) nastavZastavkuVeVyprave(v.index, p.id, ma)
+    else nastavVKosikuVypravy(v.nazev, p.id, ma)
+  }
+
+  if (zmeny) {
+    toast(doPlanu ? `Itineráře upravené (${zmeny})` : `Košíky upravené (${zmeny})`)
+    draw()
+  }
+  openDetail(p, false)
+}
 
 /** Které místo je v panelu právě vykreslené. Viz posun níž. */
 let vykreslene = null
@@ -303,16 +381,18 @@ export function openDetail(p, focus) {
     vice.classList.toggle('on', !viceMenu.hidden)
   }
 
-  document.getElementById('dPlan').onclick = () => {
-    togglePlan(p.id)
-    openDetail(p)
-  }
+  // OBĚ TLAČÍTKA SE PTAJÍ, DO KTERÉ VÝPRAVY (srpen 2026). Do teď sahala
+  // rovnou na otevřenou výpravu, takže „tohle chci na jarní Alpy i na
+  // podzimní Dolomity" znamenalo výpravu přepnout, přidat, přepnout zpět.
+  // Otevřená výprava zůstává zkratkou na prvním řádku listu – jedno ťuknutí
+  // a hotovo, protože v devíti případech z deseti je odpověď právě ona.
+  //
+  // Rozjetá cesta se tu NENABÍZÍ: do ní se přidává z košíku na kartě
+  // Na cestě, kde se navíc řekne, jestli je to další cíl nebo konec dne.
+  document.getElementById('dPlan').onclick = () => vyberVypravy(p, 'plan')
   // Košík je „chci vidět, zatím nevím kdy" – proti plánu, který je závazek
   // s pořadím a dnem. Viz views/plan/kosik.js.
-  document.getElementById('dKosik').onclick = () => {
-    toast(prepniKosik(p.id) ? 'Uloženo do košíku výpravy' : 'Vyhozeno z košíku')
-    openDetail(p)
-  }
+  document.getElementById('dKosik').onclick = () => vyberVypravy(p, 'kosik')
   document.getElementById('dVisit').onclick = () => {
     store.stav[p.id] = visited ? '' : 'visited'
     save()

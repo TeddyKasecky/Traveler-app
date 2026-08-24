@@ -70,8 +70,48 @@ export const DRUHY = {
   vlastni: { ikona: 'i-pinme', popisek: 'Vlastní místo' },
 }
 
-/** Všechny body trasy (bloky typu misto) aktivní výpravy. */
-export const vsechnyBody = () => bloky().filter((b) => b.typ === 'misto')
+/**
+ * Body trasy (bloky typu misto), které jsou opravdu V TRASE.
+ *
+ * Bod odložený do košíku má `vKosiku: 1` a v trase být nemá – je to nápad,
+ * ne zastávka. Staré bloky pole nemají, takže se chovají přesně jako dřív.
+ */
+export const vsechnyBody = () => bloky().filter((b) => b.typ === 'misto' && !b.vKosiku)
+
+/**
+ * Vlastní body odložené v košíku aktivní výpravy.
+ *
+ * PROČ VŮBEC: košík do srpna 2026 uměl jen `id` míst z `places.json`, takže
+ * vlastní místo (kemp u známých, parkoviště pod ferratou) se muselo rovnou
+ * zařadit do dne – tedy plánovat dřív, než bylo co plánovat. Přitom je to
+ * přesně ten druh bodu, u kterého člověk nejdřív neví kdy.
+ */
+export const bodyVKosiku = () => bloky().filter((b) => b.typ === 'misto' && b.vKosiku)
+
+/**
+ * Přesune bod z košíku do trasy, nebo naopak zpátky do košíku.
+ *
+ * Do trasy: zmizí `vKosiku` a nastaví se `den`/`po`. Do košíku: naopak.
+ * Kotvení se přitom zahazuje – bod v košíku pořadí nemá, to je celý smysl.
+ *
+ * @param {string} id  id bloku
+ * @param {{doKosiku?: boolean, den?: number|null, po?: string|null}} kam
+ * @returns {boolean} výsledek uložení
+ */
+export function prehodBod(id, { doKosiku = false, den = null, po = null } = {}) {
+  const b = bloky().find((x) => x.id === id)
+  if (!b || b.typ !== 'misto') return false
+  if (doKosiku) {
+    b.vKosiku = 1
+    b.den = null
+    b.po = null
+  } else {
+    delete b.vKosiku
+    b.den = po ? null : den
+    b.po = po
+  }
+  return save()
+}
 
 /**
  * Založí bod trasy. Vrací jeho id.
@@ -81,11 +121,20 @@ export const vsechnyBody = () => bloky().filter((b) => b.typ === 'misto')
  * pozice v profilu se pak promítne všude, kde je použitá – odkazem, ne
  * kopií), `{typ:'gps'}` znamená "aktuální poloha v okamžiku PŘEPOČTU trasy"
  * (views/plan/routing.js), ne trvale uložený bod. Čti přes souradniceBodu().
- * @param {{druh?: string, nazev?: string, lat?: number|null, lon?: number|null, den?: number|null, po?: string|null, zdroj?: {typ: 'pozice', id: string}|{typ: 'gps'}|null}} p
+ * `vKosiku` zakládá bod rovnou v košíku – bez dne a bez pořadí. Pole se
+ * u běžných bodů vůbec nezapisuje, ať se staré a nové bloky nerozejdou.
+ *
+ * @param {{druh?: string, nazev?: string, lat?: number|null, lon?: number|null, den?: number|null, po?: string|null, zdroj?: {typ: 'pozice', id: string}|{typ: 'gps'}|null, vKosiku?: boolean}} p
  */
-export function pridejBod({ druh = 'vlastni', nazev = '', lat = null, lon = null, den = null, po = null, zdroj = null }) {
+export function pridejBod({ druh = 'vlastni', nazev = '', lat = null, lon = null, den = null, po = null, zdroj = null, vKosiku = false }) {
   const id = noveId()
-  zapis([...bloky(), { id, typ: 'misto', den, po, druh, nazev, lat, lon, poznamka: '', hotovo: 0, zdroj }])
+  const bod = { id, typ: 'misto', den, po, druh, nazev, lat, lon, poznamka: '', hotovo: 0, zdroj }
+  if (vKosiku) {
+    bod.vKosiku = 1
+    bod.den = null
+    bod.po = null
+  }
+  zapis([...bloky(), bod])
   return id
 }
 
