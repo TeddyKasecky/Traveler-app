@@ -1,7 +1,7 @@
 /**
  * Auta: adresy ikon a mřížka výběru v Profilu.
  *
- * Ikon je 80 (`scripts/make-auta.mjs`) a člověk si jedno vybere – tím autem
+ * Ikon je 96 (`scripts/make-auta.mjs`) a člověk si jedno vybere – tím autem
  * pak jezdí po mapě místo zeleného puntíku. Volba je v Profilu, ne
  * v Nastavení: jaké mám auto je „kdo jsem", ne „jak to má fungovat".
  *
@@ -38,7 +38,7 @@ export function vybraneAutoUrl() {
  * neznámou předponu vrátí −1 – a to je míň než nula, takže by nová auta
  * přeskočila úplně na začátek mřížky, před dodávky.
  */
-const PORADI = ['dodavky', 'terenni', 'mala', 'velka', 'vwt4']
+const PORADI = ['dodavky', 'terenni', 'mala', 'velka', 'vwt4', 'vwt6']
 
 /**
  * HTML mřížky výběru. Obsluhu věší `napojVyberAuta()` po vložení do stránky.

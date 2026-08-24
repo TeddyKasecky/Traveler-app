@@ -217,7 +217,7 @@ export function priblizNaFiltr(mista) {
 /**
  * Kde právě jsme – auto vybrané v Profilu, ne zelený puntík.
  *
- * Ikonu vybírá `components/vyberAuta.js` (80 aut ze `src/assets/auta/`);
+ * Ikonu vybírá `components/vyberAuta.js` (96 aut ze `src/assets/auta/`);
  * bez volby jede výchozí dodávka. Puntík tu byl do srpna 2026 a na malované
  * mapě vypadal jako cizí prvek z jiné aplikace.
  *
