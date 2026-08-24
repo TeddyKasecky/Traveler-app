@@ -94,3 +94,44 @@ pro otisk. Ověřeno E2E (Playwright, mock API): výprava s vlastním bodem
 (`druh: 'start'`) má po přepočtu `store.cesta.prepocet.otisk` shodný s
 `otiskBodu(serazenaTrasa(c.zastavky, c.dny, false))`, na mapě se v módu
 „Na cestě" vykreslí skutečná polyline (ne fallback).
+
+---
+
+**B4 — Přetažení zastávky do jiného dne se projevilo jako prohození — ~~VYŘEŠENO~~**
+Zjištěno: 24. 8. 2026, uživatel při přípravě přestavby Plánů — „stále je
+problém házet více událostí do jednoho dne, pokud je tam jedna událost;
+v tuto chvíli se pouze prohodí události".
+
+Tažení v itineráři (`views/plan/plan.js#napojTahani()`) při puštění zastávky
+přeskládalo `store.plan`, ale **`store.planDny` nechalo beze změny**:
+
+```js
+store.plan.splice(kde, 1)
+if (kam > kde) kam--
+store.plan.splice(kam, 0, id)
+save()          // ← planDny se nikdy nezapisovaly
+```
+
+`dnyPlanu()` pak plán rozřezal podle STARÝCH délek. U dnů s jednou zastávkou
+(délky `[1,1]`) byl efekt nejvýraznější: přesun A za B dal `plan = [B,A]`,
+délky pořád `[1,1]`, tedy den 1 = B, den 2 = A — vypadalo to, že se zastávky
+prohodily, místo aby se jedna přestěhovala.
+
+Druhá, tišší část téže chyby: cíl puštění se hledal jako **nejbližší zastávka
+nad novou polohou**, takže do prázdného dne se nedalo pustit nic (prázdný den
+žádnou zastávku nemá a kotva spadla do dne nad ním). A bod trasy puštěný bez
+kotvy dostal natvrdo `den: 1`, takže z pátého dne skočil na začátek prvního.
+
+Opraveno vytažením zápisu do datové vrstvy: nová `presunZastavku(id, doDne,
+poId)` ve `views/plan/dny.js` pracuje nad `dnyPlanu()` (pole polí) a výsledek
+zapisuje přes `nastavDny()`, které odmítne rozdělení s nesedícím součtem —
+takže se zastávka nemůže ztratit. Cílový den určuje nová `denPodPrstem(y)`
+v `plan.js` z **hlaviček dnů** (`.denhd[data-den]`), ne ze sousední zastávky;
+hlavičky se při tažení zastávky neposouvají, takže jejich změřená poloha
+odpovídá tomu, co je vidět na obrazovce. `poDrop` se navíc volá i při
+`cil === start` — poslední zastávka dne puštěná do prázdného dne pod ním
+v seznamu nikoho nepřeskočí, a dřívější `if (cil !== start)` ji zahodilo.
+
+Ověřeno `npm run check-dny` (10 nových bodů, 167/167): přesun do dne
+s jedinou zastávkou, do prázdného dne, přes dva dny zpět, bez kotvy, s kotvou
+z cizího dne, puštění na místě (nezapisuje), den mimo rozsah, neznámé id.

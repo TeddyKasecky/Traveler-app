@@ -293,6 +293,31 @@ na síť).
 
 ---
 
+**N15 — Počasí v plánu: dnes a zítra na kartě Na cestě**
+
+Předpověď z Open-Meteo se od srpna 2026 nikde nevykresluje. `nactiPocasi()`
+a `pocasiPodleKodu()` v `views/plan/termin.js:132-174` **zůstávají hotové
+a funkční** — jen je nikdo nevolá.
+
+*Proč to odešlo:* počasí bývalo v „Kostře cesty" nad itinerářem, kde měl
+každý den svou ikonu a teplotu. Kostra zanikla (dva seznamy dnů pod sebou
+nutily člověka spojovat obě půlky hlavou) a s ní i to počasí. Předpověď na
+desátý den výpravy je navíc informace, podle které se nikdo nerozhoduje —
+Open-Meteo dává 16 dní dopředu a poslední třetina je věštění.
+
+*Kam patří:* na kartu **Na cestě**, kde se člověk ptá „prší dneska?" a „bude
+zítra na tu ferratu počasí?". Tam je předpověď na dva až tři dny přesná
+a rozhoduje se podle ní opravdu.
+
+*Co je hotové a co ne:* volání i mapování kódů WMO na ikony (`i-sun`,
+`i-rain`, `i-snow`, `i-bolt`) jsou napsané a otestované v `check-dny.mjs`.
+Chybí jen vykreslení a rozhodnutí, pro který bod se předpověď tahá —
+u rozjeté cesty se nabízí další cíl, ne první zastávka plánu jako dřív.
+Pozor na cache: `pocasiDne` byla v `dashboard.js` jen v paměti, protože
+uložená předpověď by lhala. To pravidlo platí dál.
+
+---
+
 ## Vzhled a UX
 
 **N8 — Kreslená scéna s dodávkou (`vanScene`)**

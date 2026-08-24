@@ -6,7 +6,7 @@
  */
 
 /* ---------- hlavička výpravy ---------- */
-.planhlava{display:flex;align-items:center;gap:12px;margin:2px 2px 14px}
+.planhlava{display:flex;align-items:center;gap:12px;margin:0 2px 14px}
 .planhlava-text{flex:1;min-width:0}
 .planhlava h2{margin:0;font-family:var(--f-disp);font-weight:700;font-size:1.5rem;line-height:1.15;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -74,20 +74,9 @@
   display:grid;place-items:center}
 .zastavka-vice svg.ic{font-size:17px;color:var(--text3)}
 
-/* ---------- odškrtnutí zastávky ---------- */
-/* Fajfka přímo na řádku, ne až pod „…": je to jediná akce, která se dělá
- * za jízdy, a schovaná pod dvěma ťuknutími by se nepoužívala. */
-.zastavka-hotovo{flex:0 0 auto;width:32px;height:32px;border-radius:50%;
-  border:1.5px solid var(--obrys-silny);background:none;display:grid;place-items:center;
-  transition:transform .16s var(--pop),background .18s,border-color .18s}
-.zastavka-hotovo svg.ic{font-size:15px;color:var(--text3);stroke:var(--text3)}
-.zastavka-hotovo:active{transform:var(--stisk)}
-.zastavka-hotovo.on{background:var(--akcent);border-color:transparent}
-.zastavka-hotovo.on svg.ic{color:var(--na-akcentu);stroke:var(--na-akcentu)}
-/* Odjetá zastávka ustoupí do pozadí, ale nezmizí – pořád je součástí trasy
- * a člověk se k ní může chtít vrátit. Přeškrtnutý název by se hůř četl. */
-.zastavka.hotova .zastavka-obr,
-.zastavka.hotova .zastavka-text{opacity:.55}
+/* Odškrtnutí zastávky (`.zastavka-hotovo`, `.zastavka.hotova`) z Itineráře
+ * odešlo v srpnu 2026 – obrazovka odpovídá na „jak to pojedeme", ne „kde jsme
+ * byli". Fajfka žije dál na kartě Na cestě jako `.cesta-fajfka`. */
 
 /* Ovládání zastávky je schované, dokud se neťukne na „…". Na řádku by se šest
  * tlačítek nevešlo a předloha je tam nemá. */
@@ -300,11 +289,15 @@
 .zastavka.bod .bod-znak{flex:0 0 auto;width:44px;height:44px;border-radius:var(--r-s);
   display:grid;place-items:center;background:var(--plocha2);color:var(--text2)}
 .zastavka.bod .bod-znak svg.ic{font-size:19px}
-.zastavka.bod.hotova .bod-znak{background:var(--plocha-zelena);color:var(--akcent)}
-.pridatbod{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;
-  border:1.5px dashed var(--obrys-silny);border-radius:var(--r-s);padding:9px 12px;margin:6px 0;
-  font:inherit;font-size:.8rem;font-weight:700;color:var(--text2)}
-.pridatbod svg.ic{font-size:15px;color:var(--text3)}
+
+/* Prázdný den je POZVÁNKA, ne mezera. Dost velká plocha, aby se do ní dalo
+ * trefit prstem při tažení z košíku – proto min-height, ne jen padding. */
+.denvolno{display:flex;align-items:center;justify-content:center;gap:8px;min-height:56px;
+  border:1.5px dashed var(--obrys-silny);border-radius:var(--r-s);background:none;width:100%;
+  margin:2px 0 6px;font:inherit;font-size:.8rem;font-weight:700;color:var(--text3);
+  transition:border-color .18s,background .18s}
+.denvolno svg.ic{font-size:14px;stroke:var(--moss);color:var(--moss)}
+.denvolno:active{background:var(--plocha-zelena);border-color:var(--moss)}
 
 /* Lišta výběru bodu na mapě. Nad spodkem mapy, pod hlavičkou. */
 .vyberbod-listka{position:fixed;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom) + 88px);
@@ -528,9 +521,9 @@
 .kosik-kotva-znak svg.ic{font-size:12px;color:var(--rust);stroke:var(--rust);vertical-align:-1px}
 .kosik-kotva svg.ic{color:var(--text3)}
 
-/* ---------- dashboard cesty a kostra dnů ---------- */
-/* Kostra = dny dopředu, kotvy s oknem, prázdno jako pozvánka.
-   Prázdný den NENÍ chyba – nekreslí se proto červeně ani s vykřičníkem. */
+/* ---------- dashboard cesty ---------- */
+/* Kostra dnů tu bývala jako samostatný seznam (`.kostra*`). Zanikla v srpnu
+   2026 – její obsah se přestěhoval do hlaviček dnů, viz plan-dny.css. */
 
 .dash-cisla{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}
 .dash-dlazdice{display:flex;flex-direction:column;align-items:center;gap:2px;
@@ -542,31 +535,7 @@
 .dash-dlazdice.zvyraznena{border-color:var(--moss)}
 .dash-dlazdice.zvyraznena b{color:var(--moss)}
 
-.kostra{display:flex;flex-direction:column;gap:5px;margin-bottom:16px}
-.kostra-den{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
-  background:var(--plocha);border:var(--line);border-radius:var(--r-s);box-shadow:var(--stin-1);
-  padding:9px 11px;font:inherit;color:var(--text);transition:border-color .18s,background .18s}
-.kostra-cislo{flex:0 0 auto;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;
-  background:var(--plocha2);color:var(--text2);font-size:.76rem;font-weight:700}
-.kostra-telo{flex:1;min-width:0;display:flex;align-items:center;gap:6px;font-size:.85rem}
-
-/* Den s kotvou: jediný závazek cesty, drží se rezavé jako kotva v košíku. */
-.kostra-den.kotva{border-left:3px solid var(--rust)}
-.kostra-den.kotva .kostra-cislo{background:var(--rust);color:var(--na-akcentu)}
-.kostra-kotva{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
-.kostra-kotva svg.ic{font-size:13px;color:var(--rust);stroke:var(--rust)}
-.kostra-kotva .meta{font-size:.74rem}
-/* Den uvnitř okna kotvy – ještě není rozhodnuto, který to bude. */
-.kostra-okno svg.ic{font-size:12px;color:var(--text3);stroke:var(--text3)}
-
-/* Volný den je pozvánka, ne mezera. */
-.kostra-den.volny{background:transparent;border-style:dashed;box-shadow:none}
-.kostra-volno{display:inline-flex;align-items:center;gap:5px;color:var(--text3);font-size:.8rem}
-.kostra-volno svg.ic{font-size:12px;stroke:var(--moss);color:var(--moss)}
-.kostra-den.volny:hover{border-color:var(--moss);background:var(--plocha)}
-.kostra-pocet{color:var(--text2);font-size:.82rem}
-
-/* ---------- dashboard: mapa, termín, stíháme, počasí ---------- */
+/* ---------- dashboard: mapa, termín, stíháme ---------- */
 
 .dash-mapa{height:210px;border-radius:var(--r-s);overflow:hidden;border:var(--line);
   box-shadow:var(--stin-1);margin:0 0 10px;background:var(--plocha2)}
@@ -594,29 +563,27 @@
 .stihame.svizne{border-left-color:var(--sun)}
 .stihame.svizne > svg.ic{color:var(--sun);stroke:var(--sun)}
 
-/* Datum a počasí v řádku dne – jen když je zadaný termín. */
-.kostra-datum{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;
-  line-height:1.15;color:var(--text3);font-size:.66rem;min-width:2.6rem}
-.kostra-datum b{color:var(--text2);font-size:.74rem;font-weight:600}
-.kostra-pocasi{flex:0 0 auto;display:inline-flex;align-items:center;gap:3px;
-  color:var(--text2);font-size:.76rem}
-.kostra-pocasi svg.ic{font-size:13px;stroke:var(--sky);color:var(--sky)}
-/* Dnešek se drží akcentem, ať ho oko najde bez hledání. */
-.kostra-den.dnes{border-color:var(--akcent)}
-.kostra-den.dnes .kostra-cislo{background:var(--akcent);color:var(--na-akcentu)}
+/* Datum, kotva a dnešek v řádku dne jsou v plan-dny.css (`.denhd-*`) –
+   sem patřily, dokud existovala samostatná kostra. */
 
 /* ---------- drobečky a cesta zpět ---------- */
 /* Itinerář a Košík jsou vnitřky výpravy, ne díly segmentu. Bez tohohle řádku
    nebylo poznat, kde člověk je, ani jak ven – segment nesvítil a vypadalo to,
    že appka nereaguje. */
 
-.drobecky{display:flex;align-items:center;gap:10px;margin:0 0 10px}
-.drobecky-zpet{display:inline-flex;align-items:center;gap:5px;background:none;border:0;
-  padding:4px 2px;font:inherit;font-size:.82rem;color:var(--akcent)}
-.drobecky-zpet svg.ic{font-size:13px;transform:rotate(180deg);stroke:var(--akcent)}
+/* Drobečky a hlava výpravy jsou JEDNO záhlaví, jen ve dvou řádcích – proto
+   nulová mezera mezi nimi (`.planhlava` si drží vlastní margin dole). */
+.drobecky{display:flex;align-items:center;gap:10px;margin:0 0 2px}
+/* Plná dotyková plocha: dřív `4px 2px`, tedy asi 24 px na výšku – pod
+   doporučených 44 a na trase v autě se to netrefilo. */
+.drobecky-zpet{display:inline-flex;align-items:center;gap:6px;background:none;border:0;
+  padding:10px 10px 10px 2px;margin:-6px 0;font:inherit;font-size:.86rem;font-weight:700;color:var(--akcent)}
+.drobecky-zpet svg.ic{font-size:14px;transform:rotate(180deg);stroke:var(--akcent)}
 .drobecky-zpet:active{opacity:.6}
-.drobecky-kde{margin-left:auto;text-align:right;font-size:.74rem;color:var(--text3);line-height:1.25}
-.drobecky-kde b{display:block;font-size:.82rem;color:var(--text2);font-weight:600}
+/* Štítek, ne šedý text: „kde jsem" má být vidět na první pohled. */
+.drobecky-kde{margin-left:auto;background:var(--zvyrazneni);color:var(--na-zvyrazneni);
+  border-radius:var(--r-pill);padding:4px 11px;
+  font-size:.62rem;font-weight:800;letter-spacing:1px;text-transform:uppercase}
 
 /* „Uložit na potom" a „Košík výpravy" vedle „Přidat zastávku". Rozdíl
    v závaznosti se tím vysvětlí v okamžiku rozhodování: zastávka = pojedeme,

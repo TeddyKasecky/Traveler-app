@@ -1,6 +1,43 @@
-/* ===== dny v plánu ===== */
-.denhd{display:flex;align-items:center;gap:8px;margin:14px 2px 9px;font-size:.7rem;font-weight:800;
-  letter-spacing:1.2px;text-transform:uppercase;color:var(--text2)}
-.denhd svg.ic{font-size:16px;color:var(--akcent)}
-.denhd b{font-family:var(--f-disp);font-weight:700;font-size:.95rem;letter-spacing:0;text-transform:none;color:var(--text)}
-.denhd span{margin-left:auto;font-weight:700;letter-spacing:.2px;text-transform:none}
+/* ===== dny v plánu =====
+ *
+ * Od srpna 2026 nese hlavička dne i to, co dřív stálo v samostatné „Kostře
+ * cesty" nad itinerářem – číslo dne, kalendářní datum a kotvu. Dva seznamy
+ * dnů pod sebou (jeden s daty a kotvami, druhý se zastávkami) nutily člověka
+ * spojovat obě půlky hlavou; teď je seznam jeden.
+ *
+ * Kreslí se VŽDY, i u jednodenního plánu. Bez hlavičky nebylo kam pustit
+ * zastávku ani kam přidat druhý den. */
+
+.denhd{display:flex;align-items:center;gap:9px;margin:16px 2px 8px;padding:8px 10px;
+  background:var(--plocha);border:var(--line);border-radius:var(--r-s);box-shadow:var(--stin-1);
+  transition:border-color .18s,background .18s}
+.denhd .uchyt{width:20px}
+.denhd .uchyt svg.ic{font-size:15px;color:var(--text3)}
+
+.denhd-cislo{flex:0 0 auto;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;
+  background:var(--plocha2);color:var(--text2);font-size:.76rem;font-weight:700}
+
+/* Datum jen když je zadaný termín – bez něj hlavička vypadá jako dřív. */
+.denhd-datum{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;line-height:1.15;
+  color:var(--text3);font-size:.66rem;min-width:2.6rem}
+.denhd-datum b{color:var(--text2);font-size:.74rem;font-weight:600}
+
+.denhd-telo{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.denhd-telo b{font-family:var(--f-disp);font-weight:700;font-size:.95rem;color:var(--text)}
+.denhd-telo span{font-size:.74rem;font-weight:700;color:var(--text2)}
+
+/* Den s kotvou: jediný závazek cesty, drží se rezavé jako kotva v košíku. */
+.denhd-kotva{display:inline-flex;align-items:center;gap:5px;color:var(--rust);font-size:.76rem;font-weight:700}
+.denhd-kotva svg.ic{font-size:13px;color:var(--rust);stroke:var(--rust)}
+.denhd-kotva i{font-style:normal;color:var(--text2);font-weight:600}
+/* Den uvnitř okna kotvy – ještě není rozhodnuto, který to bude. */
+.denhd-kotva.pokracuje{color:var(--text3)}
+.denhd-kotva.pokracuje svg.ic{color:var(--text3);stroke:var(--text3)}
+
+/* Prázdný den NENÍ chyba, je to volné místo, které čeká – proto přerušovaný
+ * obrys a žádná varovná barva. */
+.denhd.volny{background:transparent;box-shadow:none;border-style:dashed}
+
+/* Dnešek se drží akcentem, ať ho oko najde bez hledání. */
+.denhd.dnes{border-color:var(--akcent)}
+.denhd.dnes .denhd-cislo{background:var(--akcent);color:var(--na-akcentu)}

@@ -151,8 +151,10 @@ export function cislaPlanuHtml() {
       ${skupina(
         'Co je na trase',
         'i-compass',
-        radek('Už navštívených', f(a.navstiveno), b && f(b.navstiveno)) +
-          radek('Hodnocených 4★+', f(a.hodnocenych4), b && f(b.hodnocenych4)) +
+        // „Už navštívených" odešlo (srpen 2026) spolu s fajfkou u zastávky:
+        // Itinerář odpovídá na „jak to pojedeme", ne na „kde jsme byli".
+        // Hodnocení zůstává – to je vlastnost místa, ne stav plánu.
+        radek('Hodnocených 4★+', f(a.hodnocenych4), b && f(b.hodnocenych4)) +
           `<div class="preh-tagy">${kategorieHtml(a)}</div>` +
           (b ? `<div class="preh-tagy druhy">${kategorieHtml(b)}</div>` : '')
       )}

@@ -21,3 +21,50 @@
 #dialog .dialog-volba:disabled{opacity:.45;pointer-events:none}
 #dialog .dialog-volba svg.ic{font-size:17px;color:var(--text3);flex:0 0 auto}
 #dialog .dialog-volba span{font-weight:600;font-size:.74rem;color:var(--text2);margin-left:auto}
+
+/* ---------- kalendář (vyberDatum) ---------- */
+/* Datum se vybírá, nepíše – z mřížky se neplatná hodnota vzít nedá.
+   Mřížka je pevných sedm sloupců, aby řádky týdnů seděly pod zkratkami. */
+#dialog .kal{margin:0 0 14px}
+#dialog .kal-hlava{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+#dialog .kal-hlava b{flex:1;text-align:center;font-family:var(--f-disp);font-weight:700;font-size:1rem}
+#dialog .kal-sip{width:34px;height:34px;border-radius:50%;border:var(--line);background:var(--plocha2);
+  display:grid;place-items:center;transition:transform .15s var(--pop)}
+#dialog .kal-sip:active{transform:var(--stisk)}
+#dialog .kal-sip svg.ic{font-size:13px;color:var(--text2);stroke:var(--text2);transform:rotate(180deg)}
+#dialog .kal-sip.dopredu svg.ic{transform:none}
+#dialog .kal-tydny,#dialog .kal-mriz{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+#dialog .kal-tydny{margin-bottom:4px}
+#dialog .kal-tydny span{text-align:center;font-size:.62rem;font-weight:800;letter-spacing:.6px;
+  text-transform:uppercase;color:var(--text3)}
+#dialog .kal-den{aspect-ratio:1;border:1.5px solid transparent;border-radius:var(--r-s);background:none;
+  font:inherit;font-size:.85rem;font-weight:700;color:var(--text);
+  transition:background .16s,transform .15s var(--pop)}
+#dialog .kal-den:active{transform:var(--stisk)}
+/* Dnešek jen obrysem, vybraný plnou plochou – dvě různé informace, dvě různé
+   síly. Kdyby měl dnešek výplň taky, splynul by s výběrem. */
+#dialog .kal-den.dnes{border-color:var(--obrys-silny)}
+#dialog .kal-den.on{background:var(--akcent);color:var(--na-akcentu);border-color:transparent}
+#dialog .kal-dnes{margin-top:10px;background:none;border:0;padding:4px 2px;font:inherit;
+  font-size:.78rem;font-weight:700;color:var(--akcent)}
+#dialog .kal-dnes:active{opacity:.6}
+
+/* ---------- počet dnů (vyberPocetDni) ---------- */
+#dialog .pocet{margin:0 0 14px;text-align:center}
+#dialog .pocet-stepper{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:12px}
+#dialog .pocet-stepper b{min-width:2.6ch;font-family:var(--f-disp);font-weight:700;font-size:2.1rem;
+  line-height:1;font-variant-numeric:tabular-nums}
+#dialog .pocet-krok{width:44px;height:44px;border-radius:50%;border:var(--line);background:var(--plocha2);
+  font:inherit;font-size:1.4rem;font-weight:700;color:var(--text2);line-height:1;
+  transition:transform .15s var(--pop)}
+#dialog .pocet-krok:active{transform:var(--stisk)}
+#dialog .pocet-krok:disabled{opacity:.35}
+#dialog .pocet-rychle{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+#dialog .pocet-pill{border:var(--line);border-radius:var(--r-pill);background:var(--plocha2);
+  padding:7px 14px;font:inherit;font-size:.8rem;font-weight:700;color:var(--text2)}
+#dialog .pocet-pill.on{background:var(--akcent);color:var(--na-akcentu);border-color:transparent}
+/* Upozornění, ne zákaz – proto tónovaná plocha, ne červená. */
+#dialog .pocet-pozor{display:flex;gap:8px;align-items:flex-start;text-align:left;margin-top:12px;
+  background:var(--plocha-tepla);border-radius:var(--r-s);padding:10px 12px;
+  font-size:.76rem;font-weight:600;color:var(--text2)}
+#dialog .pocet-pozor svg.ic{font-size:16px;color:var(--text2);stroke:var(--text2);flex:0 0 auto;margin-top:1px}

@@ -25,18 +25,7 @@ import { IC } from '../../icons/sprite.js'
 import { ikonBtn } from '../../components/vzory.js'
 import { BEZ_NAZVU } from './vypravy.js'
 import { kosik, kotvy } from './kosik.js'
-import {
-  termin, datumDne, kratkeDatum, denVTydnu, kolikatyDenDnes, stihameTo, pocasiPodleKodu,
-} from './termin.js'
-
-/**
- * Předpověď podle data: { 'YYYY-MM-DD': {kodPocasi, maxC, …} }.
- *
- * JEN V PAMĚTI, schválně. Počasí je ze všech dat nejrychleji zastaralé
- * a uložené by lhalo – po restartu se radši natáhne znovu, nebo se prostě
- * neukáže. Do `store` proto nepatří.
- */
-export const pocasiDne = new Map()
+import { termin, datumDne, kratkeDatum, stihameTo } from './termin.js'
 
 /**
  * Kostra cesty: pole dnů od jedničky, každý ví, jestli má kotvu a co v něm je.
@@ -123,44 +112,25 @@ function stihameHtml(kostra) {
   return radky.join('')
 }
 
-/** Jeden řádek kostry. */
-function radekDne({ cislo, zastavky, kotvy: kot, volny }) {
-  const zacinajici = kot.filter((k) => k.zacinaTady)
-  const pokracujici = kot.length && !zacinajici.length
-
-  const obsah = zacinajici.length
-    ? zacinajici
-        .map(
-          (k) => `<span class="kostra-kotva">${IC('i-flag')}<b>${esc(k.p.n)}</b>
-            <span class="meta">${k.odeDne === k.doDne ? `${k.odeDne}. den` : `${k.odeDne}.–${k.doDne}. den`}</span></span>`
-        )
-        .join('')
-    : pokracujici
-      ? `<span class="kostra-okno">${IC('i-vice')}<span class="meta">pořád ve hře</span></span>`
-      : zastavky
-        ? `<span class="kostra-pocet">${zastavky} ${zastavky === 1 ? 'zastávka' : zastavky < 5 ? 'zastávky' : 'zastávek'}</span>`
-        : `<span class="kostra-volno">volno — ${IC('i-plus')}naplánovat</span>`
-
-  // Datum a počasí jen když je termín – bez něj řádek vypadá jako dosud.
-  const datum = datumDne(cislo)
-  const p = datum ? pocasiDne.get(datum) : null
-  const pocasiZnak = p
-    ? `<span class="kostra-pocasi" title="${esc(pocasiPodleKodu(p.kodPocasi).popis)}">
-         ${IC(pocasiPodleKodu(p.kodPocasi).ikona)}${Math.round(p.maxC)}°</span>`
-    : ''
-
-  return `<button class="kostra-den${volny ? ' volny' : ''}${zacinajici.length ? ' kotva' : ''}${
-    cislo === kolikatyDenDnes() ? ' dnes' : ''
-  }" data-kostra-den="${cislo}">
-    <span class="kostra-cislo">${cislo}</span>
-    ${datum ? `<span class="kostra-datum">${denVTydnu(datum)}<b>${kratkeDatum(datum)}</b></span>` : ''}
-    <span class="kostra-telo">${obsah}</span>
-    ${pocasiZnak}
-  </button>`
+/**
+ * Kotvy podle čísla dne, pro hlavičky dnů v itineráři.
+ *
+ * Kostra jako samostatný blok zanikla (srpen 2026) – byly to dva seznamy
+ * dnů pod sebou, jeden s daty a kotvami, druhý se zastávkami, a člověk musel
+ * obě půlky spojovat hlavou. `kostraDnu()` zůstala jako datová funkce a její
+ * výstup se vlévá rovnou do hlaviček jednoho seznamu.
+ *
+ * @param {Array<Array<string>>} dny
+ * @returns {Map<number, Array<object>>}
+ */
+export function kotvyPodleDnu(dny) {
+  const mapa = new Map()
+  for (const d of kostraDnu(dny)) if (d.kotvy.length) mapa.set(d.cislo, d.kotvy)
+  return mapa
 }
 
 /**
- * Dashboard nad itinerářem: název, čísla, kostra dnů.
+ * Dashboard nad itinerářem: název, termín, mapa, tři čísla.
  *
  * @param {Array<Record<string, any>>} items  zastávky aktivní výpravy
  * @param {Array<Array<string>>} dny
@@ -205,13 +175,10 @@ export function dashboardHtml(items, dny, statistika) {
       <b>${volnych}</b><span>${volnych === 1 ? 'volný den' : 'volných dnů'}</span></button>
     <button class="dash-dlazdice" data-dash="kosik">
       <b>${vKosiku}</b><span>v košíku</span></button>
-  </div>
-
-  ${
-    kostra.length
-      ? `<div class="sekce"><span class="sekce-text">Kostra cesty</span>
-           ${volnych ? `<span class="sekce-pozn">${volnych} ${volnych === 1 ? 'den čeká' : 'dnů čeká'}</span>` : ''}</div>
-         <div class="kostra">${kostra.map(radekDne).join('')}</div>`
-      : ''
-  }`
+  </div>`
+  // Kostra dnů tu bývala jako samostatný blok pod čísly. Zanikla (srpen
+  // 2026): dva seznamy dnů pod sebou – jeden s daty a kotvami, druhý se
+  // zastávkami – nutily člověka spojovat obě půlky hlavou. Data z ní
+  // (`kostraDnu`, `kotvyPodleDnu`) dnes plní hlavičky jednoho seznamu
+  // v `plan.js#itinerar()`.
 }

@@ -21,7 +21,7 @@
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} }
 
 const { store, S } = await import('../src/core/store.js')
-const { dnyPlanu, pridejDen, presunDoDne, zrusDny, nastavDny } =
+const { dnyPlanu, pridejDen, presunDoDne, zrusDny, nastavDny, presunZastavku } =
   await import('../src/views/plan/dny.js')
 const { zalohaData, obnovZalohu } = await import('../src/core/csv.js')
 const { rozpoznejSouradnice, pridejBod, vsechnyBody, DRUHY } =
@@ -415,6 +415,55 @@ priprav(['a', 'b'], [1, 1, 0])
   t('nastavDny odmítne nesedící součet', nastavDny([2, 5]) === false && jako(store.planDny) === predtim)
   t('nastavDny snese prázdný den', nastavDny([2, 0, 2]) && jako(dnyPlanu()) === jako([['a', 'b'], [], ['c', 'd']]))
   t('žádná zastávka se dělením neztratila', jako(dnyPlanu().flat()) === jako(store.plan))
+}
+
+/* ================= přesun zastávky tažením (BUGS.md B4) ================= */
+/* Tažení v itineráři do srpna 2026 přeskládalo jen `store.plan` a `planDny`
+ * nechalo být – `dnyPlanu()` pak plán rozřezal podle starých délek a vypadalo
+ * to, že se zastávky prohodily. `presunZastavku()` zapisuje obojí. */
+
+console.log('\nPřesun zastávky mezi dny (tažení):')
+
+priprav(['a', 'b'], [1, 1])
+{
+  t('přesun do dne s jednou zastávkou se neprohodí', presunZastavku('b', 1, 'a') && jako(dnyPlanu()) === jako([['a', 'b'], []]))
+  t('pořadí v plánu sedí na dny', jako(store.plan) === jako(['a', 'b']))
+  t('délky dnů se opravdu zapsaly', jako(store.planDny) === jako([2, 0]))
+}
+
+priprav(['a', 'b'], [2, 0])
+{
+  t('poslední zastávka jde do prázdného dne pod ní', presunZastavku('b', 2) && jako(dnyPlanu()) === jako([['a'], ['b']]))
+}
+
+priprav(['a', 'b', 'c'], [1, 1, 1])
+{
+  t('přesun přes dva dny zpět', presunZastavku('c', 1, 'a') && jako(dnyPlanu()) === jako([['a', 'c'], ['b'], []]))
+  t('všechny zastávky zůstaly', dnyPlanu().flat().length === 3)
+}
+
+priprav(['a', 'b', 'c'], [3])
+{
+  t('bez kotvy jde zastávka na začátek dne', presunZastavku('c', 1) && jako(dnyPlanu()) === jako([['c', 'a', 'b']]))
+}
+
+priprav(['a', 'b'], [1, 1])
+{
+  t('kotva z cizího dne se ignoruje', presunZastavku('a', 2, 'a') && jako(dnyPlanu()) === jako([[], ['a', 'b']]))
+}
+
+priprav(['a', 'b'], [1, 1])
+{
+  t('puštění na místě nic nezapisuje', presunZastavku('b', 2) === false)
+  t('neznámé id nic neudělá', presunZastavku('zzz', 1) === false)
+}
+
+priprav(['a', 'b', 'c'], [1, 1, 1])
+{
+  // Den mimo rozsah se ořízne na poslední existující, ne na jedničku –
+  // prst pod posledním dnem míří tam, ne na začátek plánu.
+  t('den nad rozsah spadne do posledního', presunZastavku('a', 99) && jako(dnyPlanu()) === jako([[], ['b'], ['a', 'c']]))
+  t('den pod rozsah spadne do prvního', presunZastavku('c', 0) && jako(dnyPlanu()) === jako([['c'], ['b'], ['a']]))
 }
 
 /* ================= body trasy (bloky typu misto) ================= */

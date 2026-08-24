@@ -28,13 +28,15 @@ import { KAT } from '../../data/categories.js'
 import { obrazekMista } from '../../data/kategorieFoto.js'
 import { IC } from '../../icons/sprite.js'
 import { toast } from '../../components/toast.js'
-import { potvrd, zadej, vyberZeSeznamu } from '../../components/dialog.js'
+import { potvrd, zadej, vyberZeSeznamu, vyberDatum, vyberPocetDni } from '../../components/dialog.js'
 import { sekce, segment, ikonBtn } from '../../components/vzory.js'
 import { otevriVyber } from '../../components/vyberMista.js'
 import { goTo, draw, mapa, priblizNaFiltr, vyberBod } from '../../map/map.js'
 import { aktivujZalozku } from '../../core/router.js'
 import { stahniSoubor } from '../../core/csv.js'
-import { dnyPlanu, pridejDen, presunDoDne, zrusDny, nastavDny } from './dny.js'
+import {
+  dnyPlanu, pridejDen, presunDoDne, zrusDny, nastavDny, presunZastavku, srovnejDny, zastavekNadDen,
+} from './dny.js'
 import { gpxZPlanu, nazevSouboru } from './gpx.js'
 import {
   seznamVyprav, seznamSlozek, prepniVypravu, novaVyprava, novaSlozka, prejmenujSlozku,
@@ -57,8 +59,8 @@ import { archivRadkyHtml, napojArchivRadky } from './archiv.js'
 import { cislaPlanuHtml, napojCislaPlanu } from './prehled.js'
 import { kosik, kotvy, pridejDoKosiku } from './kosik.js'
 import { kosikHtml, napojKosik, zavriMapuKosiku } from './kosikView.js'
-import { dashboardHtml, pocasiDne } from './dashboard.js'
-import { termin, nastavTermin, datumDne, kratkeDatum, nactiPocasi } from './termin.js'
+import { dashboardHtml, kotvyPodleDnu } from './dashboard.js'
+import { termin, nastavTermin, datumDne, kratkeDatum, denVTydnu, kolikatyDenDnes } from './termin.js'
 import { zahodKosikVrstvu } from '../../map/kosikVrstva.js'
 import { token } from '../../core/barvy.js'
 import L from 'leaflet'
@@ -253,8 +255,10 @@ export function otevriItinerar() {
 
 /**
  * Hlavička Itineráře. Od srpna 2026 je to dashboard cesty (dashboard.js):
- * jméno, tři čísla a kostra dnů s kotvami. Šedý řádek textu, který tu byl
- * do teď, neodpovídal na jedinou otázku, kterou si člověk nad plánem klade.
+ * jméno, termín, mapa a tři čísla. Šedý řádek textu, který tu byl do teď,
+ * neodpovídal na jedinou otázku, kterou si člověk nad plánem klade. Kostra
+ * dnů z něj odešla do hlaviček dnů v `itinerar()` – dva seznamy dnů pod
+ * sebou nutily člověka spojovat obě půlky hlavou.
  */
 function hlava(items, dny) {
   return dashboardHtml(items, dny, planStats(items))
@@ -268,12 +272,13 @@ function hlava(items, dny) {
  * a vypadalo to, že appka nereaguje.
  */
 function drobeckyHtml() {
-  const nazev = S.otevrenaCesta != null && store.cesty[S.otevrenaCesta]
-    ? store.cesty[S.otevrenaCesta].nazev
-    : store.vypravaNazev || BEZ_NAZVU
+  // Název výpravy tu BÝVAL taky – a hned pod ním ho podruhé psal dashboard
+  // jako <h2>. Dvakrát totéž pod sebou nic nepřidávalo a zabíralo řádek.
+  // Zůstal štítek, který na první pohled říká, na které obrazovce člověk je;
+  // šedý text to dřív neuměl.
   return `<div class="drobecky">
-    <button class="drobecky-zpet" id="planZpet">${IC('i-sipka')}Zpět na výpravy</button>
-    <span class="drobecky-kde">${esc(nazev)}<b>${dil === 'kosik' ? 'Košík' : 'Itinerář'}</b></span>
+    <button class="drobecky-zpet" id="planZpet">${IC('i-sipka')}Výpravy</button>
+    <span class="drobecky-kde">${dil === 'kosik' ? 'Košík' : 'Itinerář'}</span>
   </div>`
 }
 
@@ -662,21 +667,28 @@ function akceItinerare(items) {
   </div>`
 }
 
-/** Prázdná výprava. Nabídne obojí, čím se dá začít. */
+/**
+ * Prázdná výprava. Nabídne všechny tři cesty, kterými se dá začít –
+ * včetně „Přidat den": kostra dnů je legitimní začátek („jedeme na deset
+ * dní, plnit budu cestou") a do teď se k ní bez zastávek nedalo dostat.
+ */
 function prazdno() {
   return `<div class="empty">${IC('i-van')}Ve výpravě zatím nejsou žádné zastávky.
     <div class="meta" style="margin:6px 0 10px">Kam určitě pojedete, dej jako zastávku.
-      Co je zatím jen nápad, ulož na potom — do košíku.</div>
+      Co je zatím jen nápad, hoď do košíku. Nebo začni od dnů a plň je cestou.</div>
     <div class="btnrow" style="justify-content:center;margin-bottom:0">
       <button class="btn small primary" id="planPridat">${IC('i-plus')}Přidat zastávku</button>
-      <button class="btn small" id="planNaPotom">${IC('i-star')}Uložit na potom</button>
+      <button class="btn small" id="planDoKosiku">${IC('i-batoh')}Košík výpravy</button>
+      <button class="btn small" id="planDen">${IC('i-kalendar')}Přidat den</button>
     </div></div>`
 }
 
 /* ---------- Itinerář ---------- */
 
 function itinerar(items, dny) {
-  if (!items.length) return prazdno()
+  // Prázdná výprava BEZ kostry dnů dostane pozvánku; s kostrou se kreslí
+  // dny, protože právě do nich se má co tahat z košíku.
+  if (!items.length && dny.length <= 1) return prazdno()
 
   const vicDnu = dny.length > 1
   // Průběžné číslování napříč dny. `parity` hlídá, že „Kopírovat“ vyrobí text
@@ -684,27 +696,56 @@ function itinerar(items, dny) {
   // sedět, a hlavně by uživatel nevěděl, kolikátá zastávka to celkem je.
   let poradi = 0
 
+  // Kotvy a dnešek do hlaviček – zbytek po zaniklé kostře (dashboard.js).
+  const kotvyDnu = kotvyPodleDnu(dny)
+  const dnesniDen = kolikatyDenDnes()
+
   const telo = dny
     .map((den, di) => {
+      const cislo = di + 1
       const mista = den.map((id) => S.byId[id]).filter(Boolean)
       const sd = planStats(mista)
-      const sbaleny = vicDnu && sbaleneDny.has(di + 1)
+      const sbaleny = sbaleneDny.has(cislo)
       // Přes 4 hodiny za volantem denně je makačka – ať je to vidět rovnou
       // v hlavičce dne, ne až na cestě.
       const hodin = mista.length > 1 ? (sd.road / KMH) : 0
-      const hlavicka = vicDnu
-        ? `<div class="denhd${sbaleny ? ' sbaleny' : ''}" data-den="${di + 1}">
+      const datum = datumDne(cislo)
+      const kotvy = kotvyDnu.get(cislo) || []
+      const zacinajici = kotvy.filter((k) => k.zacinaTady)
+      const prazdny = !mista.length && !kotvy.length
+
+      // Kotva má přednost před počty: „chceme do Bernexu mezi 3. a 5. dnem"
+      // je závazek, počet zastávek jen popis.
+      const popis = zacinajici.length
+        ? `<span class="denhd-kotva">${IC('i-flag')}${esc(zacinajici[0].p.n)}<i>${
+            zacinajici[0].odeDne === zacinajici[0].doDne
+              ? `${zacinajici[0].odeDne}. den`
+              : `${zacinajici[0].odeDne}.–${zacinajici[0].doDne}. den`
+          }</i></span>`
+        : kotvy.length
+          ? `<span class="denhd-kotva pokracuje">${IC('i-vice')}pořád ve hře</span>`
+          : mista.length
+            ? `<span>${mista.length} ${sklonuj(mista.length, 'zastávka', 'zastávky', 'zastávek')}${
+                mista.length > 1 ? ` · ${fmtKm(sd.road)} · ${fmtCas(hodin)}` : ''
+              }${hodin > 4 ? ' ⚠' : ''}</span>`
+            : ''
+
+      // HLAVIČKA VŽDY, i u jednodenního plánu (dřív jen `dny.length > 1`).
+      // Bez ní nebylo kam pustit zastávku ani kam přidat druhý den a den 1
+      // vypadal, že žádný den není.
+      const hlavicka = `<div class="denhd${sbaleny ? ' sbaleny' : ''}${prazdny ? ' volny' : ''}${
+        cislo === dnesniDen ? ' dnes' : ''
+      }" data-den="${cislo}">
             <span class="uchyt den-uchyt" data-uchyt-dne title="Táhni pro přesun celého dne">${IC('i-vice')}</span>
-            ${IC('i-kalendar')}<b>Den ${di + 1}</b>
-            <span>${mista.length} ${sklonuj(mista.length, 'zastávka', 'zastávky', 'zastávek')}${mista.length > 1 ? ` · ${fmtKm(sd.road)} · ${fmtCas(hodin)}` : ''}${hodin > 4 ? ' ⚠' : ''}</span>
-            ${sbaleny ? '' : `<button class="ikonbtn" data-act="pridat-na-zacatek" data-den="${di + 1}" title="Přidat bod na začátek dne">${IC('i-plus')}</button>`}
-            <button class="den-sbal" data-act="sbal-den" data-den="${di + 1}" title="${sbaleny ? 'Rozbalit den' : 'Sbalit den'}">${IC('i-down')}</button>
+            <span class="denhd-cislo">${cislo}</span>
+            ${datum ? `<span class="denhd-datum">${denVTydnu(datum)}<b>${kratkeDatum(datum)}</b></span>` : ''}
+            <span class="denhd-telo"><b>Den ${cislo}</b>${popis}</span>
+            <button class="den-sbal" data-act="sbal-den" data-den="${cislo}" title="${sbaleny ? 'Rozbalit den' : 'Sbalit den'}">${IC('i-down')}</button>
           </div>`
-        : ''
 
       const zacatekBody = sbaleny
         ? ''
-        : vsechnyBody().filter((m) => !m.po && m.den === di + 1).map(bodRadek).join('')
+        : vsechnyBody().filter((m) => !m.po && m.den === cislo).map(bodRadek).join('')
       const zastavkyHtml = sbaleny
         ? ''
         : mista
@@ -719,11 +760,14 @@ function itinerar(items, dny) {
             .join('')
       if (sbaleny) poradi += mista.length
 
-      const pridatBod = sbaleny
-        ? ''
-        : `<button class="pridatbod" data-den="${di + 1}" data-po="${mista.length ? mista[mista.length - 1].id : ''}">${IC('i-plus')}Přidat bod – start, nocleh, vlastní místo…</button>`
+      // Prázdný den NENÍ chyba, je to volné místo, které čeká – proto
+      // pozvánka s dost velkou plochou, aby se do ní dalo trefit prstem
+      // při tažení z košíku.
+      const volno = prazdny && !sbaleny
+        ? `<div class="denvolno" data-volny-den="${cislo}">${IC('i-plus')}volno — přetáhni sem z košíku</div>`
+        : ''
 
-      return hlavicka + zacatekBody + zastavkyHtml + pridatBod + (sbaleny ? '' : blokyDneHtml(vicDnu ? di + 1 : null))
+      return hlavicka + zacatekBody + zastavkyHtml + volno + (sbaleny ? '' : blokyDneHtml(cislo))
     })
     .join('')
 
@@ -735,23 +779,25 @@ function itinerar(items, dny) {
   return (
     sekce('Itinerář – dny a zastávky', { pozn: items.length > 1 ? 'Táhni za úchyt' : '' }) +
     `<div class="itinerar" id="itinerar">${telo}${zbyleBody}</div>
-    ${vicDnu ? blokyDneHtml(null) : ''}
+    ${blokyDneHtml(null)}
     <button class="pridatzastavku" id="planPridat">${IC('i-plus')}Přidat zastávku</button>
-    <!-- Dvě tlačítka vedle sebe vysvětlují rozdíl v okamžiku rozhodování:
-         zastávka = pojedeme tam, košík = možná. Do teď se do košíku dalo
-         přidat JEN z detailu místa mimo Plán, což nikdo neuhodl. -->
-    <button class="pridatzastavku napotom" id="planNaPotom">${IC('i-star')}Uložit na potom</button>
+    <!-- JEDNO tlačítko na vlastní bod, ne „+" u každého dne a další na jeho
+         konci. Ta byla teoreticky pohodlná (bod rovnou tam, kam patří),
+         prakticky z toho byl les plusek, ve kterém nikdo nevěděl, který
+         přidává co. Kam bod patří, se řekne v průvodci nebo tažením. -->
+    <button class="pridatzastavku napotom" id="planPridatBod">${IC('i-pinme')}Přidat bod – start, nocleh, vlastní místo…</button>
     <button class="pridatzastavku dokosiku" id="planDoKosiku">${IC('i-batoh')}Košík výpravy${
       kosik().length ? ` (${kosik().length})` : ''
     }</button>
     ${pridatBlokHtml()}
     ${rozpocet ? `<div class="meta" style="margin:6px 2px">${IC('i-euro')}Rozpočet plánu celkem: <b>${rozpocet.toLocaleString('cs-CZ')} €</b></div>` : ''}` +
-    (items.length > 1
-      ? `<div class="btnrow" style="margin-top:10px">
-          <button class="btn small" id="planDen">${IC('i-kalendar')}Přidat den</button>
-          ${vicDnu ? `<button class="btn small" id="planBezDnu">Zrušit dny</button>` : ''}
-        </div>`
-      : '')
+    // „Přidat den" už NENÍ podmíněné dvěma zastávkami – den se musí dát
+    // založit i do prázdné výpravy, jinak nejde začít od kostry („jedeme na
+    // deset dní, plnit budu cestou").
+    `<div class="btnrow" style="margin-top:10px">
+      <button class="btn small" id="planDen">${IC('i-kalendar')}Přidat den</button>
+      ${vicDnu ? `<button class="btn small" id="planBezDnu">Zrušit dny</button>` : ''}
+    </div>`
   )
 }
 
@@ -762,7 +808,8 @@ function itinerar(items, dny) {
 function bodRadek(b) {
   const d = DRUHY[b.druh] || DRUHY.vlastni
   const ma = !!souradniceBodu(b)
-  return `<div class="zastavka bod${rozbaleno === b.id ? ' otevrena' : ''}${b.hotovo ? ' hotova' : ''}" data-bod="${b.id}">
+  // `b.hotovo` se tu vědomě nečte – stejný důvod jako u zastávky výš.
+  return `<div class="zastavka bod${rozbaleno === b.id ? ' otevrena' : ''}" data-bod="${b.id}">
     <div class="zastavka-radek">
       <span class="uchyt" data-uchyt title="Táhni pro změnu pořadí">${IC('i-vice')}</span>
       <span class="bod-znak">${IC(d.ikona)}</span>
@@ -778,12 +825,18 @@ function bodRadek(b) {
 }
 
 /**
- * Průvodce založením bodu: druh → název → poloha. Jednoduchá cesta jsou tři
- * ťuknutí (druh, odklepnout název, mapa); podrobnosti se doladí v kartě bodu.
- * @param {number} den  číslo dne od 1
- * @param {string|null} po  id zastávky, za kterou bod patří (konec dne)
+ * Průvodce založením bodu: druh → název → (den) → poloha.
+ *
+ * DEN SE PTÁ AŽ TADY, ne polohou tlačítka. Do srpna 2026 měl každý den
+ * vlastní „+" a na svém konci ještě „Přidat bod" – tedy dvě tlačítka na den
+ * a při deseti dnech dvacet plusek, u kterých nebylo poznat, který přidává
+ * co. Teď je tlačítko jedno a den je otázka jako každá jiná. Volání
+ * s `den` (ťuknutí do prázdného dne) otázku přeskočí – ta odpověď už padla.
+ *
+ * @param {number} [den]  číslo dne od 1; bez něj se průvodce zeptá
+ * @param {string|null} [po]  id zastávky, za kterou bod patří
  */
-async function pridejBodPruvodce(den, po) {
+async function pridejBodPruvodce(den = 0, po = null) {
   const druh = await vyberZeSeznamu({
     nadpis: 'Jaký bod přidat?',
     // Start a cíl smí být nejvýš jeden na plán (R1) – když už existuje,
@@ -798,6 +851,24 @@ async function pridejBodPruvodce(den, po) {
   if (nazev === null) return
 
   const jeStartCil = druh === 'start' || druh === 'cil'
+
+  // Start a cíl mají pevné místo na krajích plánu, těch se ptát nemá smysl.
+  // Stejně tak jednodenního plánu – tam je jediná odpověď.
+  const dny = dnyPlanu()
+  if (!den && !jeStartCil && dny.length > 1) {
+    const vybrany = await vyberZeSeznamu({
+      nadpis: 'Do kterého dne?',
+      polozky: dny.map((d, i) => ({
+        id: String(i + 1),
+        popisek: `Den ${i + 1}`,
+        ikona: 'i-kalendar',
+        meta: d.length ? `${d.length} ${sklonuj(d.length, 'zastávka', 'zastávky', 'zastávek')}` : 'volno',
+      })),
+    })
+    if (vybrany === null) return
+    den = Number(vybrany)
+  }
+  if (!den) den = 1
 
   // Start/cíl se zakládají VŽDY na pevné pozici (začátek/konec plánu),
   // ne tam, kam by mířilo `den`/`po` z místa v itineráři, kde se průvodce
@@ -905,9 +976,12 @@ function zastavka(p, poradi, predchozi, denIdx, poctDnu, posledniVeDni, uplnePos
   const leg = predchozi ? dkm(predchozi, p) * KLIKATOST : 0
   const role = uplnePosledni && poradi > 1 ? 'Cíl' : !predchozi ? 'Příjezd' : posledniVeDni && poctDnu > 1 ? 'Nocleh' : 'Zastávka'
 
-  const hotova = store.stav[p.id] === 'visited'
-
-  return `<div class="zastavka${rozbaleno === p.id ? ' otevrena' : ''}${hotova ? ' hotova' : ''}" data-id="${p.id}" style="--pc:${k.c}">
+  // ŽÁDNÝ STAV „BYLI JSME TAM" (srpen 2026). Itinerář odpovídá na „jak to
+  // pojedeme", ne „kde jsme byli" – fajfka i ztlumení odjeté zastávky sem
+  // pletly druhou otázku a člověk plánující příští léto koukal na to, co
+  // odškrtl loni. Odškrtávání zůstalo na kartě Na cestě, kam patří;
+  // `store.stav` se nemění, jen se tu nečte.
+  return `<div class="zastavka${rozbaleno === p.id ? ' otevrena' : ''}" data-id="${p.id}" style="--pc:${k.c}">
     <div class="zastavka-radek">
       <span class="uchyt" data-uchyt title="Táhni pro změnu pořadí">${IC('i-vice')}</span>
       <img class="zastavka-obr" src="${obr.src}" alt="" loading="lazy" decoding="async"
@@ -920,9 +994,6 @@ function zastavka(p, poradi, predchozi, denIdx, poctDnu, posledniVeDni, uplnePos
           predchozi ? `${fmtKm(leg)} <span class="tecka">•</span> ${fmtCas((leg / KMH) * 1)}` : esc(p.r || p.z)
         }${store.notes[p.id] ? ` <span class="tecka">•</span> ${IC('i-quill', 'font-size:12px')}poznámka` : ''}</div>
       </div>
-      <button class="zastavka-hotovo${hotova ? ' on' : ''}" data-act="hotovo"
-        title="${hotova ? 'Přece jsme tam nebyli' : 'Byli jsme tady'}"
-        aria-label="${hotova ? 'Přece jsme tam nebyli' : 'Byli jsme tady'}">${IC('i-check')}</button>
       <button class="zastavka-vice" data-act="vice" title="Co s touhle zastávkou">${IC('i-vice')}</button>
     </div>
     <div class="zastavka-akce">
@@ -945,32 +1016,53 @@ function lista(items) {
   </div>`
 }
 
-/* ================= dashboard: mapa, termín, počasí ================= */
+/* ================= dashboard: mapa a termín ================= */
 
 /**
- * Datum z lidského zápisu na 'YYYY-MM-DD'. Rozumí `12.8.2026`, `12. 8. 2026`
- * i `2026-08-12`. Nerozpoznané vrací '' – volající to pozná a řekne to.
+ * Průvodce termínem: kalendář a stepper, dvě otázky za sebou.
+ *
+ * Obojí smí zůstat prázdné – termín je nepovinný a prázdná odpověď ho zase
+ * zruší. Do srpna 2026 se datum PSALO (`12.8.2026`) a parsovalo regulárním
+ * výrazem; překlep skončil hláškou „Datum nerozumím". Z kalendáře se
+ * neplatná hodnota vzít nedá, takže parser zanikl i s ní.
+ *
+ * Počet dnů se srovnává přes `srovnejDny()`, která umí i zkrátit – dřív
+ * uměla appka dny jen přidávat, takže „na kolik dní" šlo nastavit jednou
+ * a zpátky už nikdy.
  */
-function naIso(text) {
-  const t = (text || '').trim()
-  if (!t) return ''
-  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t
-  const m = /^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})$/.exec(t)
-  if (!m) return ''
-  return `${m[3]}-${String(Number(m[2])).padStart(2, '0')}-${String(Number(m[1])).padStart(2, '0')}`
-}
+async function upravTermin() {
+  const { od, dnu } = termin()
 
-/**
- * Dorovná `planDny` na zadaný počet dnů. Prázdné dny jsou platný stav –
- * „jedeme na deset dní, plnit budu na poslední chvíli".
- * Existující rozdělení se NIKDY nezkracuje: to by snědlo zastávky.
- */
-function pripravDny(kolik) {
-  if (!kolik) return
-  const ted = store.planDny || []
-  if (ted.length >= kolik) return
-  store.planDny = [...(ted.length ? ted : [store.plan.length]), ...Array(kolik - Math.max(1, ted.length)).fill(0)]
-  save()
+  const kdy = await vyberDatum({
+    nadpis: 'Kdy vyrážíme?',
+    text: 'Nepovinné. Když datum vybereš, doplním ke dnům kalendářní data.',
+    vychozi: od,
+  })
+  if (kdy === null) return
+
+  const kolik = await vyberPocetDni({
+    nadpis: 'Na kolik dní?',
+    text: 'Připravím ti tolik dnů. Prázdné taky stačí – dny se dají přidávat průběžně.',
+    vychozi: dnu,
+  })
+  if (kolik === null) return
+
+  // Zkrácení, které by přestěhovalo zastávky, se musí ohlásit dřív, než se
+  // stane – slití do posledního dne je sice bezpečné (nic se neztratí), ale
+  // překvapivé.
+  const stehuje = kolik ? zastavekNadDen(kolik) : 0
+  if (stehuje) {
+    const dal = await potvrd({
+      nadpis: `Zkrátit na ${kolik} ${sklonuj(kolik, 'den', 'dny', 'dní')}?`,
+      text: `Dny na konci mají ${stehuje} ${sklonuj(stehuje, 'zastávku', 'zastávky', 'zastávek')}. Přesunou se do posledního zbývajícího dne – neztratí se, jen se sesypou k sobě.`,
+      ano: 'Zkrátit',
+    })
+    if (!dal) return
+  }
+
+  if (!nastavTermin(kdy, kolik)) return
+  if (kolik) srovnejDny(kolik)
+  renderPlan()
 }
 
 /** Vlastní instance mapy na dashboardu. Jako u košíku se uklízí při odchodu. */
@@ -1099,74 +1191,13 @@ function vykresliMapuDashboardu(wrap) {
   })
 }
 
-/** Aby se počasí netahalo znovu při každém překreslení. */
-let pocasiProTermin = ''
-
-/**
- * Dotáhne předpověď pro první zastávku a rozsah termínu.
- *
- * Jen když je termín a jen jednou pro danou kombinaci – druhé (a poslední)
- * síťové volání za běhu vedle Nominatimu. Selhání je tichá: dashboard
- * funguje dál, jen bez počasí. Bez signálu v horách je to běžný stav,
- * ne chyba, kterou by bylo potřeba hlásit.
- */
-function dotahniPocasi(prekresli) {
-  const { od, dnu } = termin()
-  const misto = store.plan.map((id) => S.byId[id]).find((p) => p && Number.isFinite(p.lat)) || vychoziBod()
-  if (!od || !misto) return
-  const klic = `${od}|${dnu}|${misto.lat.toFixed(2)},${misto.lon.toFixed(2)}`
-  if (pocasiProTermin === klic) return
-  pocasiProTermin = klic
-
-  // Open-Meteo dává předpověď na 16 dní dopředu, dál nemá smysl se ptát.
-  const konec = datumDne(Math.min(dnu || 1, 16))
-  nactiPocasi(misto, od, konec)
-    .then((dny) => {
-      for (const d of dny) pocasiDne.set(d.datum, d)
-      if (dny.length) prekresli()
-    })
-    .catch(() => {
-      /* offline nebo služba mlčí – dashboard funguje i bez počasí */
-    })
-}
-
 /* ================= obsluha ================= */
 
 function napoj(wrap, items) {
-  if (dil === 'itinerar' && S.otevrenaCesta == null) {
-    vykresliMapuDashboardu(wrap)
-    dotahniPocasi(renderPlan)
-  }
+  if (dil === 'itinerar' && S.otevrenaCesta == null) vykresliMapuDashboardu(wrap)
 
   const terminBtn = wrap.querySelector('#terminNastav')
-  if (terminBtn)
-    terminBtn.onclick = async () => {
-      // Dvě otázky za sebou, obě smí zůstat prázdné – termín je nepovinný
-      // a prázdná odpověď ho zase zruší.
-      const { od, dnu } = termin()
-      const kdy = await zadej({
-        nadpis: 'Kdy vyrážíme?',
-        text: 'Ve tvaru 12.8.2026, nebo nech prázdné – termín je nepovinný.',
-        vychozi: od ? kratkeDatum(od).replace(/\s/g, '') + new Date(od).getFullYear() : '',
-        placeholder: '12.8.2026',
-      })
-      if (kdy === null) return
-      const kolik = await zadej({
-        nadpis: 'Na kolik dní?',
-        text: 'Připravím ti tolik dnů v kostře. Prázdné taky stačí.',
-        vychozi: dnu ? String(dnu) : '',
-        placeholder: '10',
-      })
-      if (kolik === null) return
-
-      const iso = naIso(kdy)
-      if (kdy.trim() && !iso) return toast('Datum nerozumím – zkus třeba 12.8.2026')
-      if (!nastavTermin(iso, Number(kolik) || 0)) return
-      // Termín mění, kolik dnů kostra ukazuje – bez zastávek by jinak
-      // zůstala prázdná i po zadání „na 10 dní".
-      pripravDny(Number(kolik) || 0)
-      renderPlan()
-    }
+  if (terminBtn) terminBtn.onclick = upravTermin
 
   // Dlaždice dashboardu vedou tam, kde se to řeší – číslo, na které se dá
   // ťuknout, musí něco udělat, jinak vypadá jako ovládací prvek a mlčí.
@@ -1178,19 +1209,8 @@ function napoj(wrap, items) {
         return
       }
       // Zastávky i volné dny žijí v itineráři pod dashboardem – stačí sjet.
-      const cil = wrap.querySelector(b.dataset.dash === 'volno' ? '.kostra-den.volny' : '.zastavka')
+      const cil = wrap.querySelector(b.dataset.dash === 'volno' ? '.denhd.volny' : '.zastavka')
       if (cil) cil.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }
-  }
-
-  // Ťuknutí na den kostry: zatím sjede na ten den v itineráři. Průvodce
-  // „naplánujme tenhle den" přijde v dalším kole (dohodnuto se zadavatelkou).
-  for (const b of wrap.querySelectorAll('[data-kostra-den]')) {
-    b.onclick = () => {
-      const den = Number(b.dataset.kostraDen)
-      const cil = wrap.querySelector(`.denhd[data-den="${den}"]`)
-      if (cil) cil.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      else toast(`${den}. den je zatím volný`)
     }
   }
 
@@ -1239,17 +1259,11 @@ function napoj(wrap, items) {
         toast(`${p.n.split(/\s[–(]/)[0]} přidáno do plánu`)
       })
 
-  // Totéž vybírátko jako u zastávky, jen výsledek jde do košíku. Sdílená
-  // cesta je záměr: člověk vybírá stejně, mění se jen závaznost.
-  const naPotom = wrap.querySelector('#planNaPotom')
-  if (naPotom)
-    naPotom.onclick = () =>
-      otevriVyber((p) => {
-        if (store.plan.includes(p.id)) return toast('Tohle místo už je v itineráři')
-        if (!pridejDoKosiku(p.id)) return toast('Tohle už v košíku máš')
-        toast(`${p.n.split(/\s[–(]/)[0]} uloženo na potom`)
-        renderPlan()
-      })
+  // Jediná cesta k vlastnímu bodu z Itineráře. Průvodce se zeptá i na to,
+  // do kterého dne bod patří – dřív to říkalo tlačítko, u kterého se stálo,
+  // takže jich muselo být tolik, kolik je dnů.
+  const pridatBod = wrap.querySelector('#planPridatBod')
+  if (pridatBod) pridatBod.onclick = () => pridejBodPruvodce()
 
   const doKosiku = wrap.querySelector('#planDoKosiku')
   if (doKosiku)
@@ -1274,15 +1288,10 @@ function napoj(wrap, items) {
       renderPlan()
     }
 
-  for (const b of wrap.querySelectorAll('.pridatbod'))
-    b.onclick = () => pridejBodPruvodce(Number(b.dataset.den), b.dataset.po || null)
-
-  // Malé „+“ v hlavičce dne: bod na jeho začátek, ne za poslední zastávku.
-  for (const b of wrap.querySelectorAll('[data-act="pridat-na-zacatek"]'))
-    b.onclick = (e) => {
-      e.stopPropagation()
-      pridejBodPruvodce(Number(b.dataset.den), null)
-    }
+  // Prázdný den je pozvánka, ne mezera – ťuknutí do něj rovnou nabídne, čím
+  // ho naplnit. Tažení z košíku je druhá cesta, tohle je ta pro palec.
+  for (const b of wrap.querySelectorAll('[data-volny-den]'))
+    b.onclick = () => pridejBodPruvodce(Number(b.dataset.volnyDen))
 
   for (const r of wrap.querySelectorAll('[data-bod]')) {
     const uprav = r.querySelector('[data-act="bod-upravit"]')
@@ -1340,14 +1349,6 @@ function napoj(wrap, items) {
     z.querySelector('[data-act=vice]').onclick = () => {
       rozbaleno = rozbaleno === id ? '' : id
       renderPlan()
-    }
-    // Odškrtnutí zapisuje do `store.stav` jako navštívené – tedy do téhož
-    // místa, kde to má srdce v Seznamu i fajfka v detailu. Žádná druhá evidence.
-    z.querySelector('[data-act=hotovo]').onclick = () => {
-      if (store.stav[id] === 'visited') delete store.stav[id]
-      else store.stav[id] = 'visited'
-      save()
-      draw()
     }
     z.querySelector('[data-act=open]').onclick = () => goTo(S.byId[id])
     z.querySelector('[data-act=rm]').onclick = () => togglePlan(id)
@@ -1478,7 +1479,12 @@ function napojTahani(wrap) {
         drzak.addEventListener('click', spolkni, { capture: true, once: true })
         setTimeout(() => drzak.removeEventListener('click', spolkni, { capture: true }), 350)
       }
-      if (cil !== start) poDrop(start, cil)
+      // VOLÁ SE VŽDY, i když `cil === start`, a `posledniY` jde s tím.
+      // Zastávka se dá přetáhnout do JINÉHO DNE, aniž by v seznamu někoho
+      // přeskočila – poslední zastávka dne puštěná do prázdného dne pod ním
+      // má `cil === start`, a dřívější `if (cil !== start)` ji zahodilo.
+      // Rozhodnutí „mění se něco?" patří do poDrop, které jediné vidí dny.
+      poDrop(start, cil, posledniY)
     }
     drzak.onpointerup = () => konec(true)
     drzak.onpointercancel = () => konec(false)
@@ -1526,18 +1532,36 @@ function napojTahani(wrap) {
     }
   }
 
+  /**
+   * Do kterého dne prst dopadl – poslední hlavička dne nad danou souřadnicí.
+   *
+   * PROČ Z HLAVIČEK, NE Z NEJBLIŽŠÍ ZASTÁVKY: prázdný den žádnou zastávku
+   * nemá, takže kotva by spadla do dne nad ním a do prázdného dne by se
+   * nedalo pustit vůbec nic. Hlavičky se navíc při tažení ZASTÁVKY
+   * neposouvají (uhýbají jen `.zastavka` řádky), takže jejich změřená
+   * poloha odpovídá tomu, co člověk na obrazovce vidí.
+   */
+  const denPodPrstem = (y) => {
+    let den = 1
+    for (const h of seznam.querySelectorAll('.denhd')) {
+      if (h.getBoundingClientRect().top <= y) den = Number(h.dataset.den)
+    }
+    return den
+  }
+
   // Zastávky a body trasy: jeden smíšený seznam napříč dny. Kotva puštění
   // je nejbližší ZASTÁVKA nad novou polohou – bod si podle ní přepíše `po`,
-  // zastávka se za ni zařadí ve `store.plan`.
+  // zastávka se za ni zařadí uvnitř svého dne.
   const radky = [...seznam.querySelectorAll('.zastavka')]
   const radkySkupiny = radky.map((el) => ({ prvky: [el] }))
   radkySkupiny.forEach((sk, idx) => {
     const el = radky[idx]
-    pripoj(radkySkupiny, sk, el.querySelector('[data-uchyt]'), el, (start, cil) => {
+    pripoj(radkySkupiny, sk, el.querySelector('[data-uchyt]'), el, (start, cil, y) => {
       const ostatni = radky.filter((r) => r !== el)
       let z = Math.min(cil, ostatni.length) - 1
       while (z >= 0 && !ostatni[z].dataset.id) z--
       const kotva = z >= 0 ? ostatni[z].dataset.id : null
+      const denCil = denPodPrstem(y)
 
       if (el.dataset.bod) {
         const b = blok(el.dataset.bod)
@@ -1550,8 +1574,11 @@ function napojTahani(wrap) {
           b.po = kotva
           b.den = null
         } else {
+          // Bez kotvy = na začátek dne, do kterého prst dopadl. Dřív tu byla
+          // natvrdo jednička, takže bod puštěný na začátek pátého dne skočil
+          // na začátek prvního.
           b.po = null
-          b.den = 1
+          b.den = denCil
         }
         // Mezi body u stejné kotvy rozhoduje pořadí v poli – přesunutý jde
         // na konec, takže dosedne tam, kam ho člověk pustil.
@@ -1563,20 +1590,10 @@ function napojTahani(wrap) {
         return
       }
 
-      const id = el.dataset.id
-      const kde = store.plan.indexOf(id)
-      if (kde < 0) return
-      let kam = kotva ? store.plan.indexOf(kotva) + 1 : 0
-      if (kam < 0) return
-      store.plan.splice(kde, 1)
-      if (kam > kde) kam--
-      if (kam === kde) {
-        store.plan.splice(kam, 0, id)
-        return
-      }
-      store.plan.splice(kam, 0, id)
-      save()
-      draw()
+      // Zastávka se stěhuje MEZI DNY, ne jen ve `store.plan` – zápis dělá
+      // `presunZastavku()` v dny.js, kde je i vysvětlení, co se tu dřív
+      // lámalo (BUGS.md B4) a proč to patří do datové vrstvy.
+      if (presunZastavku(el.dataset.id, denCil, kotva)) draw()
     })
   })
 

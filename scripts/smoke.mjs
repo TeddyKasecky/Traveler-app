@@ -573,17 +573,54 @@ await page.click('.slozka-obsah .vypravaradek')
 await page.waitForTimeout(500)
 await kontrola('ťuknutí na řádek ve složce otevře Itinerář', () => page.locator('.planhlava h2').count(), 1)
 
-// Odškrtnutá zastávka se zapisuje jako navštívená, tedy do téhož místa jako
-// srdce v Seznamu. Žádná druhá evidence.
-await kontrola('zastávka má fajfku „byli jsme tady"', () => page.locator('.zastavka-hotovo').count(), 1)
-await page.click('.zastavka-hotovo')
-await page.waitForTimeout(500)
-await kontrola('odškrtnutí se zapíše jako navštíveno', () =>
-  page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('vandrbuch:v1')).stav).filter((x) => x === 'visited').length),
-  1
-)
-await page.click('.zastavka-hotovo')
-await page.waitForTimeout(500)
+// Itinerář odpovídá na „jak to pojedeme", ne „kde jsme byli" – fajfka
+// „byli jsme tady" odsud v srpnu 2026 odešla (zůstala na kartě Na cestě).
+await kontrola('Itinerář neřeší, kde jsme byli', () => page.locator('.zastavka-hotovo').count(), 0)
+
+// Hlavička dne se kreslí VŽDY, i u jednodenního plánu – bez ní není kam
+// pustit zastávku ani kam přidat druhý den.
+await kontrola('jednodenní plán má hlavičku dne', () => page.locator('.denhd').count(), 1)
+await kontrola('hlavička dne nese číslo', () => page.locator('.denhd-cislo').first().innerText(), '1')
+
+// Termín se vybírá z kalendáře, nepíše – z mřížky se neplatná hodnota
+// vzít nedá. Dřív to byl `zadej()` s parserem „12.8.2026".
+await page.click('#terminNastav')
+await page.waitForTimeout(400)
+await kontrola('termín otevře kalendář', () => page.locator('#dialog.show .kal-mriz').count(), 1)
+await kontrola('kalendář má sedm sloupců zkratek', () => page.locator('#dialog .kal-tydny span').count(), 7)
+await kontrola('kalendář zná dnešek', () => page.locator('#dialog .kal-den.dnes').count(), 1)
+await page.click('#dialog .kal-den.dnes')
+await page.waitForTimeout(200)
+await page.click('#dialogAno')
+await page.waitForTimeout(400)
+await kontrola('po datu se ptá na počet dnů', () => page.locator('#dialog.show .pocet-stepper').count(), 1)
+await page.click('#dialog .pocet-pill:nth-child(3)')
+await page.waitForTimeout(200)
+await kontrola('rychlá volba nastaví počet', () => page.locator('#dialog .pocet-stepper b').innerText(), '7')
+await page.click('#dialog [data-krok="1"]')
+await page.waitForTimeout(200)
+await kontrola('stepper přidá den', () => page.locator('#dialog .pocet-stepper b').innerText(), '8')
+await page.click('#dialogAno')
+await page.waitForTimeout(600)
+await kontrola('termín se zapsal', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).vypravaDnu), 8)
+await kontrola('dny se srovnaly na termín', () => page.locator('.denhd').count(), 8)
+await kontrola('prázdné dny nabízejí, čím je naplnit', () =>
+  page.locator('.denvolno').count().then((n) => n >= 7))
+await kontrola('hlavičky dnů mají datum z termínu', () =>
+  page.locator('.denhd-datum').count().then((n) => n >= 8))
+// Zkrácení zpátky – dřív šel počet dnů nastavit jen nahoru.
+await page.click('#terminNastav')
+await page.waitForTimeout(400)
+await page.click('#dialogAno')
+await page.waitForTimeout(300)
+await page.click('#dialog [data-pocet="3"]')
+await page.waitForTimeout(200)
+await page.click('#dialogAno')
+await page.waitForTimeout(600)
+await kontrola('počet dnů jde i zkrátit', () => page.locator('.denhd').count(), 3)
+await kontrola('zkrácením se zastávka neztratila', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).plan.length), 1)
 
 // Navigace je pod jedním tlačítkem, ne třemi v řádku. GPX je čtvrtá volba –
 // jediná, která unese celou trasu (Google jen deset bodů, Apple a Waze jeden).
@@ -633,11 +670,14 @@ await page.click('#dialogAno')
 await page.waitForTimeout(400)
 await kontrola('blok uklizený', () => page.locator('.blok').count(), 0)
 
-// Body trasy (start/nocleh/cíl/vlastní): průvodce druh → název → poloha.
-// Malé „+“ v hlavičce dne zakládá na jeho ZAČÁTEK, velké tlačítko na konci
-// dne za poslední zastávku – ověřují se obě cesty.
-await kontrola('konec dne nabízí Přidat bod', () => page.locator('.pridatbod').count(), 1)
-await page.click('.pridatbod')
+// Body trasy (start/nocleh/cíl/vlastní): průvodce druh → název → (den) →
+// poloha. JEDNO tlačítko na celý itinerář (srpen 2026) – dřív mělo „+“
+// každý den v hlavičce a další na svém konci, tedy dvacet plusek při deseti
+// dnech. Den se ptá až průvodce; u start/cíl se otázka přeskakuje, protože
+// ty mají pevné místo na krajích plánu.
+await kontrola('pluska u dnů zmizela', () => page.locator('.pridatbod, [data-act="pridat-na-zacatek"]').count(), 0)
+await kontrola('itinerář nabízí Přidat bod', () => page.locator('#planPridatBod').count(), 1)
+await page.click('#planPridatBod')
 await page.waitForTimeout(400)
 await kontrola('průvodce nabízí čtyři druhy bodu', () => page.locator('#dialog .dialog-volba').count(), 4)
 await page.click('.dialog-volba[data-i="0"]') // start

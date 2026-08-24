@@ -130,6 +130,177 @@ export async function vyberZeSeznamu({ nadpis = '', text = '', polozky }) {
   return typeof v === 'string' ? v : null
 }
 
+/* ================= kalendář a počet dnů ================= */
+
+/**
+ * PROČ VLASTNÍ KALENDÁŘ, A NE PSANÍ DATA: termín se do srpna 2026 zadával
+ * textem („12.8.2026") a parsoval regulárním výrazem. Překlep, americký tvar
+ * nebo lomítka skončily hláškou „Datum nerozumím" – tedy prací navíc za to,
+ * že člověk napsal datum jinak, než appka čekala. Z vybírání se neplatná
+ * hodnota vzít nedá.
+ *
+ * `<input type="date">` by byl kratší, ale vypadá na každé platformě jinak
+ * a nejde ho sladit s Golden Moss. Mřížka je devadesát řádků a je celá naše.
+ */
+const MESICE = ['leden', 'únor', 'březen', 'duben', 'květen', 'červen',
+  'červenec', 'srpen', 'září', 'říjen', 'listopad', 'prosinec']
+
+/** Pondělí první – české zvyklosti, ne nedělní americké. */
+const DNY_ZKR = ['po', 'út', 'st', 'čt', 'pá', 'so', 'ne']
+
+/** 'YYYY-MM-DD'. Přes UTC jako termin.js#datumDne() – letní čas neposune den. */
+const isoDatum = (r, m, d) => `${r}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+
+/**
+ * Výběr data z kalendáře.
+ *
+ * Vrací `'YYYY-MM-DD'`, prázdný řetězec pro „Bez termínu" (termín se tím
+ * ruší) a `null` při zrušení – tedy stejné rozlišení „prázdné" × „nic",
+ * jaké má `zadej()`.
+ *
+ * @param {{nadpis?: string, text?: string, vychozi?: string, ano?: string}} p
+ * @returns {Promise<string|null>}
+ */
+export async function vyberDatum({ nadpis = '', text = '', vychozi = '', ano = 'Vybrat' }) {
+  const dnes = new Date()
+  const dnesIso = isoDatum(dnes.getFullYear(), dnes.getMonth(), dnes.getDate())
+  let vybrane = /^\d{4}-\d{2}-\d{2}$/.test(vychozi) ? vychozi : ''
+  const [r0, m0] = vybrane ? vybrane.split('-').map(Number) : [dnes.getFullYear(), dnes.getMonth() + 1]
+  let rok = r0
+  let mesic = m0 - 1
+
+  const slib = otevri(`
+    ${hlava(nadpis, 'i-kalendar')}
+    ${text ? `<p class="dialog-text">${esc(text)}</p>` : ''}
+    <div class="kal" id="dialogKal"></div>
+    <div class="btnrow">
+      <button class="btn" id="dialogNe">Zrušit</button>
+      <button class="btn" id="dialogBez">Bez termínu</button>
+      <button class="btn primary" id="dialogAno">${esc(ano)}</button>
+    </div>`)
+
+  const kal = document.getElementById('dialogKal')
+  const kresli = () => {
+    // Posun prvního dne: getUTCDay() má neděli jako 0, my pondělí.
+    const posun = (new Date(Date.UTC(rok, mesic, 1)).getUTCDay() + 6) % 7
+    const pocet = new Date(Date.UTC(rok, mesic + 1, 0)).getUTCDate()
+    const bunky = Array(posun).fill('<span></span>')
+    for (let d = 1; d <= pocet; d++) {
+      const hodnota = isoDatum(rok, mesic, d)
+      bunky.push(`<button class="kal-den${hodnota === vybrane ? ' on' : ''}${
+        hodnota === dnesIso ? ' dnes' : ''}" data-datum="${hodnota}">${d}</button>`)
+    }
+    kal.innerHTML = `
+      <div class="kal-hlava">
+        <button class="kal-sip" data-kal="-1" aria-label="Předchozí měsíc">${IC('i-sipka')}</button>
+        <b>${MESICE[mesic]} ${rok}</b>
+        <button class="kal-sip dopredu" data-kal="1" aria-label="Další měsíc">${IC('i-sipka')}</button>
+      </div>
+      <div class="kal-tydny">${DNY_ZKR.map((d) => `<span>${d}</span>`).join('')}</div>
+      <div class="kal-mriz">${bunky.join('')}</div>
+      <button class="kal-dnes" id="dialogDnes">Dnes</button>`
+
+    for (const b of kal.querySelectorAll('[data-kal]')) {
+      b.onclick = () => {
+        mesic += Number(b.dataset.kal)
+        if (mesic < 0) {
+          mesic = 11
+          rok--
+        } else if (mesic > 11) {
+          mesic = 0
+          rok++
+        }
+        kresli()
+      }
+    }
+    for (const b of kal.querySelectorAll('[data-datum]')) {
+      b.onclick = () => {
+        vybrane = b.dataset.datum
+        kresli()
+      }
+    }
+    kal.querySelector('#dialogDnes').onclick = () => {
+      vybrane = dnesIso
+      rok = dnes.getFullYear()
+      mesic = dnes.getMonth()
+      kresli()
+    }
+  }
+  kresli()
+
+  document.getElementById('dialogNe').onclick = () => zavriDialog(null)
+  document.getElementById('dialogBez').onclick = () => zavriDialog('')
+  document.getElementById('dialogAno').onclick = () => zavriDialog(vybrane)
+  const v = await slib
+  return typeof v === 'string' ? v : null
+}
+
+/** Nad kolik dnů se výprava hlásí jako extrém. Upozornění, ne zákaz. */
+const DNU_HODNE = 30
+
+/**
+ * Výběr počtu dnů: stepper s rychlými volbami.
+ *
+ * Nad `DNU_HODNE` se ukáže upozornění – seznam dnů se při takové délce dělá
+ * hodně dlouhý. Je to VAROVÁNÍ, NE ZÁKAZ: kdo jede na tři měsíce, má na to
+ * právo a appka mu do toho nemá mluvit.
+ *
+ * @param {{nadpis?: string, text?: string, vychozi?: number, max?: number, ano?: string}} p
+ * @returns {Promise<number|null>}
+ */
+export async function vyberPocetDni({ nadpis = '', text = '', vychozi = 0, max = 365, ano = 'Uložit' }) {
+  const RYCHLE = [3, 5, 7, 10, 14, 21]
+  let n = Math.max(0, Math.min(max, Math.round(vychozi) || 0))
+
+  const slib = otevri(`
+    ${hlava(nadpis, 'i-kalendar')}
+    ${text ? `<p class="dialog-text">${esc(text)}</p>` : ''}
+    <div class="pocet" id="dialogPocet"></div>
+    <div class="btnrow">
+      <button class="btn" id="dialogNe">Zrušit</button>
+      <button class="btn primary" id="dialogAno">${esc(ano)}</button>
+    </div>`)
+
+  const box = document.getElementById('dialogPocet')
+  const kresli = () => {
+    box.innerHTML = `
+      <div class="pocet-stepper">
+        <button class="pocet-krok" data-krok="-1" aria-label="O den míň"${n <= 0 ? ' disabled' : ''}>−</button>
+        <b>${n || '—'}</b>
+        <button class="pocet-krok" data-krok="1" aria-label="O den víc"${n >= max ? ' disabled' : ''}>+</button>
+      </div>
+      <div class="pocet-rychle">${RYCHLE.map(
+        (d) => `<button class="pocet-pill${d === n ? ' on' : ''}" data-pocet="${d}">${d}</button>`
+      ).join('')}</div>
+      ${n > DNU_HODNE
+        ? `<div class="pocet-pozor">${IC('i-clock')}To je pořádná výprava. Nad ${DNU_HODNE} dní se seznam
+             dnů dělá hodně dlouhý – zvaž rozdělení na víc výprav.</div>`
+        : ''}`
+
+    for (const b of box.querySelectorAll('[data-krok]')) {
+      b.onclick = () => {
+        n = Math.max(0, Math.min(max, n + Number(b.dataset.krok)))
+        kresli()
+      }
+    }
+    for (const b of box.querySelectorAll('[data-pocet]')) {
+      b.onclick = () => {
+        // Druhé ťuknutí na tutéž pilulku ji zruší – stejné pravidlo jako
+        // u chutí v „Co dál?".
+        const d = Number(b.dataset.pocet)
+        n = n === d ? 0 : d
+        kresli()
+      }
+    }
+  }
+  kresli()
+
+  document.getElementById('dialogNe').onclick = () => zavriDialog(null)
+  document.getElementById('dialogAno').onclick = () => zavriDialog(n)
+  const v = await slib
+  return typeof v === 'number' ? v : null
+}
+
 /**
  * Oznámení – náhrada alert(). Jen se odklepne.
  * @param {{nadpis?: string, text?: string, ano?: string}} p
