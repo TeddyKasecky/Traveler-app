@@ -32,14 +32,14 @@ import { spustSledovani, zastavSledovani, aktualniProjekce } from './cesta-zivot
 import { prepocitejOtiskCesty } from './routing.js'
 import {
   fmtDoba, cistyCas, jedeSe, vyjed, ukonciCestu, vychoziBod, odznaceneVPoradi,
-  pridejDoCesty, vynechZCesty, kolikatyDenCesty, cestaZmenena,
+  pridejDoCesty, vynechZCesty, kolikatyDenCesty, cestaZmenena, mojePoloha, posledniOdznacena,
 } from './cestaData.js'
 
 // Reexport datové vrstvy: volající (plan.js, kosikView.js, map/planLine.js)
 // sahali sem odjakživa a rozdělení souboru není důvod je všechny přepsat.
 export {
   fmtDoba, cistyCas, jedeSe, vyjed, ukonciCestu, vychoziBod, odznaceneVPoradi,
-  pridejDoCesty, vynechZCesty, kolikatyDenCesty, cestaZmenena,
+  pridejDoCesty, vynechZCesty, kolikatyDenCesty, cestaZmenena, mojePoloha, posledniOdznacena,
 }
 
 /** Silnice bývá delší než vzdušná čára – týž koeficient jako v plan.js. */
@@ -185,7 +185,7 @@ function coDal() {
   const odkud = vychoziBod()
   const tipy = tipyOdsud(odkud)
   S.coDalId = tipy.map((t) => t.p.id)
-  return coDalHtml(odkud, tipy, odkud ? odkud.popis : '')
+  return coDalHtml(odkud, tipy)
 }
 
 /**

@@ -414,6 +414,20 @@ export const S = {
    * nepřežívá restart – tipy jsou stejně platné jen pro aktuální polohu/otisk.
    */
   coDalId: [],
+  /**
+   * Odkud se počítá „co je poblíž" v tipech Co dál? a v košíku:
+   * `'ja'` (GPS) nebo `'posledni'` (poslední odškrtnutá zastávka cesty).
+   *
+   * Do srpna 2026 to nebyla volba – GPS měla vždycky přednost a poslední
+   * zastávka byla jen záskok. Obojí je přitom legitimní otázka a liší se:
+   * „co je kolem mě teď" proti „co je kolem místa, kde jsme skončili"
+   * (plánování večer u ohně). Přepíná se tlačítkem v hlavičce Co dál?,
+   * čte `views/plan/cestaData.js#vychoziBod()`.
+   *
+   * Jen v paměti – je to rozhodnutí na pět minut, ne nastavení. Když
+   * zvolený zdroj není k dispozici, `vychoziBod()` sáhne po tom druhém.
+   */
+  coDalOdkud: 'ja',
 }
 
 /**

@@ -134,35 +134,60 @@ export function ukonciCestu() {
 }
 
 /**
- * Odkud se měří „co je poblíž" – pro tipy Co dál? i pro vzdálenosti v košíku.
+ * Kde jsi TY – jen z GPS, nikdy jako odhad z trasy.
  *
- * GPS má přednost, protože je to opravdu tam, kde stojíš. Když není (bez
- * signálu, zamítnuté oprávnění, prohlížeč bez polohy), nastoupí poslední
- * odznačená zastávka: na cestě je to nejlepší odhad, kde jsi. Bez obojího
- * vrací null a volající karty se prostě nevykreslí.
+ * Živě sledovaná poloha má přednost před jednorázovou: na cestě se hýbeme
+ * a `S.userPos` je „kde jsem se naposledy zeptal", což může být před hodinou
+ * a sto kilometrů zpátky. Bez sledování (mimo kartu Na cestě, na pozadí) je
+ * `S.zivaPoloha` null a nastoupí jednorázová.
  *
- * @returns {{lat:number, lon:number, popis:string}|null}
+ * @returns {{lat:number, lon:number, popis:string, zdroj:'ja'}|null}
  */
-export function vychoziBod() {
-  // Živě sledovaná poloha má přednost před jednorázovou: na cestě se hýbeme
-  // a `S.userPos` je „kde jsem se naposledy zeptal", což může být před
-  // hodinou a sto kilometrů zpátky. Bez sledování (mimo kartu Na cestě,
-  // na pozadí) je `S.zivaPoloha` null a nastoupí jednorázová jako dřív.
+export function mojePoloha() {
   if (S.zivaPoloha && Number.isFinite(S.zivaPoloha.lat)) {
-    return { lat: S.zivaPoloha.lat, lon: S.zivaPoloha.lon, popis: 'od tebe' }
+    return { lat: S.zivaPoloha.lat, lon: S.zivaPoloha.lon, popis: 'od tebe', zdroj: 'ja' }
   }
   if (S.userPos && Number.isFinite(S.userPos.lat)) {
-    return { lat: S.userPos.lat, lon: S.userPos.lon, popis: 'od tebe' }
-  }
-  const c = store.cesta
-  if (c) {
-    // Poslední v pořadí odznačení, ne poslední v plánu – odznačovat se dá
-    // na přeskáčku a zajímá nás, kde jsme skončili.
-    const posledni = odznaceneVPoradi().slice(-1)[0]
-    const p = posledni && S.byId[posledni]
-    if (p) return { lat: p.lat, lon: p.lon, popis: `od: ${p.n}` }
+    return { lat: S.userPos.lat, lon: S.userPos.lon, popis: 'od tebe', zdroj: 'ja' }
   }
   return null
+}
+
+/**
+ * Poslední ODŠKRTNUTÁ zastávka rozjeté cesty.
+ *
+ * Poslední v pořadí odznačení, ne poslední v seznamu – odznačovat se dá na
+ * přeskáčku a zajímá nás, kde jsme naposledy opravdu byli.
+ *
+ * @returns {{lat:number, lon:number, popis:string, zdroj:'posledni', nazev:string}|null}
+ */
+export function posledniOdznacena() {
+  const c = store.cesta
+  if (!c) return null
+  const posledni = odznaceneVPoradi().slice(-1)[0]
+  const p = posledni && S.byId[posledni]
+  return p ? { lat: p.lat, lon: p.lon, popis: `od: ${p.n}`, zdroj: 'posledni', nazev: p.n } : null
+}
+
+/**
+ * Odkud se měří „co je poblíž" – pro tipy Co dál? i pro vzdálenosti v košíku.
+ *
+ * VOLBA, NE AUTOMATIKA (srpen 2026). Do teď měla GPS vždycky přednost
+ * a poslední odškrtnutá zastávka byla jen záskok, když poloha nebyla. Jenže
+ * obojí je legitimní otázka a liší se: „co je kolem mě teď" (stojím na
+ * parkovišti) proti „co je kolem místa, kde jsme skončili" (plánuju večer
+ * u ohně, kam zítra). Přepíná se tlačítkem v hlavičce „Co dál?".
+ *
+ * Fallback zůstává: když zvolený zdroj není k dispozici, nastoupí ten druhý.
+ * Bez obojího vrací null a volající karty se prostě nevykreslí.
+ *
+ * @returns {{lat:number, lon:number, popis:string, zdroj:string}|null}
+ */
+export function vychoziBod() {
+  const ja = mojePoloha()
+  const posledni = posledniOdznacena()
+  if (S.coDalOdkud === 'posledni') return posledni || ja
+  return ja || posledni
 }
 
 /* ================= úpravy rozjeté cesty ================= */

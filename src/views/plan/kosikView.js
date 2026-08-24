@@ -27,7 +27,9 @@ import {
 } from './kosik.js'
 import { zahodKosikVrstvu } from '../../map/kosikVrstva.js'
 import { zadej, vyberZeSeznamu } from '../../components/dialog.js'
-import { vychoziBod, jedeSe, pridejDoCesty, kolikatyDenCesty } from './cesta.js'
+import {
+  vychoziBod, jedeSe, pridejDoCesty, kolikatyDenCesty, mojePoloha, posledniOdznacena,
+} from './cesta.js'
 import { sklonuj } from './plan.js'
 import { dnyPlanu, nastavDny } from './dny.js'
 import { DRUHY, bodyVKosiku, prehodBod, pridejBod, rozpoznejSouradnice, hledejAdresu } from './body.js'
@@ -505,6 +507,32 @@ export function tipyOdsud(odkud) {
     .slice(0, TIPY_POCET)
 }
 
+/**
+ * Přepínač „odkud se měří" v hlavičce Co dál?.
+ *
+ * Do srpna 2026 tu byl jen šedý text („od tebe", „od: Lago di Braies") –
+ * popisek, ze kterého nešlo poznat, že se to dá změnit. Přitom jsou to dvě
+ * různé otázky a člověk mezi nimi přepíná často: „co je kolem mě teď"
+ * (stojím na parkovišti) proti „co je kolem místa, kde jsme skončili"
+ * (plánuju večer u ohně, kam se zítra vydáme).
+ *
+ * Když je k dispozici jen jeden zdroj, tlačítko se ukáže zašedlé (`.nejde`,
+ * stejná třída jako u přepínače módu mapy) – pořád je vidět, odkud se
+ * počítá, jen se nedá přepnout.
+ */
+function odkudPrepinac(odkud) {
+  const ja = mojePoloha()
+  const posledni = posledniOdznacena()
+  const lzePrepnout = !!ja && !!posledni
+  const jeJa = odkud.zdroj === 'ja'
+
+  return `<button class="odkud-prepinac${lzePrepnout ? '' : ' nejde'}" id="coDalOdkud"
+    title="${lzePrepnout ? 'Přepnout, odkud se počítá' : 'Druhý zdroj zatím není k dispozici'}">
+    ${IC(jeJa ? 'i-pinme' : 'i-check')}<span>${esc(jeJa ? 'od tebe' : `od: ${posledni ? posledni.nazev : ''}`)}</span>
+    ${lzePrepnout ? IC('i-vice') : ''}
+  </button>`
+}
+
 /** Jeden tip. */
 function tipRadek({ p, km, vKosiku: vKos }) {
   const kat = KAT[p.k] || {}
@@ -531,21 +559,21 @@ function tipRadek({ p, km, vKosiku: vKos }) {
 /**
  * Karta „Co dál?" – ukazuje se pod dnešní zastávkou na kartě Na cestě.
  *
- * `odkud` je poloha z GPS, nebo poslední odznačená zastávka jako záloha
- * (viz `vychoziBod()` v cesta.js). Bez obojího se karta nekreslí – tipy
- * odnikud nedávají smysl.
+ * `odkud` je zvolený výchozí bod – poloha z GPS, nebo poslední ODŠKRTNUTÁ
+ * zastávka (viz `vychoziBod()` v cestaData.js). Mezi obojím se přepíná
+ * tlačítkem v hlavičce sekce. Bez obojího se karta nekreslí – tipy odnikud
+ * nedávají smysl.
  *
  * `tipy` počítá volající (`cesta.js#coDal()`) přes `tipyOdsud(odkud)` – ne
  * tahle funkce sama, protože stejný výsledek potřebuje i zapsat do
  * `S.coDalId` (map/map.js#draw() ho čte pro mód „oko"), a počítat tipy
  * dvakrát by bylo zbytečné.
  *
- * @param {{lat:number, lon:number}|null} odkud
+ * @param {{lat:number, lon:number, zdroj?:string}|null} odkud
  * @param {Array<{p: Record<string, any>, km: number, vKosiku: boolean}>} tipy
- * @param {string} popisOdkud  odkud se měří, do popisku
  * @returns {string}
  */
-export function coDalHtml(odkud, tipy, popisOdkud = '') {
+export function coDalHtml(odkud, tipy) {
   if (!odkud) return ''
 
   const pilulky = CHUTE.map(
@@ -555,7 +583,7 @@ export function coDalHtml(odkud, tipy, popisOdkud = '') {
 
   return `
     <div class="sekce"><span class="sekce-text">Co dál?</span>
-      ${popisOdkud ? `<span class="sekce-pozn">${esc(popisOdkud)}</span>` : ''}</div>
+      ${odkudPrepinac(odkud)}</div>
     <div class="chute">${chut ? `<button class="chut-pill zrus" data-chut="">${IC('i-x')}</button>` : ''}${pilulky}</div>
     ${
       tipy.length
@@ -572,6 +600,13 @@ export function coDalHtml(odkud, tipy, popisOdkud = '') {
  * @param {() => void} prekresli
  */
 export function napojCoDal(wrap, prekresli) {
+  const odkud = wrap.querySelector('#coDalOdkud')
+  if (odkud && !odkud.classList.contains('nejde'))
+    odkud.onclick = () => {
+      S.coDalOdkud = S.coDalOdkud === 'posledni' ? 'ja' : 'posledni'
+      prekresli()
+    }
+
   for (const b of wrap.querySelectorAll('[data-chut]')) {
     b.onclick = () => {
       // Druhé ťuknutí na tutéž chuť ji zruší – filtr má jít vypnout stejnou

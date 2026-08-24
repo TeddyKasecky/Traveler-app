@@ -768,6 +768,14 @@ await kontrola('odznačení se zapsalo', () =>
 await kontrola('odznačené je i navštívené', () =>
   page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('vandrbuch:v1')).stav).filter((x) => x === 'visited').length), 1)
 await kontrola('projetá zastávka už nejde vynechat', () => page.locator('[data-vynech]').count(), 0)
+// „Co dál?" se počítá od zvoleného bodu – od tebe (GPS), nebo od poslední
+// ODŠKRTNUTÉ zastávky. Dřív to byla automatika s šedým popiskem, ze kterého
+// nešlo poznat, že se to dá přepnout. Bez GPS je k dispozici jen jeden
+// zdroj, takže tlačítko svítí zašedle a ukazuje tu odškrtnutou zastávku.
+await kontrola('Co dál? má přepínač zdroje', () => page.locator('#coDalOdkud').count(), 1)
+await kontrola('bez GPS se počítá od poslední odškrtnuté', () =>
+  page.locator('#coDalOdkud span').innerText().then((t) => t.startsWith('od: ')))
+await kontrola('jediný zdroj se nedá přepnout', () => page.locator('#coDalOdkud.nejde').count(), 1)
 // S jedinou zastávkou v plánu (odznačenou) není „Další cíl“ ani co ukazovat
 // jako zbývá – doplňky se ověřují samostatně v ruční kontrole vzhledu.
 await kontrola('u hotové jednozastávkové cesty není Další cíl', () => page.locator('.cesta-dalsi').count(), 0)
