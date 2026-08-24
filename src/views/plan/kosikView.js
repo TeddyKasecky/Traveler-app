@@ -25,8 +25,7 @@ import {
   kosik, mistaVKosiku, pridejDoKosiku, vyhodZKosiku, vyprazdniKosik, vKosiku,
   kosikSeZajizdkou, hlavniKotva, nastavKotvu, zrusKotvu, bodyBezPolohy,
 } from './kosik.js'
-import L from 'leaflet'
-import { drawKosik, zahodKosikVrstvu, priblizNaKosik, maCoKreslit } from '../../map/kosikVrstva.js'
+import { zahodKosikVrstvu } from '../../map/kosikVrstva.js'
 import { zadej, vyberZeSeznamu } from '../../components/dialog.js'
 import { vychoziBod } from './cesta.js'
 import { sklonuj } from './plan.js'
@@ -144,8 +143,12 @@ export function kosikHtml(odkud = null) {
 
   const kotva = hlavniKotva()
   const cil = kotva ? (polozky.find((x) => x.p.id === kotva.id) || {}).p || null : null
-  const poCeste = polozky.filter((x) => x.vKoridoru && !x.kotva).length
 
+  // ŽÁDNÁ MAPA ANI LEGENDA (srpen 2026). Košík je od přestavby plát vytažený
+  // zdola, tedy nejvýš 72 % obrazovky – a mini-mapa v něm zabírala 290 px,
+  // takže na seznam, kvůli kterému se otevírá, zbyly dva řádky. Kde místa
+  // jsou, ukazuje mapa Itineráře i hlavní mapa; košík odpovídá na „co ještě
+  // chci", což je seznam.
   return `
     <div class="kosik-hlava">
       <div>
@@ -157,23 +160,12 @@ export function kosikHtml(odkud = null) {
     </div>
 
     ${kotvaPruh(cil, kotva, odkud)}
-
-    <div class="kosik-mapa" id="kosikMapa"></div>
     ${
-      odkud && cil
-        ? `<div class="meta kosik-legenda">
-             <span class="kos-tecka blizko"></span>po cestě (${poCeste})
-             <span class="kos-tecka daleko"></span>zajížďka
-             <span class="kos-tecka kotva"></span>kotva
-             <span class="kosik-odhad">vzdálenosti jsou zhruba – vzdušnou čarou</span>
-           </div>`
+      odkud
+        ? ''
         : `<div class="meta kosik-legenda">
-             ${
-               odkud
-                 ? 'Vyber kotvu a uvidíš, co máš po cestě.'
-                 : `<span>Bez polohy se zajížďka spočítat nedá.</span>
-                    <button class="btn small" id="kosikPoloha">${IC('i-pinme')}Zapnout polohu</button>`
-             }
+             <span>Bez polohy se zajížďka spočítat nedá.</span>
+             <button class="btn small" id="kosikPoloha">${IC('i-pinme')}Zapnout polohu</button>
            </div>`
     }
 
@@ -236,84 +228,17 @@ function prazdnyKosik() {
     </div>`
 }
 
-/** @type {import('leaflet').Map|null} vlastní instance mapy v kartě Košík */
-let mapaKosiku = null
-
 /**
- * Pořadové číslo posledního požadavku na vykreslení mapy.
+ * Uklidí, co po košíku zbylo na mapě.
  *
- * Mapa vzniká až s odkladem (rAF + 180 ms), aby měl prvek nenulovou velikost.
- * Mezitím se ale karta může překreslit nebo se z ní dá odejít – a odložený
- * callback by pak postavil Leaflet na prvku, který už v dokumentu není.
- * Leaflet z toho padá na `_leaflet_pos` při prvním posunu. Čítač říká
- * callbacku „tvoje kolo už neplatí, nic nestav".
+ * Vlastní mini-mapa v košíku (`#kosikMapa`, instance Leafletu) zanikla
+ * v srpnu 2026 spolu s přestavbou košíku na plát – 290 px mapy v plátu
+ * vysokém nejvýš 72 % obrazovky nenechalo místo na seznam, kvůli kterému
+ * se otevírá. Vrstva `map/kosikVrstva.js` ale zůstává: kreslí se na HLAVNÍ
+ * mapu a odsud se jen zahazuje, aby po zavření košíku nezůstala viset.
  */
-let koloMapy = 0
-
-/** Uklidí mapu košíku. Volá se při odchodu z karty i před novým vykreslením. */
 export function zavriMapuKosiku() {
-  // Zneplatní i požadavek, který se ještě nestihl provést.
-  koloMapy++
   zahodKosikVrstvu()
-  if (mapaKosiku) {
-    try {
-      mapaKosiku.remove()
-    } catch {
-      /* prvek už zmizel s překreslením */
-    }
-    mapaKosiku = null
-  }
-}
-
-/**
- * Postaví mapu košíku. Jako mini-mapa v detailu vzniká nová instance
- * pokaždé – karta se překresluje celá a stará mapa zmizí s prvkem.
- *
- * Inicializuje se až po vykreslení (rAF + prodleva): dřív má prvek nulovou
- * velikost a Leaflet by spočítal špatné souřadnice.
- */
-function vykresliMapuKosiku(wrap) {
-  zavriMapuKosiku()
-  const el = wrap.querySelector('#kosikMapa')
-  if (!el || el._leaflet_id) return
-
-  const odkud = vychoziBod()
-  const polozky = kosikSeZajizdkou(odkud)
-  if (!maCoKreslit(polozky)) {
-    el.innerHTML = '<div class="meta kosik-bezmapy">Místa v košíku zatím nemají souřadnice.</div>'
-    return
-  }
-
-  const moje = koloMapy
-  requestAnimationFrame(() => {
-    setTimeout(() => {
-      // Mezitím se mohlo odejít z karty nebo překreslit – pak se nestaví nic.
-      if (moje !== koloMapy || !document.body.contains(el) || el._leaflet_id) return
-      try {
-        mapaKosiku = L.map(el, {
-          zoomControl: false,
-          attributionControl: false,
-          scrollWheelZoom: false,
-        }).setView([polozky[0].p.lat, polozky[0].p.lon], 8, { animate: false })
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mapaKosiku)
-
-        // Kde jsi ty – bez toho by koridor neměl odkud vycházet.
-        if (odkud) {
-          L.marker([odkud.lat, odkud.lon], {
-            icon: L.divIcon({ className: 'kos-pin-obal', html: '<div class="kos-ja"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
-            zIndexOffset: 2000,
-          })
-            .addTo(mapaKosiku)
-            .bindTooltip('Tady jsi', { direction: 'top', offset: [0, -9] })
-        }
-
-        drawKosik(mapaKosiku, polozky, odkud)
-        priblizNaKosik(mapaKosiku, polozky, odkud)
-      } catch {
-        el.innerHTML = '<div class="meta kosik-bezmapy">Mapu se nepovedlo načíst.</div>'
-      }
-    }, 180)
-  })
 }
 
 /**
@@ -322,8 +247,6 @@ function vykresliMapuKosiku(wrap) {
  * @param {() => void} prekresli
  */
 export function napojKosik(wrap, prekresli) {
-  vykresliMapuKosiku(wrap)
-
   // Poloha se nikde nezjišťuje sama a je to správně – ptát se na ni bez
   // vyžádání je otravné. Košík ji ale potřebuje, tak si o ni řekne tady.
   const poloha = wrap.querySelector('#kosikPoloha')

@@ -470,24 +470,20 @@
 .tip-akce{display:flex;gap:6px;flex:0 0 auto}
 .tip-prazdno{margin:0 2px 10px;font-size:.82rem;line-height:1.5}
 
-/* ---------- mapa košíku, koridor a kotva ---------- */
+/* ---------- košík: koridor a kotva ---------- */
 /* Nejezdíme podle pevného itineráře – rozhodujeme se večer a podle počasí.
-   Mapa proto odpovídá na „co mám po cestě ke kotvě", ne na „kdy kam". */
+   Košík proto odpovídá na „co mám po cestě ke kotvě", ne na „kdy kam".
 
-.kosik-mapa{height:290px;border-radius:var(--r-s);overflow:hidden;border:var(--line);
-  box-shadow:var(--stin-1);margin:0 0 8px;background:var(--plocha2)}
+   Vlastní mini-mapa (`.kosik-mapa`, 290 px) tu bývala. Zanikla v srpnu 2026
+   s přestavbou košíku na plát: v plátu vysokém nejvýš 72 % obrazovky na
+   seznam, kvůli kterému se otevírá, nezbyly ani dva řádky. */
+
 .kosik-bezmapy{display:grid;place-items:center;height:100%;text-align:center;padding:0 20px}
-
 .kosik-legenda{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0 2px 12px;
   font-size:.76rem}
-.kos-tecka{width:10px;height:10px;border-radius:50%;display:inline-block}
-.kos-tecka.blizko{background:var(--moss)}
-.kos-tecka.daleko{background:var(--text3)}
-.kos-tecka.kotva{background:var(--rust)}
-/* Vzdušná čára v Alpách lže – průsmyky a údolí. Přiznat to, ne skrývat. */
-.kosik-odhad{margin-left:auto;color:var(--text3);font-size:.72rem}
 
-/* Špendlíky na mapě košíku. Kotva má hvězdu a je větší – je to závazek. */
+/* Špendlíky košíku na mapě – kreslí je `map/kosikVrstva.js` a mini-mapa
+   dashboardu v plan.js. Kotva má hvězdu a je větší, je to závazek. */
 .kos-pin-obal{background:none;border:0}
 .kos-pin{width:16px;height:16px;border-radius:50%;background:var(--kb);
   border:2.5px solid var(--plocha);box-shadow:var(--stin-1);margin:5px}

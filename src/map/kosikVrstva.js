@@ -15,6 +15,13 @@
  *
  * KRESLÍ SE JEN NA KARTĚ KOŠÍKU (`prefs`-nezávislé, řídí to volající) –
  * na běžné mapě by wishlist překrýval to, co uživatel zrovna hledá.
+ *
+ * POZOR, STAV K SRPNU 2026: `drawKosik()`, `priblizNaKosik()` a `maCoKreslit()`
+ * momentálně nikdo nevolá. Košík se přestavěl na plát vytažený zdola a jeho
+ * vlastní mini-mapa zanikla (290 px mapy v plátu nenechalo místo na seznam).
+ * Vrstva se sem vrátí na kartě Na cestě, kde má košík řazený podle skutečné
+ * polohy dávat smysl i na mapě. `zahodKosikVrstvu()` se používá dál –
+ * uklízí po sobě mini-mapa dashboardu v `views/plan/plan.js`.
  */
 
 import L from 'leaflet'
