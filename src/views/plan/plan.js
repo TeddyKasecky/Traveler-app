@@ -81,7 +81,11 @@ const vychoziDil = () => (jedeSe() ? 'cesta' : 'vypravy')
 let rozbaleno = ''
 /** Sbalené dny (čísla od jedničky). Jen v paměti. */
 const sbaleneDny = new Set()
-/** Co má v knihovně rozbalené akce: 'v' + index výpravy, 's' + název složky. */
+/**
+ * Která složka má v knihovně rozbalené akce: 's' + název, nebo prázdné.
+ * Výpravy vlastní nabídku nemají – ťuknutí je otevře a všechno ostatní se
+ * s nimi dělá v Itineráři pod „…" (`prepniMenu()`).
+ */
 let rozbalenoVKnihovne = ''
 /** Sbalené složky si pamatuje prefs – přežijí restart. Zápis až při ťuknutí. */
 const sbaleneSlozky = () => new Set(Array.isArray(prefs.sbaleneSlozky) ? prefs.sbaleneSlozky : [])
@@ -275,7 +279,19 @@ function drobeckyHtml() {
 
 /* ---------- Výpravy (knihovna) ---------- */
 
-/** Jeden řádek výpravy v knihovně. */
+/**
+ * Jeden řádek výpravy v knihovně.
+ *
+ * ŤUKNUTÍ OTEVŘE ITINERÁŘ (srpen 2026). Do teď ho jen aktivovalo na mapě
+ * a do Itineráře se šlo až přes „…" → „Otevřít itinerář", tedy třetím
+ * ťuknutím. Aktivace na mapě se tím neztratila – otevřená výprava JE ta na
+ * mapě, takže obojí dělá jedno ťuknutí a zmizela dvojkolejnost „aktivní na
+ * mapě" × „otevřená v itineráři".
+ *
+ * ŽÁDNÉ „…" NA ŘÁDKU: přejmenovat/duplikovat/složka/smazat existovaly
+ * dvakrát – tady a v nabídce nad Itinerářem (`prepniMenu()`), dvěma
+ * nezávislými kódy. Zůstala jen ta v Itineráři.
+ */
 function radekVypravy(v) {
   const km = planStats(v.plan.map((id) => S.byId[id]).filter(Boolean)).road
   const dnu = (v.planDny || []).filter((d) => d > 0).length || 1
@@ -284,30 +300,15 @@ function radekVypravy(v) {
     (v.plan.length > 1 ? ` · ${dnu} ${sklonuj(dnu, 'den', 'dny', 'dní')} · ${fmtKm(km)}` : '')
 
   const naMape = v.aktivni && S.otevrenaCesta == null
-  return (
-    `<div class="vypravaradek${v.aktivni ? ' on' : ''}" data-vyprava="${v.index}">
+  return `<div class="vypravaradek${v.aktivni ? ' on' : ''}" data-vyprava="${v.index}">
       ${IC(v.aktivni ? 'i-route' : 'i-map')}
       <div>
         <b>${esc(v.nazev)}</b>
         <span>${meta}</span>
       </div>
       ${naMape ? `<i title="Tahle výprava je vidět na mapě">na mapě</i>` : ''}
-      <button class="ikonbtn vyprava-vice" data-vyprava-vice title="Co s touhle výpravou">${IC('i-vice')}</button>
-    </div>` + (rozbalenoVKnihovne === `v${v.index}` ? akceVypravy(v) : '')
-  )
-}
-
-/** Rozbalené akce pod řádkem výpravy. Otevření Itineráře je jen tady. */
-function akceVypravy(v) {
-  return `<div class="vyprava-akce" data-pro="${v.index}">
-    <div class="btnrow" style="margin:0">
-      <button class="btn small primary" data-act="v-otevrit">${IC('i-route')}Otevřít itinerář</button>
-      <button class="btn small" data-act="v-prejmenovat">${IC('i-quill')}Přejmenovat</button>
-      <button class="btn small" data-act="v-duplikovat">${IC('i-copy')}Duplikovat</button>
-      <button class="btn small" data-act="v-slozka">${IC('i-slozka')}${v.slozka ? esc(v.slozka) : 'Bez složky'}</button>
-      <button class="btn small nebezpecne" data-act="v-smazat">${IC('i-x')}Smazat</button>
-    </div>
-  </div>`
+      <span class="vypravaradek-sipka" aria-hidden="true">${IC('i-sipka')}</span>
+    </div>`
 }
 
 /** Hlavička složky: sbalitelná, s počtem a vlastní nabídkou. */
@@ -356,7 +357,7 @@ function knihovna() {
       if (!sbaleneSlozky().has(s.slozka))
         casti.push(`<div class="slozka-obsah" data-slozka="${esc(s.slozka)}">${
           s.vypravy.map(radekVypravy).join('') ||
-          `<div class="meta slozka-prazdna">Zatím prázdná – výpravu sem přetáhni, nebo ji zařaď přes „…".</div>`
+          `<div class="meta slozka-prazdna">Zatím prázdná – výpravu sem přetáhni, nebo ji otevři a zařaď pod „…".</div>`
         }</div>`)
     } else {
       const kus = s.vypravy.map(radekVypravy).join('')
@@ -396,82 +397,21 @@ function archivHtml() {
   return archivRadkyHtml()
 }
 
-/** Obsluha knihovny: otevírání, sbalování složek, akce řádků. */
+/** Obsluha knihovny: otevírání výprav, sbalování složek, akce složek. */
 function napojKnihovnu(wrap) {
   for (const r of wrap.querySelectorAll('.vypravaradek[data-vyprava]')) {
     const i = Number(r.dataset.vyprava)
-    // Ťuknutí NEotevírá Itinerář – jen přepne, co je vidět na mapě.
+    // Ťuknutí otevře Itinerář A zároveň výpravu aktivuje na mapě – otevřená
+    // výprava je datově pořád ta aktivní, takže je to jedna akce, ne dvě.
+    // Aktivní řádek (index -1) tím přestal být mrtvý: dřív na něj ťuknutí
+    // nedělalo vůbec nic.
     r.onclick = () => {
-      if (i < 0) return
-      S.otevrenaCesta = null
-      prepniVypravu(i)
-      draw()
-      toast(`Na mapě: ${store.vypravaNazev || BEZ_NAZVU}`)
-    }
-    const vice = r.querySelector('[data-vyprava-vice]')
-    if (vice)
-      vice.onclick = (e) => {
-        e.stopPropagation()
-        rozbalenoVKnihovne = rozbalenoVKnihovne === `v${i}` ? '' : `v${i}`
-        renderPlan()
-      }
-  }
-
-  for (const akce of wrap.querySelectorAll('[data-pro]')) {
-    const i = Number(akce.dataset.pro)
-    const zaznam = () => seznamVyprav().find((x) => x.index === i)
-    akce.querySelector('[data-act="v-otevrit"]').onclick = () => {
       rozbalenoVKnihovne = ''
-      dil = 'itinerar'
       S.otevrenaCesta = null
       if (i >= 0) prepniVypravu(i)
+      dil = 'itinerar'
+      // Překresluje se přes draw() → emit('prekresleno') → renderPlan().
       draw()
-    }
-    akce.querySelector('[data-act="v-duplikovat"]').onclick = () => {
-      const novy = duplikuj(i)
-      if (novy) toast(`Kopie založená: ${novy}`)
-      renderPlan()
-    }
-    akce.querySelector('[data-act="v-slozka"]').onclick = async () => {
-      const v = zaznam()
-      const polozky = [
-        { id: '', popisek: 'Bez složky', ikona: 'i-x', on: !(v && v.slozka) },
-        ...seznamSlozek()
-          .map((s) => s.slozka)
-          .filter(Boolean)
-          .map((n) => ({ id: n, popisek: n, ikona: 'i-slozka', on: !!v && v.slozka === n })),
-        { id: '+', popisek: 'Nová složka…', ikona: 'i-plus' },
-      ]
-      let cil = await vyberZeSeznamu({ nadpis: 'Do které složky?', polozky })
-      if (cil === null) return
-      if (cil === '+') {
-        const n = await zadej({ nadpis: 'Nová složka', placeholder: 'třeba Léto 2027' })
-        if (n === null || !n.trim()) return
-        cil = n.trim()
-      }
-      presunVypravu(i, cil)
-      renderPlan()
-    }
-    akce.querySelector('[data-act="v-prejmenovat"]').onclick = async () => {
-      const v = zaznam()
-      const n = await zadej({ nadpis: 'Přejmenovat výpravu', vychozi: v ? v.nazev : '' })
-      if (n === null) return
-      prejmenuj(i, n)
-      renderPlan()
-    }
-    akce.querySelector('[data-act="v-smazat"]').onclick = async () => {
-      const v = zaznam()
-      const dal = await potvrd({
-        nadpis: `Smazat výpravu „${v ? v.nazev : ''}"?`,
-        text: 'Smaže se i se zastávkami a rozdělením na dny.',
-        ano: 'Smazat',
-        nebezpecne: true,
-      })
-      if (!dal) return
-      rozbalenoVKnihovne = ''
-      smaz(i)
-      draw()
-      toast('Výprava smazána')
     }
   }
 

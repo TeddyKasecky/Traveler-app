@@ -339,25 +339,38 @@
 .badge-pin.vkosiku{transform:scale(calc(var(--ps,1) * 1.18))}
 
 /* ---------- knihovna výprav: složky (srpen 2026) ---------- */
-/* Řádek výpravy je od přestavby div (nese v sobě tlačítko „…"), proto cursor. */
+/* Řádek výpravy je div, ne button (ťuknutí ho otevře), proto cursor. */
 .vypravaradek{cursor:pointer}
-.vyprava-vice{flex:0 0 auto}
-.slozka-radek{display:flex;gap:10px;align-items:center;background:transparent;border:var(--line);
-  border-radius:var(--r-s);padding:9px 13px;cursor:pointer;transition:background .18s}
-.slozka-radek:active{transform:var(--stisk)}
-.slozka-radek svg.ic{font-size:18px;color:var(--text3);flex:0 0 auto}
-.slozka-radek b{font-family:var(--f-disp);font-weight:700;font-size:.95rem;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Šipka „vede dovnitř". Vlastní velikost a barva – obecné `.vypravaradek svg.ic`
+ * je 19px na ikonu vlevo, což je na koncový ukazatel moc. */
+.vypravaradek-sipka{flex:0 0 auto;display:flex;align-items:center}
+.vypravaradek .vypravaradek-sipka svg.ic{font-size:13px;color:var(--text3);opacity:.7}
+
+/* SLOŽKA JE NADPIS SKUPINY, NE KARTA (srpen 2026). Do teď měla stejný rámeček,
+ * rádius i typografii jako řádek výpravy a lišila se jen výplní – dvě různé
+ * věci vypadaly skoro stejně. Teď nese typografii `.sekce` (prostrkané
+ * verzálky), takže „Nezařazené" (což `.sekce` opravdu je) vypadá jako její
+ * sourozenec zadarmo. Hierarchii dál drží svislá linka u obsahu. */
+.slozka-radek{display:flex;gap:9px;align-items:center;background:transparent;border:0;
+  padding:6px 2px;margin:18px 0 9px;cursor:pointer;
+  font-size:.66rem;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--text2)}
+.slozka-radek:first-child{margin-top:4px}
+.slozka-radek:active{opacity:.6}
+.slozka-radek svg.ic{font-size:15px;color:var(--text2);flex:0 0 auto}
+.slozka-radek b{font:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* flex:1 jen na počtu – obecný span chytal i šipku a ovládání pak plavalo. */
-.slozka-radek .slozka-pocet{font-size:.72rem;font-weight:700;color:var(--text2);flex:1}
+.slozka-radek .slozka-pocet{flex:1;font-size:.66rem;font-weight:700;letter-spacing:.2px;
+  text-transform:none;color:var(--text3)}
+/* Ovládání složky nesmí nést verzálkovou prostrkanost z rodiče. */
+.slozka-radek .ikonbtn{width:30px;height:30px;box-shadow:none}
+.slozka-radek .ikonbtn svg.ic{font-size:15px;color:var(--text2)}
 .slozka-prazdna{padding:4px 2px 8px}
 .slozka-sipka{display:flex;transition:transform .18s var(--pop);transform:rotate(180deg)}
 .slozka-radek.sbalena .slozka-sipka{transform:none}
 .slozka-obsah{display:flex;flex-direction:column;gap:8px;padding-left:12px;
   border-left:2px solid var(--obrys-silny)}
-.slozka-obsah .vypravaradek{box-shadow:none}
 .vyprava-akce{display:flex;flex-direction:column;gap:8px;background:var(--plocha);border:var(--line);
-  border-radius:var(--r-s);padding:10px 12px;margin-top:-4px}
+  border-radius:var(--r-s);padding:10px 12px;margin:-2px 0 4px 12px}
 .vyprava-slozky{display:flex;flex-wrap:wrap;gap:6px}
 .slozka-pill{display:inline-flex;gap:5px;align-items:center;border:var(--line);border-radius:var(--r-pill);
   background:var(--plocha);padding:6px 11px;font:inherit;font-size:.74rem;font-weight:700;color:var(--text2)}
@@ -379,6 +392,9 @@
 /* pointer-events:none – zvednutý prvek nesmí stínit elementFromPoint. */
 .vypravaradek.tahne,.slozka-radek.tahne{position:relative;z-index:60;box-shadow:var(--stin-3);
   pointer-events:none;transition:none;opacity:.94}
+/* Složka je jinak průhledný nadpis – při tažení potřebuje plochu, jinak by se
+ * stín kreslil kolem ničeho a text by prosvítal přes to, přes co jde. */
+.slozka-radek.tahne{background:var(--plocha);border-radius:var(--r-s);padding:6px 10px;margin:0}
 .drop-cil{outline:2px dashed var(--akcent);outline-offset:2px}
 
 /* Tažení dne jako skupiny: uhýbají i bloky, tažené se nepřechoduje. */

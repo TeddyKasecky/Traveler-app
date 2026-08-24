@@ -422,12 +422,10 @@ await kontrola('místo z košíku přešlo do itineráře', () =>
 // by `#planPridat` neexistovalo. Zastávka přidaná z košíku se přitom musí
 // zase odebrat: následující kontroly stojí na plánu o jedné zastávce
 // a jinak by se sesypaly na posunutých počtech.
-// Itinerář není díl segmentu – zpátky se jde přes akce řádku v knihovně.
+// Itinerář není díl segmentu – zpátky se jde ťuknutím na řádek v knihovně.
 await page.locator('#planSegment button', { hasText: 'V plánu' }).first().click()
 await page.waitForTimeout(400)
-await page.click('.vypravaradek [data-vyprava-vice]')
-await page.waitForTimeout(300)
-await page.click('[data-act="v-otevrit"]')
+await page.click('.vypravaradek')
 await page.waitForTimeout(600)
 await page.locator('.zastavka').nth(1).locator('[data-act="vice"]').click()
 await page.waitForTimeout(300)
@@ -481,10 +479,16 @@ await page.locator('#dialogVstup').fill('Balkán')
 await page.click('#dialogAno')
 await page.waitForTimeout(400)
 await kontrola('nová složka je vidět i prázdná', () => page.locator('.slozka-radek').count(), 1)
-await page.click('.vypravaradek [data-vyprava-vice]')
+// Akce výpravy jsou od srpna 2026 JEN v Itineráři pod „…" – v knihovně řádek
+// žádnou nabídku nemá, ťuknutí ho rovnou otevře.
+await kontrola('řádek výpravy nemá vlastní nabídku', () => page.locator('[data-vyprava-vice]').count(), 0)
+await kontrola('řádek výpravy má šipku dovnitř', () => page.locator('.vypravaradek-sipka').count(), 1)
+await page.click('.vypravaradek')
+await page.waitForTimeout(500)
+await kontrola('ťuknutí na řádek otevře Itinerář', () => page.locator('.planhlava h2').count(), 1)
+await page.click('#planVice')
 await page.waitForTimeout(300)
-await kontrola('řádek výpravy má akce', () => page.locator('.vyprava-akce').count(), 1)
-await page.click('[data-act="v-slozka"]')
+await page.click('#planDoSlozky')
 await page.waitForTimeout(300)
 await kontrola('výběr složky je dialog se seznamem', () =>
   page.locator('#dialog.show .dialog-volba').count().then((n) => n >= 3))
@@ -492,6 +496,8 @@ await page.locator('#dialog .dialog-volba', { hasText: 'Balkán' }).click()
 await page.waitForTimeout(400)
 await kontrola('výprava se přesunula do složky', () =>
   page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).vypravaSlozka), 'Balkán')
+await page.click('#planZpet')
+await page.waitForTimeout(400)
 await kontrola('řádek je uvnitř složky', () => page.locator('.slozka-obsah .vypravaradek').count(), 1)
 await page.click('.slozka-radek')
 await page.waitForTimeout(300)
@@ -531,44 +537,41 @@ await kontrola('tažení přesunulo výpravu do druhé složky', () =>
 await kontrola('tažení hlavičky přeskládá složky', () =>
   page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).slozky.join(',')), 'Alpy,Balkán')
 
-// Duplikace z akcí řádku; ťuknutí na kopii ji jen aktivuje na mapě.
-// Akce mohou být z předchozích kroků otevřené – otevřít jen když nejsou.
-if (!(await page.locator('.vyprava-akce').count())) {
-  await page.click('.slozka-obsah .vypravaradek [data-vyprava-vice]')
-  await page.waitForTimeout(300)
-}
-await page.click('[data-act="v-duplikovat"]')
+// Duplikace z nabídky „…" v Itineráři; ťuknutí na kopii ji otevře.
+await page.click('.slozka-obsah .vypravaradek')
+await page.waitForTimeout(500)
+await page.click('#planVice')
+await page.waitForTimeout(300)
+await page.click('#planDuplikuj')
 await page.waitForTimeout(400)
-await kontrola('duplikace přidala kopii', () => page.locator('.vypravaradek').count(), 2)
 await kontrola('kopie zdědila zastávky', () =>
   page.evaluate(() => {
     const v = JSON.parse(localStorage.getItem('vandrbuch:v1'))
     const kopie = v.vypravy.find((x) => x.nazev.includes('(kopie)'))
     return !!kopie && kopie.plan.length === 1
   }))
-// Zavřít akce původní výpravy, ať je stav rozbalení deterministický.
-await page.locator('.vypravaradek.on [data-vyprava-vice]').click()
-await page.waitForTimeout(300)
-await page.locator('.vypravaradek', { hasText: '(kopie)' }).click()
+await page.click('#planZpet')
 await page.waitForTimeout(400)
-await kontrola('ťuknutí výpravu jen aktivuje, karta se nemění', () =>
-  page.locator('#planSegment button.on').innerText(), 'V plánu')
-await kontrola('aktivovaná kopie je na mapě', () =>
+await kontrola('duplikace přidala kopii', () => page.locator('.vypravaradek').count(), 2)
+await page.locator('.vypravaradek', { hasText: '(kopie)' }).click()
+await page.waitForTimeout(500)
+await kontrola('ťuknutí na kopii otevře její Itinerář', () =>
+  page.locator('.planhlava h2').innerText().then((t) => t.includes('(kopie)')))
+await kontrola('otevřená kopie je zároveň na mapě', () =>
   page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).vypravaNazev.includes('(kopie)')))
-// Kopii zase smazat (přes akce jejího řádku) a vrátit se k původní.
-await page.locator('.vypravaradek.on [data-vyprava-vice]').click()
+// Kopii zase smazat (z její nabídky) a vrátit se k původní.
+await page.click('#planVice')
 await page.waitForTimeout(300)
-await page.click('[data-act="v-smazat"]')
+await page.click('#planSmaz')
 await page.waitForTimeout(300)
 await page.click('#dialogAno')
+await page.waitForTimeout(500)
+await page.locator('#planSegment button', { hasText: 'V plánu' }).first().click()
 await page.waitForTimeout(400)
 await kontrola('kopie je smazaná', () => page.locator('.vypravaradek').count(), 1)
-// Do Itineráře se jde přes akce řádku – jediná cesta z knihovny.
-await page.click('.slozka-obsah .vypravaradek [data-vyprava-vice]')
-await page.waitForTimeout(300)
-await page.click('[data-act="v-otevrit"]')
+await page.click('.slozka-obsah .vypravaradek')
 await page.waitForTimeout(500)
-await kontrola('„Otevřít itinerář" otevře Itinerář', () => page.locator('.planhlava h2').count(), 1)
+await kontrola('ťuknutí na řádek ve složce otevře Itinerář', () => page.locator('.planhlava h2').count(), 1)
 
 // Odškrtnutá zastávka se zapisuje jako navštívená, tedy do téhož místa jako
 // srdce v Seznamu. Žádná druhá evidence.

@@ -433,11 +433,10 @@ await zkus('„Kopírovat“ dá text do schránky', async () => {
   // o jedno ťuknutí a kontrola ji musí projít stejně jako uživatel.
   // Nabídka bydlí v Itineráři konkrétní výpravy. Ten od srpna 2026 UŽ NENÍ
   // díl segmentu (ten má jen Na cestě · V plánu · Za námi) – je to vnitřek
-  // jedné cesty a otevírá se z knihovny přes „…" → „Otevřít itinerář".
+  // jedné cesty a otevírá se ŤUKNUTÍM na řádek v knihovně (dřív přes „…" →
+  // „Otevřít itinerář", což bylo třetí ťuknutí za sebou).
   // Výprava tu existuje: předchozí kontrola do ní přidala zastávku.
-  await page.click('.vypravaradek [data-vyprava-vice]')
-  await page.waitForTimeout(300)
-  await page.click('[data-act="v-otevrit"]')
+  await page.click('.vypravaradek')
   await page.waitForTimeout(500)
   await page.click('#planVice')
   await page.waitForTimeout(300)
