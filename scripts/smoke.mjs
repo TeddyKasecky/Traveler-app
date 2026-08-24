@@ -421,6 +421,18 @@ await page.waitForTimeout(600)
 await kontrola('plát se vytáhl', () => page.locator('#kosikPlat.show').count(), 1)
 await kontrola('košík ukazuje uložené místo', () => page.locator('.kosik-radek').count(), 1)
 await kontrola('košík nabízí vlastní místo', () => page.locator('#kosikPridatVlastni').count(), 1)
+// Kolečko doletí do pravého horního rohu plátu a zesvětlá – je to pořád
+// tentýž knoflík, takže je vidět, že plát zavře právě on.
+await kontrola('kolečko dosedlo do plátu', () => page.locator('#kosikFab.vplatu').count(), 1)
+await kontrola('kolečko sedí uvnitř plátu', () =>
+  page.evaluate(() => {
+    const f = document.getElementById('kosikFab').getBoundingClientRect()
+    const p = document.getElementById('kosikPlat').getBoundingClientRect()
+    return f.top >= p.top && f.bottom <= p.bottom && f.right <= p.right + 1
+  }))
+// Hromadné „Vysypat" odsud odešlo – destruktivní akce, kterou nikdo denně
+// nepotřebuje. Místa se vyhazují po jednom křížkem na řádku.
+await kontrola('košík nenabízí hromadné vysypání', () => page.locator('#kosikVyprazdnit').count(), 0)
 // Přesun do itineráře košík vyprázdní – na dvou místech naráz by místo mátlo.
 await page.click('[data-kos-plan]')
 await page.waitForTimeout(800)

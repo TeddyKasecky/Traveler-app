@@ -29,16 +29,61 @@ const obsah = () => document.getElementById('kosikPlatObsah')
 
 export const jeOtevrenyKosik = () => !!plat() && plat().classList.contains('show')
 
+/**
+ * Posadí kolečko do pravého horního rohu otevřeného plátu.
+ *
+ * PROČ POSUN, A NE DRUHÉ TLAČÍTKO V PLÁTU: kolečko a „zavřít" je tatáž věc.
+ * Kdyby v rohu plátu sedělo jiné tlačítko, musel by člověk pochopit, že
+ * spolu souvisejí; takhle to vidí – knoflík, kterým košík otevřel, doletí
+ * na místo, odkud ho zavře. Uvolnilo se přesně tím, že z hlavičky košíku
+ * odešlo „Vysypat".
+ *
+ * Cílová pozice se počítá z `offsetHeight` plátu, ne z `getBoundingClientRect()`:
+ * plát se v tu chvíli teprve vysouvá (`translateY(100%)`), takže by rect
+ * vrátil polohu za spodní hranou obrazovky. `offsetHeight` transform nezná.
+ */
+function posadNaPlat() {
+  const b = fab()
+  const p = plat()
+  if (!b || !p) return
+  // Změřit bez vlastního posunu a bez přechodu – jinak by se počítalo
+  // z místa, kam kolečko teprve letí, a chyba by se sčítala při každém
+  // otevření.
+  const puvodni = b.style.transition
+  b.style.transition = 'none'
+  b.style.transform = ''
+  const r = b.getBoundingClientRect()
+  // 30 px pod horní hranou plátu: pod úchytem, na úrovni hlavičky košíku.
+  const cil = window.innerHeight - p.offsetHeight + 30
+  // Reflow mezi vypnutím a zapnutím přechodu, ať se obojí nesloučí do
+  // jednoho snímku a posun se opravdu animoval.
+  void b.offsetWidth
+  b.style.transition = puvodni
+  b.classList.add('vplatu')
+  b.style.transform = `translateY(${Math.round(cil - r.top)}px)`
+}
+
+/** Vrátí kolečko na jeho místo nad spodní lištou. */
+function vratZPlatu() {
+  const b = fab()
+  if (!b) return
+  b.classList.remove('vplatu')
+  b.style.transform = ''
+}
+
 /** Otevře plát a nechá volajícího naplnit obsah. */
 export function otevriKosikPlat() {
   const p = plat()
   if (!p || !vykresli) return
   obsah().innerHTML = ''
   p.hidden = false
+  // Obsah PŘED měřením: výška plátu závisí na tom, co v něm je, a kolečko
+  // míří na jeho horní hranu.
+  vykresli(obsah())
+  posadNaPlat()
   // Dvě fáze: `hidden` se musí sundat dřív, než se nasadí třída s přechodem,
   // jinak prohlížeč animaci přeskočí (prvek z `display:none` neanimuje).
   requestAnimationFrame(() => p.classList.add('show'))
-  vykresli(obsah())
 }
 
 /** Zavře plát. Vrací, jestli nějaký otevřený byl – pro tlačítko zpět. */
@@ -46,6 +91,7 @@ export function zavriKosikPlat() {
   const p = plat()
   if (!p || !p.classList.contains('show')) return false
   p.classList.remove('show')
+  vratZPlatu()
   // Skrýt až po doběhnutí přechodu, ať plát neuskočí.
   setTimeout(() => {
     if (!p.classList.contains('show')) p.hidden = true
@@ -70,8 +116,15 @@ export function nastavKosikFab({ vidno, pocet = 0, kresli = null }) {
   }
   // Zmizí-li tlačítko (odchod z Plánu, přepnutí na knihovnu), plát nesmí
   // zůstat viset nad cizí obrazovkou.
-  if (!vidno) zavriKosikPlat()
-  else if (jeOtevrenyKosik() && vykresli) vykresli(obsah())
+  if (!vidno) {
+    zavriKosikPlat()
+    vratZPlatu()
+  } else if (jeOtevrenyKosik() && vykresli) {
+    vykresli(obsah())
+    // Obsah se překreslením mohl zkrátit nebo prodloužit – kolečko musí
+    // dosednout na novou horní hranu plátu, ne zůstat viset ve vzduchu.
+    posadNaPlat()
+  }
 }
 
 /**

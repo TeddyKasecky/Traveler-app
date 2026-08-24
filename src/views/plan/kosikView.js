@@ -22,7 +22,7 @@ import { sekce } from '../../components/vzory.js'
 import { toast } from '../../components/toast.js'
 import { potvrd } from '../../components/dialog.js'
 import {
-  kosik, mistaVKosiku, pridejDoKosiku, vyhodZKosiku, vyprazdniKosik, vKosiku,
+  kosik, pridejDoKosiku, vyhodZKosiku, vKosiku,
   kosikSeZajizdkou, hlavniKotva, nastavKotvu, zrusKotvu, bodyBezPolohy,
 } from './kosik.js'
 import { zahodKosikVrstvu } from '../../map/kosikVrstva.js'
@@ -150,13 +150,16 @@ export function kosikHtml(odkud = null) {
   // jsou, ukazuje mapa Itineráře i hlavní mapa; košík odpovídá na „co ještě
   // chci", což je seznam.
   return `
+    <!-- Vpravo v hlavičce nic není schválně: tam dosedne plovoucí kolečko,
+         které plát otevřelo. „Vysypat" tu bývalo, ale hromadné mazání
+         wishlistu jedním ťuknutím je destruktivní akce, kterou nikdo denně
+         nepotřebuje – místa se vyhazují po jednom křížkem na řádku. -->
     <div class="kosik-hlava">
       <div>
         <h3>Košík výpravy</h3>
         <div class="meta">${celkem} ${sklonuj(celkem, 'místo', 'místa', 'míst')} ·
           bez pořadí a bez dnů</div>
       </div>
-      <button class="btn small nebezpecne" id="kosikVyprazdnit">Vysypat</button>
     </div>
 
     ${kotvaPruh(cil, kotva, odkud)}
@@ -336,20 +339,6 @@ export function napojKosik(wrap, prekresli) {
 
   const pridatVlastni = wrap.querySelector('#kosikPridatVlastni')
   if (pridatVlastni) pridatVlastni.onclick = () => pruvodceVlastnihoMista(prekresli)
-
-  const vysyp = wrap.querySelector('#kosikVyprazdnit')
-  if (vysyp)
-    vysyp.onclick = async () => {
-      const dal = await potvrd({
-        nadpis: 'Vysypat košík?',
-        text: `Přijdeš o ${kosik().length} ${sklonuj(kosik().length, 'místo', 'místa', 'míst')} v košíku. Itineráře se to nedotkne.`,
-        ano: 'Vysypat',
-        nebezpecne: true,
-      })
-      if (!dal) return
-      if (!vyprazdniKosik()) return
-      prekresli()
-    }
 }
 
 /**

@@ -70,7 +70,14 @@ export function prepniKosik(id) {
   return !bylo
 }
 
-/** Vysype celý košík aktivní výpravy. */
+/**
+ * Vysype celý košík aktivní výpravy.
+ *
+ * Tlačítko na to v košíku od srpna 2026 NENÍ – hromadné smazání wishlistu
+ * jedním ťuknutím je destruktivní akce, kterou nikdo denně nepotřebuje,
+ * a místa se vyhazují po jednom křížkem na řádku. Funkce zůstává, protože
+ * ji potřebuje úklid při zániku výpravy (`zahodKosik()` níž) a testy.
+ */
 export function vyprazdniKosik() {
   return zapisKosik([])
 }

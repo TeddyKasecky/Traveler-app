@@ -11,18 +11,30 @@
  * přes detail místa, kde se navíc dá vybrat, do KTERÉ výpravy.
  */
 
-/* Z-index mezi panelem (1150) a spodní lištou (1200): nad obsahem Plánu,
-   ale ne přes záložky – ty musí zůstat dosažitelné. Nižší hodnota by
-   nestačila, panel je `position:fixed` přes celou obrazovku a tlačítko by
-   pod ním zmizelo (ověřeno smoke testem, který na něj nedoklikal). */
-#kosikFab{position:fixed;right:14px;z-index:1160;
+/* Z-index nad panelem (1150) i nad plátem (1170), ale pod spodní lištou
+   (1200) – záložky musí zůstat dosažitelné. Nad plátem proto, že do něj
+   kolečko doletí a musí na něm sedět, ne pod ním. Nižší hodnota tlačítko
+   schovala pod panel, který je `position:fixed` přes celou obrazovku
+   (odhalil to smoke test, který na něj nedoklikal). */
+#kosikFab{position:fixed;right:14px;z-index:1180;
   bottom:calc(env(safe-area-inset-bottom) + 78px);
   width:54px;height:54px;border-radius:50%;border:0;background:var(--akcent);
   display:grid;place-items:center;box-shadow:var(--stin-3);
-  transition:transform .16s var(--pop),opacity .18s}
+  transition:transform .24s var(--pop),background .24s,box-shadow .24s,opacity .18s}
 #kosikFab[hidden]{display:none}
-#kosikFab svg.ic{font-size:23px;color:var(--na-akcentu);stroke:var(--na-akcentu)}
-#kosikFab:active{transform:var(--stisk)}
+#kosikFab svg.ic{font-size:23px;color:var(--na-akcentu);stroke:var(--na-akcentu);
+  transition:color .24s,stroke .24s}
+/* Stisk se nesmí prát s posunem do plátu – v rohu plátu drží kolečko polohu
+   z inline transformu a `scale()` by ho poslalo zpátky nad lištu. */
+#kosikFab:not(.vplatu):active{transform:var(--stisk)}
+
+/* V PLÁTU: kolečko doletí do jeho pravého horního rohu a zesvětlá.
+   Je to pořád tentýž knoflík – tím, že se přesune místo aby zmizel, je
+   vidět, že plát zavře právě on. Světlá plocha říká „teď jsem uvnitř",
+   plná mechová „otevřu ti košík". */
+#kosikFab.vplatu{background:var(--plocha2);box-shadow:none}
+#kosikFab.vplatu svg.ic{color:var(--akcent);stroke:var(--akcent)}
+#kosikFab.vplatu .pocet{background:var(--akcent);color:var(--na-akcentu);border-color:var(--plocha)}
 /* Mimo Plán se neukazuje ani omylem – JS ho schovává taky, tohle je pojistka
    pro případ, že se překreslení nestihne. */
 body:not([data-tab='plan']) #kosikFab,
@@ -53,6 +65,9 @@ body:not([data-tab='plan']) #kosikPlat{display:none}
 .plat-uchyt:active::before{background:var(--text3)}
 
 .plat-obsah{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
+/* Místo pro kolečko, které do rohu plátu doletí – bez toho by sedělo přes
+   nadpis. Uvolnilo se tím, že z hlavičky odešlo „Vysypat". */
+#kosikPlat .kosik-hlava{padding-right:62px;min-height:46px}
 
 /* Vlastní bod v košíku nemá fotku – místo ní ikona druhu, ať je na první
    pohled poznat, že to není místo z databáze. */
