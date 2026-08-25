@@ -17,6 +17,7 @@ import { dkm } from '../core/geo.js'
 import { token } from '../core/barvy.js'
 import { pozice } from '../core/pozice.js'
 import { projektujNaTrasu } from '../core/projekce.js'
+import { geometrie, zajistiTrasu } from '../core/trasy.js'
 import vanObr from '../assets/van.webp'
 
 /** @type {L.Polyline|null} */
@@ -208,7 +209,13 @@ export function drawPlanLine(mapa) {
   // jsou to nezávislé sloty, appka za jízdy plán dál upravuje.
   const prepocet = otisk ? otisk.prepocet : store.aktivniPrepocet
   const platny = prepocet && prepocet.otisk === otiskBodu(body)
-  const carovaGeometrie = platny ? prepocet.polyline : body.map((p) => [p.lat, p.lon])
+  // Geometrie od srpna 2026 nebydlí ve `store`, ale v IndexedDB (core/trasy.js).
+  // Když ještě není v paměti, kreslí se vzdušná spojnice jako vždycky, když
+  // přepočet chybí, a `zajistiTrasu()` ji dotáhne – po ní přijde `trasaNactena`
+  // a mapa se překreslí. Kreslení tím zůstává synchronní.
+  if (platny) zajistiTrasu(prepocet.otisk)
+  const skutecna = platny ? geometrie(prepocet.otisk) : null
+  const carovaGeometrie = skutecna || body.map((p) => [p.lat, p.lon])
 
   cara = L.polyline(carovaGeometrie, {
     color: token('--zvyrazneni', '#E1B152'), weight: 4.5, opacity: otisk ? 0.5 : 0.95, lineCap: 'round', lineJoin: 'round',
@@ -245,8 +252,9 @@ export function drawPlanLine(mapa) {
   // sledování skutečně spustila (S.zivaPoloha existuje jen na popředí,
   // na kartě Na cestě) a jen na skutečnou trasu z Routing API, ne vzdušnou
   // spojnici (ta by projekci zkreslila).
-  if (jedeSe && S.zivaPoloha && store.aktivniPrepocet && store.aktivniPrepocet.polyline) {
-    const proj = projektujNaTrasu(S.zivaPoloha, store.aktivniPrepocet.polyline)
+  const zivaTrasa = jedeSe && S.zivaPoloha && store.aktivniPrepocet && geometrie(store.aktivniPrepocet.otisk)
+  if (zivaTrasa) {
+    const proj = projektujNaTrasu(S.zivaPoloha, zivaTrasa)
     if (proj) {
       zivaZnacka = L.circleMarker([proj.bod.lat, proj.bod.lon], {
         radius: 8, color: token('--sun', '#A87C24'), weight: 3,

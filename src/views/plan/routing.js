@@ -11,6 +11,8 @@
 
 import { store, save, prefs } from '../../core/store.js'
 import { zjistiPolohuJednorazove } from '../../core/geo.js'
+import { ulozTrasu } from '../../core/trasyDb.js'
+import { zahodNeplatny, zapamatujTrasu } from '../../core/trasy.js'
 import { serazenaTrasa, vsechnyBody } from './body.js'
 
 /**
@@ -172,12 +174,46 @@ export async function prepocitejTrasu() {
   if (body.length < 2) return { ok: false, chyba: 'Trasa nemá aspoň dva body s polohou' }
   try {
     const vysledek = await zavolejRouting(body)
-    store.aktivniPrepocet = { ...vysledek, otisk: otiskBodu(body), spocitanoV: Date.now() }
+    const ulozeno = await ulozGeometrii(otiskBodu(body), vysledek)
+    if (!ulozeno.ok) return ulozeno
+    // Předchozí geometrie už nemá k čemu patřit – slot je jen jeden.
+    zahodNeplatny(store.aktivniPrepocet, ulozeno.prepocet.otisk)
+    store.aktivniPrepocet = ulozeno.prepocet
     save()
     return { ok: true }
   } catch (e) {
     return { ok: false, chyba: e.message || 'Přepočet trasy se nepovedl' }
   }
+}
+
+/**
+ * Uloží geometrii do IndexedDB a vrátí metadata, která patří do `store`.
+ *
+ * PROČ NE DO STORE CELÁ: jedna trasa je 273 kB a localStorage má strop ~5 MB
+ * na všechna uživatelská data dohromady. Geometrie je navíc odvozená –
+ * dopočítá se z bodů jedním voláním API – takže do vedle poznámek, které
+ * nahradit nejdou, nepatří. Viz `core/trasyDb.js`.
+ *
+ * Neúspěšný zápis se NESMÍ ohlásit jako povedený přepočet: ve storu by pak
+ * zůstalo metadata ukazující na geometrii, která nikde není, a mapa by tiše
+ * kreslila vzdušnou čáru s tvrzením „přepočítáno".
+ *
+ * @param {string} otisk
+ * @param {{polyline: Array<[number, number]>, vzdalenostKm: number, casMin: number}} vysledek
+ */
+async function ulozGeometrii(otisk, vysledek) {
+  const { polyline, ...metadata } = vysledek
+  const v = await ulozTrasu(otisk, polyline)
+  if (!v.ok) {
+    return {
+      ok: false,
+      chyba: v.plno
+        ? 'V telefonu došlo místo, trasa se neuložila. Uvolni místo v Nastavení a zkus to znovu.'
+        : 'Trasu se nepodařilo uložit do telefonu.',
+    }
+  }
+  zapamatujTrasu(otisk, polyline)
+  return { ok: true, prepocet: { ...metadata, otisk, spocitanoV: Date.now() } }
 }
 
 /**
@@ -205,7 +241,10 @@ export async function prepocitejOtiskCesty() {
   if (body.length < 2) return { ok: false, chyba: 'Trasa nemá aspoň dva body s polohou' }
   try {
     const vysledek = await zavolejRouting(body)
-    c.prepocet = { ...vysledek, otisk: otiskBodu(body), spocitanoV: Date.now() }
+    const ulozeno = await ulozGeometrii(otiskBodu(body), vysledek)
+    if (!ulozeno.ok) return ulozeno
+    zahodNeplatny(c.prepocet, ulozeno.prepocet.otisk)
+    c.prepocet = ulozeno.prepocet
     save()
     return { ok: true }
   } catch (e) {

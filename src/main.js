@@ -10,6 +10,7 @@ import './styles/index.css'
 
 import { zapniSberChyb } from './core/chyby.js'
 import { S, on, save, pripravFotky } from './core/store.js'
+import { pripravTrasy } from './core/trasy.js'
 import { spustRouter, aktivujZalozku } from './core/router.js'
 import { zjistiPolohu } from './core/geo.js'
 import { initMotiv } from './core/motiv.js'
@@ -191,11 +192,26 @@ on('fotkyNacteny', () => {
 on('ulozeniSelhalo', ({ plno }) => {
   ukazPruh({
     text: plno
-      ? 'Paměť je plná – změny se neukládají. Stáhni zálohu a smaž pár fotek.'
+      ? // Do srpna 2026 tu stálo „smaž pár fotek“. Byla to špatná rada: fotky
+        // leží v IndexedDB a se stropem localStorage nemají nic společného –
+        // člověk by je mazal, dokud by mu nedošly, a pruh by nezmizel.
+        'Paměť je plná – změny se neukládají. Stáhni zálohu a smaž staré výpravy nebo ukončené cesty.'
       : 'Změny se nedaří uložit. Stáhni zálohu, ať o nic nepřijdeš.',
     tlacitko: 'Záloha',
     akce: stahniZalohu,
   })
+})
+
+/**
+ * Dotáhla se geometrie trasy z IndexedDB (core/trasy.js).
+ *
+ * Do té doby kreslí mapa vzdušnou spojnici, takže tohle je okamžik, kdy se
+ * má objevit skutečná trasa. Karta Na cestě se překresluje taky – počítá
+ * z projekce polohy na trasu „zbývá km“.
+ */
+on('trasaNactena', () => {
+  draw()
+  if (S.activeTab === 'plan') renderPlan()
 })
 
 /** Po nalezení polohy: puntík, posun mapy, překreslení otevřené obrazovky. */
@@ -274,3 +290,9 @@ registrujServiceWorker()
 // Až za vykreslením: fotky se čtou z IndexedDB asynchronně a první obraz na ně
 // nemá čekat. Součástí je i stěhování ze starého localStorage.
 pripravFotky()
+
+// Totéž pro geometrii tras: mapa umí do jejího dotažení nakreslit vzdušnou
+// spojnici a po `trasaNactena` se překreslí. Součástí je stěhování polylin
+// ze `store` (do srpna 2026 tam ležely a nafoukly ho na megabajty) a úklid
+// geometrií, na které už nic neodkazuje.
+pripravTrasy()

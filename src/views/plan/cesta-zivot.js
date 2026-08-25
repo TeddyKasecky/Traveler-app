@@ -21,6 +21,7 @@
  */
 
 import { S, emit } from '../../core/store.js'
+import { geometrie } from '../../core/trasy.js'
 import { projektujNaTrasu } from '../../core/projekce.js'
 import { throttle } from '../../core/throttle.js'
 
@@ -59,6 +60,10 @@ export function zastavSledovani() {
  * @param {object|null} prepocet  store.aktivniPrepocet
  */
 export function aktualniProjekce(prepocet) {
-  if (!S.zivaPoloha || !prepocet || !prepocet.polyline) return null
-  return projektujNaTrasu(S.zivaPoloha, prepocet.polyline)
+  if (!S.zivaPoloha || !prepocet) return null
+  // Geometrie bydlí od srpna 2026 v IndexedDB a v paměti je jen to, co se
+  // kreslí (core/trasy.js). Když tam ještě není, projekce prostě chybí –
+  // dotažení si vyžádá mapa a po něm se karta překreslí.
+  const trasa = geometrie(prepocet.otisk)
+  return trasa ? projektujNaTrasu(S.zivaPoloha, trasa) : null
 }

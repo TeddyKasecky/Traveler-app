@@ -22,6 +22,7 @@
 
 import L from 'leaflet'
 import { token } from '../../core/barvy.js'
+import { geometrie, zajistiTrasu } from '../../core/trasy.js'
 import { otiskBodu } from './routing.js'
 
 /** @type {WeakMap<HTMLElement, {mapa: L.Map|null, kolo: number}>} */
@@ -104,10 +105,14 @@ export function vykresliDashMapu(el, {
         const proCaru = proOtisk && proOtisk.length > 1 ? proOtisk : mista
         if (proCaru.length > 1) {
           const platny = prepocet && proOtisk && prepocet.otisk === otiskBodu(proOtisk)
-          L.polyline(
-            platny ? prepocet.polyline : proCaru.map((p) => [p.lat, p.lon]),
-            { color: token('--akcent'), weight: 3, opacity: 0.75 }
-          ).addTo(z.mapa)
+          // Geometrie je v IndexedDB (core/trasy.js). Když ještě není v paměti,
+          // kreslí se vzdušná čára – mini-mapa se překreslí s kartou, jakmile
+          // se dotáhne.
+          if (platny) zajistiTrasu(prepocet.otisk)
+          const skutecna = platny ? geometrie(prepocet.otisk) : null
+          L.polyline(skutecna || proCaru.map((p) => [p.lat, p.lon]), {
+            color: token('--akcent'), weight: 3, opacity: 0.75,
+          }).addTo(z.mapa)
         }
 
         for (const p of mista) {

@@ -107,7 +107,7 @@ export const store = nacti(KEY, {
    *   { nazev, zacatek, zastavky: [id], dny: [délky], pauzy: [{od, do}],
    *     pauzaOd: null|ms, odznacene: {id: ms}, poznamky: {id: text},
    *     poznamka: '', ziskane: [id achievementů],
-   *     prepocet: {otisk, polyline, vzdalenostKm, casMin, spocitanoV}|undefined }
+   *     prepocet: {otisk, vzdalenostKm, casMin, spocitanoV}|undefined }
    *
    * `prepocet` je skutečná trasa OTISKU z Mapy.com Routing API
    * (views/plan/routing.js#prepocitejOtiskCesty) – oddělené od
@@ -150,12 +150,18 @@ export const store = nacti(KEY, {
    * Odložené výpravy nesou svůj přepočet přímo na svém záznamu ve `vypravy`
    * (pole `prepocet`) – jsou to samostatné objekty, nepotřebují klíčovanou mapu.
    *
-   *   { otisk, polyline: [[lat,lon]...], vzdalenostKm, casMin, spocitanoV }
+   *   { otisk, vzdalenostKm, casMin, spocitanoV }
    *
    * `otisk` je otisk seznamu bodů z okamžiku přepočtu (views/plan/routing.js
    * #otiskBodu) – porovnáním s aktuálním otiskem appka pozná zastaralost.
-   * Zastaralý výsledek SE NEMAŽE (fallback na vzdušný odhad), jen se
-   * nenabízí jako platný. Viz views/plan/routing.js.
+   *
+   * **GEOMETRIE TU NENÍ.** Do srpna 2026 nesl `prepocet` i pole `polyline`
+   * se sedmi tisíci body – 273 kB na trasu, jedna na každou výpravu a na
+   * každou archivovanou cestu. `vandrbuch:v1` kvůli tomu narostl na 4,3 MB,
+   * tedy 85 % stropu localStorage, a `save()` to celé serializoval při každém
+   * stisku klávesy v poznámce. Dnes je geometrie v IndexedDB pod klíčem
+   * `otisk` (`core/trasyDb.js`) a `otisk` je ukazatel na ni. Do zálohy
+   * nepatří: dá se kdykoli dopočítat z bodů trasy, na rozdíl od poznámek.
    */
   aktivniPrepocet: null,
   prio: {},

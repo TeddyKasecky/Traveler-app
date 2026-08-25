@@ -33,6 +33,7 @@
  */
 
 import { store, save, prefs } from '../../core/store.js'
+import { zahodNeplatny } from '../../core/trasy.js'
 
 /** Jak se jmenuje výprava bez jména. */
 export const BEZ_NAZVU = 'Náš plán'
@@ -101,9 +102,11 @@ export function seznamVyprav() {
  * poslednímu dni, takže se zastávka nemůže ztratit, a rozhodnutí, do kterého
  * dne patří, se dělá až v itineráři té výpravy.
  *
- * Uložený přepočet trasy (`prepocet`) se nemaže – jeho otisk prostě přestane
- * sedět a `map/planLine.js` spadne na vzdušný odhad, což je zamýšlený
- * fallback (viz views/plan/routing.js).
+ * Uložený přepočet trasy (`prepocet`) té výpravy se ZAHAZUJE. Do srpna 2026
+ * se nechával ležet („otisk přestane sedět a spadne se na vzdušný odhad"),
+ * jenže tehdy s sebou nesl i geometrii – 273 kB na trasu, které pak zůstaly
+ * navždycky. Dnes je geometrie v IndexedDB (`core/trasyDb.js`) a nemá kdo
+ * jiný poznat, že už na ni nikdo nesáhne.
  *
  * @param {number} i  index v `store.vypravy`, -1 = aktivní výprava
  * @param {string} id  id místa
@@ -125,6 +128,11 @@ export function nastavZastavkuVeVyprave(i, id, ma) {
   if (ma && kde < 0) v.plan.push(id)
   else if (!ma && kde >= 0) v.plan.splice(kde, 1)
   else return true
+  // Zastávka přibyla nebo ubyla, takže uložený přepočet téhle výpravy už
+  // neplatí – jeho otisk nikdy nebude sedět a `map/planLine.js` ho nenakreslí.
+  // Zahazuje se i jeho geometrie v IndexedDB, jinak by tam ležela navždycky.
+  zahodNeplatny(v.prepocet, null)
+  delete v.prepocet
   return save()
 }
 

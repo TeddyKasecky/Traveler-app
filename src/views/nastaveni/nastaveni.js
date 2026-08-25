@@ -212,10 +212,26 @@ export async function renderNastaveni() {
   const m = await zmerUloziste()
   const el = document.getElementById('mistoInfo')
   if (!el) return
+
+  // Rozpad po klíčích, ne jen souhrn. `navigator.storage.estimate()` počítá
+  // celý původ – fotky a staženou mapu v IndexedDB, kde je místa dost –
+  // takže se v něm ztratí právě to jediné číslo, které může bolet: kolik
+  // zabírají uživatelská data v localStorage, kde je strop kolem 5 MB.
+  // V srpnu 2026 tam ležely 4,3 MB geometrie tras a nikde to nebylo vidět.
+  const kb = (n) => `${Math.round(n / 1024)} kB`
+  const rozpad = Object.entries(m.klice)
+    .sort((a, b) => b[1] - a[1])
+    .map(([klic, n]) => `${esc(klic)} ${kb(n)}`)
+    .join(' · ')
+  const celkem = Object.values(m.klice).reduce((a, n) => a + n, 0)
+
   el.innerHTML =
-    m.pouzito === null
+    (m.pouzito === null
       ? 'Kolik místa aplikace zabírá, tenhle prohlížeč neřekne.'
-      : `Aplikace, fotky a stažená mapa zabírají <b>${mb(m.pouzito)}</b>${m.strop ? ` z ${mb(m.strop)}, které prohlížeč nabízí` : ''}.`
+      : `Aplikace, fotky a stažená mapa zabírají <b>${mb(m.pouzito)}</b>${m.strop ? ` z ${mb(m.strop)}, které prohlížeč nabízí` : ''}.`) +
+    (rozpad
+      ? `<br>Poznámky a plány zabírají <b>${kb(celkem)}</b> z asi 5 MB, které na ně prohlížeč dává: ${rozpad}.`
+      : '')
 
   // Stav stažené mapy se přepočítá při každém otevření – balík mohl mezitím
   // přibýt, zmizet nebo zastarat.

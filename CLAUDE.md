@@ -24,7 +24,8 @@ záměrně**; `check-css` je proto odstavené a nahradilo ho `check-tokeny`.
   v poli `n`, `id` zůstává. Viz [.claude/rules/database.md](.claude/rules/database.md).
 - **Klíče v úložišti se nemění**: `vandrbuch:v1` (poznámky, hodnocení, plán, dny plánu, priority),
   `vandrbuch:prefs`, `vandrbuch:data` (import CSV) a sklad `fotky` v IndexedDB
-  (`src/core/storage.js`, `src/core/fotoDb.js`). Jsou v nich všechna uživatelská data
+  (`src/core/storage.js`, `src/core/fotoDb.js`), sklad `trasy` v IndexedDB
+  (`src/core/trasyDb.js`, databáze `vandrbuch-trasy`). Jsou v nich všechna uživatelská data
   a nikde jinde neexistují — změna klíče je tichá ztráta dat. Starý `vandrbuch:photos`
   se při prvním otevření sám přestěhuje do IndexedDB a vyprázdní.
 - **Nikdy nezahazuj výsledek ukládání.** `save()`, `savePrefs()`, `ulozFotku()` vracejí
@@ -154,6 +155,37 @@ Podrobná pravidla podle oblasti (auto-scoped podle cesty):
 [.claude/rules/kontroly.md](.claude/rules/kontroly.md) ·
 [.claude/rules/nasazeni.md](.claude/rules/nasazeni.md) ·
 [.claude/rules/debug.md](.claude/rules/debug.md).
+
+## Co do `vandrbuch:v1` nepatří
+
+**Nic, co se dá dopočítat.** localStorage má strop kolem 5 MB na všechna
+uživatelská data dohromady a `save()` při každém zápisu serializuje celý
+obsah naráz — takže jedna velká věc uvnitř zdraží každé uložení poznámky
+a nakonec shodí ukládání všeho.
+
+Odhalilo to v srpnu 2026 hlášení z debug poznámkovače: `vandrbuch:v1` měl
+**4 270 kB**, tedy 85 % stropu, a 95 % z toho byla geometrie přepočtených
+tras z Mapy.com — 273 kB na trasu, jedna na každou výpravu a na každou
+archivovanou cestu, nikdy se nemazaly.
+
+Geometrie se proto přestěhovala do IndexedDB (`src/core/trasyDb.js`,
+databáze `vandrbuch-trasy`), klíčem je `otisk` z `views/plan/routing.js`.
+Ve `store` zůstal jen ukazatel — `{ otisk, vzdalenostKm, casMin, spocitanoV }`.
+
+Dělicí čára je jednoduchá:
+
+| Patří do `vandrbuch:v1` | Patří do IndexedDB |
+|---|---|
+| co uživatel napsal nebo rozhodl (poznámky, hodnocení, plán, výpravy) | co si appka umí spočítat znovu (geometrie trasy) |
+| co nejde ničím nahradit | co se dá dotáhnout z API nebo přegenerovat |
+| kilobajty | megabajty |
+
+**Do zálohy jde jen to první.** Trasy v ní schválně nejsou: po obnově na
+jiném telefonu se ukáže vzdušná čára a jedno ťuknutí na „Přepočítat" je
+dopočítá. Fotky v záloze naopak zůstávají — ty nahradit nejdou.
+
+Než přidáš do `store` nové pole, zeptej se, jestli je to zápis uživatele,
+nebo výsledek výpočtu. Druhé tam nepatří.
 
 ## Debug poznámkovač a složka `debug/`
 

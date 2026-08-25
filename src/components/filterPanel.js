@@ -24,6 +24,7 @@ import { esc } from '../core/html.js'
 import { resetFiltru, visible } from '../core/filters.js'
 import { registrujOverlay, aktivujZalozku } from '../core/router.js'
 import { mistaZCsv, zalohaData, obnovZalohu, stahniJson } from '../core/csv.js'
+import { stehujTrasy } from '../core/trasy.js'
 import { draw } from '../map/map.js'
 import { toast } from './toast.js'
 import { zavriDialog, potvrd, oznam } from './dialog.js'
@@ -291,6 +292,11 @@ function initData() {
     rd.onload = async () => {
       try {
         obnovZalohu(store, JSON.parse(rd.result), PHOTOS, prefs)
+        // Zálohy z doby před srpnem 2026 nesou geometrii tras přímo v sobě.
+        // Bez tohohle kroku by se jí store hned zase nafoukl na megabajty –
+        // patří do IndexedDB, viz core/trasyDb.js. `obnovZalohu()` to udělat
+        // nemůže: je to čistá funkce, kterou testuje check-dny v čistém Node.
+        await stehujTrasy()
         save()
         savePrefs()
         draw()

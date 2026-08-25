@@ -8,12 +8,15 @@
  * i plán tedy tiše mizely – u fotek se to kontrolovalo, u zbytku ne. Na cestě,
  * kde je záloha jediná pojistka, je to ta nejhorší možná chyba.
  *
- * Ověřuje pět věcí, které jdou poznat jen za běhu v opravdovém prohlížeči:
+ * Ověřuje sedm věcí, které jdou poznat jen za běhu v opravdovém prohlížeči:
  *   1. fotky se přestěhují z localStorage do IndexedDB a starý klíč zmizí,
  *   2. data z importu CSV se přestěhují ze společného klíče do vlastního,
  *   3. při plné paměti se objeví varovný pruh, ne ticho,
  *   4. psaní poznámky nezapisuje při každé klávese, ale zapíše se,
- *   5. při odchodu ze stránky se rozepsaná poznámka dopíše hned.
+ *   5. při odchodu ze stránky se rozepsaná poznámka dopíše hned,
+ *   6. geometrie tras se přestěhuje do IndexedDB a ve `vandrbuch:v1` po ní
+ *      nezůstane stopa (srpen 2026 – kvůli ní narostl na 85 % stropu),
+ *   7. geometrie, na kterou už nic neodkazuje, se při startu uklidí.
  *
  * Používá Edge, který je na Windows nainstalovaný – nestahuje se žádný prohlížeč.
  */
@@ -294,6 +297,151 @@ console.log('\n5. Rozepsaná poznámka se dopíše při odchodu')
       page
         .evaluate(() => JSON.stringify(JSON.parse(localStorage.getItem('vandrbuch:v1') || '{}').notes || {}))
         .then((s) => s.includes('NEDOPSANA POZNAMKA')),
+    true
+  )
+  await ctx.close()
+}
+
+/* ================= 6. stěhování geometrie tras ================= */
+
+console.log('\n6. Geometrie tras se přestěhuje do IndexedDB')
+{
+  // Do srpna 2026 ležela polyline z Mapy.com přímo ve `vandrbuch:v1` – 273 kB
+  // na trasu, jedna na každou výpravu i na každou archivovanou cestu. Klíč
+  // kvůli tomu narostl na 4,3 MB, tedy 85 % stropu, a `save()` to celé
+  // serializoval při každém stisku klávesy v poznámce.
+  //
+  // Trasa je tu malá schválně: kontroluje se stěhování, ne velikost.
+  const POLYLINE = [[47.1, 11.1], [47.2, 11.2], [47.3, 11.3]]
+  const stary = JSON.stringify({
+    notes: { 'zkusebni-misto-123': 'poznámka, která se nesmí ztratit' },
+    stav: {},
+    rating: {},
+    plan: [],
+    prio: {},
+    seen: true,
+    aktivniPrepocet: { otisk: 'A', polyline: POLYLINE, vzdalenostKm: 12, casMin: 20, spocitanoV: 1 },
+    // Odložená výprava se svým vlastním přepočtem – druhé ze čtyř míst, kde
+    // geometrie bydlela. Zapomenout na kterékoli z nich = klíč roste dál.
+    vypravy: [{ nazev: 'Stará', plan: [], planDny: [], prepocet: { otisk: 'B', polyline: POLYLINE } }],
+  })
+  const { ctx, page } = await novaStranka(`localStorage.setItem('vandrbuch:v1', ${JSON.stringify(stary)})`)
+  await page.waitForTimeout(800)
+
+  await kontrola(
+    'polyline zmizela z aktivního přepočtu',
+    () => page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).aktivniPrepocet.polyline === undefined),
+    true
+  )
+  await kontrola(
+    'zmizela i z odložené výpravy',
+    () => page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).vypravy[0].prepocet.polyline === undefined),
+    true
+  )
+  // Ukazatel musí zůstat – bez otisku by se geometrie v úložišti nedala najít
+  // a mapa by navždycky kreslila vzdušnou čáru.
+  await kontrola('otisk jako ukazatel zůstal', () => page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).aktivniPrepocet.otisk), 'A')
+  await kontrola('vzdálenost a čas zůstaly', () => page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).aktivniPrepocet.vzdalenostKm), 12)
+  await kontrola(
+    'poznámka stěhování přežila',
+    () => page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).notes['zkusebni-misto-123']),
+    'poznámka, která se nesmí ztratit'
+  )
+  await kontrola(
+    'geometrie je v IndexedDB pod otiskem',
+    () =>
+      page.evaluate(
+        () =>
+          new Promise((hotovo) => {
+            const r = indexedDB.open('vandrbuch-trasy', 1)
+            r.onsuccess = () => {
+              const db = r.result
+              if (!db.objectStoreNames.contains('trasy')) return hotovo('sklad chybí')
+              const tr = db.transaction('trasy', 'readonly')
+              const g = tr.objectStore('trasy').get('A')
+              tr.oncomplete = () => hotovo(JSON.stringify(g.result ?? null))
+              tr.onerror = () => hotovo('chyba')
+            }
+            r.onerror = () => hotovo('nelze otevřít')
+          })
+      ),
+    JSON.stringify(POLYLINE)
+  )
+  // Otisk 'B' patří odložené výpravě, takže se uklidit NESMÍ – úklid maže
+  // jen to, na co ve storu nic neodkazuje.
+  await kontrola(
+    'trasa odložené výpravy se neuklidila',
+    () =>
+      page.evaluate(
+        () =>
+          new Promise((hotovo) => {
+            const r = indexedDB.open('vandrbuch-trasy', 1)
+            r.onsuccess = () => {
+              const tr = r.result.transaction('trasy', 'readonly')
+              const g = tr.objectStore('trasy').get('B')
+              tr.oncomplete = () => hotovo(!!g.result)
+              tr.onerror = () => hotovo(false)
+            }
+            r.onerror = () => hotovo(false)
+          })
+      ),
+    true
+  )
+  await kontrola(
+    'záloha už geometrii nenese',
+    () =>
+      page.evaluate(() => {
+        const s = JSON.stringify(JSON.parse(localStorage.getItem('vandrbuch:v1')))
+        return s.includes('polyline')
+      }),
+    false
+  )
+  await ctx.close()
+}
+
+/* ================= 7. úklid nepoužité geometrie ================= */
+
+console.log('\n7. Geometrie, na kterou nic neodkazuje, se uklidí')
+{
+  // Zbytek po smazané výpravě nebo zrušené cestě. Velká schránka to unese,
+  // ale to není důvod ji zaneřádit.
+  const { ctx, page } = await novaStranka(`
+    localStorage.setItem('vandrbuch:v1', JSON.stringify({ notes:{}, stav:{}, rating:{}, plan:[], prio:{}, seen:true }))
+    // Sirotek se založí dřív, než appka nastartuje.
+    indexedDB.open('vandrbuch-trasy', 1).onupgradeneeded = (e) => {
+      e.target.result.createObjectStore('trasy')
+    }
+  `)
+  await page.evaluate(
+    () =>
+      new Promise((hotovo) => {
+        const r = indexedDB.open('vandrbuch-trasy', 1)
+        r.onsuccess = () => {
+          const tr = r.result.transaction('trasy', 'readwrite')
+          tr.objectStore('trasy').put([[1, 2]], 'sirotek')
+          tr.oncomplete = () => hotovo(true)
+        }
+      })
+  )
+  await page.reload({ waitUntil: 'load' })
+  await page.waitForTimeout(1500)
+
+  await kontrola(
+    'sirotek je pryč',
+    () =>
+      page.evaluate(
+        () =>
+          new Promise((hotovo) => {
+            const r = indexedDB.open('vandrbuch-trasy', 1)
+            r.onsuccess = () => {
+              const tr = r.result.transaction('trasy', 'readonly')
+              const g = tr.objectStore('trasy').get('sirotek')
+              tr.oncomplete = () => hotovo(g.result === undefined)
+              tr.onerror = () => hotovo(false)
+            }
+            r.onerror = () => hotovo(false)
+          })
+      ),
     true
   )
   await ctx.close()
