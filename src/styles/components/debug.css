@@ -80,6 +80,21 @@
 .dz-znacka.zahozeno{opacity:.6}
 .dz-znacka.odeslano svg.ic{font-size:11px}
 
+/* Štítek z repozitáře je vizuálně oddělený od mého vlastního stavu –
+ * repozitář je informace, ne autorita nad mým seznamem. */
+.dz-znacka.repo{background:var(--plocha2);border-style:dashed}
+.dz-znacka.repo svg.ic{font-size:11px}
+.dz-znacka.repo.hotovo{background:var(--moss);color:var(--na-akcentu);border-style:solid;border-color:transparent}
+.dz-znacka.repo.chybi{color:var(--clay);border-color:var(--clay)}
+
+.dzr.cizi{opacity:.92}
+.dzr.cizi .dzr-telo{cursor:default}
+.dzr.cizi .dzr-telo:active{transform:none}
+.dzr-kopie{flex:0 0 auto;width:42px;border:0;border-left:var(--line);background:var(--paper);
+  display:grid;place-items:center;cursor:pointer;color:var(--ink2)}
+.dzr-kopie svg.ic{font-size:16px}
+.dzr-kopie:active{transform:var(--stisk)}
+
 /* Filtry se musí zalomit – dvanáct modulů se na šířku telefonu nevejde
  * a vodorovné rolování by schovalo půlku voleb pod okraj. */
 .dzf-typ,.dzf-stav,.dzf-priorita,.dzf-modul{flex-wrap:wrap;gap:6px;overflow:visible;margin-bottom:8px}

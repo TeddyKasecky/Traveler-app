@@ -57,6 +57,28 @@ self.addEventListener('fetch', (e) => {
     return
   }
 
+  // Rejstřík složky `debug/` je jediný soubor se STABILNÍM jménem, jehož obsah
+  // se mění mezi nasazeními – otisk v názvu mít nemůže, protože ho aplikace
+  // adresuje napevno. Cache-first by tedy servírovala starý stav navždycky:
+  // verze cache se počítá ze SEZNAMU JMEN, a ten se změnou obsahu nezmění.
+  // Proto síť napřed a cache jen jako záloha pro offline.
+  if (url.pathname.endsWith('/debug-stav.json')) {
+    e.respondWith(
+      fetch(req)
+        .then((odpoved) => {
+          if (odpoved.ok && odpoved.type === 'basic') {
+            const kopie = odpoved.clone()
+            caches.open(CACHE).then((c) => c.put(req, kopie))
+          }
+          return odpoved
+        })
+        // Offline a nikdy nestažené: 504 je pravdivější než prázdný rejstřík.
+        // Aplikace pak ví, že NEVÍ, a netvrdí, že v repozitáři nic není.
+        .catch(() => caches.match(req).then((r) => r || new Response(null, { status: 504 })))
+    )
+    return
+  }
+
   // Vlastní soubory mají v názvu otisk obsahu, takže cache je vždycky správná.
   // Co v ní není, se stáhne a rovnou uloží – viz úvodní komentář.
   e.respondWith(

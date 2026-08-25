@@ -66,10 +66,10 @@ npm run preview          # prohlédnutí sestaveného webu
 npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
-npm run check-debug      # debug poznámkovač: identita záznamu, export, záloha, 85 bodů
+npm run check-debug      # debug poznámkovač: identita záznamu, export, rejstřík, 108 bodů
 
-npm run smoke            # proklikání v prohlížeči, 298 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 284 kontrol
+npm run smoke            # proklikání v prohlížeči, 304 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 286 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
@@ -167,6 +167,14 @@ nepíše: obrazovku, filtry, verzi buildu i cache, online/offline, zaplnění
 Exportují se do jednoho `.md` souboru na export (`debug/RRRR-MM-DD-HHMM-<autor>.md`),
 který se commitne a pushne — tím se dostane k oběma lidem i k AI, která si repo čte.
 `id` záznamu (`tadeas-014`) **se nikdy nemění a nerecykluje**, stejně jako `id` místa.
+
+**Stav se vrací zpátky do appky.** Build přečte složku `debug/` a přibalí z ní
+`dist/debug-stav.json` (`scripts/debug-rejstrik.mjs` + `pluginDebugRejstrik`
+ve `vite.config.js`), takže autor v archivu vidí, jestli se jeho hlášení řeší
+nebo vyřešilo, a vidí i záznamy toho druhého. Žádný backend, žádný token —
+obnovuje se nasazením (na betě každý push na `main`). Je to **jediný soubor
+se stabilním jménem, jehož obsah se mezi nasazeními mění**, takže ho service
+worker bere sítí napřed; cache-first by servírovala starý stav navždycky.
 
 **Když se záznam vyřeší, commit s opravou ho zároveň odstraní z jeho `.md`
 a přidá řádek do `debug/VYRESENO.md`.** Když ze souboru zmizí poslední záznam,

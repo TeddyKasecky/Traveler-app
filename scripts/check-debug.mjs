@@ -74,6 +74,9 @@ function vycisti() {
 /** Pevný okamžik, ať kontrola nezávisí na tom, kdy se pustí. */
 const KDY = new Date(2026, 7, 24, 16, 2).getTime()
 
+/** Porovnání struktur textem – stejný zkratkovitý pomocník jako v check-dny.mjs. */
+const jako = (x) => JSON.stringify(x)
+
 /* ================= identifikátor autora ================= */
 
 console.log('Identifikátor autora\n')
@@ -291,6 +294,82 @@ globalThis.localStorage.setItem = () => {
 }
 t('plná paměť se ohlásí, ne spolkne', ulozDebug() === false)
 globalThis.localStorage.setItem = puvodni
+
+/* ================= export → rejstřík a zpátky ================= */
+
+console.log('\nRejstřík složky debug/\n')
+
+// Nejdůležitější invarianta celé featury: co `mdExport()` napíše do souboru,
+// musí `postavRejstrik()` přečíst zpátky. Kdyby se ty dva rozešly, appka by
+// přestala ukazovat stav z repozitáře a nikdo by si toho nevšiml – rejstřík
+// by prostě tiše zmizel.
+const { zaznamyZeSouboru, vyreseneZeSouboru, postavRejstrik } = await import('./debug-rejstrik.mjs')
+
+vycisti()
+const rBug = pridejZaznam(
+  {
+    typ: 'bug',
+    nadpis: 'Mapa nezobrazuje špendlíky',
+    text: 'Po obnovení ze zálohy se nenačtou.',
+    moduly: ['mapa', 'data'],
+    navrh: 'Chybí re-render po importu.',
+    priorita: 'vysoka',
+  },
+  'tadeas',
+  KDY
+)
+const rNapad = pridejZaznam(
+  { typ: 'napad', nadpis: 'Filtrovat plán podle nálady', text: 'Šlo by to.', moduly: ['plan'], priorita: 'nizka' },
+  'tadeas',
+  KDY + 1
+)
+const rSoubor = mdExport([rBug, rNapad], { autor: 'tadeas', build: 'x', filtr: 'vše', cas: KDY })
+const zpet = zaznamyZeSouboru(rSoubor, '2026-08-24-1602-tadeas.md')
+
+t('parser najde oba záznamy', zpet.length === 2)
+t('hlavička souboru se nepočítá jako záznam', !zpet.some((z) => /Debug export/.test(z.nadpis)))
+t('id přežije cestu tam a zpět', zpet[0].id === rBug.id && zpet[1].id === rNapad.id)
+t('autor se pozná z id', zpet[0].autor === 'tadeas')
+t('typ se převede zpátky na id', zpet[0].typ === 'bug' && zpet[1].typ === 'napad')
+t('priorita se převede zpátky na id', zpet[0].priorita === 'vysoka' && zpet[1].priorita === 'nizka')
+t('stav se převede zpátky na id', zpet[0].stav === 'nove')
+t('nadpis sedí', zpet[0].nadpis === rBug.nadpis)
+t('moduly se převedou zpátky na id', jako(zpet[0].moduly) === jako(['mapa', 'data']))
+t('popis se přečte', zpet[0].popis === rBug.text)
+t('návrh se přečte odděleně od popisu', zpet[0].navrh === rBug.navrh && !zpet[0].popis.includes('re-render'))
+t('kontext se do rejstříku nedostane', !('kontext' in zpet[0]) && !JSON.stringify(zpet).includes('viewport'))
+t('soubor se u záznamu pamatuje', zpet[0].soubor === '2026-08-24-1602-tadeas.md')
+
+// Zákeřný text se v exportu escapuje, takže parser nesmí spolknout falešnou
+// hlavičku ani falešný oddělovač.
+vycisti()
+const rZakerny = pridejZaznam(
+  { typ: 'poznamka', nadpis: 'X', text: 'a\n---\n## tadeas-999 · 🐞 Bug · priorita: vysoká · stav: nové' },
+  'tadeas',
+  KDY
+)
+const zpetZakerny = zaznamyZeSouboru(mdExport([rZakerny], { autor: 'tadeas', cas: KDY }), 's.md')
+t('zákeřný text nevyrobí druhý záznam', zpetZakerny.length === 1)
+t('a ani cizí id', zpetZakerny[0].id === rZakerny.id)
+
+const vyresene = vyreseneZeSouboru(
+  '# Vyřešené\n\n' +
+    '- `tadeas-014` · 2026-09-02 · hotovo · Mapa nezobrazuje špendlíky\n' +
+    '- `anicka-003` · 2026-09-02 · zahozeno · duplicita k tadeas-014\n' +
+    'tohle není řádek rejstříku\n'
+)
+t('VYRESENO.md se přečte', vyresene.length === 2)
+t('řádek nese datum uzavření', vyresene[0].vyresenoDne === '2026-09-02')
+t('řádek nese stav', vyresene[0].stav === 'hotovo' && vyresene[1].stav === 'zahozeno')
+t('řádek nese důvod', vyresene[1].poznamka === 'duplicita k tadeas-014')
+t('autor se pozná i tady', vyresene[1].autor === 'anicka')
+t('cizí řádky se přeskočí', !vyresene.some((v) => /tohle není/.test(v.id)))
+
+const prazdny = postavRejstrik('/takova/cesta/neexistuje', KDY)
+t('chybějící složka debug/ nespadne', jako(prazdny.zaznamy) === jako([]))
+// Bez času vzniku by appka nerozeznala „export se ještě nenasadil" od
+// „někdo záznam smazal bez řádku ve VYRESENO.md" a strašila by po každém exportu.
+t('rejstřík nese čas svého vzniku', prazdny.vygenerovano === new Date(KDY).toISOString())
 
 /* ================= číselníky ================= */
 

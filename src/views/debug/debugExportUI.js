@@ -110,7 +110,11 @@ async function poExportu(nazev, zaznamy, prekresli) {
     ne: 'Teď ne',
   })
   if (!dal) return
-  for (const z of zaznamy) upravZaznam(z.id, { exportovanoDo: nazev })
+  // Čas odeslání se pamatuje kvůli rejstříku: záznam, který v něm chybí, může
+  // být buď ještě nenasazený, nebo odstraněný bez řádku ve VYRESENO.md.
+  // Rozliší to porovnání s `vygenerovano` rejstříku.
+  const ted = Date.now()
+  for (const z of zaznamy) upravZaznam(z.id, { exportovanoDo: nazev, exportovanoV: ted })
   if (!ulozDebug()) return toast('Označení se neuložilo – v telefonu došlo místo')
   toast('Označeno')
   // Bez překreslení by štítek „odesláno" u řádku naskočil až při příštím

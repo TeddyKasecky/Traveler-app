@@ -121,6 +121,46 @@ function pluginServiceWorker() {
 }
 
 /**
+ * Přibalí rejstřík složky `debug/` jako `dist/debug-stav.json`.
+ *
+ * PROČ TO JDE BEZ BACKENDU: appka se nasazuje z téhož repozitáře, do kterého
+ * se commitují exporty debug poznámek. Build si tedy složku přečte a autor
+ * pak v appce vidí, že jeho hlášení někdo řeší nebo vyřešil – a vidí i záznamy
+ * toho druhého, takže se totéž nehlásí dvakrát. Na betě se to obnoví každým
+ * pushem na `main`, na produkci s vydáním.
+ *
+ * PROČ VLASTNÍ SOUBOR, A NE ZAPEČENÉ DO JS: rejstřík se mění při každém debug
+ * commitu. Zapečený by měnil otisk hlavního chunku a telefony by stahovaly
+ * celou aplikaci znovu – přesně to, co se v srpnu 2026 opravovalo.
+ *
+ * `buildStart`, ne `generateBundle`: `pluginServiceWorker` skládá seznam
+ * k předuložení až v `generateBundle`, takže se sem soubor musí dostat dřív,
+ * aby ho pobral a rejstřík fungoval i offline.
+ *
+ * Do jednosouborové varianty se nezapojuje (jako MapLibre a reliéf) – appka
+ * z disku fetch neuspěje a oddíl se prostě neukáže.
+ */
+function pluginDebugRejstrik() {
+  return {
+    name: 'vandrbuch-debug-rejstrik',
+    async buildStart() {
+      const { postavRejstrik } = await import('./scripts/debug-rejstrik.mjs')
+      const rejstrik = postavRejstrik(path.join(ROOT, 'debug'))
+      this.emitFile({ type: 'asset', fileName: 'debug-stav.json', source: JSON.stringify(rejstrik) })
+    },
+    // V `npm run dev` se nic neemituje, takže se soubor musí naservírovat
+    // ručně – jinak by se stav z repozitáře dal vyzkoušet až po buildu.
+    configureServer(server) {
+      server.middlewares.use('/debug-stav.json', async (_req, res) => {
+        const { postavRejstrik } = await import('./scripts/debug-rejstrik.mjs')
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify(postavRejstrik(path.join(ROOT, 'debug'))))
+      })
+    },
+  }
+}
+
+/**
  * V single-file variantě nahradí odkazy na manifest a ikonu za data URI.
  *
  * Soubor otevřený z disku nemá vedle sebe public/, takže by se ikona ani
@@ -186,7 +226,9 @@ export default defineConfig(({ mode }) => {
 
     plugins: single
       ? [viteSingleFile(), pluginSingleFilePwa()]
-      : [pluginServiceWorker(), pluginBetaManifest('dist')],
+      : // Rejstřík PŘED service workerem: ten skládá seznam k předuložení
+        // z bundle a musí v něm `debug-stav.json` už najít.
+        [pluginDebugRejstrik(), pluginServiceWorker(), pluginBetaManifest('dist')],
 
     define: {
       'import.meta.env.SINGLE_FILE': JSON.stringify(single),

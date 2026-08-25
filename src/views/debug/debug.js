@@ -24,6 +24,7 @@ import { potvrd } from '../../components/dialog.js'
 import { toast } from '../../components/toast.js'
 import { otevriDebugZapis } from '../../components/debugZapis.js'
 import { exportHtml, napojExport } from './debugExportUI.js'
+import { nactiRejstrik, odOstatnich, rejstrikVPameti, stavZRepa } from '../../core/debugRejstrik.js'
 import {
   MODULY,
   PRIORITY,
@@ -81,7 +82,7 @@ function radekZaznamu(z) {
       <div class="dzr-meta">
         <span class="dz-znacka ${z.stav}">${esc(stavPopisek(z.stav))}</span>
         <span class="dz-znacka ${z.priorita}">${esc(prioPopisek(z.priorita))}</span>
-        ${z.exportovanoDo ? `<span class="dz-znacka odeslano" title="${esc(z.exportovanoDo)}">${IC('i-sdilet')}odesláno</span>` : ''}
+        ${stitekZRepa(z)}
         ${stitky ? `<span class="dzr-moduly">${esc(stitky)}</span>` : ''}
         <span class="dzr-datum">${datum(z.vytvoreno)}</span>
       </div>
@@ -91,6 +92,50 @@ function radekZaznamu(z) {
 
 const stavPopisek = (id) => (STAVY.find((s) => s.id === id) || { popisek: id }).popisek
 const prioPopisek = (id) => `priorita ${(PRIORITY.find((p) => p.id === id) || { popisek: id }).popisek}`
+
+/** `2026-09-02` → `2. 9.` */
+function denZIso(iso) {
+  const [r, m, d] = String(iso || '').split('-')
+  return d ? `${Number(d)}. ${Number(m)}.` : String(iso || '')
+}
+
+/**
+ * Štítek „co o tom ví repozitář" – oddělený od mého vlastního stavu.
+ *
+ * Repozitář je informace, ne autorita nad mým seznamem: můj `stav` se podle
+ * něj nikdy nepřepisuje sám. Poslední řádek („zmizelo z repozitáře") není
+ * chyba appky, ale HLÍDAČ KONVENCE – znamená, že někdo záznam z `.md`
+ * odstranil, aniž by zapsal řádek do `debug/VYRESENO.md`.
+ */
+function stitekZRepa(z) {
+  const r = stavZRepa(z.id)
+  if (r && r.zdroj === 'vyreseno') {
+    const kdy = r.vyresenoDne ? ` · ${denZIso(r.vyresenoDne)}` : ''
+    return r.stav === 'zahozeno'
+      ? `<span class="dz-znacka repo zahozeno" title="${esc(r.poznamka || '')}">${IC('i-x')}zahozeno v repu${kdy}</span>`
+      : `<span class="dz-znacka repo hotovo" title="${esc(r.poznamka || '')}">${IC('i-check')}vyřešeno${kdy}</span>`
+  }
+  if (r) {
+    return r.stav === 'resim'
+      ? `<span class="dz-znacka repo">${IC('i-clock')}řeší se</span>`
+      : `<span class="dz-znacka repo">${IC('i-globe')}v repozitáři</span>`
+  }
+  if (!z.exportovanoDo) return ''
+
+  const rej = rejstrikVPameti()
+  const odeslano = `<span class="dz-znacka odeslano" title="${esc(z.exportovanoDo)}">${IC('i-sdilet')}odesláno</span>`
+  // Rejstřík se nenačetl (offline a nikdy nestažený, jednosouborová varianta) –
+  // pak se nesmí tvrdit, že záznam zmizel. „Nevíme" je jiný stav než „není tam".
+  if (!rej) return odeslano
+  // Rejstřík je starší než odeslání: export se prostě ještě nedostal do gitu
+  // a na server. Strašit v tomhle případě by byl planý poplach při každém
+  // exportu, dokud se nenasadí.
+  if (z.exportovanoV && rej.vygenerovano && Date.parse(rej.vygenerovano) < z.exportovanoV) return odeslano
+  // Rejstřík je novější a záznam v něm přesto není. Není to chyba appky, ale
+  // HLÍDAČ KONVENCE: někdo záznam z `.md` odstranil, aniž by zapsal řádek
+  // do `debug/VYRESENO.md`, takže se autor nikdy nedozví, jak to dopadlo.
+  return `<span class="dz-znacka repo chybi" title="${esc(z.exportovanoDo)}">${IC('i-oko-ne')}zmizelo z repozitáře</span>`
+}
 
 /** Filtr jako řada pilulek. `vse` je první a znamená „bez omezení". */
 function filtrRada(klic, polozky, popisekVse) {
@@ -103,9 +148,48 @@ function filtrRada(klic, polozky, popisekVse) {
   )
 }
 
+/**
+ * Řádek cizího záznamu z repozitáře. Jen ke čtení – editovat cizí hlášení
+ * nedává smysl, odpovídá se na ně opravou.
+ */
+function radekCizi(z) {
+  const t = typZaznamu(z.typ)
+  const vyreseno = z.zdroj === 'vyreseno'
+  return `<div class="dzr cizi" data-id="${z.id}">
+    <div class="dzr-telo">
+      <div class="dzr-hd">
+        ${IC(t.ikona)}
+        <span class="dz-id">${esc(z.id)}</span>
+        <b>${esc(z.nadpis || z.poznamka || '(bez nadpisu)')}</b>
+      </div>
+      ${z.popis ? `<div class="dzr-text">${esc(zkratka(z.popis))}</div>` : ''}
+      <div class="dzr-meta">
+        <span class="dz-znacka repo${vyreseno ? ` ${z.stav}` : ''}">${
+          vyreseno ? `${IC(z.stav === 'zahozeno' ? 'i-x' : 'i-check')}${esc(stavPopisek(z.stav))}${z.vyresenoDne ? ` · ${denZIso(z.vyresenoDne)}` : ''}` : `${IC('i-globe')}${esc(stavPopisek(z.stav))}`
+        }</span>
+        ${(z.moduly || []).length ? `<span class="dzr-moduly">${esc(z.moduly.map(popisekModulu).join(' · '))}</span>` : ''}
+      </div>
+    </div>
+    <button class="dzr-kopie" data-kopiruj="${esc(z.id)}" title="Zkopírovat id">${IC('i-copy')}</button>
+  </div>`
+}
+
+/** Oddíl „Od ostatních". Kreslí se jen když rejstřík opravdu něco cizího nese. */
+function cizisekce(cizi) {
+  const otevrene = cizi.filter((z) => z.zdroj !== 'vyreseno')
+  return `
+    ${sekce('Od ostatních', { pozn: `${cizi.length} z repozitáře` })}
+    <div class="meta" style="margin:0 2px 8px">Hlášení, která nemáš v telefonu – přišla ze složky <code>debug/</code> při posledním nasazení. Jen ke čtení; ${otevrene.length ? `<b>${otevrene.length}</b> ${sklonuj(otevrene.length, 'je otevřené', 'jsou otevřené', 'je otevřených')}` : 'všechna jsou odbytá'}.</div>
+    <div class="dzr-seznam">${cizi.map(radekCizi).join('')}</div>`
+}
+
 export function renderDebug() {
   const wrap = document.getElementById('debugInner')
   if (!wrap) return
+
+  // Rejstřík je v samostatném souboru, který build přibalil ze složky `debug/`.
+  // Načte se jednou a překreslí – vykreslování zůstává synchronní.
+  if (!rejstrikVPameti()) nactiRejstrik().then((r) => r && renderDebug())
 
   const vse = debugData.zaznamy
   const videt = filtrujZaznamy(F)
@@ -114,6 +198,8 @@ export function renderDebug() {
   for (const id of [...vybrane]) if (!videt.some((z) => z.id === id)) vybrane.delete(id)
 
   const otevrenych = vse.filter((z) => z.stav !== 'hotovo' && z.stav !== 'zahozeno').length
+  // Co je v repozitáři a nemám to v telefonu – typicky hlášení toho druhého.
+  const cizi = odOstatnich(new Set(vse.map((z) => z.id)))
 
   wrap.innerHTML = `
     <h2 class="nadpis-obrazovky">${IC('i-brouk')}Poznámkovač</h2>
@@ -147,6 +233,8 @@ export function renderDebug() {
     <div class="btnrow" style="margin-top:16px">
       <button class="btn primary" id="dzNovy">${IC('i-plus')}Zapsat poznámku</button>
     </div>
+
+    ${cizi.length ? cizisekce(cizi) : ''}
 
     ${exportHtml(vybrane)}
     <div style="height:20px"></div>`
@@ -207,4 +295,17 @@ function napoj(videt) {
   }
 
   document.getElementById('dzNovy').onclick = () => otevriDebugZapis()
+
+  // Cizí záznam se needituje – jediné, co se z něj hodí, je jeho id do
+  // konverzace s AI („podívej se na anicka-003").
+  for (const b of document.querySelectorAll('[data-kopiruj]')) {
+    b.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(b.dataset.kopiruj)
+        toast(`Zkopírováno ${b.dataset.kopiruj}`)
+      } catch {
+        toast('Kopírování se nepovedlo')
+      }
+    }
+  }
 }

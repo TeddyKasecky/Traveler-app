@@ -294,6 +294,43 @@ await kontrola('záznam si nese kontext', () =>
 await kontrola('debug data nejsou v poznámkách z cest', () =>
   page.evaluate(() => localStorage.getItem('vandrbuch:v1').includes('Zkušební záznam')), false)
 
+// Stav z repozitáře. `dist/debug-stav.json` je po buildu prázdný (složka
+// `debug/` v repu zatím nic neobsahuje), takže se pro kontrolu na disk zapíše
+// fixture. NE přes `page.route`: požadavek obsluhuje service worker a ten je
+// pro odposlech Playwrightu neviditelný – tudy se navíc rovnou ověří, že
+// worker neservíruje starý rejstřík z cache (má na něj síť napřed).
+//
+// Musí se to udělat DŘÍV, než se poznámkovač poprvé otevře: rejstřík se čte
+// jednou za běh a drží v paměti.
+const REJSTRIK_CESTA = path.join(ROOT, 'dist', 'debug-stav.json')
+const REJSTRIK_PUVODNI = fs.existsSync(REJSTRIK_CESTA) ? fs.readFileSync(REJSTRIK_CESTA, 'utf8') : null
+if (!SINGLE) {
+  fs.writeFileSync(
+    REJSTRIK_CESTA,
+    JSON.stringify({
+      // Starší než odeslání záznamu níž, takže „odesláno, ale zatím nenasazeno"
+      // se nesmí hlásit jako „zmizelo z repozitáře".
+      vygenerovano: '2020-01-01T00:00:00.000Z',
+      zaznamy: [
+        {
+          id: 'anicka-003',
+          autor: 'anicka',
+          typ: 'bug',
+          nadpis: 'Cizí hlášení z repozitáře',
+          moduly: ['plan'],
+          priorita: 'stredni',
+          stav: 'resim',
+          soubor: '2026-08-20-0900-anicka.md',
+          popis: 'Tohle nahlásil někdo jiný.',
+          navrh: '',
+          zdroj: 'export',
+        },
+        { id: 'anicka-002', autor: 'anicka', stav: 'hotovo', vyresenoDne: '2026-08-21', poznamka: 'opraveno', zdroj: 'vyreseno' },
+      ],
+    })
+  )
+}
+
 // Prohlížeč poznámek. Otevírá se z Nastavení – ve spodní liště tlačítko nemá.
 await page.click('#nastaveniOpen')
 await page.waitForTimeout(400)
@@ -301,23 +338,40 @@ await page.click('#debugOtevri')
 await page.waitForTimeout(400)
 await kontrola('poznámkovač se otevřel', () => page.locator('#panelDebug.show').count(), 1)
 await kontrola('poznámkovač má adresu', () => page.evaluate(() => location.hash), '#debug')
-await kontrola('zapsaný záznam je v seznamu', () => page.locator('.dzr').count(), 1)
-await kontrola('řádek nese id', () => page.locator('.dzr .dz-id').innerText(), 'tadeas-z-001')
-await kontrola('řádek nese stav', () => page.locator('.dzr .dz-znacka.nove').count(), 1)
+await kontrola('zapsaný záznam je v seznamu', () => page.locator('.dzr:not(.cizi)').count(), 1)
+await kontrola('řádek nese id', () => page.locator('.dzr:not(.cizi) .dz-id').innerText(), 'tadeas-z-001')
+await kontrola('řádek nese stav', () => page.locator('.dzr:not(.cizi) .dz-znacka.nove').count(), 1)
+
+// Oddíl „Od ostatních": co je v repozitáři a v tomhle telefonu to není.
+// Rejstřík se dotahuje asynchronně a obrazovka se po něm překreslí sama.
+// V jednosouborové variantě žádný `debug-stav.json` není a oddíl se schválně
+// neukáže – appka pak o stavu v repozitáři nic netvrdí.
+if (!SINGLE) {
+  await page.waitForSelector('.dzr.cizi', { timeout: 5000 })
+  await kontrola('cizí záznamy jsou vidět', () => page.locator('.dzr.cizi').count(), 2)
+  await kontrola('cizí záznam nese id', () =>
+    page.locator('.dzr.cizi').first().locator('.dz-id').innerText(), 'anicka-003')
+  await kontrola('cizí záznam se needituje', () => page.locator('.dzr.cizi [data-otevri]').count(), 0)
+  await kontrola('z cizího jde zkopírovat id', () => page.locator('.dzr.cizi [data-kopiruj]').count(), 2)
+  await kontrola('vyřešené cizí nese datum', () =>
+    page.locator('.dzr.cizi').nth(1).innerText().then((t) => /21\. 8\./.test(t)), true)
+} else {
+  await kontrola('bez rejstříku se cizí oddíl neukáže', () => page.locator('.dzr.cizi').count(), 0)
+}
 
 // Filtr, kterému nic neodpovídá, musí vysvětlit proč – prázdná obrazovka
 // bez věty vypadá jako rozbitá appka.
 await page.click('.dzf-typ .pilulka:has-text("Nápad")')
 await page.waitForTimeout(250)
-await kontrola('filtr podle typu zabral', () => page.locator('.dzr').count(), 0)
+await kontrola('filtr podle typu zabral', () => page.locator('.dzr:not(.cizi)').count(), 0)
 await kontrola('prázdný filtr to vysvětlí', () =>
   page.locator('.dzr-prazdno').innerText().then((t) => /filtru nic neodpov/i.test(t)), true)
 await page.click('.dzf-typ .pilulka:has-text("Vše")')
 await page.waitForTimeout(250)
-await kontrola('zrušení filtru záznam vrátí', () => page.locator('.dzr').count(), 1)
+await kontrola('zrušení filtru záznam vrátí', () => page.locator('.dzr:not(.cizi)').count(), 1)
 
 // Ťuknutí na řádek otevře TÝŽ formulář jako zápis, jen v režimu úpravy.
-await page.click('.dzr-telo')
+await page.click('.dzr:not(.cizi) .dzr-telo')
 await page.waitForTimeout(400)
 await kontrola('řádek otevře formulář', () => page.locator('#debugZapis.show').count(), 1)
 await kontrola('úprava má i volbu stavu', () => page.locator('#dzStav button').count(), 4)
@@ -328,7 +382,7 @@ await kontrola('změna stavu se uložila', () =>
   page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:debug')).zaznamy[0].stav), 'hotovo')
 await kontrola('id se úpravou nezměnilo', () =>
   page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:debug')).zaznamy[0].id), 'tadeas-z-001')
-await kontrola('seznam se sám překreslil', () => page.locator('.dzr .dz-znacka.hotovo').count(), 1)
+await kontrola('seznam se sám překreslil', () => page.locator('.dzr:not(.cizi) .dz-znacka.hotovo').count(), 1)
 
 // Export. Rozsah je segment na obrazovce, ne dialog: navigator.share() se musí
 // zavolat synchronně v obsluze kliknutí a `await` před ním by ho zablokoval.
@@ -365,7 +419,10 @@ await page.click('#dialogAno')
 await page.waitForTimeout(400)
 await kontrola('u záznamu zůstal název souboru', () =>
   page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:debug')).zaznamy[0].exportovanoDo), mdNazev)
+// Rejstřík je STARŠÍ než tenhle export, takže „odesláno" je pravda a hlásit
+// „zmizelo z repozitáře" by byl planý poplach po každém exportu do nasazení.
 await kontrola('a v seznamu je vidět odesláno', () => page.locator('.dz-znacka.odeslano').count(), 1)
+await kontrola('nenasazený export nestraší', () => page.locator('.dz-znacka.repo.chybi').count(), 0)
 
 // Záloha .json a import zpátky. Import nepřepisuje existující id – je to
 // záchrana po přeinstalaci, ne synchronizace.
@@ -393,7 +450,7 @@ await page.waitForTimeout(400)
 await kontrola('mazání se ptá', () => page.locator('#dialog.show').count(), 1)
 await page.click('#dialogAno')
 await page.waitForTimeout(400)
-await kontrola('záznam zmizel', () => page.locator('.dzr').count(), 0)
+await kontrola('záznam zmizel', () => page.locator('.dzr:not(.cizi)').count(), 0)
 await kontrola('prázdný poznámkovač poradí', () =>
   page.locator('.dzr-prazdno').innerText().then((t) => /Zat[ií]m nic/i.test(t)), true)
 // Číslo se po smazání NEVRACÍ – další záznam musí dostat 002.
@@ -1389,6 +1446,13 @@ console.log('\n  vzhled:')
   )
   await tmavaStranka.close()
 }
+
+/* ---------- úklid ---------- */
+
+// Vrátit rejstřík, který vyrobil build – kontrola si ho přepsala fixturou.
+// Bez toho by `dist/` po smoke obsahoval cizí záznamy a příští běh
+// `npm run preview` by je ukázal jako skutečné.
+if (REJSTRIK_PUVODNI !== null) fs.writeFileSync(REJSTRIK_CESTA, REJSTRIK_PUVODNI)
 
 /* ---------- shrnutí ---------- */
 

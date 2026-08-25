@@ -63,6 +63,13 @@ Proto `vite.config.js` při buildu vypisuje, kolik se předukládá a kolik se
 vynechalo, a `smoke` má na to kontrolu. Dnes: **43 souborů, 3,3 MB na disku,
 ~2,4 MB přes síť** (z toho megabajt je stínování terénu).
 
+**Rejstřík debug poznámek** (`dist/debug-stav.json`) je v předukládaném seznamu taky,
+ale je to **jediný soubor se stabilním jménem, jehož obsah se mezi nasazeními mění** —
+skládá ho `pluginDebugRejstrik()` ze složky `debug/`. Verze cache se počítá ze SEZNAMU
+JMEN, takže by se změnou jeho obsahu nezměnila a cache-first by servírovala starý stav
+navždycky. Service worker ho proto bere **sítí napřed** a cache používá jen jako zálohu
+pro offline. Je to jediná výjimka z „cache je vždycky správná".
+
 **Stínování terénu** (`src/assets/relief-evropa.webp`) v předukládaném seznamu
 naopak **je** — má ho i zjednodušená mapa, tedy i ten, kdo si nic nestáhl.
 

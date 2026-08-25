@@ -20,7 +20,7 @@ bez vyžádání. Místo nich je 27 samostatných spustitelných `.mjs` skriptů
 |---|---|---|
 | `validate-data.mjs` | `npm run validate` | schéma dat; obal nad `src/data/validate.js` |
 | `check-uloziste.mjs` | `npm run check-uloziste` | stěhování dat mezi úložišti, chování při plné paměti, odložený zápis poznámky |
-| `check-debug.mjs` | `npm run check-debug` | debug poznámkovač: číslování a identita záznamu, `.md` export, záloha a import, 85 bodů |
+| `check-debug.mjs` | `npm run check-debug` | debug poznámkovač: identita záznamu, `.md` export, záloha, čtení rejstříku zpátky, 108 bodů |
 | `extract-places.mjs` | `npm run check-data` | že `places.json` je 1:1 s originálem |
 | `check-css-parity.mjs` | `npm run check-css:original` | 338 CSS pravidel proti originálu — **odstaveno redesignem** |
 | `check-tokeny.mjs` | `npm run check-tokeny` | barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů |
@@ -31,7 +31,7 @@ bez vyžádání. Místo nich je 27 samostatných spustitelných `.mjs` skriptů
 | `check-form.mjs` | `npm run check-form` | že formulář vyrábí platná místa, 18/18 |
 | `check-ikony.mjs` | `npm run check-ikony` | jedna věc = jedno jméno = jedna ikona, 8 bodů |
 | `check-images.mjs` | `npm run check-images` | existenci odkazů na fotky — **chodí na síť** |
-| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 298 / 284 kontrol |
+| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 304 / 286 kontrol |
 | `parity.mjs` | `npm run parity` | kontrolní seznam z `PARITA.md`, 26 bodů |
 | `perf.mjs` | `npm run perf` | rychlost startu při zpomaleném procesoru |
 | `perf-mapa.mjs` | ručně | plynulost posunu a přiblížení **stažené** malované mapy |
@@ -43,6 +43,12 @@ bez vyžádání. Místo nich je 27 samostatných spustitelných `.mjs` skriptů
 | `make-relief.mjs` | ručně | stínování terénu z výškopisu — **chodí na síť** |
 | `mvt.mjs` | — | není kontrola: čtení a filtrování vektorových dlaždic pro `make-mapa.mjs` |
 | `mrizka.mjs` | — | není kontrola: definice evropské mřížky, sdílená reliéfem a oběma maskami |
+
+`debug-rejstrik.mjs` není jen kontrola: skládá rejstřík složky `debug/` (co je otevřené,
+co se vyřešilo) a `vite.config.js` ho tímtéž kódem přibaluje do `dist/debug-stav.json`.
+`npm run debug-rejstrik -- --vypis` vypíše přehled do konzole. Formát `.md` exportu je
+proto **dohoda dvou souborů** (`src/core/debugExport.js` a tenhle) — mění se v obou naráz
+a hlídá to `check-debug`.
 
 `nove-styly.mjs` není kontrola, ale sdílený seznam CSS prvků, které v originále protějšek
 nemají. Používá ho `check-css-parity.mjs` i `parity.mjs` — když měl každý svůj, přidání
