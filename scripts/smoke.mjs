@@ -106,9 +106,10 @@ const kontrola = async (popis, fn, ocekavano) => {
 // 57 z původní aplikace + `i-filtr` (trychtýř podle listu „SADA PIKTOGRAMŮ",
 // viz VZHLED.md) + `i-zalozka` + `i-slozka` + `i-zamek` (ukončené cesty
 // v knihovně, srpen 2026) + `i-dum` (uložené pozice v profilu, srpen 2026)
-// + `i-oko-ne` (schování běžných míst u mapy, srpen 2026).
+// + `i-oko-ne` (schování běžných míst u mapy, srpen 2026)
+// + `i-brouk` (debug poznámkovač, srpen 2026).
 // Číslo se mění jen s vědomým přidáním do sprite.svg.
-await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 63)
+await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 64)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
 // Nad mapou jsou čtyři rychlé pilulky „moje věci" (Vše, Uložená, Musíme!,
@@ -229,8 +230,66 @@ await kontrola('bez mapy jsou kresby nedostupné', () =>
 // a pro jednosouborovou variantu, kam se dlaždice zabalit nedají.
 await kontrola('bez mapy se kreslí záložní podklad', () => page.locator('.maplibregl-canvas').count(), 0)
 await kontrola('v panelu Filtry už zálohy nejsou', () => page.locator('#filters #expBtn').count(), 0)
+
+// Debug poznámkovač. Sestavená appka nemá VANDRBUCH_BETA, takže je přepínač
+// vypnutý a kolečko v hlavičce schované – přesně jak to má být na produkci.
+await kontrola('poznámkovač má přepínač', () => page.locator('#debugSeg button').count(), 2)
+await kontrola('bez bety je poznámkovač vypnutý', () =>
+  page.locator('#debugSeg button.on').innerText().then((t) => t.trim()), 'Vypnutý')
+await kontrola('a kolečko v hlavičce není vidět', () => page.locator('#debugOpen').isVisible(), false)
+await page.click('#debugSeg button:not(.on)')
+await page.waitForTimeout(200)
+await kontrola('zapnutí přepínače kolečko ukáže', () => page.locator('#debugOpen').isVisible(), true)
+await kontrola('volba se uložila', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs')).debugRezim), true)
+
 await page.goBack()
 await page.waitForTimeout(400)
+
+// Rychlý zápis. Otevírá se z hlavičky, tedy odkudkoli – tenhle průchod je
+// z Domů, protože se ověřuje i předvyplnění modulu podle otevřené záložky.
+await page.click('#tabs button[data-tab="home"]')
+await page.waitForTimeout(300)
+await page.click('#debugOpen')
+await page.waitForTimeout(400)
+await kontrola('formulář zápisu se otevřel', () => page.locator('#debugZapis.show').count(), 1)
+await kontrola('typ má tři volby', () => page.locator('#dzTyp button').count(), 3)
+await kontrola('modulů je dvanáct', () => page.locator('.dz-moduly .pilulka').count(), 12)
+// Předvyplnění podle záložky: na Domů musí být zaškrtnutý modul „Domů".
+await kontrola('modul se předvyplnil podle obrazovky', () =>
+  page.locator('.dz-moduly .pilulka.on').innerText().then((t) => t.trim()), 'Domů')
+await kontrola('podrobnosti jsou schované', () => page.locator('.dz-podrobnosti').isVisible(), false)
+await page.click('#dzVic')
+await page.waitForTimeout(150)
+await kontrola('Víc podrobností je rozbalí', () => page.locator('.dz-podrobnosti').isVisible(), true)
+await kontrola('Návrh řešení je samostatné pole', () => page.locator('#dz-navrh').count(), 1)
+// Bug má tři pole navíc, nápad dvě jiná – přepnutí typu je musí vyměnit.
+await page.click('#dzTyp button[data-seg="bug"]')
+await page.waitForTimeout(150)
+await kontrola('bug má Kroky k zopakování', () => page.locator('#dz-kroky').count(), 1)
+await kontrola('bug nemá pole nápadu', () => page.locator('#dz-motivace').count(), 0)
+
+// Zápis bez přezdívky se na ni zeptá – id záznamu ji nese a nikdy se nemění.
+await page.fill('#dz-nadpis', 'Zkušební záznam ze smoke')
+await page.fill('#dz-text', 'Tohle napsal kontrolní skript.')
+await page.click('#dzUloz')
+await page.waitForTimeout(400)
+await kontrola('první zápis se ptá na přezdívku', () => page.locator('#dialog.show #dialogVstup').count(), 1)
+await page.fill('#dialogVstup', 'Tadeáš Ž.')
+await page.click('#dialogAno')
+await page.waitForTimeout(600)
+await kontrola('formulář se po zápisu zavřel', () => page.locator('#debugZapis.show').count(), 0)
+await kontrola('přezdívka je bez diakritiky', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs')).debugAutor), 'tadeas-z')
+await kontrola('záznam má id s přezdívkou', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:debug')).zaznamy[0].id), 'tadeas-z-001')
+await kontrola('záznam si nese kontext', () =>
+  page.evaluate(() => {
+    const k = JSON.parse(localStorage.getItem('vandrbuch:debug')).zaznamy[0].kontext
+    return !!k && !!k.obrazovka && !!k.viewport && !!k.build
+  }), true)
+await kontrola('debug data nejsou v poznámkách z cest', () =>
+  page.evaluate(() => localStorage.getItem('vandrbuch:v1').includes('Zkušební záznam')), false)
 
 // Objevuj
 await page.click('#tabs button[data-tab="disc"]')

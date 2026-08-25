@@ -20,9 +20,13 @@
 
 import { prefs, savePrefs } from '../../core/store.js'
 import { zmerUloziste } from '../../core/storage.js'
+import { esc } from '../../core/html.js'
+import { debugData, sanitizujAutora } from '../../core/debug.js'
 import { IC } from '../../icons/sprite.js'
 import { segment } from '../../components/vzory.js'
 import { toast } from '../../components/toast.js'
+import { zadej } from '../../components/dialog.js'
+import { otevriDebugZapis, srovnejDebugTlacitko } from '../../components/debugZapis.js'
 import { jsouVektory, obnovKresbyVMape } from '../../map/podklad.js'
 import { srovnejStavMapy } from './mapaKeStazeni.js'
 
@@ -64,6 +68,10 @@ export async function renderNastaveni() {
   // ukáže zašedlý – slibovat něco, co se nemá odkud vzít, je horší než to
   // nenabídnout.
   const kresbyJdou = jsouVektory()
+
+  // Kolik záznamů poznámkovač drží. Číslo v tlačítku je jediné místo, kde je
+  // vidět, že tam něco leží – jinak by se na zapsané poznámky snadno zapomnělo.
+  const zaznamu = debugData.zaznamy.length
 
   wrap.innerHTML = `
     <div class="sechd">${IC('i-strom')}Kresby krajiny</div>
@@ -121,6 +129,15 @@ export async function renderNastaveni() {
       <button class="btn small" id="vypravaZnovu">Ukázat ji znovu</button>
     </div>
 
+    <div class="sechd">${IC('i-brouk')}Debug poznámkovač</div>
+    <div class="meta" style="margin:0 2px 10px">Zápis nápadu, bugu nebo poznámky za běhu appky, i s technickým kontextem. Přepínač řídí <b>jen</b> to, jestli je v hlavičce vidět kolečko – zachytávání chyb běží vždycky.</div>
+    ${segment([{ id: 'zap', popisek: 'Zapnutý' }, { id: 'vyp', popisek: 'Vypnutý' }], prefs.debugRezim ? 'zap' : 'vyp', 'debugSeg')}
+    <div class="meta" style="margin:8px 2px 10px">Píše jako: <b id="debugAutorInfo">${esc(prefs.debugAutor || 'zeptáme se při prvním zápisu')}</b></div>
+    <div class="btnrow" style="margin:0">
+      <button class="btn small" id="debugAutorZmen">Změnit přezdívku</button>
+      <button class="btn small" id="debugOtevri">Zapsat poznámku${zaznamu ? ` (zapsáno ${zaznamu})` : ''}</button>
+    </div>
+
     <div class="sechd">${IC('i-book')}O aplikaci</div>
     <div class="meta" style="margin:0 2px 4px">Vandrbuch je statická aplikace bez serveru. Poznámky, hodnocení a fotky nikam neodcházejí – jsou jen v tomhle telefonu.</div>
     <div class="meta" style="margin:0 2px 10px">Podklad malované mapy: <b>OpenStreetMap</b> přes Protomaps (ODbL) · obrysy zemí <b>Natural Earth</b> (public domain) · stínování terénu z výškopisu <b>elevation-tiles-prod</b> (SRTM, GMTED) · online dlaždice <b>OpenStreetMap</b>.</div>
@@ -162,6 +179,34 @@ export async function renderNastaveni() {
     if (!savePrefs()) return
     toast('Karta výpravy se zase ukáže')
   }
+
+  for (const b of document.querySelectorAll('#debugSeg button')) {
+    b.onclick = () => {
+      prefs.debugRezim = b.dataset.seg === 'zap'
+      if (!savePrefs()) return
+      for (const x of document.querySelectorAll('#debugSeg button')) x.classList.toggle('on', x === b)
+      srovnejDebugTlacitko()
+      toast(prefs.debugRezim ? 'Poznámkovač je v hlavičce' : 'Poznámkovač schovaný')
+    }
+  }
+
+  document.getElementById('debugAutorZmen').onclick = async () => {
+    const zadane = await zadej({
+      nadpis: 'Kdo píše?',
+      text:
+        'Krátká přezdívka bez diakritiky. Používá se v identifikátoru nových záznamů ' +
+        'a v názvu exportovaného souboru. Už zapsané záznamy si své id nechají – to se nikdy nemění.',
+      vychozi: prefs.debugAutor,
+      placeholder: 'tadeas',
+    })
+    if (zadane === null) return
+    prefs.debugAutor = sanitizujAutora(zadane)
+    if (!savePrefs()) return
+    document.getElementById('debugAutorInfo').textContent = prefs.debugAutor
+    toast(`Píšeš jako ${prefs.debugAutor}`)
+  }
+
+  document.getElementById('debugOtevri').onclick = () => otevriDebugZapis()
 
   const m = await zmerUloziste()
   const el = document.getElementById('mistoInfo')

@@ -51,6 +51,7 @@
 @import './components/vzory.css';
 @import './components/mapa.css';
 @import './components/dialog.css';
+@import './components/debug.css';
 
 /* 5. responzivní přepisy – vždy poslední */
 @import './responsive.css';

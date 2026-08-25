@@ -12,13 +12,20 @@
 #betaZnacka{flex:0 0 auto;font-family:var(--f-body);font-weight:800;font-size:.62rem;
   letter-spacing:1px;text-transform:uppercase;color:var(--na-upozorneni);background:var(--upozorneni);
   border-radius:var(--r-pill);padding:2px 7px;line-height:1.4}
-/* Dvě kolečka vpravo, zleva profil a nastavení. Odsazení dostane jen to první,
- * druhé se k němu přilepí na vzdálenost, kterou drží `gap` v `#brand`. */
-#profilOpen{margin-left:auto}
-#profilOpen,#nastaveniOpen{flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:var(--line);background:var(--plocha);
+/* Kolečka vpravo, zleva debug poznámkovač (jen se zapnutým režimem), profil
+ * a nastavení. Odsazení dostane jen to první vidět; `margin-left:auto` na
+ * schovaném `#debugOpen` se neuplatní, ale jakmile se ukáže, musí se odsazení
+ * u profilu vypnout – jinak by si mezi sebe rozdělila volné místo a kolečka
+ * by se od sebe roztáhla přes celou hlavičku. */
+#profilOpen,#debugOpen{margin-left:auto}
+#debugOpen:not([hidden]) ~ #profilOpen{margin-left:0}
+#profilOpen,#nastaveniOpen,#debugOpen{flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:var(--line);background:var(--plocha);
   display:grid;place-items:center;box-shadow:var(--stin-1);transition:transform .15s var(--pop)}
-#profilOpen svg.ic,#nastaveniOpen svg.ic{font-size:19px;color:var(--text2)}
-#profilOpen:active,#nastaveniOpen:active{transform:var(--stisk)}
+/* `display:grid` výš je selektor s ID, takže přebije `[hidden]{display:none}`
+ * z prohlížeče – bez tohohle řádku by schované kolečko bylo pořád vidět. */
+#debugOpen[hidden]{display:none}
+#profilOpen svg.ic,#nastaveniOpen svg.ic,#debugOpen svg.ic{font-size:19px;color:var(--text2)}
+#profilOpen:active,#nastaveniOpen:active,#debugOpen:active{transform:var(--stisk)}
 /* Tečkovaná silnice zůstává jako oddělovač v panelech (Filtry, průvodce).
  * Z hlavičky zmizela: předloha mapy má pod pilulkami rovnou mapu a čára tam
  * jen kreslila hranici, kterou dělá už sám okraj papíru. */

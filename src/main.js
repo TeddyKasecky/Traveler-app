@@ -29,6 +29,7 @@ import { initIntro } from './components/intro.js'
 import { initAddForm } from './components/addForm.js'
 import { initDialog } from './components/dialog.js'
 import { initKosikFab } from './components/kosikFab.js'
+import { initDebugZapis, otevriDebugZapis, srovnejDebugTlacitko } from './components/debugZapis.js'
 import { initPorovnani } from './views/porovnani/porovnani.js'
 import { initMapaKeStazeni } from './views/nastaveni/mapaKeStazeni.js'
 
@@ -87,6 +88,9 @@ initMapaKeStazeni()
 initAddForm()
 // Porovnání se otevírá z detailu, takže musí být nad ním.
 initPorovnani()
+// Úplně poslední panel: zapisuje se i z otevřeného detailu nebo Plánu, takže
+// musí být nad vším a tlačítko zpět ho má zavřít jako první.
+initDebugZapis()
 
 // Nabídka navigace na Plánu. Registruje se tady, protože obsah je staticky
 // v index.html a `plan.js` jen věší obsluhu při každém překreslení.
@@ -112,6 +116,12 @@ document.getElementById('podkladBtn').onclick = () => {
 // Otevírají se kolečky v hlavičce, zleva profil a nastavení.
 document.getElementById('profilOpen').onclick = () => aktivujZalozku('profil')
 document.getElementById('nastaveniOpen').onclick = () => aktivujZalozku('nastaveni')
+
+// Debug poznámkovač. Tlačítko je v hlavičce (ta je fixed, tedy na všech
+// obrazovkách) a vidět jen se zapnutým přepínačem v Nastavení – viditelnost
+// srovnává srovnejDebugTlacitko(), sběr chyb na ní nezávisí.
+document.getElementById('debugOpen').onclick = () => otevriDebugZapis()
+srovnejDebugTlacitko()
 
 /* ---------- kdo na co reaguje ---------- */
 

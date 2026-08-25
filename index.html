@@ -28,6 +28,11 @@
     <!-- Vpravo nahoře dvě kolečka, zleva profil a nastavení. Profil odpovídá
          na „kdo jsem a co mám za sebou", Nastavení na „jak to má fungovat" –
          do léta 2026 bylo obojí na jedné obrazovce a míchalo se to. -->
+    <!-- Debug poznámkovač. Vidět jen se zapnutým přepínačem v Nastavení
+         (prefs.debugRezim, na betě výchozí zapnuto, na produkci vypnuto).
+         V hlavičce, protože ta je fixed a je tedy na všech obrazovkách –
+         vpravo dole už v Plánu sedí košík a plovoucí „+" nad mapou. -->
+    <button id="debugOpen" hidden title="Zapsat nápad, bug nebo poznámku"><svg class="ic"><use href="#i-brouk"/></svg></button>
     <button id="profilOpen" title="Profil"><svg class="ic"><use href="#i-profil"/></svg></button>
     <button id="nastaveniOpen" title="Nastavení"><svg class="ic"><use href="#i-nastaveni"/></svg></button>
   </div>
@@ -277,6 +282,15 @@
   <div class="grip"></div>
   <button id="addClose" title="Zavřít"><svg class="ic"><use href="#i-x"/></svg></button>
   <div class="body" id="addBody"></div>
+</section>
+
+<!-- Rychlý zápis debug poznámky. Obsah plní components/debugZapis.js.
+     Nad všemi panely (z-index 1370), protože se otevírá i z Plánu a z Detailu –
+     zápis „za deset vteřin jednou rukou" nesmí nutit nejdřív něco zavírat. -->
+<section id="debugZapis" aria-modal="true" role="dialog">
+  <div class="grip"></div>
+  <button id="debugZapisZavri" title="Zavřít"><svg class="ic"><use href="#i-x"/></svg></button>
+  <div class="body" id="debugZapisBody"></div>
 </section>
 
 <!-- Obsah plní components/intro.js – tři kroky s ilustracemi. -->
