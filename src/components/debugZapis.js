@@ -20,14 +20,17 @@
  * detailu místa nebo z Plánu a nikoho nesmí nutit nejdřív něco zavírat.
  */
 
-import { registrujOverlay } from '../core/router.js'
+// `aktivujZalozku` je z routeru, ne z views/ – tenhle díl obrazovky nezná,
+// jen řekne „přepni na tuhle záložku". Stejně to dělá `filterPanel.js`
+// po importu CSV.
+import { aktivujZalozku, registrujOverlay } from '../core/router.js'
 import { prefs, savePrefs, S, emit } from '../core/store.js'
 import { esc } from '../core/html.js'
 import { IC } from '../icons/sprite.js'
 import { segment, pilulky } from './vzory.js'
 import { napojTah, svih } from './tah.js'
 import { toast } from './toast.js'
-import { oznam, zadej } from './dialog.js'
+import { oznam, potvrd, zadej } from './dialog.js'
 import { jeOtevreny as jeOtevrenyDetail } from './sheet.js'
 import {
   JAK_CASTO,
@@ -55,6 +58,27 @@ let koncept = null
 
 /** Id upravovaného záznamu, nebo null pro nový. */
 let upravujeSe = null
+
+/**
+ * Textová pole, jejichž ztráta by opravdu mrzela. Přepínače (typ, moduly,
+ * priorita) se schválně nepočítají – přehozená pilulka není rozepsaná
+ * poznámka a ptát se na ni by bylo otravné.
+ */
+const TEXTOVA_POLE = ['nadpis', 'text', 'navrh', 'cekal', 'kroky', 'motivace', 'hotovoKdyz']
+
+/**
+ * Otisk textu v okamžiku otevření. Proti němu se pozná, jestli je něco
+ * rozepsané – u úpravy existujícího záznamu tedy proti jeho uloženému textu,
+ * ne proti prázdnu, jinak by se appka ptala pokaždé.
+ */
+let otiskPriOtevreni = ''
+
+// Oddělovač, který se v textu vyskytnout nemůže. Při spojení mezerou by
+// „a b" + „" vyšlo stejně jako „a" + „b", takže přesun textu mezi poli
+// by se tvářil jako žádná změna.
+const otiskTextu = () => (koncept ? TEXTOVA_POLE.map((k) => (koncept[k] || '').trim()).join('\u0000') : '')
+
+const jeRozepsano = () => otiskTextu() !== otiskPriOtevreni
 
 /** Prázdný záznam s předvyplněnými moduly podle toho, odkud se otevřelo. */
 function prazdnyKoncept() {
@@ -377,6 +401,8 @@ export function otevriDebugZapis(id = null) {
     }
   }
 
+  otiskPriOtevreni = otiskTextu()
+
   vykresli()
   panel.classList.add('show')
   // Až po vysunutí: fokus během přechodu na mobilu panel poskočí.
@@ -384,6 +410,35 @@ export function otevriDebugZapis(id = null) {
     const prvni = document.getElementById('dz-nadpis')
     if (prvni && !upravujeSe) prvni.focus()
   }, 260)
+}
+
+/**
+ * Přejde z formuláře do prohlížeče záznamů.
+ *
+ * PROČ TO TLAČÍTKO JE: kolečko v hlavičce vede vždycky na prázdný formulář,
+ * ale často se na něj ťukne s tím, že si chce člověk něco přečíst nebo
+ * dohledat. Bez téhle cesty by musel zpátky a přes Nastavení. Formulář
+ * a seznam jsou dvě strany téže věci.
+ *
+ * Rozepsaný text se nezahazuje mlčky. Křížek je vědomé „zahodit", tohle je
+ * navigace a tichá ztráta textu by tam překvapila. Prázdný formulář – ten
+ * častý případ, kdy člověk chtěl rovnou seznam – se ptát nemá.
+ */
+async function otevriSeznam() {
+  if (jeRozepsano()) {
+    const dal = await potvrd({
+      nadpis: 'Zahodit rozepsanou poznámku?',
+      text: 'Přejdeš do poznámkovače a rozepsaný text se neuloží.',
+      ano: 'Zahodit a přejít',
+      ne: 'Zrušit',
+      nebezpecne: true,
+    })
+    if (!dal) return
+  }
+  // Pořadí je závazné: plát leží nad panely, takže by jinak zakryl obrazovku,
+  // na kterou se právě přešlo.
+  zavriDebugZapis()
+  aktivujZalozku('debug')
 }
 
 export function zavriDebugZapis() {
@@ -404,6 +459,7 @@ export function initDebugZapis() {
   if (!panel) return
 
   document.getElementById('debugZapisZavri').onclick = () => zavriDebugZapis()
+  document.getElementById('debugZapisSeznam').onclick = () => otevriSeznam()
 
   // Stažení dolů zavírá, stejně jako u detailu místa. Táhne se za úchyt,
   // ne za tělo – to se roluje a tažení by se s rolováním pralo.

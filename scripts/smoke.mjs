@@ -249,59 +249,16 @@ await kontrola('volba se uložila', () =>
 await page.goBack()
 await page.waitForTimeout(400)
 
-// Rychlý zápis. Otevírá se z hlavičky, tedy odkudkoli – tenhle průchod je
-// z Domů, protože se ověřuje i předvyplnění modulu podle otevřené záložky.
-await page.click('#tabs button[data-tab="home"]')
-await page.waitForTimeout(300)
-await page.click('#debugOpen')
-await page.waitForTimeout(400)
-await kontrola('formulář zápisu se otevřel', () => page.locator('#debugZapis.show').count(), 1)
-await kontrola('typ má tři volby', () => page.locator('#dzTyp button').count(), 3)
-await kontrola('modulů je dvanáct', () => page.locator('.dz-moduly .pilulka').count(), 12)
-// Předvyplnění podle záložky: na Domů musí být zaškrtnutý modul „Domů".
-await kontrola('modul se předvyplnil podle obrazovky', () =>
-  page.locator('.dz-moduly .pilulka.on').innerText().then((t) => t.trim()), 'Domů')
-await kontrola('podrobnosti jsou schované', () => page.locator('.dz-podrobnosti').isVisible(), false)
-await page.click('#dzVic')
-await page.waitForTimeout(150)
-await kontrola('Víc podrobností je rozbalí', () => page.locator('.dz-podrobnosti').isVisible(), true)
-await kontrola('Návrh řešení je samostatné pole', () => page.locator('#dz-navrh').count(), 1)
-// Bug má tři pole navíc, nápad dvě jiná – přepnutí typu je musí vyměnit.
-await page.click('#dzTyp button[data-seg="bug"]')
-await page.waitForTimeout(150)
-await kontrola('bug má Kroky k zopakování', () => page.locator('#dz-kroky').count(), 1)
-await kontrola('bug nemá pole nápadu', () => page.locator('#dz-motivace').count(), 0)
-
-// Zápis bez přezdívky se na ni zeptá – id záznamu ji nese a nikdy se nemění.
-await page.fill('#dz-nadpis', 'Zkušební záznam ze smoke')
-await page.fill('#dz-text', 'Tohle napsal kontrolní skript.')
-await page.click('#dzUloz')
-await page.waitForTimeout(400)
-await kontrola('první zápis se ptá na přezdívku', () => page.locator('#dialog.show #dialogVstup').count(), 1)
-await page.fill('#dialogVstup', 'Tadeáš Ž.')
-await page.click('#dialogAno')
-await page.waitForTimeout(600)
-await kontrola('formulář se po zápisu zavřel', () => page.locator('#debugZapis.show').count(), 0)
-await kontrola('přezdívka je bez diakritiky', () =>
-  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs')).debugAutor), 'tadeas-z')
-await kontrola('záznam má id s přezdívkou', () =>
-  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:debug')).zaznamy[0].id), 'tadeas-z-001')
-await kontrola('záznam si nese kontext', () =>
-  page.evaluate(() => {
-    const k = JSON.parse(localStorage.getItem('vandrbuch:debug')).zaznamy[0].kontext
-    return !!k && !!k.obrazovka && !!k.viewport && !!k.build
-  }), true)
-await kontrola('debug data nejsou v poznámkách z cest', () =>
-  page.evaluate(() => localStorage.getItem('vandrbuch:v1').includes('Zkušební záznam')), false)
-
-// Stav z repozitáře. `dist/debug-stav.json` je po buildu prázdný (složka
-// `debug/` v repu zatím nic neobsahuje), takže se pro kontrolu na disk zapíše
-// fixture. NE přes `page.route`: požadavek obsluhuje service worker a ten je
-// pro odposlech Playwrightu neviditelný – tudy se navíc rovnou ověří, že
+// Stav z repozitáře. `dist/debug-stav.json` skládá build ze složky `debug/`,
+// takže jeho obsah závisí na tom, co je zrovna nahlášené – kontrola na něm
+// stát nemůže a podstrčí si vlastní fixture.
+//
+// NE přes `page.route`: požadavek obsluhuje service worker a ten je pro
+// odposlech Playwrightu neviditelný. Zápis na disk navíc rovnou ověří, že
 // worker neservíruje starý rejstřík z cache (má na něj síť napřed).
 //
-// Musí se to udělat DŘÍV, než se poznámkovač poprvé otevře: rejstřík se čte
-// jednou za běh a drží v paměti.
+// Musí se to udělat DŘÍV, než se kamkoli přejde na záložku `#debug`: rejstřík
+// se čte JEDNOU za běh a drží v paměti, takže pozdější zápis by neměl efekt.
 const REJSTRIK_CESTA = path.join(ROOT, 'dist', 'debug-stav.json')
 const REJSTRIK_PUVODNI = fs.existsSync(REJSTRIK_CESTA) ? fs.readFileSync(REJSTRIK_CESTA, 'utf8') : null
 if (!SINGLE) {
@@ -330,6 +287,78 @@ if (!SINGLE) {
     })
   )
 }
+
+// Rychlý zápis. Otevírá se z hlavičky, tedy odkudkoli – tenhle průchod je
+// z Domů, protože se ověřuje i předvyplnění modulu podle otevřené záložky.
+await page.click('#tabs button[data-tab="home"]')
+await page.waitForTimeout(300)
+await page.click('#debugOpen')
+await page.waitForTimeout(400)
+await kontrola('formulář zápisu se otevřel', () => page.locator('#debugZapis.show').count(), 1)
+await kontrola('typ má tři volby', () => page.locator('#dzTyp button').count(), 3)
+await kontrola('modulů je dvanáct', () => page.locator('.dz-moduly .pilulka').count(), 12)
+// Předvyplnění podle záložky: na Domů musí být zaškrtnutý modul „Domů".
+await kontrola('modul se předvyplnil podle obrazovky', () =>
+  page.locator('.dz-moduly .pilulka.on').innerText().then((t) => t.trim()), 'Domů')
+await kontrola('podrobnosti jsou schované', () => page.locator('.dz-podrobnosti').isVisible(), false)
+await page.click('#dzVic')
+await page.waitForTimeout(150)
+await kontrola('Víc podrobností je rozbalí', () => page.locator('.dz-podrobnosti').isVisible(), true)
+await kontrola('Návrh řešení je samostatné pole', () => page.locator('#dz-navrh').count(), 1)
+// Bug má tři pole navíc, nápad dvě jiná – přepnutí typu je musí vyměnit.
+await page.click('#dzTyp button[data-seg="bug"]')
+await page.waitForTimeout(150)
+await kontrola('bug má Kroky k zopakování', () => page.locator('#dz-kroky').count(), 1)
+await kontrola('bug nemá pole nápadu', () => page.locator('#dz-motivace').count(), 0)
+
+// Cesta z formuláře do prohlížeče. Kolečko v hlavičce vede vždycky na prázdný
+// formulář, takže bez tohohle tlačítka by se člověk k seznamu dostal jen
+// oklikou přes Nastavení.
+await kontrola('formulář vede do poznámkovače', () => page.locator('#debugZapisSeznam').isVisible(), true)
+await page.click('#debugZapisSeznam')
+await page.waitForTimeout(400)
+await kontrola('prázdný formulář přejde rovnou', () => page.locator('#debugZapis.show').count(), 0)
+await kontrola('a otevře poznámkovač', () => page.evaluate(() => location.hash), '#debug')
+
+// Zpátky do formuláře a totéž s rozepsaným textem: navigace nesmí text zahodit
+// mlčky. Křížek zůstává vědomé „zahodit", tohle je něco jiného.
+await page.click('#debugOpen')
+await page.waitForTimeout(400)
+// Znovuotevřený formulář je čistý, tedy zase typu Nápad. Kontroly níž počítají
+// s bugem (filtr podle typu), tak se typ vrátí – jinak by ověřovaly něco jiného,
+// než se tváří.
+await page.click('#dzTyp button[data-seg="bug"]')
+await page.waitForTimeout(150)
+await page.fill('#dz-nadpis', 'Rozepsané')
+await page.click('#debugZapisSeznam')
+await page.waitForTimeout(400)
+await kontrola('rozepsaný text se nezahodí mlčky', () => page.locator('#dialog.show').count(), 1)
+await page.click('#dialogNe')
+await page.waitForTimeout(400)
+await kontrola('po zrušení zůstane formulář otevřený', () => page.locator('#debugZapis.show').count(), 1)
+await kontrola('a text v něm zůstane', () => page.inputValue('#dz-nadpis'), 'Rozepsané')
+
+// Zápis bez přezdívky se na ni zeptá – id záznamu ji nese a nikdy se nemění.
+await page.fill('#dz-nadpis', 'Zkušební záznam ze smoke')
+await page.fill('#dz-text', 'Tohle napsal kontrolní skript.')
+await page.click('#dzUloz')
+await page.waitForTimeout(400)
+await kontrola('první zápis se ptá na přezdívku', () => page.locator('#dialog.show #dialogVstup').count(), 1)
+await page.fill('#dialogVstup', 'Tadeáš Ž.')
+await page.click('#dialogAno')
+await page.waitForTimeout(600)
+await kontrola('formulář se po zápisu zavřel', () => page.locator('#debugZapis.show').count(), 0)
+await kontrola('přezdívka je bez diakritiky', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs')).debugAutor), 'tadeas-z')
+await kontrola('záznam má id s přezdívkou', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:debug')).zaznamy[0].id), 'tadeas-z-001')
+await kontrola('záznam si nese kontext', () =>
+  page.evaluate(() => {
+    const k = JSON.parse(localStorage.getItem('vandrbuch:debug')).zaznamy[0].kontext
+    return !!k && !!k.obrazovka && !!k.viewport && !!k.build
+  }), true)
+await kontrola('debug data nejsou v poznámkách z cest', () =>
+  page.evaluate(() => localStorage.getItem('vandrbuch:v1').includes('Zkušební záznam')), false)
 
 // Prohlížeč poznámek. Otevírá se z Nastavení – ve spodní liště tlačítko nemá.
 await page.click('#nastaveniOpen')

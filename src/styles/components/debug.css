@@ -27,13 +27,19 @@
   margin:12px auto 0;flex:0 0 auto;padding:14px 0;background-clip:content-box}
 #debugZapis .body{overflow-y:auto;padding:2px 20px calc(env(safe-area-inset-bottom) + 20px)}
 
-#debugZapisZavri{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:50%;
+/* Dvě kolečka v pravém horním rohu: vlevo cesta do prohlížeče záznamů,
+ * vpravo zavření. Stejný tvar jako kolečka v hlavičce appky. */
+#debugZapisZavri,#debugZapisSeznam{position:absolute;top:14px;width:38px;height:38px;border-radius:50%;
   border:1px solid var(--obrys);background:var(--paper);display:grid;place-items:center;
   box-shadow:var(--stin-1);cursor:pointer;z-index:2}
-#debugZapisZavri:active{transform:var(--stisk)}
-#debugZapisZavri svg.ic{font-size:17px}
+#debugZapisZavri{right:14px}
+#debugZapisSeznam{right:60px}
+#debugZapisZavri:active,#debugZapisSeznam:active{transform:var(--stisk)}
+#debugZapisZavri svg.ic,#debugZapisSeznam svg.ic{font-size:17px}
 
-.dz-hlava{margin:6px 0 10px;padding-right:44px}
+/* Odsazení na obě kolečka – s jedním to bylo 44 px. Bez toho by delší nadpis
+ * („Úprava tadeas-z-001") vlezl pod ně. */
+.dz-hlava{margin:6px 0 10px;padding-right:88px}
 .dz-hlava h2{font-family:var(--f-disp);font-weight:900;font-size:1.32rem;margin:0;
   display:flex;gap:9px;align-items:center}
 .dz-sub{font-size:.76rem;color:var(--ink2);line-height:1.45;margin-top:5px}

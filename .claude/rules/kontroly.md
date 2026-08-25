@@ -31,7 +31,7 @@ bez vyžádání. Místo nich je 27 samostatných spustitelných `.mjs` skriptů
 | `check-form.mjs` | `npm run check-form` | že formulář vyrábí platná místa, 18/18 |
 | `check-ikony.mjs` | `npm run check-ikony` | jedna věc = jedno jméno = jedna ikona, 8 bodů |
 | `check-images.mjs` | `npm run check-images` | existenci odkazů na fotky — **chodí na síť** |
-| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 304 / 286 kontrol |
+| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 310 / 292 kontrol |
 | `parity.mjs` | `npm run parity` | kontrolní seznam z `PARITA.md`, 26 bodů |
 | `perf.mjs` | `npm run perf` | rychlost startu při zpomaleném procesoru |
 | `perf-mapa.mjs` | ručně | plynulost posunu a přiblížení **stažené** malované mapy |

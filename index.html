@@ -295,10 +295,14 @@
 </section>
 
 <!-- Rychlý zápis debug poznámky. Obsah plní components/debugZapis.js.
-     Nad všemi panely (z-index 1370), protože se otevírá i z Plánu a z Detailu –
-     zápis „za deset vteřin jednou rukou" nesmí nutit nejdřív něco zavírat. -->
+     Nad panely (z-index 1355), protože se otevírá i z Plánu a z Detailu – zápis
+     „za deset vteřin jednou rukou" nesmí nutit nejdřív něco zavírat. Ale POD
+     dialogy (1360): plát se sám ptá „Kdo píše?" a hlásí neúspěšný zápis.
+     Vlevo od křížku vede kolečko do prohlížeče záznamů – formulář a seznam
+     jsou dvě strany téže věci a mají být propojené v obou směrech. -->
 <section id="debugZapis" aria-modal="true" role="dialog">
   <div class="grip"></div>
+  <button id="debugZapisSeznam" title="Otevřít poznámkovač"><svg class="ic"><use href="#i-book"/></svg></button>
   <button id="debugZapisZavri" title="Zavřít"><svg class="ic"><use href="#i-x"/></svg></button>
   <div class="body" id="debugZapisBody"></div>
 </section>
