@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
@@ -18,6 +19,33 @@ import { viteSingleFile } from 'vite-plugin-singlefile'
 // fileURLToPath, ne ruční ořezávání – cesta obsahuje diakritiku („Anička“)
 // a v URL je zakódovaná jako %C4%8D.
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
+
+/**
+ * Označení sestavení, `2026.08.24-a3f9`.
+ *
+ * PROČ NE VERZE CACHE SERVICE WORKERU: ta vzniká až v `generateBundle`, tedy
+ * dlouho po vyhodnocení `define` – předat ji do aplikačního JS nejde. A hlavně
+ * je to otisk seznamu souborů, ne bod v historii: z „vandrbuch-e307e823b0"
+ * se nedá dohledat commit, ze kterého hlášení přišlo.
+ *
+ * Do aplikace to potřebuje debug poznámkovač (`core/debugKontext.js`) – bez
+ * verze se u hlášení neví, jestli je z verze, kde je chyba už opravená.
+ *
+ * `git` v `try/catch`: build na Cloudflare i rozbalený ZIP bez historie musí
+ * projít. Bez gitu zůstane samotné datum, což je pořád lepší než nic.
+ */
+function verzeBuildu() {
+  const d = new Date()
+  const datum = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
+  try {
+    const hash = execSync('git rev-parse --short=4 HEAD', { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim()
+    return hash ? `${datum}-${hash}` : datum
+  } catch {
+    return datum
+  }
+}
 
 /**
  * Vygeneruje dist/sw.js ze šablony src/pwa/sw.js.
@@ -167,6 +195,10 @@ export default defineConfig(({ mode }) => {
       // Single-file appka nemá prostředí, ke kterému by se vztahovala, proto
       // `false` bez ohledu na proměnnou.
       'import.meta.env.VANDRBUCH_BETA': JSON.stringify(!single && !!process.env.VANDRBUCH_BETA),
+      // Označení sestavení do kontextu debug hlášení (`core/debugKontext.js`).
+      // Platí i pro `npm run dev` – vyhodnotí se při startu dev serveru, takže
+      // hlášení z vývoje nese datum a commit, na kterém se zrovna pracuje.
+      'import.meta.env.VANDRBUCH_VERZE': JSON.stringify(verzeBuildu()),
     },
 
     build: {

@@ -19,22 +19,12 @@
  */
 
 import { prefs, savePrefs } from '../../core/store.js'
+import { zmerUloziste } from '../../core/storage.js'
 import { IC } from '../../icons/sprite.js'
 import { segment } from '../../components/vzory.js'
 import { toast } from '../../components/toast.js'
 import { jsouVektory, obnovKresbyVMape } from '../../map/podklad.js'
 import { srovnejStavMapy } from './mapaKeStazeni.js'
-
-/** Kolik místa aplikace zabírá. Vrací null, když to prohlížeč neumí říct. */
-async function misto() {
-  try {
-    if (!navigator.storage || !navigator.storage.estimate) return null
-    const { usage, quota } = await navigator.storage.estimate()
-    return { pouzito: usage || 0, strop: quota || 0 }
-  } catch {
-    return null
-  }
-}
 
 const mb = (n) => `${(n / 1048576).toFixed(n < 10485760 ? 1 : 0)} MB`
 
@@ -173,12 +163,13 @@ export async function renderNastaveni() {
     toast('Karta výpravy se zase ukáže')
   }
 
-  const m = await misto()
+  const m = await zmerUloziste()
   const el = document.getElementById('mistoInfo')
   if (!el) return
-  el.innerHTML = m
-    ? `Aplikace, fotky a stažená mapa zabírají <b>${mb(m.pouzito)}</b>${m.strop ? ` z ${mb(m.strop)}, které prohlížeč nabízí` : ''}.`
-    : 'Kolik místa aplikace zabírá, tenhle prohlížeč neřekne.'
+  el.innerHTML =
+    m.pouzito === null
+      ? 'Kolik místa aplikace zabírá, tenhle prohlížeč neřekne.'
+      : `Aplikace, fotky a stažená mapa zabírají <b>${mb(m.pouzito)}</b>${m.strop ? ` z ${mb(m.strop)}, které prohlížeč nabízí` : ''}.`
 
   // Stav stažené mapy se přepočítá při každém otevření – balík mohl mezitím
   // přibýt, zmizet nebo zastarat.

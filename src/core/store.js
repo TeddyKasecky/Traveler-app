@@ -327,6 +327,27 @@ export const prefs = nacti(PREFK, {
    * místa naráz. Uložená hodnota nikomu nevadí, jen se přestala číst.)
    */
   vypravaPredstavena: false,
+  /**
+   * Je vidět tlačítko debug poznámkovače v hlavičce?
+   *
+   * Výchozí hodnota se liší podle prostředí: na betě zapnuto, na ostré appce
+   * vypnuto. Přepínač je v Nastavení a řídí **jen viditelnost** – sběr
+   * zachycených chyb (`core/chyby.js`) běží vždycky, protože chyba zachycená
+   * až po ručním zapnutí je chyba, která už jednou utekla.
+   *
+   * `typeof` tam být musí: `import.meta.env` v čistém Node neexistuje a tenhle
+   * soubor si kontrolní skripty ve `scripts/` importují přímo. Vite si přesto
+   * dosadí konkrétní hodnotu, protože nahrazuje celý výraz
+   * `import.meta.env.VANDRBUCH_BETA` – na produkci tedy zůstane `false` natvrdo.
+   */
+  debugRezim: typeof import.meta.env !== 'undefined' && !!import.meta.env.VANDRBUCH_BETA,
+  /**
+   * Krátký identifikátor autora záznamů (`tadeas`), bez diakritiky a mezer.
+   * Je prefixem `id` každého záznamu i názvu exportovaného souboru, takže
+   * řeší i kolizi číslování mezi dvěma zařízeními. Ptá se na něj PRVNÍ ZÁPIS,
+   * ne až export – `id` vzniká při zápisu a nikdy se nemění.
+   */
+  debugAutor: '',
 })
 export const savePrefs = () => zapis(PREFK, prefs)
 

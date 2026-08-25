@@ -8,6 +8,7 @@
 
 import './styles/index.css'
 
+import { zapniSberChyb } from './core/chyby.js'
 import { S, on, save, pripravFotky } from './core/store.js'
 import { spustRouter, aktivujZalozku } from './core/router.js'
 import { zjistiPolohu } from './core/geo.js'
@@ -44,6 +45,14 @@ import { zastavSledovani } from './views/plan/cesta-zivot.js'
 import { registrujServiceWorker } from './pwa/register.js'
 
 /* ---------- statické části stránky ---------- */
+
+// První příkaz těla, ještě před postavením čehokoli. Chyba, kterou appka
+// zachytí až po ručním zapnutí debug režimu, je chyba, která už jednou utekla –
+// buffer proto běží vždycky a jen v paměti (core/chyby.js). Dřív to nejde:
+// `import` se vyzvedávají nahoru, takže těla ostatních modulů proběhnou tak
+// jako tak první; chyba při jejich vyhodnocení by ale aplikaci stejně shodila
+// celou a poznámkovač by nebylo kam napsat.
+zapniSberChyb()
 
 vlozSprite()
 

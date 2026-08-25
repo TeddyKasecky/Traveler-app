@@ -20,6 +20,7 @@ bez vyžádání. Místo nich je 27 samostatných spustitelných `.mjs` skriptů
 |---|---|---|
 | `validate-data.mjs` | `npm run validate` | schéma dat; obal nad `src/data/validate.js` |
 | `check-uloziste.mjs` | `npm run check-uloziste` | stěhování dat mezi úložišti, chování při plné paměti, odložený zápis poznámky |
+| `check-debug.mjs` | `npm run check-debug` | debug poznámkovač: číslování a identita záznamu, `.md` export, záloha a import, 85 bodů |
 | `extract-places.mjs` | `npm run check-data` | že `places.json` je 1:1 s originálem |
 | `check-css-parity.mjs` | `npm run check-css:original` | 338 CSS pravidel proti originálu — **odstaveno redesignem** |
 | `check-tokeny.mjs` | `npm run check-tokeny` | barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů |
@@ -70,6 +71,7 @@ Chromium se schválně nestahuje. Skripty proti `dist/` potřebují napřed `npm
 |---|---|
 | `src/data/**` | `npm run validate` (hook to udělá sám) |
 | `src/core/storage.js`, `store.js`, `fotoDb.js` | `npm run check-uloziste` |
+| `src/core/debug*.js`, `chyby.js`, `src/views/debug/**` | `npm run check-debug` |
 | `src/map/**`, nový CSS soubor | `npm run smoke`, `npm run check-tokeny`, `npm run parity` |
 | `src/map/vektory.js`, `vbm.js` | k tomu `node scripts/perf-mapa.mjs` — bez měření je „zrychlili jsme to" jen dojem |
 | CSS, `tokens.css` | `npm run check-tokeny` |

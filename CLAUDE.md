@@ -66,6 +66,7 @@ npm run preview          # prohlédnutí sestaveného webu
 npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
+npm run check-debug      # debug poznámkovač: identita záznamu, export, záloha, 85 bodů
 
 npm run smoke            # proklikání v prohlížeči, 245 kontrol
 npm run smoke:single     # totéž pro single-file variantu, 189 kontrol

@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "validate": "node scripts/validate-data.mjs",
     "check-uloziste": "node scripts/check-uloziste.mjs",
+    "check-debug": "node scripts/check-debug.mjs",
     "check-dny": "node scripts/check-dny.mjs",
     "check-projekce": "node scripts/check-projekce.mjs",
     "check-images": "node scripts/check-images.mjs",
