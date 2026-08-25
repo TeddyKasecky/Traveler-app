@@ -335,12 +335,15 @@ export const prefs = nacti(PREFK, {
    * zachycených chyb (`core/chyby.js`) běží vždycky, protože chyba zachycená
    * až po ručním zapnutí je chyba, která už jednou utekla.
    *
+   * Zapnuto i v `npm run dev` – tam se poznámkovač používá nejvíc a nutit
+   * u každého nového profilu prohlížeče nejdřív cestu do Nastavení nedává smysl.
+   *
    * `typeof` tam být musí: `import.meta.env` v čistém Node neexistuje a tenhle
    * soubor si kontrolní skripty ve `scripts/` importují přímo. Vite si přesto
    * dosadí konkrétní hodnotu, protože nahrazuje celý výraz
    * `import.meta.env.VANDRBUCH_BETA` – na produkci tedy zůstane `false` natvrdo.
    */
-  debugRezim: typeof import.meta.env !== 'undefined' && !!import.meta.env.VANDRBUCH_BETA,
+  debugRezim: typeof import.meta.env !== 'undefined' && !!(import.meta.env.VANDRBUCH_BETA || import.meta.env.DEV),
   /**
    * Krátký identifikátor autora záznamů (`tadeas`), bez diakritiky a mezer.
    * Je prefixem `id` každého záznamu i názvu exportovaného souboru, takže
