@@ -20,6 +20,7 @@ import { esc } from '../../core/html.js'
 import { IC } from '../../icons/sprite.js'
 import { sklonuj } from './plan.js'
 import { planoveAchievementy } from './achievementy.js'
+import { CESTY } from '../../core/cesty.js'
 
 /** Které roky jsou rozbalené. Jen v paměti; poslední (nejnovější) se rozbalí sám. */
 const rozbaleneRoky = new Set()
@@ -29,7 +30,7 @@ const datum = (ms) => new Date(ms).toLocaleDateString('cs-CZ')
 /** Ukončené cesty seskupené po letech, nejnovější rok první. */
 function poLetech() {
   const m = new Map()
-  store.cesty.forEach((c, i) => {
+  CESTY.forEach((c, i) => {
     const rok = new Date(c.zacatek).getFullYear()
     if (!m.has(rok)) m.set(rok, [])
     m.get(rok).push({ c, i })
@@ -43,7 +44,7 @@ function poLetech() {
  * @returns {string}
  */
 export function archivRadkyHtml() {
-  if (!store.cesty.length) return ''
+  if (!CESTY.length) return ''
   const roky = poLetech()
   if (!rozbaleneRoky.size && roky.length) rozbaleneRoky.add(roky[0][0])
 

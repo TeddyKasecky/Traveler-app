@@ -65,6 +65,7 @@ import { dashboardHtml, kotvyPodleDnu } from './dashboard.js'
 import { termin, nastavTermin, datumDne, kratkeDatum, denVTydnu, kolikatyDenDnes } from './termin.js'
 import { zahodKosikVrstvu } from '../../map/kosikVrstva.js'
 import { vykresliDashMapu, zavriDashMapu } from './dashMapa.js'
+import { CESTY } from '../../core/cesty.js'
 
 /** Kolik zastávek unese odkaz do Google Maps. */
 const MAX_DO_NAVIGACE = 10
@@ -234,7 +235,7 @@ export function renderPlan() {
     napojTahaniKnihovny(wrap)
   }
   if (dil === 'itinerar') {
-    if (S.otevrenaCesta != null && store.cesty[S.otevrenaCesta]) {
+    if (S.otevrenaCesta != null && CESTY[S.otevrenaCesta]) {
       napojZamcenouCestu(wrap, renderPlan, S.otevrenaCesta)
     } else {
       napojCislaPlanu(wrap, renderPlan)
@@ -416,7 +417,7 @@ function knihovna() {
  * vrací nejčastěji.
  */
 function archivHtml() {
-  if (!store.cesty.length) {
+  if (!CESTY.length) {
     return `<div class="cesta-prazdno">
       ${IC('i-kalendar')}
       <h3>Zatím jsme nikde nebyli</h3>
@@ -499,7 +500,7 @@ function napojKnihovnu(wrap) {
     if (S.otevrenaCesta === i) return
     S.otevrenaCesta = i
     draw()
-    toast(`Na mapě: ${store.cesty[i].nazev}`)
+    toast(`Na mapě: ${CESTY[i].nazev}`)
   })
 }
 
@@ -670,7 +671,7 @@ function napojTahaniKnihovny(wrap) {
  */
 function kartaItinerare(items, dny) {
   if (S.otevrenaCesta != null) {
-    const c = store.cesty[S.otevrenaCesta]
+    const c = CESTY[S.otevrenaCesta]
     if (c) return zamcenaCestaHtml(c, S.otevrenaCesta)
     // Záznam zmizel (např. stará záloha bez něj) – bezpečně spadnout na živý itinerář.
     S.otevrenaCesta = null

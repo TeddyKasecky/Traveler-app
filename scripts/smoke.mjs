@@ -60,6 +60,30 @@ const b = await chromium.launch({ executablePath: EDGE, headless: true })
 const page = await b.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'light', acceptDownloads: true })
 
 /**
+ * Archiv ukončených cest z IndexedDB.
+ *
+ * Od srpna 2026 nebydlí ve `vandrbuch:v1` – rostl o kilobajty na každou cestu
+ * a nikdy se nemazal, takže se odstěhoval do vlastní databáze
+ * (`src/core/cestyDb.js`). Kontroly níž si ho proto musí přečíst odsud.
+ */
+const archivCest = () =>
+  page.evaluate(
+    () =>
+      new Promise((hotovo) => {
+        const r = indexedDB.open('vandrbuch-cesty', 1)
+        r.onsuccess = () => {
+          const db = r.result
+          if (!db.objectStoreNames.contains('cesty')) return hotovo([])
+          const tr = db.transaction('cesty', 'readonly')
+          const g = tr.objectStore('cesty').getAll()
+          tr.oncomplete = () => hotovo(g.result || [])
+          tr.onerror = () => hotovo([])
+        }
+        r.onerror = () => hotovo([])
+      })
+  )
+
+/**
  * Cizí zdroje, které v testu stejně nejsou dostupné: dlaždice mapy a fotky.
  * V offline části navíc selhávají schválně – právě jejich selhání zapíná
  * zjednodušenou mapu, takže je nesmíme počítat jako chybu aplikace.
@@ -1066,11 +1090,14 @@ await page.click('#cestaKonec')
 await page.waitForTimeout(300)
 await page.click('#dialogAno')
 await page.waitForTimeout(600)
+await kontrola('rozjetá cesta zmizela ze store', () =>
+  page.evaluate(() => !JSON.parse(localStorage.getItem('vandrbuch:v1')).cesta))
 await kontrola('cesta skončila v archivu', () =>
-  page.evaluate(() => {
-    const v = JSON.parse(localStorage.getItem('vandrbuch:v1'))
-    return !v.cesta && v.cesty.length === 1 && v.cesty[0].navstiveno === 1
-  }))
+  archivCest().then((c) => c.length === 1 && c[0].navstiveno === 1))
+// Rozdělení na dny se do archivu do srpna 2026 vůbec nezapisovalo, takže
+// každá ukončená cesta spadla na „jeden den".
+await kontrola('archiv si nese rozdělení na dny', () =>
+  archivCest().then((c) => Array.isArray(c[0].dny) && c[0].dny.length > 0))
 await kontrola('profilový achievement za první cestu', () =>
   page.evaluate(() => !!JSON.parse(localStorage.getItem('vandrbuch:v1')).achievementy['prvni-cesta']))
 
@@ -1095,24 +1122,39 @@ await kontrola('po odemčení jde upravit poznámku zastávky', () => page.locat
 await page.locator('.cesta-zastavka .cesta-pozn').fill('Bylo krásně')
 await page.waitForTimeout(600)
 await kontrola('poznámka zastávky ukončené cesty se uložila', () =>
-  page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('vandrbuch:v1')).cesty[0].poznamky || {}).includes('Bylo krásně')))
+  archivCest().then((c) => Object.values(c[0].poznamky || {}).includes('Bylo krásně')))
 await page.locator('#cestaArchivPoznamka').fill('Skvělá výprava')
 await page.waitForTimeout(600)
 await kontrola('poznámka ukončené cesty se uložila', () =>
-  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).cesty[0].poznamka), 'Skvělá výprava')
+  archivCest().then((c) => c[0].poznamka), 'Skvělá výprava')
 // Uklidit stav navštíveného místa po zkoušce cesty. Reload níž zahodí stav
 // modulů, takže se musí vrátit i „první otevření Mapy" – karta výpravy po
 // něm držela jen v paměti a kontroly na Mapě s prvním otevřením počítají.
 await page.evaluate(() => {
   const v = JSON.parse(localStorage.getItem('vandrbuch:v1'))
   v.stav = {}
-  v.cesty = []
   v.achievementy = {}
   localStorage.setItem('vandrbuch:v1', JSON.stringify(v))
   const p = JSON.parse(localStorage.getItem('vandrbuch:prefs') || '{}')
   delete p.vypravaPredstavena
   localStorage.setItem('vandrbuch:prefs', JSON.stringify(p))
 })
+// Archiv už není ve `store` – vyprázdnit se musí ve vlastní databázi.
+await page.evaluate(
+  () =>
+    new Promise((hotovo) => {
+      const r = indexedDB.open('vandrbuch-cesty', 1)
+      r.onsuccess = () => {
+        const db = r.result
+        if (!db.objectStoreNames.contains('cesty')) return hotovo(true)
+        const tr = db.transaction('cesty', 'readwrite')
+        tr.objectStore('cesty').clear()
+        tr.oncomplete = () => hotovo(true)
+        tr.onerror = () => hotovo(false)
+      }
+      r.onerror = () => hotovo(false)
+    })
+)
 await page.reload({ waitUntil: 'load' })
 await page.waitForTimeout(900)
 await page.evaluate(() => document.getElementById('introGo')?.click())

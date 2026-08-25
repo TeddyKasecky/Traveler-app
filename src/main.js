@@ -11,6 +11,7 @@ import './styles/index.css'
 import { zapniSberChyb } from './core/chyby.js'
 import { S, on, save, pripravFotky } from './core/store.js'
 import { pripravTrasy } from './core/trasy.js'
+import { pripravCesty } from './core/cesty.js'
 import { spustRouter, aktivujZalozku } from './core/router.js'
 import { zjistiPolohu } from './core/geo.js'
 import { initMotiv } from './core/motiv.js'
@@ -43,6 +44,7 @@ import { renderList } from './views/list/list.js'
 import { renderPlan, zavriNavigaci, jeOtevrenaNavigace } from './views/plan/plan.js'
 import { renderMapaDole, initMapaDole } from './views/mapa/mapa.js'
 import { renderDebug } from './views/debug/debug.js'
+import { renderProfil } from './views/profil/profil.js'
 import { zastavSledovani } from './views/plan/cesta-zivot.js'
 
 import { registrujServiceWorker } from './pwa/register.js'
@@ -214,6 +216,19 @@ on('trasaNactena', () => {
   if (S.activeTab === 'plan') renderPlan()
 })
 
+/**
+ * Dočetl se archiv ukončených cest (core/cesty.js).
+ *
+ * Do té chvíle je `CESTY` prázdné, takže knihovna Výprav sekci „Za námi"
+ * nekreslí a profilové achievementy z cest nevidí. Trvá to jednotky
+ * milisekund, ale překreslit se po tom musí – jinak by archiv naskočil
+ * až při dalším přepnutí obrazovky.
+ */
+on('cestyNacteny', () => {
+  if (S.activeTab === 'plan') renderPlan()
+  if (S.activeTab === 'profil') renderProfil()
+})
+
 /** Po nalezení polohy: puntík, posun mapy, překreslení otevřené obrazovky. */
 on('poloha', () => {
   zobrazPolohu()
@@ -290,6 +305,11 @@ registrujServiceWorker()
 // Až za vykreslením: fotky se čtou z IndexedDB asynchronně a první obraz na ně
 // nemá čekat. Součástí je i stěhování ze starého localStorage.
 pripravFotky()
+
+// Archiv ukončených cest. Taky IndexedDB (core/cestyDb.js) – rostl o kilobajty
+// na každou cestu a nikdy se nemazal. Do prvního načtení je knihovna Výprav
+// bez sekce „Za námi"; po `cestyNacteny` se překreslí.
+pripravCesty()
 
 // Totéž pro geometrii tras: mapa umí do jejího dotažení nakreslit vzdušnou
 // spojnici a po `trasaNactena` se překreslí. Součástí je stěhování polylin

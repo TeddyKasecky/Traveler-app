@@ -30,6 +30,7 @@ import { kotvy, pridejDoKosiku } from './kosik.js'
 import { coDalHtml, napojCoDal, tipyOdsud } from './kosikView.js'
 import { spustSledovani, zastavSledovani, aktualniProjekce } from './cesta-zivot.js'
 import { prepocitejOtiskCesty } from './routing.js'
+import { CESTY, ulozCestu } from '../../core/cesty.js'
 import {
   fmtDoba, cistyCas, jedeSe, vyjed, ukonciCestu, vychoziBod, odznaceneVPoradi,
   pridejDoCesty, vynechZCesty, kolikatyDenCesty, cestaZmenena, mojePoloha, posledniOdznacena,
@@ -309,7 +310,7 @@ function prazdnaCesta() {
 
 /* ================= ukončená cesta v Itineráři (jen ke čtení) ================= */
 
-/** Které ukončené cestě (index do `store.cesty`) jsou zrovna odemčené poznámky. */
+/** Které ukončené cestě (index do `CESTY`) jsou zrovna odemčené poznámky. */
 let odemcenaCesta = -1
 export const jsouPoznamkyOdemcene = (i) => odemcenaCesta === i
 
@@ -317,7 +318,7 @@ export const jsouPoznamkyOdemcene = (i) => odemcenaCesta === i
  * Karta Itineráře pro ukončenou cestu otevřenou z knihovny Výprav – jen ke
  * čtení. Trasa, dny a časy jsou zamčené navždy (byly to a nejde je předělat);
  * poznámka cesty a poznámky zastávek jde upravit po „Odemknout poznámky".
- * @param {object} c  záznam ze `store.cesty`
+ * @param {object} c  záznam ze `CESTY`
  * @param {number} i  jeho index
  * @returns {string}
  */
@@ -373,7 +374,7 @@ export function zamcenaCestaHtml(c, i) {
  * jediné, co jde měnit, jsou poznámky, a jen po odemčení.
  * @param {HTMLElement} wrap
  * @param {() => void} prekresli
- * @param {number} i  index cesty ve `store.cesty`
+ * @param {number} i  index cesty ve `CESTY`
  */
 export function napojZamcenouCestu(wrap, prekresli, i) {
   const odemkni = wrap.querySelector('#cestaOdemknout')
@@ -383,14 +384,24 @@ export function napojZamcenouCestu(wrap, prekresli, i) {
       prekresli()
     }
 
-  const c = store.cesty[i]
+  const c = CESTY[i]
   if (!c) return
+
+  // Archiv od srpna 2026 nebydlí ve `store`, takže `save()` ani `saveOdlozene()`
+  // ho nezapíšou – musí se uložit do své databáze (`core/cesty.js`). Odložení
+  // zůstává: psaní poznámky nesmí zapisovat při každé klávese, což je stejný
+  // důvod, jaký má `saveOdlozene()` u poznámek k místům.
+  let odlozeny = null
+  const ulozOdlozene = () => {
+    clearTimeout(odlozeny)
+    odlozeny = setTimeout(() => ulozCestu(c), 400)
+  }
 
   for (const inp of wrap.querySelectorAll('.cesta-pozn')) {
     inp.oninput = () => {
       c.poznamky = c.poznamky || {}
       c.poznamky[inp.dataset.id] = inp.value
-      saveOdlozene()
+      ulozOdlozene()
     }
   }
 
@@ -398,7 +409,7 @@ export function napojZamcenouCestu(wrap, prekresli, i) {
   if (pozn)
     pozn.oninput = () => {
       c.poznamka = pozn.value
-      saveOdlozene()
+      ulozOdlozene()
     }
 }
 
@@ -586,7 +597,7 @@ export function napojCestu(wrap, prekresli) {
         }
       }
 
-      if (ukonciCestu()) {
+      if (await ukonciCestu()) {
         // Ukončená cesta se může propsat do profilových achievementů
         // (první cesta, týden na kolech…), tak se rovnou připíšou.
         pripisProfilove()

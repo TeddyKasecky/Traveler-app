@@ -21,6 +21,7 @@
 
 import { S, store, PHOTOS, save } from '../../core/store.js'
 import { KAT } from '../../data/categories.js'
+import { CESTY } from '../../core/cesty.js'
 
 /* ================= profilové ================= */
 
@@ -95,40 +96,40 @@ export const PROFILOVE = [
     id: 'prvni-cesta',
     nazev: 'Poprvé na cestě',
     popis: 'Dokončit první cestu',
-    splneno: () => store.cesty.length >= 1,
+    splneno: () => CESTY.length >= 1,
   },
   {
     id: 'tri-cesty',
     nazev: 'Vyjetí nezastavíš',
     popis: 'Dokončit tři cesty',
-    splneno: () => store.cesty.length >= 3,
-    prubeh: () => [Math.min(3, store.cesty.length), 3],
+    splneno: () => CESTY.length >= 3,
+    prubeh: () => [Math.min(3, CESTY.length), 3],
   },
   {
     id: 'pet-cest',
     nazev: 'Ostřílená posádka',
     popis: 'Dokončit pět cest',
-    splneno: () => store.cesty.length >= 5,
-    prubeh: () => [Math.min(5, store.cesty.length), 5],
+    splneno: () => CESTY.length >= 5,
+    prubeh: () => [Math.min(5, CESTY.length), 5],
   },
   {
     id: 'deset-cest',
     nazev: 'Stálí cestovatelé',
     popis: 'Dokončit deset cest',
-    splneno: () => store.cesty.length >= 10,
-    prubeh: () => [Math.min(10, store.cesty.length), 10],
+    splneno: () => CESTY.length >= 10,
+    prubeh: () => [Math.min(10, CESTY.length), 10],
   },
   {
     id: 'cesta-tyden',
     nazev: 'Týden na kolech',
     popis: 'Cesta trvající aspoň 7 dní',
-    splneno: () => store.cesty.some((c) => c.konec - c.zacatek >= 7 * 86400000),
+    splneno: () => CESTY.some((c) => c.konec - c.zacatek >= 7 * 86400000),
   },
   {
     id: 'cesta-dva-tydny',
     nazev: 'Velká výprava',
     popis: 'Cesta trvající aspoň 14 dní',
-    splneno: () => store.cesty.some((c) => c.konec - c.zacatek >= 14 * 86400000),
+    splneno: () => CESTY.some((c) => c.konec - c.zacatek >= 14 * 86400000),
   },
   // Tyhle dva dřív odměňovaly NEVYNECHÁNÍ ani jedné zastávky („Bleskový
   // víkend", „Do posledního místa"). Z cesty se tím stávala soutěž, jestli se
@@ -139,13 +140,13 @@ export const PROFILOVE = [
     id: 'vikendovka',
     nazev: 'Víkend za městem',
     popis: 'Vyrazit na cestu, která se vejde do tří dnů',
-    splneno: () => store.cesty.some((c) => c.konec - c.zacatek <= 3 * 86400000 && c.zastavek >= 2),
+    splneno: () => CESTY.some((c) => c.konec - c.zacatek <= 3 * 86400000 && c.zastavek >= 2),
   },
   {
     id: 'cesta-bez-vynechani',
     nazev: 'Bez spěchu',
     popis: 'Strávit na jedné cestě aspoň pět dní',
-    splneno: () => store.cesty.some((c) => c.konec - c.zacatek >= 5 * 86400000),
+    splneno: () => CESTY.some((c) => c.konec - c.zacatek >= 5 * 86400000),
   },
   {
     id: 'zapisovatel',
@@ -199,18 +200,18 @@ export const PROFILOVE = [
     id: 'zimni',
     nazev: 'Zimní výprava',
     popis: 'Dokončit cestu v prosinci až únoru',
-    splneno: () => store.cesty.some((c) => [11, 0, 1].includes(new Date(c.zacatek).getMonth())),
+    splneno: () => CESTY.some((c) => [11, 0, 1].includes(new Date(c.zacatek).getMonth())),
   },
   {
     id: 'ctyri-obdobi',
     nazev: 'Celý rok v terénu',
     popis: 'Cesty ve všech čtyřech ročních obdobích',
     splneno: () => {
-      const obdobi = new Set(store.cesty.map((c) => Math.floor(((new Date(c.zacatek).getMonth() + 1) % 12) / 3)))
+      const obdobi = new Set(CESTY.map((c) => Math.floor(((new Date(c.zacatek).getMonth() + 1) % 12) / 3)))
       return obdobi.size >= 4
     },
     prubeh: () => [
-      new Set(store.cesty.map((c) => Math.floor(((new Date(c.zacatek).getMonth() + 1) % 12) / 3))).size,
+      new Set(CESTY.map((c) => Math.floor(((new Date(c.zacatek).getMonth() + 1) % 12) / 3))).size,
       4,
     ],
   },
@@ -218,7 +219,7 @@ export const PROFILOVE = [
     id: 'planovac',
     nazev: 'Plánovač',
     popis: 'Rozdělit plán na dny',
-    splneno: () => (store.planDny || []).length > 1 || store.cesty.some((c) => (c.dny || []).length > 1),
+    splneno: () => (store.planDny || []).length > 1 || CESTY.some((c) => (c.dny || []).length > 1),
   },
   {
     id: 'navratilec',
@@ -226,7 +227,7 @@ export const PROFILOVE = [
     popis: 'Mít místo navštívené ve dvou různých cestách',
     splneno: () => {
       const videno = new Set()
-      for (const c of store.cesty)
+      for (const c of CESTY)
         for (const id of Object.keys(c.odznacene || {})) {
           if (videno.has(id)) return true
           videno.add(id)

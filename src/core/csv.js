@@ -13,6 +13,7 @@
  */
 
 import { spocitejOkoli } from './geo.js'
+import { CESTY } from './cesty.js'
 
 /** Kombinující diakritika – viz komentář ve search.js. */
 const DIAKRITIKA = new RegExp('[\\u0300-\\u036f]', 'g')
@@ -159,7 +160,10 @@ export function zalohaData(store, photos, prefs) {
     // Srpen 2026: bez cest, bloků a achievementů by obnova na jiném telefonu
     // tiše zahodila celý archiv a všechny seznamy – stejná past jako kdysi fotky.
     cesta: store.cesta || null,
-    cesty: store.cesty || [],
+    // Archiv se bere ze zrcadla v paměti, ne ze `store` – od srpna 2026 bydlí
+    // v IndexedDB (`core/cestyDb.js`). V ZÁLOZE ALE ZŮSTÁVÁ, na rozdíl od
+    // geometrie tras: ta se dopočítá z bodů, ukončená cesta se nedopočítá ničím.
+    cesty: [...CESTY],
     bloky: store.bloky || {},
     // Košík a kotvy do srpna 2026 v záloze CHYBĚLY, přestože je `duplikuj()`
     // i `prestehujBloky()` ve `views/plan/vypravy.js` berou jako plnohodnotná
@@ -212,7 +216,12 @@ export function obnovZalohu(store, d, photos, prefs) {
   // v telefonu nesmí záloha zaklepnout. Archiv se slučuje podle času vyjetí.
   if (d.cesta && typeof d.cesta === 'object' && !store.cesta) store.cesta = d.cesta
   if (Array.isArray(d.cesty)) {
-    const mam = new Set((store.cesty || []).map((c) => c.zacatek))
+    // Slévá se proti tomu, co už v archivu je – tedy proti zrcadlu `CESTY`
+    // I proti `store.cesty` (tam leží cesty ze starší zálohy, které ještě
+    // nebyly přestěhované). Do `store.cesty` se zapisuje schválně: tahle
+    // funkce musí zůstat čistá a synchronní (testuje ji `check-dny` v Node),
+    // takže do IndexedDB je odsud přestěhuje až volající přes `stehujCesty()`.
+    const mam = new Set([...CESTY, ...(store.cesty || [])].map((c) => c.zacatek))
     store.cesty = [...(store.cesty || []), ...d.cesty.filter((c) => c && !mam.has(c.zacatek))].sort(
       (a, b) => b.zacatek - a.zacatek
     )

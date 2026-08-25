@@ -326,6 +326,15 @@ Kód zůstává v `reference/index-original.html:1378-1494` včetně svých šes
 (`vanbob`, `roadmove`, `clouddrift`, `flick`, `smokeup`, `twk`). Kdyby se někdy hodila
 jako alternativa k `VAN_IMG`, dá se vytáhnout odtamtud.
 
+**N16 — Smazat ukončenou cestu**
+Archiv „Za námi" se dá jen prohlížet – řádek nemá žádnou nabídku, na rozdíl od výpravy
+v knihovně. Ukončenou cestu tedy nejde smazat vůbec, ani omylem rozjetou. Od srpna 2026
+archiv nebydlí v localStorage (`src/core/cestyDb.js`), takže to není otázka místa, ale
+toho, že smazat vzpomínku má být vědomé rozhodnutí – a dnes nejde ani to.
+`smazCestu()` v `core/cesty.js` už existuje, chybí jen nabídka „…" u řádku a potvrzení.
+
+---
+
 **N9 — Nálady na Domů podle četnosti použití**
 `prefs.moodUse` počítá, kolikrát jsi kterou náladu použila. Nikdy se to nečte.
 Data se sbírají už teď, takže by šlo nálady řadit podle oblíbenosti — ale změnilo by to

@@ -447,6 +447,125 @@ console.log('\n7. Geometrie, na kterou nic neodkazuje, se uklidí')
   await ctx.close()
 }
 
+/* ================= 8. stěhování archivu cest ================= */
+
+console.log('\n8. Archiv ukončených cest se přestěhuje do IndexedDB')
+{
+  // Archiv je NENAHRADITELNÝ – na rozdíl od geometrie tras se nedá dopočítat.
+  // Tahle sekce je proto ta nejdůležitější v celém skriptu: ověřuje, že se
+  // při stěhování nemůže ztratit.
+  const stary = JSON.stringify({
+    notes: { 'zkusebni-misto-123': 'poznámka, která se nesmí ztratit' },
+    stav: {},
+    rating: {},
+    plan: [],
+    prio: {},
+    seen: true,
+    cesty: [
+      { nazev: 'Léto v Alpách', zacatek: 1000, konec: 2000, zastavky: ['a', 'b'], dny: [1, 1], zastavek: 2 },
+      { nazev: 'Podzim', zacatek: 3000, konec: 4000, zastavky: ['c'], dny: [1], zastavek: 1 },
+    ],
+  })
+  const { ctx, page } = await novaStranka(`localStorage.setItem('vandrbuch:v1', ${JSON.stringify(stary)})`)
+  await page.waitForTimeout(900)
+
+  await kontrola(
+    'archiv zmizel z vandrbuch:v1',
+    () => page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).cesty.length),
+    0
+  )
+  // Klíč zůstává jako prázdné pole, nikdy se neodstraňuje – sahá na něj
+  // obnova starých záloh i starší kód.
+  await kontrola(
+    'ale klíč `cesty` ve store zůstal',
+    () => page.evaluate(() => Array.isArray(JSON.parse(localStorage.getItem('vandrbuch:v1')).cesty)),
+    true
+  )
+  await kontrola(
+    'poznámka stěhování přežila',
+    () => page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).notes['zkusebni-misto-123']),
+    'poznámka, která se nesmí ztratit'
+  )
+
+  const zArchivu = () =>
+    page.evaluate(
+      () =>
+        new Promise((hotovo) => {
+          const r = indexedDB.open('vandrbuch-cesty', 1)
+          r.onsuccess = () => {
+            const db = r.result
+            if (!db.objectStoreNames.contains('cesty')) return hotovo('sklad chybí')
+            const tr = db.transaction('cesty', 'readonly')
+            const g = tr.objectStore('cesty').getAll()
+            tr.oncomplete = () => hotovo(JSON.stringify((g.result || []).map((c) => [c.zacatek, c.nazev, c.dny])))
+            tr.onerror = () => hotovo('chyba')
+          }
+          r.onerror = () => hotovo('nelze otevřít')
+        })
+    )
+
+  await kontrola(
+    'obě cesty jsou v IndexedDB i s dny',
+    zArchivu,
+    JSON.stringify([
+      [1000, 'Léto v Alpách', [1, 1]],
+      [3000, 'Podzim', [1]],
+    ])
+  )
+  // Zrcadlo v paměti je to, z čeho čte knihovna i achievementy. Když se
+  // nenaplní, archiv sice v úložišti je, ale nikde ho není vidět.
+  await kontrola(
+    'appka archiv vidí v knihovně Výprav',
+    async () => {
+      // Bez `#introGo` – `seen: true` výš znamená, že se úvod vůbec neukáže.
+      // Archiv je pod kartou „Za námi", ne pod výchozí „V plánu".
+      await page.click('#tabs button[data-tab="plan"]')
+      await page.waitForTimeout(600)
+      await page.click('#planWrap .segment button:has-text("Za námi")')
+      await page.waitForTimeout(500)
+      return page.locator('#planWrap').innerText().then((t) => /L[ée]to v Alp[áa]ch/.test(t))
+    },
+    true
+  )
+  await ctx.close()
+}
+
+/* ================= 9. neúspěšné stěhování archivu nic neztratí ================= */
+
+console.log('\n9. Když se archiv nepodaří zapsat, zůstane ve store')
+{
+  // Nejdůležitější pojistka celé změny. IndexedDB se zakáže úplně, takže
+  // zápis selže – archiv se pak NESMÍ ze `store` vyhodit, jinak by zmizel
+  // nadobro.
+  const stary = JSON.stringify({
+    notes: {},
+    stav: {},
+    rating: {},
+    plan: [],
+    prio: {},
+    seen: true,
+    cesty: [{ nazev: 'Léto', zacatek: 1000, konec: 2000, zastavky: ['a'], dny: [1] }],
+  })
+  const { ctx, page } = await novaStranka(`
+    localStorage.setItem('vandrbuch:v1', ${JSON.stringify(stary)})
+    // Zápis do IndexedDB selže na čemkoli – appka to musí unést.
+    indexedDB.open = () => { throw new Error('zakázáno') }
+  `)
+  await page.waitForTimeout(900)
+
+  await kontrola(
+    'archiv ve store zůstal',
+    () => page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).cesty.length),
+    1
+  )
+  await kontrola(
+    'a nese pořád svoje data',
+    () => page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).cesty[0].nazev),
+    'Léto'
+  )
+  await ctx.close()
+}
+
 /* ================= výsledek ================= */
 
 await b.close()

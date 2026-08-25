@@ -19,6 +19,7 @@
 
 import { emit, save, store } from './store.js'
 import { nactiTrasu, otiskyTras, ulozTrasu, zahodTrasu } from './trasyDb.js'
+import { CESTY } from './cesty.js'
 
 /** Kolik geometrií se drží v paměti. Tři jsou potřeba naráz, čtvrtá je rezerva. */
 const STROP_PAMETI = 4
@@ -93,7 +94,7 @@ function vsechnyPrepocty() {
   const ven = []
   if (store.aktivniPrepocet) ven.push(store.aktivniPrepocet)
   if (store.cesta && store.cesta.prepocet) ven.push(store.cesta.prepocet)
-  for (const c of store.cesty || []) if (c && c.prepocet) ven.push(c.prepocet)
+  for (const c of CESTY || []) if (c && c.prepocet) ven.push(c.prepocet)
   for (const v of store.vypravy || []) if (v && v.prepocet) ven.push(v.prepocet)
   return ven
 }

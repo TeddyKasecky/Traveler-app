@@ -28,6 +28,7 @@ import { sklonuj } from '../../core/html.js'
 import { dnyPlanu } from './dny.js'
 import { BEZ_NAZVU } from './vypravy.js'
 import { pridejDoKosiku } from './kosik.js'
+import { ulozCestu } from '../../core/cesty.js'
 
 /** Formát času cesty: dny a hodiny, pod hodinu minuty. */
 export function fmtDoba(ms) {
@@ -79,12 +80,16 @@ export function vyjed() {
 }
 
 /**
- * Ukončí cestu: spočítá souhrn a přesune ji do archivu (`store.cesty`).
+ * Ukončí cestu: spočítá souhrn a přesune ji do archivu (`core/cesty.js`).
  *
  * Souhrn se počítá TEĎ, ne při čtení archivu – data míst se můžou změnit
  * (CSV import) a archiv má držet, jaká cesta BYLA.
+ *
+ * Od srpna 2026 asynchronní: archiv bydlí v IndexedDB, ne v localStorage.
+ * Vrací `false`, když se zápis nepovedl – volající to NESMÍ zahodit, jinak
+ * by cesta zmizela z „Na cestě" a nikam by se nedostala.
  */
-export function ukonciCestu() {
+export async function ukonciCestu() {
   const c = store.cesta
   if (!c) return false
   if (c.pauzaOd) {
@@ -92,6 +97,31 @@ export function ukonciCestu() {
     c.pauzaOd = null
   }
 
+  // Do archivu DŘÍV, než se rozjetá cesta zahodí. Archiv bydlí od srpna 2026
+  // v IndexedDB (`core/cestyDb.js`) a zápis se může nepovést – kdyby se
+  // `store.cesta` vynulovala první, ztratilo by se obojí. Ukončená cesta se
+  // dopočítat nedá.
+  if (!(await ulozCestu(zaznamCesty(c)))) return false
+
+  store.cesta = null
+  // Stejný důvod jako u zrusCestu() výš – bez aktivní cesty nemá mód
+  // „Na cestě“ co zobrazovat, a tipy „Co dál?“ patřily k rozjeté cestě.
+  S.mapaMod = 'plna'
+  S.coDalId = []
+  return save()
+}
+
+/**
+ * Složí archivní záznam z rozjeté cesty. Nic nezapisuje.
+ *
+ * Oddělené od `ukonciCestu()` ze stejného důvodu, jako je `cestaData.js`
+ * oddělené od `cesta.js`: zápis potřebuje IndexedDB, kterou čistý Node nemá,
+ * takže by se `check-dny.mjs` k obsahu záznamu nedostal. A obsah je přesně
+ * to, na čem záleží – právě tady se do srpna 2026 ztrácely `dny`.
+ *
+ * @param {Record<string, any>} c  `store.cesta`
+ */
+export function zaznamCesty(c) {
   const mista = c.zastavky.map((id) => S.byId[id]).filter(Boolean)
   const navstivena = mista.filter((p) => c.odznacene[p.id])
   const zeme = [...new Set(navstivena.map((p) => p.z))]
@@ -101,7 +131,7 @@ export function ukonciCestu() {
   const hodnoceni = {}
   for (const p of navstivena) if (store.rating[p.id]) hodnoceni[p.id] = store.rating[p.id]
 
-  store.cesty.unshift({
+  return {
     nazev: c.nazev,
     zacatek: c.zacatek,
     konec: Date.now(),
@@ -130,13 +160,7 @@ export function ukonciCestu() {
     // Otisk mohl mít vlastní přepočet z Mapy.com (#cestaPrepocitat) – bez
     // téhle kopie by ukončená cesta v knihovně o spočítanou trasu přišla.
     prepocet: c.prepocet,
-  })
-  store.cesta = null
-  // Stejný důvod jako u zrusCestu() výš – bez aktivní cesty nemá mód
-  // „Na cestě“ co zobrazovat, a tipy „Co dál?“ patřily k rozjeté cestě.
-  S.mapaMod = 'plna'
-  S.coDalId = []
-  return save()
+  }
 }
 
 /**

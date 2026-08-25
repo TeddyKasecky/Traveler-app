@@ -24,8 +24,8 @@ záměrně**; `check-css` je proto odstavené a nahradilo ho `check-tokeny`.
   v poli `n`, `id` zůstává. Viz [.claude/rules/database.md](.claude/rules/database.md).
 - **Klíče v úložišti se nemění**: `vandrbuch:v1` (poznámky, hodnocení, plán, dny plánu, priority),
   `vandrbuch:prefs`, `vandrbuch:data` (import CSV) a sklad `fotky` v IndexedDB
-  (`src/core/storage.js`, `src/core/fotoDb.js`), sklad `trasy` v IndexedDB
-  (`src/core/trasyDb.js`, databáze `vandrbuch-trasy`). Jsou v nich všechna uživatelská data
+  (`src/core/storage.js`, `src/core/fotoDb.js`), sklady `trasy` a `cesty` v IndexedDB
+  (`src/core/trasyDb.js`, `cestyDb.js`; databáze `vandrbuch-trasy` a `vandrbuch-cesty`). Jsou v nich všechna uživatelská data
   a nikde jinde neexistují — změna klíče je tichá ztráta dat. Starý `vandrbuch:photos`
   se při prvním otevření sám přestěhuje do IndexedDB a vyprázdní.
 - **Nikdy nezahazuj výsledek ukládání.** `save()`, `savePrefs()`, `ulozFotku()` vracejí
@@ -66,15 +66,15 @@ npm run preview          # prohlédnutí sestaveného webu
 
 npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
-npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
+npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 29 kontrol
 npm run check-debug      # debug poznámkovač: identita záznamu, export, rejstřík, 108 bodů
 
-npm run smoke            # proklikání v prohlížeči, 310 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 292 kontrol
+npm run smoke            # proklikání v prohlížeči, 312 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 294 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
-npm run check-dny        # dny, výpravy, body trasy, tažení a úpravy cesty, 187 bodů
+npm run check-dny        # dny, výpravy, body trasy, tažení a úpravy cesty, 203 bodů
 npm run check-filters    # 134 kombinací filtrů
 npm run check-handlers   # napojení tlačítek, 61/61
 npm run check-form       # že formulář vyrábí platná místa, 18/18
@@ -178,7 +178,13 @@ Dělicí čára je jednoduchá:
 |---|---|
 | co uživatel napsal nebo rozhodl (poznámky, hodnocení, plán, výpravy) | co si appka umí spočítat znovu (geometrie trasy) |
 | co nejde ničím nahradit | co se dá dotáhnout z API nebo přegenerovat |
+| co nepřibývá donekonečna | **co se hromadí** (archiv ukončených cest, fotky) |
 | kilobajty | megabajty |
+
+Poslední řádek je důvod, proč je v IndexedDB i **archiv ukončených cest**
+(`src/core/cestyDb.js`), přestože se dopočítat nedá: rostl o 2–8 kB na každou
+cestu a nikdy se nemazal. **V záloze proto zůstává** – na rozdíl od geometrie
+je nenahraditelný.
 
 **Do zálohy jde jen to první.** Trasy v ní schválně nejsou: po obnově na
 jiném telefonu se ukáže vzdušná čára a jedno ťuknutí na „Přepočítat" je

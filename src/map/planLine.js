@@ -18,6 +18,7 @@ import { token } from '../core/barvy.js'
 import { pozice } from '../core/pozice.js'
 import { projektujNaTrasu } from '../core/projekce.js'
 import { geometrie, zajistiTrasu } from '../core/trasy.js'
+import { CESTY } from '../core/cesty.js'
 import vanObr from '../assets/van.webp'
 
 /** @type {L.Polyline|null} */
@@ -136,7 +137,7 @@ export function drawPlanLine(mapa) {
   // na S.mapaMod – to je jiný stav (appka nejede).
   const jedeSe = !!store.cesta
   const kresliOtiskCesty = jedeSe && S.mapaMod === 'nacesta'
-  const cestaOtevrena = !jedeSe && S.otevrenaCesta != null ? store.cesty[S.otevrenaCesta] : null
+  const cestaOtevrena = !jedeSe && S.otevrenaCesta != null ? CESTY[S.otevrenaCesta] : null
   const otisk = kresliOtiskCesty ? store.cesta : cestaOtevrena
   const zdrojIds = otisk ? otisk.zastavky : store.plan
   const zastavky = zdrojIds.map((id) => S.byId[id]).filter(Boolean)

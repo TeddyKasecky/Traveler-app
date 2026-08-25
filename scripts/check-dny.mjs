@@ -124,7 +124,8 @@ const { seznamVyprav, prepniVypravu, novaVyprava, smazAktivniVypravu, BEZ_NAZVU 
 const { pridejPozici } = await import('../src/core/pozice.js')
 const { souradniceBodu, maBod, pridejStartCil, serazenaTrasa, serazenePolozky, bodyVKosiku } =
   await import('../src/views/plan/body.js')
-const { vyjed, pridejDoCesty, vynechZCesty, cestaZmenena, ukonciCestu } = await import('../src/views/plan/cestaData.js')
+const { vyjed, pridejDoCesty, vynechZCesty, cestaZmenena, zaznamCesty } = await import('../src/views/plan/cestaData.js')
+const { CESTY } = await import('../src/core/cesty.js')
 const { otiskBodu, pocetOdkazuNaPozici } = await import('../src/views/plan/routing.js')
 
 /** Nastaví stav včetně odložených výprav. */
@@ -347,10 +348,15 @@ console.log('\nZáloha cest, bloků a achievementů\n')
 pripravV(['a'], [], [], 'Alpy')
 {
   store.cesta = null
-  store.cesty = [{ nazev: 'Léto', zacatek: 100, konec: 200, zastavky: ['a'], dny: [1] }]
+  // Archiv se od srpna 2026 bere ze zrcadla v paměti (`core/cesty.js`),
+  // ne ze `store` – v localStorage už nebydlí.
+  CESTY.length = 0
+  CESTY.push({ nazev: 'Léto', zacatek: 100, konec: 200, zastavky: ['a'], dny: [1] })
+  store.cesty = []
   store.bloky = { Alpy: [{ typ: 'poznamka', text: 'ahoj' }] }
   store.achievementy = { 'prvni-misto': 1 }
   const z = JSON.parse(JSON.stringify(zalohaData(store, {}, {})))
+  CESTY.length = 0
   store.cesty = []
   store.bloky = {}
   store.achievementy = {}
@@ -450,9 +456,10 @@ pripravV(['a'], [], [], 'Alpy')
     poznamka: '',
     ziskane: [],
   }
-  ukonciCestu()
-  t('archiv si nese délky dnů', jako(store.cesty[0].dny) === jako([2, 1]))
-  t('a nespadne na jeden den', store.cesty[0].dny.length === 2)
+  const zaznam = zaznamCesty(store.cesta)
+  t('archiv si nese délky dnů', jako(zaznam.dny) === jako([2, 1]))
+  t('a nespadne na jeden den', zaznam.dny.length === 2)
+  t('a nese i zastávky a otisk plánu', jako(zaznam.zastavky) === jako(['a', 'b', 'c']) && jako(zaznam.puvodni) === jako(['a', 'b', 'c']))
 }
 
 {
