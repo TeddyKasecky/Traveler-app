@@ -31,19 +31,21 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url))
  * Do aplikace to potřebuje debug poznámkovač (`core/debugKontext.js`) – bez
  * verze se u hlášení neví, jestli je z verze, kde je chyba už opravená.
  *
- * `git` v `try/catch`: build na Cloudflare i rozbalený ZIP bez historie musí
- * projít. Bez gitu zůstane samotné datum, což je pořád lepší než nic.
+ * DATUM JE Z COMMITU, NE Z DNEŠKA. Kdyby se bralo „kdy se buildovalo", nevyšel
+ * by build ze stejného commitu dvakrát stejně – a přesně na tom stojí ověření
+ * nasazení v `.claude/rules/nasazeni.md` (porovnání otisku v názvu balíku mezi
+ * `dist/` a tím, co je venku). Takhle je verze čistá funkce commitu.
+ *
+ * `git` v `try/catch`: rozbalený ZIP bez historie musí projít taky. Bez gitu
+ * zůstane dnešní datum – degradovaný, ale použitelný stav.
  */
 function verzeBuildu() {
-  const d = new Date()
-  const datum = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
+  const git = (prikaz) => execSync(prikaz, { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
   try {
-    const hash = execSync('git rev-parse --short=4 HEAD', { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] })
-      .toString()
-      .trim()
-    return hash ? `${datum}-${hash}` : datum
+    return `${git('git log -1 --format=%cd --date=format:%Y.%m.%d')}-${git('git rev-parse --short=4 HEAD')}`
   } catch {
-    return datum
+    const d = new Date()
+    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
   }
 }
 
