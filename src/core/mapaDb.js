@@ -105,9 +105,31 @@ export async function smazMapu() {
 
 /**
  * Kolik má stažená mapa bajtů. Nula znamená, že stažená není.
+ *
+ * Pozor: **načte celý balík** (skoro 4 MB) jen aby přečetla `.size`. Kdo chce
+ * jen vědět, jestli mapa je, má volat `jeMapaStazena()`.
+ *
  * @returns {Promise<number>}
  */
 export async function velikostMapy() {
   const b = await nactiMapu()
   return b ? b.size : 0
+}
+
+/**
+ * Je balík stažený? Levná otázka – `count()` samotný Blob nečte.
+ *
+ * Vzniklo proto, že `core/debugKontext.js` se na to ptalo přes `velikostMapy()`
+ * a tahalo tím z úložiště 3,9 MB při každém zápisu debug poznámky.
+ *
+ * @returns {Promise<boolean>}
+ */
+export async function jeMapaStazena() {
+  try {
+    const db = await otevri()
+    const r = await transakce(db, 'readonly', (s) => s.count(KLIC))
+    return r.result > 0
+  } catch {
+    return false
+  }
 }

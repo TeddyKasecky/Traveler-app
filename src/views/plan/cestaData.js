@@ -110,6 +110,12 @@ export function ukonciCestu() {
     navstiveno: navstivena.length,
     vynechano: c.zastavky.length - navstivena.length,
     zastavky: c.zastavky,
+    // Délky dnů. Do srpna 2026 se do archivu nezapisovaly, přestože je cesta
+    // po celou dobu přepočítávala (`prepocitejDny()` níž) – `dnyCesty()` proto
+    // u každé ukončené cesty spadla na `[zastavky.length]` a zamčený itinerář
+    // hodil celou cestu pod jeden den. Rozdělení, které se na cestě udržovalo,
+    // se tím ztrácelo v okamžiku, kdy se stalo vzpomínkou.
+    dny: c.dny || [],
     // Jak to bylo naplánované, vedle toho, jak to dopadlo. Archiv tak unese
     // otázku „co jsme nakonec vynechali a co přibylo".
     puvodni: c.puvodni,

@@ -279,7 +279,12 @@ export const prefs = nacti(PREFK, {
   userName: '',
   lastMood: '',
   lastTip: '',
-  bpOpen: false,
+  /**
+   * Kolikrát byla která nálada použitá. Zapisuje `views/home/moods.js`, nikdo
+   * to zatím nečte – je to **schválně sbíraný podklad pro N9** (řadit nálady
+   * podle oblíbenosti). Deklarace tu musí být, jinak by zápis na čerstvém
+   * profilu spadl na `undefined[...]`.
+   */
   moodUse: {},
   /** Kdy se naposled stáhla záloha (ms). 0 = nikdy. */
   posledniZaloha: 0,
@@ -357,7 +362,32 @@ export const prefs = nacti(PREFK, {
    * ne až export – `id` vzniká při zápisu a nikdy se nemění.
    */
   debugAutor: '',
+  /**
+   * Řazení výprav v knihovně: 'abecedne' | 'nejnovejsi' | 'zastavky' | 'zadne'.
+   * Používalo se od srpna 2026, ale ve výchozích hodnotách chybělo – čtenář
+   * kódu ho tu nenašel, přestože v telefonech dávno je.
+   */
+  razeniVyprav: 'abecedne',
+  /** Názvy sbalených složek v knihovně výprav. Doplněno ze stejného důvodu. */
+  sbaleneSlozky: [],
 })
+
+/**
+ * Předvolby, které se přestaly používat.
+ *
+ * `nacti()` je přes `Object.assign` načte zpátky z uložených dat a `savePrefs()`
+ * je zase uloží, takže by kolovaly donekonečna. Maže se **jen v paměti** –
+ * žádný zápis při startu; z úložiště zmizí při nejbližším `savePrefs()`,
+ * který se stane z jiného důvodu.
+ *
+ *   bpOpen       panel bikeparku, který se při přestavbě neudělal
+ *   mapaSbaleno  nahradilo `vypravaPredstavena` (srpen 2026)
+ *
+ * `moodUse` sem NEPATŘÍ, i když se taky nikdy nečte – sbírá se schválně
+ * jako podklad pro N9 v `NAPADY.md`.
+ */
+for (const zapomenuty of ['bpOpen', 'mapaSbaleno']) delete prefs[zapomenuty]
+
 export const savePrefs = () => zapis(PREFK, prefs)
 
 /* ================= stav filtrů ================= */

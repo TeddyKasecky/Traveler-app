@@ -161,6 +161,15 @@ export function zalohaData(store, photos, prefs) {
     cesta: store.cesta || null,
     cesty: store.cesty || [],
     bloky: store.bloky || {},
+    // Košík a kotvy do srpna 2026 v záloze CHYBĚLY, přestože je `duplikuj()`
+    // i `prestehujBloky()` ve `views/plan/vypravy.js` berou jako plnohodnotná
+    // data výpravy. Obnova na jiném telefonu tedy tiše zahodila celý wishlist
+    // a všechny termínové kotvy – přesně ta past, kterou popisuje komentář
+    // o cestách a blocích výš. Totéž platilo pro termín aktivní výpravy.
+    kosik: store.kosik || {},
+    kotvy: store.kotvy || {},
+    vypravaOd: store.vypravaOd || '',
+    vypravaDnu: store.vypravaDnu || 0,
     achievementy: store.achievementy || {},
     // Srpen 2026: uložené pozice a přepočet trasy – stejná past jako výš,
     // bez nich by obnova na jiném telefonu tiše zahodila Domov/Práci a
@@ -209,6 +218,12 @@ export function obnovZalohu(store, d, photos, prefs) {
     )
   }
   if (d.bloky && typeof d.bloky === 'object') store.bloky = Object.assign(store.bloky || {}, d.bloky)
+  // Klíčované názvem výpravy, takže se slévají stejně jako bloky. Ze starší
+  // zálohy chybí a pak se prostě nepřenesou – wishlist zůstane, jaký je.
+  if (d.kosik && typeof d.kosik === 'object') store.kosik = Object.assign(store.kosik || {}, d.kosik)
+  if (d.kotvy && typeof d.kotvy === 'object') store.kotvy = Object.assign(store.kotvy || {}, d.kotvy)
+  if (typeof d.vypravaOd === 'string') store.vypravaOd = d.vypravaOd
+  if (typeof d.vypravaDnu === 'number') store.vypravaDnu = d.vypravaDnu
   if (d.achievementy && typeof d.achievementy === 'object')
     store.achievementy = Object.assign(store.achievementy || {}, d.achievementy)
   if (Array.isArray(d.ulozenePozice)) store.ulozenePozice = d.ulozenePozice

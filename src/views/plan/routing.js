@@ -24,7 +24,28 @@ import { serazenaTrasa, vsechnyBody } from './body.js'
  * @returns {string}
  */
 export function otiskBodu(body) {
-  return body.map((b) => `${b.id || ''}:${b.lat.toFixed(5)},${b.lon.toFixed(5)}`).join('|')
+  const popis = body.map((b) => `${b.id || ''}:${b.lat.toFixed(5)},${b.lon.toFixed(5)}`).join('|')
+  // Do srpna 2026 se ukládal ten popis celý – ~48 znaků na bod, tedy ~1,4 kB
+  // na trasu, a sedí ve `store` na čtyřech místech (aktivní přepočet, cesta,
+  // každá výprava, každá archivovaná cesta). Přitom se nikdy nezobrazuje,
+  // jen porovnává na `===`. Osm znaků hashe dělá totéž za setinu místa.
+  return hash(popis)
+}
+
+/**
+ * FNV-1a, osm hexa znaků. Není to kryptografie a nemá být – jde jen o to,
+ * poznat na `===`, že se seznam bodů změnil. Kolize by znamenala, že se
+ * nakreslí trasa pro jinou sadu bodů; při jednotkách tras na telefon je to
+ * mimo rozsah reality.
+ * @param {string} s
+ */
+function hash(s) {
+  let h = 0x811c9dc5
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h.toString(16).padStart(8, '0')
 }
 
 /**

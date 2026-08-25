@@ -310,9 +310,35 @@ export function prejmenujVypravu(nazev) {
 }
 
 /**
+ * Uklidí po smazané výpravě všechno, co je klíčované jejím názvem.
+ *
+ * Do srpna 2026 se to nechávalo ležet s odůvodněním „stejnojmenná výprava by
+ * o ně přišla a osiřelý klíč nikomu nevadí". První půlka platí – proto se
+ * uklízí jen tehdy, když stejné jméno v seznamu **už není**. Druhá půlka
+ * neplatila: osiřelé klíče se nikdy neuklidily ničím, takže `vandrbuch:v1`
+ * rostl s každou smazanou výpravou o její bloky, košík a kotvy. Bylo to
+ * jediné místo v celém úložišti bez horní meze.
+ *
+ * Volá se AŽ PO odebrání výpravy ze seznamu – kdyby se volalo dřív, našlo by
+ * samo sebe. U přejmenování se nepoužívá vůbec, tam se stěhuje
+ * (`prestehujBloky()`).
+ *
+ * @param {string} nazev
+ */
+function uklidPoVyprave(nazev) {
+  if (!nazev) return
+  const jesteExistuje =
+    (store.vypravaNazev || BEZ_NAZVU) === nazev || odlozene().some((v) => (v.nazev || BEZ_NAZVU) === nazev)
+  if (jesteExistuje) return
+  if (store.bloky) delete store.bloky[nazev]
+  if (store.kosik) delete store.kosik[nazev]
+  if (store.kotvy) delete store.kotvy[nazev]
+}
+
+/**
  * Smaže výpravu i s jejími zastávkami – aktivní (i = -1) i odloženou.
- * Za smazanou aktivní nastoupí první odložená. Bloky se nechávají být:
- * stejnojmenná výprava by o ně přišla a osiřelý klíč nikomu nevadí.
+ * Za smazanou aktivní nastoupí první odložená. Bloky, košík a kotvy té
+ * výpravy se uklidí, pokud stejné jméno v seznamu nezůstalo.
  * @param {number} i  pořadí v `store.vypravy`, -1 pro aktivní
  * @returns {boolean}
  */
@@ -320,9 +346,12 @@ export function smaz(i) {
   const sez = odlozene()
   if (i >= 0) {
     if (!sez[i]) return true
+    const nazev = sez[i].nazev || BEZ_NAZVU
     sez.splice(i, 1)
+    uklidPoVyprave(nazev)
     return save()
   }
+  const mazanyNazev = store.vypravaNazev || BEZ_NAZVU
   const dalsi = sez.shift()
   store.vypravaNazev = dalsi ? dalsi.nazev || BEZ_NAZVU : ''
   store.plan = dalsi && Array.isArray(dalsi.plan) ? dalsi.plan : []
@@ -332,6 +361,9 @@ export function smaz(i) {
   store.vypravaOd = (dalsi && typeof dalsi.od === 'string' ? dalsi.od : '')
   store.vypravaDnu = (dalsi && dalsi.dnu) || 0
   store.aktivniPrepocet = (dalsi && dalsi.prepocet) || null
+  // Až tady: do téhle chvíle byla mazaná výprava pořád ta aktivní, takže by
+  // se úklid našel sám a nic by nesmazal.
+  uklidPoVyprave(mazanyNazev)
   return save()
 }
 

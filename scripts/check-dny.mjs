@@ -124,7 +124,7 @@ const { seznamVyprav, prepniVypravu, novaVyprava, smazAktivniVypravu, BEZ_NAZVU 
 const { pridejPozici } = await import('../src/core/pozice.js')
 const { souradniceBodu, maBod, pridejStartCil, serazenaTrasa, serazenePolozky, bodyVKosiku } =
   await import('../src/views/plan/body.js')
-const { vyjed, pridejDoCesty, vynechZCesty, cestaZmenena } = await import('../src/views/plan/cestaData.js')
+const { vyjed, pridejDoCesty, vynechZCesty, cestaZmenena, ukonciCestu } = await import('../src/views/plan/cestaData.js')
 const { otiskBodu, pocetOdkazuNaPozici } = await import('../src/views/plan/routing.js')
 
 /** Nastaví stav včetně odložených výprav. */
@@ -360,6 +360,99 @@ pripravV(['a'], [], [], 'Alpy')
   t('záloha nese achievementy', !!store.achievementy['prvni-misto'])
   obnovZalohu(store, z, {}, {})
   t('dvakrát obnovená záloha nezdvojí archiv', store.cesty.length === 1)
+}
+
+/* Úklid po smazané výpravě.
+ *
+ * Do srpna 2026 se `bloky`, `kosik` a `kotvy` smazané výpravy nechávaly ležet
+ * („osiřelý klíč nikomu nevadí"). Vadil: nikdy je nic neuklidilo, takže to
+ * bylo jediné místo v celém úložišti, které rostlo bez horní meze. */
+{
+  pripravV(['a'], [], [{ nazev: 'Dolomity', plan: ['d'], planDny: [] }], 'Alpy')
+  store.bloky = { Alpy: [{ typ: 'poznamka', text: 'k Alpám' }], Dolomity: [{ typ: 'poznamka', text: 'k Dolomitům' }] }
+  store.kosik = { Alpy: ['x'], Dolomity: ['y'] }
+  store.kotvy = { Alpy: [{ id: 'x', odeDne: 1, doDne: 2 }], Dolomity: [] }
+
+  smaz(0)
+  t('smazaná odložená výprava po sobě uklidí bloky', !store.bloky.Dolomity)
+  t('ani košík', !store.kosik.Dolomity)
+  t('ani kotvy', !store.kotvy.Dolomity)
+  t('cizí výpravě se přitom nesáhlo na nic', (store.bloky.Alpy || []).length === 1 && jako(store.kosik.Alpy) === jako(['x']))
+}
+
+{
+  // Aktivní výprava: úklid musí proběhnout AŽ po tom, co na její místo
+  // nastoupí jiná – jinak by se mazaný název ještě našel jako aktivní.
+  pripravV(['a'], [], [{ nazev: 'Dolomity', plan: ['d'], planDny: [] }], 'Alpy')
+  store.bloky = { Alpy: [{ typ: 'poznamka', text: 'k Alpám' }], Dolomity: [{ typ: 'poznamka', text: 'k Dolomitům' }] }
+  store.kosik = { Alpy: ['x'], Dolomity: ['y'] }
+  smaz(-1)
+  t('smazaná aktivní výprava po sobě uklidí taky', !store.bloky.Alpy && !store.kosik.Alpy)
+  t('a nástupci zůstane všechno', (store.bloky.Dolomity || []).length === 1 && jako(store.kosik.Dolomity) === jako(['y']))
+}
+
+{
+  // Původní důvod pro neúklid platí dál: stejnojmenná výprava o svoje data
+  // přijít nesmí. Proto se uklízí jen tehdy, když název v seznamu zmizel.
+  pripravV(['a'], [], [{ nazev: 'Alpy', plan: ['d'], planDny: [] }], 'Alpy')
+  store.bloky = { Alpy: [{ typ: 'poznamka', text: 'sdílené' }] }
+  smaz(0)
+  t('stejnojmenné výpravě se bloky nesmažou', (store.bloky.Alpy || []).length === 1)
+}
+
+/* Košík, kotvy a termín v záloze.
+ *
+ * Do srpna 2026 v ní nebyly, přestože `duplikuj()` i `prestehujBloky()`
+ * s košíkem a kotvami zacházejí jako s plnohodnotnými daty výpravy. Obnova
+ * na jiném telefonu tedy tiše zahodila celý wishlist a všechny termínové
+ * kotvy – a poznalo by se to až tím, že by někomu chybělo, co si nasbíral. */
+{
+  pripravV(['a'], [], [], 'Alpy')
+  store.kosik = { Alpy: ['b', 'c'] }
+  store.kotvy = { Alpy: [{ id: 'b', odeDne: 2, doDne: 4 }] }
+  store.vypravaOd = '2026-09-01'
+  store.vypravaDnu = 7
+  const z = JSON.parse(JSON.stringify(zalohaData(store, {}, {})))
+  store.kosik = {}
+  store.kotvy = {}
+  store.vypravaOd = ''
+  store.vypravaDnu = 0
+  obnovZalohu(store, z, {}, {})
+  t('záloha nese košík', jako(store.kosik.Alpy) === jako(['b', 'c']))
+  t('záloha nese kotvy', (store.kotvy.Alpy || []).length === 1 && store.kotvy.Alpy[0].odeDne === 2)
+  t('záloha nese datum vyjetí', store.vypravaOd === '2026-09-01')
+  t('záloha nese počet dní', store.vypravaDnu === 7)
+  // Starší záloha tyhle klíče nemá – nesmí kvůli tomu spadnout ani vynulovat,
+  // co je v telefonu.
+  obnovZalohu(store, { plan: ['a'] }, {}, {})
+  t('stará záloha bez košíku ho nevynuluje', jako(store.kosik.Alpy) === jako(['b', 'c']))
+  t('stará záloha bez termínu ho nevynuluje', store.vypravaOd === '2026-09-01')
+}
+
+/* Ukončená cesta si nese rozdělení na dny.
+ *
+ * `ukonciCestu()` je do srpna 2026 do archivu nezapisovala, přestože je cesta
+ * po celou dobu přepočítávala. Zamčený itinerář pak hodil celou cestu pod
+ * jeden den – rozdělení se ztratilo přesně ve chvíli, kdy se stalo vzpomínkou. */
+{
+  pripravV(['a', 'b', 'c'], [], [], 'Alpy')
+  store.cesty = []
+  store.cesta = {
+    nazev: 'Alpy',
+    zacatek: 1000,
+    zastavky: ['a', 'b', 'c'],
+    puvodni: ['a', 'b', 'c'],
+    dny: [2, 1],
+    pauzy: [],
+    pauzaOd: null,
+    odznacene: {},
+    poznamky: {},
+    poznamka: '',
+    ziskane: [],
+  }
+  ukonciCestu()
+  t('archiv si nese délky dnů', jako(store.cesty[0].dny) === jako([2, 1]))
+  t('a nespadne na jeden den', store.cesty[0].dny.length === 2)
 }
 
 {

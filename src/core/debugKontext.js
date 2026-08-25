@@ -21,7 +21,7 @@
 
 import { F, S, prefs, store } from './store.js'
 import { zmerUloziste } from './storage.js'
-import { velikostMapy } from './mapaDb.js'
+import { jeMapaStazena } from './mapaDb.js'
 import { posledniChyby } from './chyby.js'
 
 /** Jak se která záložka jmenuje v hlášení. Musí sedět na `MODULY` v debug.js. */
@@ -188,7 +188,7 @@ export async function sberKontext({ obrazovka = '', chyby = false } = {}) {
   }
 
   try {
-    k.mapaStazena = (await velikostMapy()) > 0
+    k.mapaStazena = await jeMapaStazena()
   } catch {
     /* IndexedDB nedostupná – stažená mapa se prostě nezapíše */
   }
