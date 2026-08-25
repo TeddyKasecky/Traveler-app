@@ -33,6 +33,20 @@ function napln(pole) {
 }
 
 /**
+ * Je archiv opravdu v paměti, nebo je `CESTY` prázdné jen proto, že se ještě
+ * nedočetlo z IndexedDB?
+ *
+ * Ptá se na to `core/trasy.js#uklidTrasy()`, protože bez načteného archivu
+ * neví, které geometrie jsou ještě živé – a smazal by trasy všech ukončených
+ * cest jako sirotky. Zamčená cesta tlačítko Přepočítat nemá, takže by to byla
+ * ztráta napořád.
+ *
+ * Prázdné pole a „ještě nevíme" jsou dva různé stavy a nesmí splynout.
+ */
+let nacteno = false
+export const archivNacten = () => nacteno
+
+/**
  * Přestěhuje archiv ze `store` do IndexedDB.
  *
  * ZE `store` SE MAŽE AŽ PO POTVRZENÉM ZÁPISU všech záznamů – archiv je
@@ -67,6 +81,9 @@ export async function pripravCesty() {
   napln(await nactiCesty())
   const presunuto = await stehujCesty()
   if (presunuto) save()
+  // Příznak až tady, za stěhováním: do té chvíle může být archiv rozdělený
+  // mezi `store.cesty` a IndexedDB a `CESTY` neúplné.
+  nacteno = true
   emit('cestyNacteny')
 }
 

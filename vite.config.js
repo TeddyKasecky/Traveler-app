@@ -96,7 +96,14 @@ function pluginServiceWorker() {
       // čtyři megabajty do instalace.
       // `auta-` sem patří taky: ikon je 64 a člověk používá jednu – stáhne se
       // při otevření výběru v Profilu a service worker si ji uloží za běhu.
-      const JEN_SE_STAZENOU_MAPOU = /^assets\/(kresba|kresby-|vektory|vbm|maplibre-|auta-)/
+      //
+      // A od srpna 2026 i **velké ilustrace kategorií** (`*-720`, dohromady
+      // 540 kB). Ukazují se JEN v otevřeném detailu místa, které nemá vlastní
+      // fotku – tedy až po ťuknutí, kdy je appka dávno spuštěná. Malá sada
+      // (`*-320`, 130 kB) se kreslí na kartách hned při startu a v instalaci
+      // zůstává. Stejnou úvahu dělá `src/data/kategorieFoto.js` pro
+      // jednosouborovou variantu.
+      const JEN_SE_STAZENOU_MAPOU = /^assets\/(kresba|kresby-|vektory|vbm|maplibre-|auta-)|^assets\/[a-z-]+-720-/
       const zBundle = Object.keys(bundle).filter((f) => !JEN_SE_STAZENOU_MAPOU.test(f))
 
       // Seřazeno schválně. `Object.keys(bundle)` nevrací pokaždé stejné pořadí –

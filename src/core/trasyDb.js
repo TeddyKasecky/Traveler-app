@@ -134,3 +134,22 @@ export async function otiskyTras() {
     return []
   }
 }
+
+/**
+ * Kolik geometrií je uložených. Levné – `count()` samotné body nečte,
+ * a jedna trasa jich má i sedm tisíc.
+ *
+ * `otiskyTras()` na totéž nestačí: ten seznam se používá k úklidu a tahá
+ * všechny klíče. Pro rozpad v Nastavení stačí číslo.
+ *
+ * @returns {Promise<number>}
+ */
+export async function pocetTras() {
+  try {
+    const db = await otevri()
+    const r = await transakce(db, 'readonly', (s) => s.count())
+    return r.result || 0
+  } catch {
+    return 0
+  }
+}

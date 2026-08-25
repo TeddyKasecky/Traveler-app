@@ -76,13 +76,59 @@
 
 /* ---------- prohlížeč poznámek ---------- */
 
+/* Úvodní text nese to nejdůležitější (poznámka je jen tady, dokud ji
+ * nevyexportuješ a necommitneš), takže dostal víc místa než obyčejná .meta. */
+.dz-uvod{margin:0 2px 12px;line-height:1.55}
+.dz-uvod code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.92em;
+  background:var(--plocha2);padding:1px 5px;border-radius:6px}
+
+/* Karta kolem sekce. Obrazovka byla do srpna 2026 jeden dlouhý sloupec na
+ * stejném pozadí a nešlo poznat, kde jedna věc končí a druhá začíná. */
+.dz-karta{background:var(--card);border:var(--line);border-radius:var(--r-s);
+  padding:12px 14px;margin:0 0 12px}
+.dz-cisla{padding:14px}
+
+/* Čtvrté číslo („vyřešené v repu") je tlačítko – ťuknutí na ně odfiltruje
+ * právě je. Zbytek řady jsou dál obyčejné <div>, viz cislaRada ve vzory.js. */
+.cislo-akce{border:0;border-left:var(--line);background:none;font:inherit;color:inherit;
+  text-align:left;cursor:pointer}
+.cislo-akce:active{transform:var(--stisk)}
+
+#dzSeg{margin:0 0 12px}
+
+/* ---------- sbalený filtr ---------- */
+
+.dzf-karta{padding:0;overflow:hidden}
+.dzf-prepinac{display:flex;align-items:center;gap:8px;width:100%;padding:12px 14px;
+  border:0;background:none;color:var(--ink);font-weight:800;font-size:.86rem;cursor:pointer}
+.dzf-prepinac i{margin-left:auto;font-style:normal;font-weight:700;font-size:.72rem;color:var(--ink2)}
+.dzf-prepinac svg.ic{font-size:16px;flex:0 0 auto;color:var(--ink2)}
+/* Šipka je poslední ikona v řádku a otáčí se, jako u „Víc podrobností". */
+.dzf-prepinac svg.ic:last-child{transition:transform .2s var(--pop)}
+.dzf-prepinac.on svg.ic:last-child{transform:rotate(90deg)}
+.dzf-prepinac:active{transform:var(--stisk)}
+.dzf-telo{padding:0 14px 12px;border-top:var(--line)}
+.dzf-telo .dz-napoveda{margin-top:10px}
+
+/* Filtry se musí zalomit – dvanáct modulů se na šířku telefonu nevejde
+ * a vodorovné rolování by schovalo půlku voleb pod okraj. */
+.dzf-typ,.dzf-stav,.dzf-priorita,.dzf-modul{flex-wrap:wrap;gap:6px;overflow:visible;margin:10px 0 0}
+.dzf-typ .pilulka,.dzf-stav .pilulka,.dzf-priorita .pilulka,.dzf-modul .pilulka{flex:0 0 auto}
+
+/* ---------- štítky ---------- */
+
 .dz-id{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;color:var(--ink2);flex:0 0 auto}
 .dz-znacka{display:inline-flex;align-items:center;gap:4px;font-size:.68rem;font-weight:800;
   padding:2px 8px;border-radius:var(--r-pill);border:var(--line);background:var(--paper);color:var(--ink2)}
-/* Jen dva stavy mají barvu: „vysoká" volá o pozornost, „hotovo" ji odvolává.
- * Kdyby byly barevné všechny, seznam by se stal barevnou mapou bez hierarchie. */
+
+/* STAV JE BAREVNÝ, PRIORITA ŠEDÁ (srpen 2026). Do teď měly barvu jen „vysoká"
+ * a „hotovo", aby ze seznamu nebyla barevná mapa bez hierarchie – jenže
+ * v trackeru je stav to, co člověk čte nejčastěji, a tři stejně vypadající
+ * pilulky vedle sebe se nedaly rozeznat. Hierarchie zůstává: barvu má stav,
+ * priorita křikne jen když je vysoká. */
+.dz-znacka.stav.resim{background:var(--zvyrazneni);color:var(--na-zvyrazneni);border-color:transparent}
+.dz-znacka.stav.hotovo{background:var(--moss);color:var(--na-akcentu);border-color:transparent}
 .dz-znacka.vysoka{background:var(--upozorneni);color:var(--na-upozorneni);border-color:transparent}
-.dz-znacka.hotovo{background:var(--moss);color:var(--na-akcentu);border-color:transparent}
 .dz-znacka.zahozeno{opacity:.6}
 .dz-znacka.odeslano svg.ic{font-size:11px}
 
@@ -93,28 +139,18 @@
 .dz-znacka.repo.hotovo{background:var(--moss);color:var(--na-akcentu);border-style:solid;border-color:transparent}
 .dz-znacka.repo.chybi{color:var(--clay);border-color:var(--clay)}
 
-.dzr.cizi{opacity:.92}
-.dzr.cizi .dzr-telo{cursor:default}
-.dzr.cizi .dzr-telo:active{transform:none}
-.dzr-kopie{flex:0 0 auto;width:42px;border:0;border-left:var(--line);background:var(--paper);
-  display:grid;place-items:center;cursor:pointer;color:var(--ink2)}
-.dzr-kopie svg.ic{font-size:16px}
-.dzr-kopie:active{transform:var(--stisk)}
+/* ---------- seznam ---------- */
 
-/* Filtry se musí zalomit – dvanáct modulů se na šířku telefonu nevejde
- * a vodorovné rolování by schovalo půlku voleb pod okraj. */
-.dzf-typ,.dzf-stav,.dzf-priorita,.dzf-modul{flex-wrap:wrap;gap:6px;overflow:visible;margin-bottom:8px}
-.dzf-typ .pilulka,.dzf-stav .pilulka,.dzf-priorita .pilulka,.dzf-modul .pilulka{flex:0 0 auto}
-
-.dzr-lista{display:flex;gap:8px;margin:12px 0 10px}
+.dzr-lista{display:flex;gap:8px;margin:0 0 10px}
 .dzr-lista .btn{flex:1 1 0}
 .dzr-lista .btn[disabled]{opacity:.45}
 
 .dzr-seznam{display:flex;flex-direction:column;gap:8px}
 
-.dzr{display:flex;align-items:stretch;gap:0;border:var(--line);border-radius:var(--r-s);
-  background:var(--card);overflow:hidden}
+.dzr{border:var(--line);border-radius:var(--r-s);background:var(--card);overflow:hidden}
 .dzr.vybrany{border-color:var(--akcent);box-shadow:var(--stin-1)}
+.dzr.otevreny{border-color:var(--akcent)}
+.dzr-radek{display:flex;align-items:stretch}
 
 /* Zaškrtávátko je <button role="checkbox">, ne <input> – ten v appce není
  * ani jednou a nešel by sladit se zbytkem. */
@@ -124,16 +160,78 @@
 .dzr.vybrany .dzr-check{background:var(--akcent);color:var(--na-akcentu);stroke:var(--na-akcentu)}
 
 .dzr-telo{flex:1 1 auto;min-width:0;text-align:left;border:0;background:none;cursor:pointer;
-  padding:10px 12px;display:flex;flex-direction:column;gap:5px}
+  padding:10px 12px;display:flex;flex-direction:column;gap:5px;color:inherit;font:inherit}
 .dzr-telo:active{transform:var(--stisk)}
 .dzr-hd{display:flex;align-items:center;gap:7px;min-width:0}
 .dzr-hd svg.ic{font-size:16px;flex:0 0 auto;color:var(--akcent)}
 .dzr-hd b{font-weight:800;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dzr-text{font-size:.76rem;color:var(--ink2);line-height:1.4}
+
+/* Dvě řádky, ne jedna useknutá věta: kdo hledá „to s tím tlačítkem", pozná to
+ * z druhé řádky. Ořezává CSS, ne řetězec – jinak by se ořízlo i to, co se
+ * na obrazovku vejde. */
+.dzr-text{font-size:.76rem;color:var(--ink2);line-height:1.45;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dzr.otevreny .dzr-text{display:none}
+
 .dzr-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:.68rem;color:var(--ink2)}
-.dzr-moduly{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.dzr-datum{margin-left:auto;flex:0 0 auto}
+.dzr-datum{flex:0 0 auto}
+
+/* ---------- rozbalený záznam ---------- */
+
+.dzr-detail{padding:2px 12px 12px;border-top:var(--line);background:var(--paper)}
+.dzr.cizi .dzr-detail{padding-left:12px}
+.dzr-kus{margin:10px 0 0}
+.dzr-kus b{display:block;font-size:.68rem;font-weight:800;color:var(--ink2);
+  text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+.dzr-kus p{margin:0;font-size:.82rem;line-height:1.5;white-space:pre-wrap}
+.dzr-spodek{margin-top:12px;padding-top:10px;border-top:var(--line)}
+.dzr-akce{margin:12px 0 0}
+
+/* Osiřelý záznam – v repozitáři už není. Je to pobídka k akci, ne chyba,
+ * takže hliněný obrys a ne červený pruh. */
+.dzr-varovani{display:flex;gap:9px;margin:12px 0 0;padding:11px 12px;
+  border:1px solid var(--clay);border-radius:var(--r-s);font-size:.76rem;line-height:1.5}
+.dzr-varovani svg.ic{font-size:17px;flex:0 0 auto;color:var(--clay);stroke:var(--clay)}
+.dzr-varovani b{display:block;margin-bottom:3px}
+.dzr-varovani code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.92em;
+  background:var(--plocha2);padding:1px 4px;border-radius:5px}
+.dzr-varovani .btn{margin-top:9px}
+
+/* ---------- cizí záznamy ---------- */
+
+.dzr.cizi{opacity:.94}
+.dzr-kopie{flex:0 0 auto;width:42px;border:0;border-left:var(--line);background:var(--paper);
+  display:grid;place-items:center;cursor:pointer;color:var(--ink2)}
+.dzr-kopie svg.ic{font-size:16px}
+.dzr-kopie:active{transform:var(--stisk)}
+
+/* Text cizího záznamu v zamčeném plátu – vypadá jako pole, ale needituje se. */
+.dz-cteni{margin:0;padding:9px 12px;border:var(--line);border-radius:var(--r-s);
+  background:var(--plocha2);font-size:.84rem;line-height:1.5;white-space:pre-wrap}
 
 .dzr-prazdno{display:flex;flex-direction:column;align-items:center;gap:10px;padding:34px 20px;
   text-align:center;color:var(--ink2);font-size:.82rem;line-height:1.5}
 .dzr-prazdno svg.ic{font-size:38px;opacity:.4}
+
+/* ---------- rozbalovací EXPORT ---------- */
+
+/* Stejná mechanika jako složky v knihovně Výprav (`.slozka-radek`), ale
+ * ZŘETELNĚJŠÍ: velké prostrkané písmo a šipka místo nenápadného řádku
+ * s třemi tečkami. Export a záloha dohromady zabraly víc obrazovky než
+ * samotný seznam poznámek, přitom se na ně sahá jednou za čas – a čtyři
+ * tlačítka pod sebou opticky matou v tom, co je vlastně hlavní akce. */
+.dz-rozbal-karta{padding:0;overflow:hidden}
+.dz-rozbal{display:flex;align-items:center;gap:10px;width:100%;padding:14px;
+  border:0;background:none;color:var(--ink);cursor:pointer;
+  font-family:var(--f-disp);font-weight:900;font-size:.95rem;
+  text-transform:uppercase;letter-spacing:.09em}
+.dz-rozbal span{flex:1;text-align:left}
+/* Šipka dolů zavřeno, nahoru otevřeno – stejná logika jako `.slozka-sipka`,
+ * jen bez výchozího otočení, protože tenhle panel začíná zavřený. */
+.dz-rozbal svg.ic{font-size:17px;flex:0 0 auto;color:var(--ink2);
+  transition:transform .18s var(--pop)}
+.dz-rozbal.on svg.ic{transform:rotate(90deg)}
+.dz-rozbal:active{opacity:.6}
+.dz-rozbal-telo{padding:0 14px 14px;border-top:var(--line)}
+/* První nadpis uvnitř nemá odsazovat od linky dvakrát. */
+.dz-rozbal-telo .sechd:first-child{margin-top:12px}

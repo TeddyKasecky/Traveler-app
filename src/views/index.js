@@ -17,7 +17,6 @@ import { renderList } from './list/list.js'
 import { renderPlan } from './plan/plan.js'
 import { renderProfil } from './profil/profil.js'
 import { renderNastaveni } from './nastaveni/nastaveni.js'
-import { renderDebug } from './debug/debug.js'
 import { renderMapaDole } from './mapa/mapa.js'
 import { poPrepnutiNaMapu } from '../map/map.js'
 
@@ -38,6 +37,16 @@ export function registrujZalozky() {
     nastaveni: { panel: 'panelNastaveni', render: () => renderNastaveni() },
     // Poznámkovač otevírá Nastavení. Ze stejného důvodu jako Profil nemá
     // tlačítko v liště, ale adresu `#debug` a tlačítko zpět má.
-    debug: { panel: 'panelDebug', render: () => renderDebug() },
+    //
+    // JEDINÁ OBRAZOVKA NAČÍTANÁ AŽ PŘI OTEVŘENÍ. Prohlížeč záznamů (31 kB
+    // zdroje) neimportuje nikdo jiný, takže se dá odříznout od startu, aniž by
+    // se něco přeskládávalo – na produkci ho navíc nikdo neuvidí, protože
+    // `prefs.debugRezim` je tam vypnutý. Plán takhle odříznout NEJDE: `plan.js`
+    // si tahá home.js, mapa.js, plusMenu.js, vypravaKarta.js i wizard.js,
+    // tedy samé věci z první obrazovky.
+    //
+    // Router návratovou hodnotu `render()` ignoruje (`router.js:76`), takže
+    // slib je v pořádku – panel se přepne hned a obsah doskočí za okamžik.
+    debug: { panel: 'panelDebug', render: () => import('./debug/debug.js').then((m) => m.renderDebug()) },
   })
 }

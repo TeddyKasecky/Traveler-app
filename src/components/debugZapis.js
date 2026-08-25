@@ -40,8 +40,13 @@ import {
   TYPY,
   debugData,
   najdiZaznam,
+  novyPodpisZarizeni,
+  popisekModulu,
+  popisekPriority,
+  popisekStavu,
   pridejZaznam,
   sanitizujAutora,
+  typZaznamu,
   ulozDebug,
   upravZaznam,
 } from '../core/debug.js'
@@ -58,6 +63,15 @@ let koncept = null
 
 /** Id upravovaného záznamu, nebo null pro nový. */
 let upravujeSe = null
+
+/**
+ * Cizí záznam z rejstříku, otevřený jen ke čtení – `null` v běžném režimu.
+ *
+ * PROČ TÝŽ PLÁT: „plné znění" cizího hlášení a úprava vlastního jsou z pohledu
+ * čtenáře totéž okno. Dvě obrazovky na to samé by se do měsíce rozešly, stejně
+ * jako by se rozešel zápis s úpravou, kdyby nebyly jeden formulář.
+ */
+let cizi = null
 
 /**
  * Textová pole, jejichž ztráta by opravdu mrzela. Přepínače (typ, moduly,
@@ -166,6 +180,64 @@ function kontextBlok() {
       ${IC('i-brouk')}<span>${n ? `Připnout ${n} zachycených chyb` : 'Žádné zachycené chyby'}</span>
     </button>
   </div>`
+}
+
+/**
+ * Cizí záznam, jen ke čtení.
+ *
+ * REJSTŘÍK NESE MÍŇ NEŽ VLASTNÍ ZÁZNAM a plát to musí říct nahlas – jinak by
+ * chybějící kroky vypadaly jako nedbalost autora, ne jako vědomé rozhodnutí.
+ * Do `debug-stav.json` jde nadpis, popis a návrh řešení; kontext, kroky ani
+ * zachycené chyby ne, protože se nasazuje veřejně na web
+ * (`scripts/debug-rejstrik.mjs`). Prázdná pole se proto nekreslí vůbec –
+ * prázdná kolonka tvrdí „nic tam nenapsal", což není pravda.
+ */
+function vykresliCizi() {
+  const z = cizi
+  const t = typZaznamu(z.typ)
+  const vyreseno = z.zdroj === 'vyreseno'
+  const odstavec = (popisek, hodnota) =>
+    hodnota ? `<div class="fgroup"><label>${esc(popisek)}</label><p class="dz-cteni">${esc(hodnota)}</p></div>` : ''
+
+  telo().innerHTML = `
+    <div class="dz-hlava">
+      <h2>${IC(t.ikona)}${esc(z.nadpis || '(bez nadpisu)')}</h2>
+      <div class="dz-sub">${esc(z.id)} · ${esc(popisekPriority(z.priorita))} · ${
+        vyreseno
+          ? `${esc(popisekStavu(z.stav))}${z.vyresenoDne ? ` ${esc(z.vyresenoDne)}` : ''}`
+          : esc(popisekStavu(z.stav))
+      }</div>
+      <div class="dz-napoveda">Cizí hlášení z repozitáře. Upravit ho nejde – odpovídá se na něj
+        opravou v kódu, ne přepsáním zadání.</div>
+    </div>
+
+    ${odstavec('Popis', z.popis)}
+    ${odstavec('Návrh řešení', z.navrh)}
+    ${odstavec('Čeho se to týká', (z.moduly || []).map(popisekModulu).join(' · '))}
+    ${odstavec('Přišlo ze souboru', z.soubor)}
+    ${odstavec('Poznámka k uzavření', z.poznamka)}
+
+    <div class="dz-kontext">
+      <div class="dz-kontext-hd">${IC('i-sliders')}<span>Víc appka neví</span></div>
+      <div class="dz-kontext-vypis">Kroky k zopakování, „co jsem čekal", technický kontext
+        ani zachycené chyby se do repozitáře nenasazují – skončily by veřejně na webu.
+        Celý záznam je v souboru ve složce <code>debug/</code>.</div>
+    </div>
+
+    <div class="btnrow dz-akce">
+      <button class="btn" id="dzZrus">Zavřít</button>
+      <button class="btn primary" id="dzKopiruj">${IC('i-copy')}Zkopírovat id</button>
+    </div>`
+
+  document.getElementById('dzZrus').onclick = () => zavriDebugZapis()
+  document.getElementById('dzKopiruj').onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(z.id)
+      toast(`Zkopírováno ${z.id}`)
+    } catch {
+      toast('Kopírování se nepovedlo')
+    }
+  }
 }
 
 function vykresli() {
@@ -282,13 +354,21 @@ function napoj() {
  * @returns {Promise<string|null>} null = uživatel zrušil, zápis se nedokončí
  */
 async function zajistiAutora() {
+  // Podpis zařízení se vyrobí při první příležitosti, i když jméno už je –
+  // telefony, které psaly před srpnem 2026, ho ještě nemají.
+  if (!prefs.debugZarizeni) {
+    prefs.debugZarizeni = novyPodpisZarizeni()
+    savePrefs()
+  }
   if (prefs.debugAutor) return prefs.debugAutor
   const navrh = sanitizujAutora(prefs.userName || '')
   const zadane = await zadej({
     nadpis: 'Kdo píše?',
     text:
       'Krátká přezdívka bez diakritiky. Bude v identifikátoru každého záznamu ' +
-      '(např. tadeas-014) i v názvu exportovaného souboru, takže se ptáme jen jednou.',
+      `(např. tadeas-${prefs.debugZarizeni}-014) i v názvu exportovaného souboru, takže se ptáme jen jednou. ` +
+      'Už zapsanému záznamu se identifikátor nemění ani při přejmenování. ' +
+      `Ta tři písmena uprostřed jsou tohle zařízení – bez nich by telefon a počítač očíslovaly dvě různé poznámky stejně.`,
     vychozi: navrh === 'autor' ? '' : navrh,
     placeholder: 'tadeas',
     ano: 'Uložit',
@@ -326,7 +406,7 @@ async function uloz() {
       priorita: koncept.priorita,
       stav: koncept.stav,
     })
-    if (!ohlasZapis()) return
+    if (!(await ohlasZapis())) return
     const bylo = upravujeSe
     zavriDebugZapis()
     // Přes událost, ne přímým voláním: `components/` nemá vědět o obrazovkách.
@@ -341,9 +421,9 @@ async function uloz() {
   // Kontext se sbírá až tady: rozepsaná poznámka může ležet otevřená minuty
   // a zajímavý je stav v okamžiku odeslání, ne otevření formuláře.
   const kontext = await sberKontext({ obrazovka: obrazovkaProKontext(), chyby: koncept.pripnoutChyby })
-  const zaznam = pridejZaznam({ ...koncept, kontext }, autor)
+  const zaznam = pridejZaznam({ ...koncept, kontext }, autor, Date.now(), prefs.debugZarizeni)
 
-  if (!ohlasZapis()) {
+  if (!(await ohlasZapis())) {
     // Zápis do úložiště selhal – záznam se z paměti musí zase odebrat, jinak
     // by se při dalším pokusu uložil dvakrát a s ním i vyšší číslo.
     debugData.zaznamy.pop()
@@ -362,8 +442,8 @@ async function uloz() {
  * zálohu cestovních dat a u debug poznámky by mátl. Formulář místo toho
  * zůstane otevřený, takže se rozepsaný text neztratí.
  */
-function ohlasZapis() {
-  if (ulozDebug()) return true
+async function ohlasZapis() {
+  if (await ulozDebug()) return true
   oznam({
     nadpis: 'Poznámka se neuložila',
     text:
@@ -379,12 +459,23 @@ function ohlasZapis() {
  * Otevře formulář. Bez `id` zakládá nový záznam, s `id` upravuje existující.
  * @param {string|null} [id]
  */
-export function otevriDebugZapis(id = null) {
+export function otevriDebugZapis(id = null, ciziZaznam = null) {
   const panel = el()
   if (!panel) return
 
   upravujeSe = null
+  cizi = ciziZaznam
   koncept = prazdnyKoncept()
+
+  if (cizi) {
+    // Bez konceptu: hlídač rozepsaného textu se tím vypne sám, protože
+    // `otiskTextu()` bez konceptu vrací prázdno.
+    koncept = null
+    otiskPriOtevreni = ''
+    vykresliCizi()
+    panel.classList.add('show')
+    return
+  }
 
   if (id) {
     const z = najdiZaznam(id)
@@ -447,6 +538,7 @@ export function zavriDebugZapis() {
   panel.classList.remove('show')
   koncept = null
   upravujeSe = null
+  cizi = null
   return true
 }
 

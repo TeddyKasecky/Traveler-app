@@ -9,9 +9,10 @@
 import './styles/index.css'
 
 import { zapniSberChyb } from './core/chyby.js'
-import { S, on, save, pripravFotky } from './core/store.js'
+import { S, on, emit, save, pripravFotky } from './core/store.js'
 import { pripravTrasy } from './core/trasy.js'
 import { pripravCesty } from './core/cesty.js'
+import { pripravDebug } from './core/debug.js'
 import { spustRouter, aktivujZalozku } from './core/router.js'
 import { zjistiPolohu } from './core/geo.js'
 import { initMotiv } from './core/motiv.js'
@@ -43,7 +44,6 @@ import { renderDisc } from './views/discover/discover.js'
 import { renderList } from './views/list/list.js'
 import { renderPlan, zavriNavigaci, jeOtevrenaNavigace } from './views/plan/plan.js'
 import { renderMapaDole, initMapaDole } from './views/mapa/mapa.js'
-import { renderDebug } from './views/debug/debug.js'
 import { renderProfil } from './views/profil/profil.js'
 import { zastavSledovani } from './views/plan/cesta-zivot.js'
 
@@ -259,7 +259,10 @@ on('zivaProjekce', () => {
  * se jen otevřený poznámkovač – jinde se počet záznamů nikde neukazuje.
  */
 on('debugZmena', () => {
-  if (S.activeTab === 'debug') renderDebug()
+  // Dynamický import: prohlížeč záznamů se natahuje až při otevření záložky
+  // (`views/index.js`). Když je zrovna otevřená, modul už v paměti je a slib
+  // se splní hned; když ne, nic se nestahuje zbytečně.
+  if (S.activeTab === 'debug') import('./views/debug/debug.js').then((m) => m.renderDebug())
 })
 
 /**
@@ -309,10 +312,22 @@ pripravFotky()
 // Archiv ukončených cest. Taky IndexedDB (core/cestyDb.js) – rostl o kilobajty
 // na každou cestu a nikdy se nemazal. Do prvního načtení je knihovna Výprav
 // bez sekce „Za námi"; po `cestyNacteny` se překreslí.
-pripravCesty()
-
-// Totéž pro geometrii tras: mapa umí do jejího dotažení nakreslit vzdušnou
+//
+// TEPRVE POTOM geometrie tras: mapa umí do jejího dotažení nakreslit vzdušnou
 // spojnici a po `trasaNactena` se překreslí. Součástí je stěhování polylin
 // ze `store` (do srpna 2026 tam ležely a nafoukly ho na megabajty) a úklid
 // geometrií, na které už nic neodkazuje.
-pripravTrasy()
+//
+// POŘADÍ NENÍ KOSMETIKA. `uklidTrasy()` čte `CESTY`, aby poznal, které
+// geometrie jsou ještě živé. Když obojí běželo vedle sebe, archiv se načítal
+// z IndexedDB pomaleji, než úklid stihl začít – takže se trasy ukončených
+// cest mazaly jako sirotci při každém startu. Zamčená cesta tlačítko
+// Přepočítat nemá, takže se už nikdy nevrátily. Druhá pojistka je přímo
+// v `uklidTrasy()`, aby na tomhle řádku nezáleželo.
+pripravCesty().then(() => pripravTrasy())
+
+// Debug záznamy. Taky IndexedDB (core/debugDb.js) – vývojářská data nesmí
+// sedět ve stejném 5MB stropu jako poznámky z cest. Součástí je stěhování
+// ze starého klíče `vandrbuch:debug`. Poznámkovač se po načtení překreslí
+// přes `debugZmena`, stejně jako po zápisu.
+pripravDebug().then(() => emit('debugZmena'))

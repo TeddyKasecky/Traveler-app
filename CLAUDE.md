@@ -24,8 +24,9 @@ záměrně**; `check-css` je proto odstavené a nahradilo ho `check-tokeny`.
   v poli `n`, `id` zůstává. Viz [.claude/rules/database.md](.claude/rules/database.md).
 - **Klíče v úložišti se nemění**: `vandrbuch:v1` (poznámky, hodnocení, plán, dny plánu, priority),
   `vandrbuch:prefs`, `vandrbuch:data` (import CSV) a sklad `fotky` v IndexedDB
-  (`src/core/storage.js`, `src/core/fotoDb.js`), sklady `trasy` a `cesty` v IndexedDB
-  (`src/core/trasyDb.js`, `cestyDb.js`; databáze `vandrbuch-trasy` a `vandrbuch-cesty`). Jsou v nich všechna uživatelská data
+  (`src/core/storage.js`, `src/core/fotoDb.js`), sklady `trasy`, `cesty` a `debug`
+  v IndexedDB (`src/core/trasyDb.js`, `cestyDb.js`, `debugDb.js`; databáze
+  `vandrbuch-trasy`, `vandrbuch-cesty` a `vandrbuch-debug`). Jsou v nich všechna uživatelská data
   a nikde jinde neexistují — změna klíče je tichá ztráta dat. Starý `vandrbuch:photos`
   se při prvním otevření sám přestěhuje do IndexedDB a vyprázdní.
 - **Nikdy nezahazuj výsledek ukládání.** `save()`, `savePrefs()`, `ulozFotku()` vracejí
@@ -66,11 +67,11 @@ npm run preview          # prohlédnutí sestaveného webu
 
 npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
-npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 29 kontrol
-npm run check-debug      # debug poznámkovač: identita záznamu, export, rejstřík, 108 bodů
+npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 36 kontrol
+npm run check-debug      # debug poznámkovač: identita, podpis zařízení, export, rejstřík, 122 bodů
 
-npm run smoke            # proklikání v prohlížeči, 312 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 294 kontrol
+npm run smoke            # proklikání v prohlížeči, 331 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 311 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
@@ -177,6 +178,7 @@ Dělicí čára je jednoduchá:
 | Patří do `vandrbuch:v1` | Patří do IndexedDB |
 |---|---|
 | co uživatel napsal nebo rozhodl (poznámky, hodnocení, plán, výpravy) | co si appka umí spočítat znovu (geometrie trasy) |
+| co appka potřebuje hned při vykreslení | **vývojářská data** (debug záznamy) |
 | co nejde ničím nahradit | co se dá dotáhnout z API nebo přegenerovat |
 | co nepřibývá donekonečna | **co se hromadí** (archiv ukončených cest, fotky) |
 | kilobajty | megabajty |
@@ -199,8 +201,16 @@ Nápady, bugy a poznámky se zapisují **přímo v appce za běhu** (kolečko s 
 v hlavičce, jen se zapnutým `prefs.debugRezim` — na betě a v `npm run dev` ano,
 na produkci ne). Appka k záznamu přibalí technický kontext, který uživatel
 nepíše: obrazovku, filtry, verzi buildu i cache, online/offline, zaplnění
-úložiště a posledních 20 zachycených chyb. Záznamy leží pod vlastním klíčem
-`vandrbuch:debug`, **do běžné zálohy nepatří** a mají svou vlastní.
+úložiště a posledních 20 zachycených chyb. Záznamy leží v IndexedDB
+(`src/core/debugDb.js`, databáze `vandrbuch-debug`; do srpna 2026 v klíči
+`vandrbuch:debug`), **do běžné zálohy nepatří** a mají svou vlastní.
+
+**`id` má tvar `tadeas-a7f-014`** — jméno, podpis zařízení, číslo. Ta tři
+písmena uprostřed jsou `prefs.debugZarizeni` a vznikla proto, že číslování drží
+každé zařízení zvlášť: telefon i počítač téhož člověka vyrobily `tadeas-001` pro
+dva různé záznamy a rejstřík je spároval jako jeden. Přejmenování přezdívky
+v Nastavení nabídne přečíslovat **jen neodeslané** záznamy — jediná výjimka
+z pravidla „`id` se nikdy nemění".
 
 Exportují se do jednoho `.md` souboru na export (`debug/RRRR-MM-DD-HHMM-<autor>.md`),
 který se commitne a pushne — tím se dostane k oběma lidem i k AI, která si repo čte.
@@ -411,6 +421,12 @@ protože se z košíku do nich tahá.
 - **Košík umí i vlastní body.** Blok typu `misto` smí mít `vKosiku: 1` a jeho
   `id` být ve `store.kosik`; pozná se tím, že ho `S.byId` nezná. Do trasy
   nepatří (`vsechnyBody()` ho filtruje), dokud se nepřesune do dne.
+- **Ukončenou cestu jde smazat, a jen z Itineráře** (N16, srpen 2026) – tlačítko
+  vedle „Odemknout poznámky" v zamčené kartě, s potvrzením. Řádek v archivu
+  nabídku nemá, stejně jako řádek výpravy v knihovně: akce patří dovnitř, ne
+  do seznamu. Smazání nuluje `S.otevrenaCesta` (index do `CESTY` se posunul)
+  a pouští `uklidTrasy()`; **získané achievementy zůstávají** – smazání cesty
+  není popření, že se jela.
 - **Ukončené cesty žijí v knihovně Výprav**, ne na kartě Na cestě: sekce po
   letech (`archiv.js`), řádek se zámkem. Ťuknutí cestu AKTIVUJE NA MAPĚ přes
   `S.otevrenaCesta` (index do `store.cesty`, jen v paměti) – přesně jako

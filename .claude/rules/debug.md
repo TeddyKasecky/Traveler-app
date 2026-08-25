@@ -33,10 +33,24 @@ nehrozí — každý export je nový soubor.
 
 ## Čtyři pravidla, která se neporušují
 
-1. **`id` záznamu (`tadeas-014`) se nikdy nemění a nikdy nerecykluje.** Odkazuje
-   se na něj v konverzaci, v commitech i v rejstříku, který appka čte zpátky.
-   Stejné pravidlo jako u `id` místa a `id` achievementu.
-2. **Záznamy nezakládej.** Číslování drží appka (`dalsiCislo` ve `vandrbuch:debug`),
+1. **`id` záznamu (`tadeas-a7f-014`) se nikdy nemění a nikdy nerecykluje.**
+   Odkazuje se na něj v konverzaci, v commitech i v rejstříku, který appka čte
+   zpátky. Stejné pravidlo jako u `id` místa a `id` achievementu.
+
+   Tvar je `<jméno>-<zařízení>-<číslo>`. Ta tři písmena uprostřed jsou **podpis
+   zařízení** (`prefs.debugZarizeni`, srpen 2026). Bez nich vyrobil telefon
+   i počítač téhož člověka `tadeas-001` pro dva různé záznamy — a protože
+   rejstřík páruje podle `id`, cizí záznam pak zmizel z „Od ostatních" a stav
+   toho cizího se nalepil na můj vlastní. Nikde to neblikalo. Starší krátká
+   `id` (`tadeas-001`) platí dál a nikdy se nepřepisují.
+
+   **Jediná výjimka:** `prejmenujNeodeslane()` v `src/core/debug.js` smí změnit
+   prefix u záznamů, které **nikdy neopustily zařízení** (`!exportovanoDo`).
+   Nabízí se to při přejmenování přezdívky v Nastavení. Na takové `id` nemůže
+   odkazovat commit ani rejstřík, protože mimo ten telefon neexistuje.
+   Odeslaný záznam se nepřejmenuje ani na přání.
+2. **Záznamy nezakládej.** Číslování drží appka (`dalsiCislo` v IndexedDB
+   `vandrbuch-debug`, do srpna 2026 v klíči `vandrbuch:debug`),
    takže ručně dopsaný záznam by dřív nebo později dostal `id`, které už existuje.
    AI záznamy jen **zavírá**.
 3. **`Kontext` se needituje.** Sbírá ho appka automaticky a je to jediná část,

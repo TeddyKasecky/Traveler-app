@@ -18,15 +18,15 @@
  * telefon, jestli je karta výpravy schovaná a zdroje dat.
  */
 
-import { prefs, savePrefs } from '../../core/store.js'
+import { emit, prefs, savePrefs } from '../../core/store.js'
 import { zmerUloziste } from '../../core/storage.js'
-import { esc } from '../../core/html.js'
-import { debugData, sanitizujAutora } from '../../core/debug.js'
+import { esc, sklonuj } from '../../core/html.js'
+import { debugData, mojeZaznamy, prefixId, prejmenujNeodeslane, sanitizujAutora, ulozDebug } from '../../core/debug.js'
 import { aktivujZalozku } from '../../core/router.js'
 import { IC } from '../../icons/sprite.js'
 import { segment } from '../../components/vzory.js'
 import { toast } from '../../components/toast.js'
-import { zadej } from '../../components/dialog.js'
+import { vyberZeSeznamu, zadej } from '../../components/dialog.js'
 import { srovnejDebugTlacitko } from '../../components/debugZapis.js'
 import { jsouVektory, obnovKresbyVMape } from '../../map/podklad.js'
 import { srovnejStavMapy } from './mapaKeStazeni.js'
@@ -191,16 +191,54 @@ export async function renderNastaveni() {
     }
   }
 
+  // Přejmenování autora. Do srpna 2026 to bylo jedno pole a žádné slovo navíc,
+  // takže v telefonu zůstala směs `tadeas-001` a `pc-tadeas-002` podle toho,
+  // kdy který záznam vznikl – a nikde nebylo vidět proč.
   document.getElementById('debugAutorZmen').onclick = async () => {
+    const podpis = prefs.debugZarizeni
     const zadane = await zadej({
       nadpis: 'Kdo píše?',
       text:
-        'Krátká přezdívka bez diakritiky. Používá se v identifikátoru nových záznamů ' +
-        'a v názvu exportovaného souboru. Už zapsané záznamy si své id nechají – to se nikdy nemění.',
+        'Krátká přezdívka bez diakritiky. Je v identifikátoru každého záznamu ' +
+        `(${prefixId(prefs.debugAutor || 'tadeas', podpis)}-014) i v názvu exportovaného souboru. ` +
+        (podpis
+          ? `Písmena ${podpis} uprostřed jsou tohle zařízení a ta se nemění – díky nim si telefon a počítač nesáhnou do stejných čísel.`
+          : 'Tohle zařízení zatím nemá svůj podpis – doplní se při prvním zápisu.'),
       vychozi: prefs.debugAutor,
       placeholder: 'tadeas',
     })
     if (zadane === null) return
+
+    const stary = prefixId(prefs.debugAutor, podpis)
+    const novy = prefixId(zadane, podpis)
+    if (novy === stary) return
+
+    // Odeslané se nepřejmenují ani na přání: na jejich `id` už odkazuje git,
+    // rejstřík i konverzace. Neodeslané nikdy neopustily tenhle telefon,
+    // takže je bezpečné je srovnat – a je to jediná výjimka z pravidla,
+    // že se `id` nemění.
+    const { neodeslane, odeslane } = mojeZaznamy(stary)
+    if (neodeslane.length) {
+      const volba = await vyberZeSeznamu({
+        nadpis: `Přejmenovat i ${neodeslane.length} ${sklonuj(neodeslane.length, 'záznam', 'záznamy', 'záznamů')}?`,
+        text:
+          `Mají zatím ${stary}-… a ještě neodešly do repozitáře, takže je jde bezpečně přečíslovat na ${novy}-…` +
+          (odeslane.length
+            ? ` ${odeslane.length} už ${sklonuj(odeslane.length, 'odeslaný si své id nechá', 'odeslané si své id nechají', 'odeslaných si své id nechá')} – na to už odkazuje repozitář.`
+            : ''),
+        polozky: [
+          { id: 'ano', popisek: `Přečíslovat na ${novy}-…` },
+          { id: 'ne', popisek: 'Nechat je, jak jsou' },
+        ],
+      })
+      if (volba === null) return
+      if (volba === 'ano') {
+        prejmenujNeodeslane(stary, novy)
+        if (!(await ulozDebug())) return toast('Přečíslování se neuložilo')
+        emit('debugZmena')
+      }
+    }
+
     prefs.debugAutor = sanitizujAutora(zadane)
     if (!savePrefs()) return
     document.getElementById('debugAutorInfo').textContent = prefs.debugAutor
@@ -225,13 +263,27 @@ export async function renderNastaveni() {
     .join(' · ')
   const celkem = Object.values(m.klice).reduce((a, n) => a + n, 0)
 
+  // Druhá půlka rozpadu: co leží ve velkých schránkách. Bez ní je vidět jen
+  // localStorage, tedy po srpnu 2026 ta menší část – fotky, trasy, archiv
+  // a stažená mapa se slévaly do jednoho čísla za celý původ.
+  const s = m.sklady || { fotky: 0, trasy: 0, cesty: 0, mapa: false }
+  const velke = [
+    s.fotky ? `${s.fotky} ${sklonuj(s.fotky, 'fotka', 'fotky', 'fotek')}` : '',
+    s.cesty ? `${s.cesty} ${sklonuj(s.cesty, 'ukončená cesta', 'ukončené cesty', 'ukončených cest')}` : '',
+    s.trasy ? `${s.trasy} ${sklonuj(s.trasy, 'spočítaná trasa', 'spočítané trasy', 'spočítaných tras')}` : '',
+    s.mapa ? 'stažená mapa' : '',
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
   el.innerHTML =
     (m.pouzito === null
       ? 'Kolik místa aplikace zabírá, tenhle prohlížeč neřekne.'
       : `Aplikace, fotky a stažená mapa zabírají <b>${mb(m.pouzito)}</b>${m.strop ? ` z ${mb(m.strop)}, které prohlížeč nabízí` : ''}.`) +
     (rozpad
       ? `<br>Poznámky a plány zabírají <b>${kb(celkem)}</b> z asi 5 MB, které na ně prohlížeč dává: ${rozpad}.`
-      : '')
+      : '') +
+    `<br>Ve velké schránce, kde je místa dost: ${velke || 'zatím nic'}.`
 
   // Stav stažené mapy se přepočítá při každém otevření – balík mohl mezitím
   // přibýt, zmizet nebo zastarat.

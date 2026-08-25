@@ -29,7 +29,10 @@ globalThis.localStorage = {
 
 const {
   debugData,
-  ulozDebug,
+  mojeZaznamy,
+  novyPodpisZarizeni,
+  prefixId,
+  prejmenujNeodeslane,
   pridejZaznam,
   upravZaznam,
   smazZaznamy,
@@ -278,22 +281,56 @@ slucZaznamy([cizi])
 t('cizí záznam s vyšším číslem posune číslování', debugData.dalsiCislo === 8)
 t('a další zápis se s ním nesrazí', pridejZaznam({ typ: 'poznamka', nadpis: 'Z' }, 'tadeas', KDY).id === 'tadeas-008')
 
-/* ================= zápis do úložiště ================= */
+/* ================= podpis zařízení ================= */
 
-console.log('\nZápis do úložiště\n')
+// Zápis do úložiště se odsud přestěhoval do `check-uloziste.mjs`: záznamy od
+// srpna 2026 bydlí v IndexedDB (`core/debugDb.js`), kterou čistý Node nemá.
+// Tady zůstává jen to, co na úložišti nezávisí.
 
-t('zápis se povede', ulozDebug() === true)
-t('a opravdu něco uloží', pamet.has('vandrbuch:debug'))
-t('uložené jde přečíst zpátky', JSON.parse(pamet.get('vandrbuch:debug')).zaznamy.length === debugData.zaznamy.length)
+console.log('')
+console.log('Podpis zařízení')
+console.log('')
 
-const puvodni = globalThis.localStorage.setItem
-globalThis.localStorage.setItem = () => {
-  const e = new Error('plno')
-  e.name = 'QuotaExceededError'
-  throw e
-}
-t('plná paměť se ohlásí, ne spolkne', ulozDebug() === false)
-globalThis.localStorage.setItem = puvodni
+const ZNAKY = /^[abcdefghjkmnpqrstuvwxyz23456789]{3}$/
+const podpisy = Array.from({ length: 60 }, () => novyPodpisZarizeni())
+t('podpis má tři znaky z bezpečné abecedy', podpisy.every((p) => ZNAKY.test(p)))
+// Bez `i l o 0 1` – id se diktuje nahlas a čte z commit zprávy.
+t('a nikdy nezaměnitelný tvar', podpisy.every((p) => !/[ilo01]/.test(p)))
+t('šedesát podpisů není šedesátkrát totéž', new Set(podpisy).size > 1)
+
+t('prefix bez podpisu zůstane jen jméno', prefixId('tadeas') === 'tadeas')
+t('prefix s podpisem je jméno-podpis', prefixId('tadeas', 'a7f') === 'tadeas-a7f')
+t('prefix jméno sanitizuje', prefixId('Tadeáš Novák', 'a7f') === 'tadeas-novak-a7f')
+
+// Tohle je celý smysl podpisu: dvě zařízení téhož člověka si nesmí sáhnout
+// do stejných čísel. Do srpna 2026 vyrobil telefon i počítač `tadeas-001`.
+const zTelefonu = pridejZaznam({ typ: 'bug', nadpis: 'Z telefonu' }, 'tadeas', KDY, 'a7f')
+t('id nese podpis zařízení', zTelefonu.id === 'tadeas-a7f-009')
+t('a autor je prefix i s podpisem', zTelefonu.autor === 'tadeas-a7f')
+t('dvě zařízení téhož člověka se nesrazí', prefixId('tadeas', 'a7f') !== prefixId('tadeas', 'b2k'))
+
+/* ================= přejmenování autora ================= */
+
+console.log('')
+console.log('Přejmenování autora')
+console.log('')
+
+const odeslany = pridejZaznam({ typ: 'napad', nadpis: 'Už odešel' }, 'tadeas', KDY, 'a7f')
+upravZaznam(odeslany.id, { exportovanoDo: '2026-08-25-1527-tadeas.md' })
+const neodeslany = pridejZaznam({ typ: 'napad', nadpis: 'Ještě ne' }, 'tadeas', KDY, 'a7f')
+
+const moje = mojeZaznamy('tadeas-a7f')
+t('rozdělí odeslané a neodeslané', moje.odeslane.length === 1 && moje.neodeslane.length === 2)
+t('cizí záznam mezi moje nepatří', !moje.odeslane.concat(moje.neodeslane).some((z) => z.id === 'anicka-007'))
+
+const zmeneno = prejmenujNeodeslane('tadeas-a7f', 'pc-tadeas-a7f')
+t('přejmenuje jen neodeslané', zmeneno === 2)
+t('odeslanému id zůstane', najdiZaznam(odeslany.id) !== null)
+t('neodeslaný dostal nové id', najdiZaznam('pc-tadeas-a7f-011') !== null)
+t('a číslo si nechal', najdiZaznam('pc-tadeas-a7f-011').cislo === neodeslany.cislo)
+t('cizího se to nedotklo', najdiZaznam('anicka-007') !== null)
+t('stejný prefix nic nedělá', prejmenujNeodeslane('pc-tadeas-a7f', 'pc-tadeas-a7f') === 0)
+t('prázdný nový prefix nic nedělá', prejmenujNeodeslane('pc-tadeas-a7f', '') === 0)
 
 /* ================= export → rejstřík a zpátky ================= */
 

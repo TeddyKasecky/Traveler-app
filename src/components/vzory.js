@@ -216,16 +216,22 @@ export function statpanel(radky, tridy = '') {
  * Ikona stojí vedle čísla a popisek je pod nimi, jak to má karta výpravy
  * v předloze. Sloupce odděluje vlasová linka, ne mezera.
  *
- * @param {Array<{ikona?:string, hodnota:string, popisek:string}>} cisla
+ * `klic` je nepovinný: když ho položka má, vznikne z ní `<button>` s
+ * `data-cislo`, na který jde věšet obsluhu. Bez něj zůstane `<div>` – pět
+ * dalších obrazovek řadu používá jako čistý údaj a klikatelné číslo, které
+ * nic nedělá, je horší než nudné.
+ *
+ * @param {Array<{ikona?:string, hodnota:string, popisek:string, klic?:string}>} cisla
  */
 export function cislaRada(cisla) {
   return `<div class="cisla">${cisla
-    .map(
-      (c) => `<div class="cislo">
-        <div class="cislo-h">${c.ikona ? IC(c.ikona) : ''}<b>${esc(c.hodnota)}</b></div>
-        <span>${esc(c.popisek)}</span>
-      </div>`
-    )
+    .map((c) => {
+      const vnitrek = `<div class="cislo-h">${c.ikona ? IC(c.ikona) : ''}<b>${esc(c.hodnota)}</b></div>
+        <span>${esc(c.popisek)}</span>`
+      return c.klic
+        ? `<button class="cislo cislo-akce" data-cislo="${esc(c.klic)}">${vnitrek}</button>`
+        : `<div class="cislo">${vnitrek}</div>`
+    })
     .join('')}</div>`
 }
 

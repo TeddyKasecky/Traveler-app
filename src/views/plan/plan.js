@@ -236,7 +236,14 @@ export function renderPlan() {
   }
   if (dil === 'itinerar') {
     if (S.otevrenaCesta != null && CESTY[S.otevrenaCesta]) {
-      napojZamcenouCestu(wrap, renderPlan, S.otevrenaCesta)
+      napojZamcenouCestu(wrap, renderPlan, S.otevrenaCesta, () => {
+        // Po smazání zpátky do knihovny: index do `CESTY` se posunul a Itinerář
+        // by ukazoval cizí cestu, nebo nic.
+        S.otevrenaCesta = null
+        dil = 'vypravy'
+        draw()
+        renderPlan()
+      })
     } else {
       napojCislaPlanu(wrap, renderPlan)
       // Překresluje se přes draw(), ne jen renderPlan(): vlastní místa mění

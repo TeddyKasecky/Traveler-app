@@ -566,6 +566,181 @@ console.log('\n9. Když se archiv nepodaří zapsat, zůstane ve store')
   await ctx.close()
 }
 
+/* ========= 10. archiv nepřijde o svou trasu při startu ========= */
+
+console.log("")
+console.log("10. Úklid tras nesmí smazat geometrii archivované cesty")
+{
+  // REGRESE NA VADU ZE SRPNA 2026. `main.js` pouštěl `pripravCesty()`
+  // a `pripravTrasy()` vedle sebe a na nic nečekal; `uklidTrasy()` si přitom
+  // hned na prvním řádku počítá živé otisky z `CESTY`, které se v tu chvíli
+  // teprve načítalo z IndexedDB. Prohrálo to pokaždé, takže se trasa každé
+  // ukončené cesty smazala jako sirotek – a zamčená cesta tlačítko Přepočítat
+  // nemá, takže se už nikdy nevrátila.
+  //
+  // Sekce 7 tohle nechytí: ta zkouší sirotka v PRÁZDNÉM archivu.
+  const stary = JSON.stringify({
+    notes: {},
+    stav: {},
+    rating: {},
+    plan: [],
+    prio: {},
+    seen: true,
+    cesty: [
+      {
+        nazev: "Léto v Alpách",
+        zacatek: 1000,
+        konec: 2000,
+        zastavky: ["a"],
+        dny: [1],
+        prepocet: { otisk: "archivni", vzdalenostKm: 12, casMin: 30 },
+      },
+    ],
+  })
+  // POZOR NA `addInitScript`: Playwright ho pouští při KAŽDÉ navigaci, tedy
+  // i po reloadu níž. Kdyby zapisoval bezpodmínečně, vrátil by archiv zpátky
+  // do `store.cesty` – a tam ho úklid vidí i bez načteného zrcadla, takže by
+  // kontrola prošla i s vadou. Zapisuje se proto jen poprvé.
+  const { ctx, page } = await novaStranka(`
+    if (!localStorage.getItem('vandrbuch:v1')) {
+      localStorage.setItem('vandrbuch:v1', ${JSON.stringify(stary)})
+    }
+    indexedDB.open('vandrbuch-trasy', 1).onupgradeneeded = (e) => {
+      e.target.result.createObjectStore('trasy')
+    }
+  `)
+  // Geometrie archivované cesty se založí dřív, než appka podruhé nastartuje.
+  await page.evaluate(
+    () =>
+      new Promise((hotovo) => {
+        const r = indexedDB.open("vandrbuch-trasy", 1)
+        r.onsuccess = () => {
+          const tr = r.result.transaction("trasy", "readwrite")
+          tr.objectStore("trasy").put([[47.1, 11.1], [47.2, 11.2]], "archivni")
+          tr.objectStore("trasy").put([[1, 2]], "sirotek")
+          tr.oncomplete = () => hotovo(true)
+        }
+      })
+  )
+  await page.reload({ waitUntil: "load" })
+  await page.waitForTimeout(1800)
+
+  const vTrasach = (otisk) =>
+    page.evaluate(
+      (o) =>
+        new Promise((hotovo) => {
+          const r = indexedDB.open("vandrbuch-trasy", 1)
+          r.onsuccess = () => {
+            const tr = r.result.transaction("trasy", "readonly")
+            const g = tr.objectStore("trasy").get(o)
+            tr.oncomplete = () => hotovo(g.result !== undefined)
+            tr.onerror = () => hotovo(false)
+          }
+          r.onerror = () => hotovo(false)
+        }),
+      otisk
+    )
+
+  await kontrola("trasa archivované cesty zůstala", () => vTrasach("archivni"), true)
+  // A úklid přesto musí dělat svou práci – jinak by stačilo ho vypnout.
+  await kontrola("sirotek se přesto uklidil", () => vTrasach("sirotek"), false)
+  await ctx.close()
+}
+
+/* ========= 11. debug záznamy do IndexedDB ========= */
+
+console.log("")
+console.log("11. Debug záznamy se přestěhují do IndexedDB")
+{
+  // Vývojářská data nesmí sedět ve stejném ~5MB stropu jako poznámky z cest:
+  // jeden záznam unese až deset kilobajtů (dvacet připnutých chyb).
+  const stare = JSON.stringify({
+    dalsiCislo: 3,
+    zaznamy: [
+      { id: "tadeas-001", cislo: 1, autor: "tadeas", typ: "bug", nadpis: "Starý bug", moduly: [], vytvoreno: 1 },
+      { id: "tadeas-002", cislo: 2, autor: "tadeas", typ: "napad", nadpis: "Starý nápad", moduly: [], vytvoreno: 2 },
+    ],
+  })
+  const { ctx, page } = await novaStranka(`
+    localStorage.setItem('vandrbuch:v1', JSON.stringify({ notes:{}, stav:{}, rating:{}, plan:[], prio:{}, seen:true }))
+    localStorage.setItem('vandrbuch:debug', ${JSON.stringify(stare)})
+  `)
+  await page.waitForTimeout(1200)
+
+  await kontrola(
+    "starý klíč vandrbuch:debug zmizel",
+    () => page.evaluate(() => localStorage.getItem("vandrbuch:debug")),
+    null
+  )
+
+  const zDebugDb = () =>
+    page.evaluate(
+      () =>
+        new Promise((hotovo) => {
+          const r = indexedDB.open("vandrbuch-debug", 1)
+          r.onsuccess = () => {
+            const db = r.result
+            if (!db.objectStoreNames.contains("debug")) return hotovo("sklad chybí")
+            const tr = db.transaction("debug", "readonly")
+            const g = tr.objectStore("debug").get("data")
+            tr.oncomplete = () => hotovo(JSON.stringify((g.result || {}).zaznamy?.map((z) => z.id) || []))
+            tr.onerror = () => hotovo("chyba")
+          }
+          r.onerror = () => hotovo("nelze otevřít")
+        })
+    )
+
+  await kontrola("oba záznamy jsou v IndexedDB", zDebugDb, JSON.stringify(["tadeas-001", "tadeas-002"]))
+  await kontrola(
+    "číslování se nevrátilo na začátek",
+    () =>
+      page.evaluate(
+        () =>
+          new Promise((hotovo) => {
+            const r = indexedDB.open("vandrbuch-debug", 1)
+            r.onsuccess = () => {
+              const tr = r.result.transaction("debug", "readonly")
+              const g = tr.objectStore("debug").get("data")
+              tr.oncomplete = () => hotovo((g.result || {}).dalsiCislo)
+              tr.onerror = () => hotovo(0)
+            }
+            r.onerror = () => hotovo(0)
+          })
+      ),
+    3
+  )
+  await ctx.close()
+}
+
+/* ========= 12. neúspěšné stěhování debug záznamů nic neztratí ========= */
+
+console.log("")
+console.log("12. Když se debug záznamy nepodaří zapsat, zůstanou v localStorage")
+{
+  const stare = JSON.stringify({
+    dalsiCislo: 2,
+    zaznamy: [{ id: "tadeas-001", cislo: 1, autor: "tadeas", typ: "bug", nadpis: "Nesmí zmizet", moduly: [], vytvoreno: 1 }],
+  })
+  const { ctx, page } = await novaStranka(`
+    localStorage.setItem('vandrbuch:v1', JSON.stringify({ notes:{}, stav:{}, rating:{}, plan:[], prio:{}, seen:true }))
+    localStorage.setItem('vandrbuch:debug', ${JSON.stringify(stare)})
+    indexedDB.open = () => { throw new Error('zakázáno') }
+  `)
+  await page.waitForTimeout(1200)
+
+  await kontrola(
+    "starý klíč zůstal",
+    () => page.evaluate(() => JSON.parse(localStorage.getItem("vandrbuch:debug") || "null")?.zaznamy?.length),
+    1
+  )
+  await kontrola(
+    "a nese pořád svoje data",
+    () => page.evaluate(() => JSON.parse(localStorage.getItem("vandrbuch:debug")).zaznamy[0].nadpis),
+    "Nesmí zmizet"
+  )
+  await ctx.close()
+}
+
 /* ================= výsledek ================= */
 
 await b.close()

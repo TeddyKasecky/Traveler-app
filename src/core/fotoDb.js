@@ -126,3 +126,23 @@ export async function zapisFotky(fotky) {
     return { ok: false, plno: jePlno(e) }
   }
 }
+
+/**
+ * Kolik vyfocených fotek je uložených. Levné – `count()` samotné obrázky nečte,
+ * a je to celé megabajty (fotka má po zmenšení stovky kilobajtů).
+ *
+ * Vzniklo pro rozpad v Nastavení → Místo v telefonu: po přesunu fotek, tras
+ * a archivu do IndexedDB je v localStorage vidět jen menší půlka úložiště
+ * a ta větší se slévala do jednoho čísla z `navigator.storage.estimate()`.
+ *
+ * @returns {Promise<number>}
+ */
+export async function pocetFotek() {
+  try {
+    const db = await otevri()
+    const r = await transakce(db, 'readonly', (s) => s.count())
+    return r.result || 0
+  } catch {
+    return 0
+  }
+}

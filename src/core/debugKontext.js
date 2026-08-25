@@ -182,7 +182,18 @@ export async function sberKontext({ obrazovka = '', chyby = false } = {}) {
       .map(([klic, n]) => `${klic} ${Math.round(n / 1024)} kB`)
       .join(' · ')
     const celkem = u.pouzito === null ? 'neznámé' : `${mb(u.pouzito)}${u.strop ? ` / ${mb(u.strop)}` : ''}`
-    k.uloziste = podleKlicu ? `${celkem} (${podleKlicu})` : celkem
+    // I velké schránky. Bez nich je v hlášení vidět jen localStorage, tedy po
+    // srpnu 2026 ta menší půlka – a hledalo by se stejně naslepo jako tenkrát,
+    // kdy `vandrbuch:v1` nepozorovaně narostl na 4,3 MB.
+    const s = u.sklady || {}
+    const velke = [
+      s.fotky ? `fotek ${s.fotky}` : '',
+      s.cesty ? `cest ${s.cesty}` : '',
+      s.trasy ? `tras ${s.trasy}` : '',
+    ]
+      .filter(Boolean)
+      .join(' · ')
+    k.uloziste = [podleKlicu ? `${celkem} (${podleKlicu})` : celkem, velke].filter(Boolean).join(' · idb: ')
   } catch {
     /* zakázané úložiště */
   }

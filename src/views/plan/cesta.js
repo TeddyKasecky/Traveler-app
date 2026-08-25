@@ -30,7 +30,8 @@ import { kotvy, pridejDoKosiku } from './kosik.js'
 import { coDalHtml, napojCoDal, tipyOdsud } from './kosikView.js'
 import { spustSledovani, zastavSledovani, aktualniProjekce } from './cesta-zivot.js'
 import { prepocitejOtiskCesty } from './routing.js'
-import { CESTY, ulozCestu } from '../../core/cesty.js'
+import { CESTY, ulozCestu, smazCestu } from '../../core/cesty.js'
+import { uklidTrasy } from '../../core/trasy.js'
 import {
   fmtDoba, cistyCas, jedeSe, vyjed, ukonciCestu, vychoziBod, odznaceneVPoradi,
   pridejDoCesty, vynechZCesty, kolikatyDenCesty, cestaZmenena, mojePoloha, posledniOdznacena,
@@ -338,6 +339,7 @@ export function zamcenaCestaHtml(c, i) {
   return `
     <div class="cesta-zamek">${IC('i-zamek')}<span>Ukončená cesta · jen ke čtení</span>
       <button class="btn small" id="cestaOdemknout">${odemceno ? 'Poznámky odemčené' : 'Odemknout poznámky'}</button>
+      <button class="btn small nebezpecne" id="cestaSmazat">${IC('i-trash')}Smazat</button>
     </div>
     <div class="cesta-hlava">
       <div>
@@ -375,8 +377,9 @@ export function zamcenaCestaHtml(c, i) {
  * @param {HTMLElement} wrap
  * @param {() => void} prekresli
  * @param {number} i  index cesty ve `CESTY`
+ * @param {() => void} [poSmazani]  zavře Itinerář – index by po smazání ukazoval jinam
  */
-export function napojZamcenouCestu(wrap, prekresli, i) {
+export function napojZamcenouCestu(wrap, prekresli, i, poSmazani) {
   const odemkni = wrap.querySelector('#cestaOdemknout')
   if (odemkni)
     odemkni.onclick = () => {
@@ -386,6 +389,36 @@ export function napojZamcenouCestu(wrap, prekresli, i) {
 
   const c = CESTY[i]
   if (!c) return
+
+  // Smazání ukončené cesty (N16, srpen 2026). Do teď se archiv nedal promazat
+  // vůbec – přesun do IndexedDB růst jen odsunul do větší schránky a hláška
+  // o plné paměti radila „smaž staré výpravy nebo ukončené cesty“, což z půlky
+  // nešlo udělat.
+  //
+  // Je to JEDINÁ nevratná ztráta v celé appce, kterou nezachrání ani záloha
+  // stažená potom – proto plné znění v potvrzení, ne jen „Opravdu?“.
+  const smaz = wrap.querySelector('#cestaSmazat')
+  if (smaz)
+    smaz.onclick = async () => {
+      const dal = await potvrd({
+        nadpis: `Smazat cestu ${c.nazev}?`,
+        text:
+          'Zmizí nadobro: zastávky, poznámky z cesty i čísla. Ukončenou cestu nejde ' +
+          'dopočítat ani obnovit – na rozdíl od trasy, kterou si appka umí spočítat znovu. ' +
+          'Získané achievementy ti zůstanou.',
+        ano: 'Smazat',
+        nebezpecne: true,
+      })
+      if (!dal) return
+      if (!(await smazCestu(c.zacatek))) return toast('Smazání se nepovedlo')
+      // Index ve `CESTY` se posunul – držet ho by otevřelo cizí cestu.
+      odemcenaCesta = -1
+      if (poSmazani) poSmazani()
+      // Geometrie, na kterou už nic neodkazuje. Nečeká se na to: kdyby úklid
+      // selhal, posbírá ho `pripravTrasy()` při příštím startu.
+      uklidTrasy()
+      toast('Cesta smazána')
+    }
 
   // Archiv od srpna 2026 nebydlí ve `store`, takže `save()` ani `saveOdlozene()`
   // ho nezapíšou – musí se uložit do své databáze (`core/cesty.js`). Odložení

@@ -19,7 +19,7 @@
 
 import { emit, save, store } from './store.js'
 import { nactiTrasu, otiskyTras, ulozTrasu, zahodTrasu } from './trasyDb.js'
-import { CESTY } from './cesty.js'
+import { CESTY, archivNacten } from './cesty.js'
 
 /** Kolik geometrií se drží v paměti. Tři jsou potřeba naráz, čtvrtá je rezerva. */
 const STROP_PAMETI = 4
@@ -95,6 +95,9 @@ function vsechnyPrepocty() {
   if (store.aktivniPrepocet) ven.push(store.aktivniPrepocet)
   if (store.cesta && store.cesta.prepocet) ven.push(store.cesta.prepocet)
   for (const c of CESTY || []) if (c && c.prepocet) ven.push(c.prepocet)
+  // I nepřestěhovaný archiv. Když se stěhování do IndexedDB nepovede (zakázané
+  // úložiště), zůstane ve `store.cesty` – a jeho trasy jsou pořád živé.
+  for (const c of store.cesty || []) if (c && c.prepocet) ven.push(c.prepocet)
   for (const v of store.vypravy || []) if (v && v.prepocet) ven.push(v.prepocet)
   return ven
 }
@@ -141,6 +144,15 @@ export async function stehujTrasy() {
  * @returns {Promise<number>} kolik se jich smazalo
  */
 export async function uklidTrasy() {
+  // BEZ NAČTENÉHO ARCHIVU SE NEUKLÍZÍ. `vsechnyPrepocty()` čte `CESTY`,
+  // a dokud se archiv dočítá z IndexedDB, je prázdné – trasy ukončených cest
+  // by se tvářily jako sirotci a smazaly by se. Zamčená cesta tlačítko
+  // Přepočítat nemá, takže by byly pryč napořád.
+  //
+  // Do srpna 2026 tenhle řádek nebyl a nebyl potřeba: archiv ležel v localStorage
+  // a byl k dispozici synchronně. Přesun do IndexedDB tu závislost rozpojil.
+  if (!archivNacten()) return 0
+
   const zive = zivoteschopneOtisky()
   const ulozene = await otiskyTras()
   let smazano = 0

@@ -357,11 +357,29 @@ export const prefs = nacti(PREFK, {
   debugRezim: typeof import.meta.env !== 'undefined' && !!(import.meta.env.VANDRBUCH_BETA || import.meta.env.DEV),
   /**
    * Krátký identifikátor autora záznamů (`tadeas`), bez diakritiky a mezer.
-   * Je prefixem `id` každého záznamu i názvu exportovaného souboru, takže
-   * řeší i kolizi číslování mezi dvěma zařízeními. Ptá se na něj PRVNÍ ZÁPIS,
-   * ne až export – `id` vzniká při zápisu a nikdy se nemění.
+   * Je prefixem `id` každého záznamu i názvu exportovaného souboru. Ptá se na
+   * něj PRVNÍ ZÁPIS, ne až export – `id` vzniká při zápisu a nikdy se nemění.
+   *
+   * SÁM O SOBĚ KOLIZI MEZI ZAŘÍZENÍMI NEŘEŠÍ, i když to tu do srpna 2026
+   * stálo: číslování drží `debugData.dalsiCislo` v každém zařízení zvlášť,
+   * takže telefon i počítač vyrobily `tadeas-001` pro dva různé záznamy.
+   * Od toho je `debugZarizeni` níž.
    */
   debugAutor: '',
+  /**
+   * Tři znaky, které odlišují tohle zařízení od ostatních (`a7f`). Vznikají
+   * jednou při prvním zápisu a víc se nemění; `id` má pak tvar
+   * `tadeas-a7f-001`.
+   *
+   * PROČ TO MUSÍ BÝT V `id`, a ne jen ve jménu souboru: rejstřík z repozitáře
+   * páruje záznamy podle `id`. Dvě různé věci se stejným `id` se v appce
+   * slily do jedné – cizí záznam zmizel z „Od ostatních“ a stav toho cizího
+   * se nalepil na můj vlastní. Nikde to nebliklo.
+   *
+   * Vyčištění dat prohlížeče vyrobí nový podpis, a je to tak správně: je to
+   * nový začátek, který se s ničím nesrazí.
+   */
+  debugZarizeni: '',
   /**
    * Řazení výprav v knihovně: 'abecedne' | 'nejnovejsi' | 'zastavky' | 'zadne'.
    * Používalo se od srpna 2026, ale ve výchozích hodnotách chybělo – čtenář

@@ -8,6 +8,11 @@
  * stejný jako v původní aplikaci. Kdyby někdy byla, patří sem.
  */
 
+import { pocetFotek } from './fotoDb.js'
+import { pocetTras } from './trasyDb.js'
+import { pocetCest } from './cestyDb.js'
+import { jeMapaStazena } from './mapaDb.js'
+
 export const KEY = 'vandrbuch:v1'
 export const PKEY = 'vandrbuch:photos'
 export const PREFK = 'vandrbuch:prefs'
@@ -111,7 +116,15 @@ const VSECHNY_KLICE = [KEY, PREFK, DATAK, DRAFTK, DEBUGK, PKEY]
  * `pouzito` a `strop` jsou `null`, když to prohlížeč neumí říct – `klice`
  * se změří vždycky, ty jdou spočítat i bez `navigator.storage`.
  *
- * @returns {Promise<{pouzito: number|null, strop: number|null, klice: Record<string, number>}>}
+ * `sklady` jsou POČTY, ne velikosti (srpen 2026). Po přestěhování fotek, tras
+ * a archivu cest do IndexedDB je v localStorage vidět jen menší půlka a ta
+ * větší se slévala do jednoho čísla za celý původ – přesně ta slepá skvrna,
+ * kvůli které se čtyři megabajty geometrie schovávaly půl roku. Počítá se
+ * přes `count()`, takže se u toho nečte ani jeden blob; `velikostMapy()`
+ * kvůli jednomu číslu tahala 3,9 MB a to se opakovat nemá.
+ *
+ * @returns {Promise<{pouzito: number|null, strop: number|null, klice: Record<string, number>,
+ *   sklady: {fotky: number, trasy: number, cesty: number, mapa: boolean}}>}
  */
 export async function zmerUloziste() {
   const klice = {}
@@ -126,12 +139,22 @@ export async function zmerUloziste() {
     /* zakázané úložiště – zůstane prázdné */
   }
 
+  // Čtyři nezávislé databáze, každá se svým spojením – naráz, ne za sebou.
+  // Každá si chybu řeší sama a vrací nulu, takže `all` nikdy neselže.
+  const [fotky, trasy, cesty, mapa] = await Promise.all([
+    pocetFotek(),
+    pocetTras(),
+    pocetCest(),
+    jeMapaStazena(),
+  ])
+  const sklady = { fotky, trasy, cesty, mapa }
+
   try {
-    if (!navigator.storage || !navigator.storage.estimate) return { pouzito: null, strop: null, klice }
+    if (!navigator.storage || !navigator.storage.estimate) return { pouzito: null, strop: null, klice, sklady }
     const { usage, quota } = await navigator.storage.estimate()
-    return { pouzito: usage || 0, strop: quota || 0, klice }
+    return { pouzito: usage || 0, strop: quota || 0, klice, sklady }
   } catch {
-    return { pouzito: null, strop: null, klice }
+    return { pouzito: null, strop: null, klice, sklady }
   }
 }
 

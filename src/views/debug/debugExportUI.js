@@ -58,20 +58,30 @@ export function exportHtml(vybrane) {
   const kolik = kExportu(vybrane).length
   return `
     <div class="sechd">${IC('i-sdilet')}Export</div>
-    <div class="meta" style="margin:0 2px 8px">Soubor <code>.md</code> se ukládá do složky <code>debug/</code> v repozitáři, commitne a pushne – tím se dostane k oběma i k AI. Konvence je v <code>.claude/rules/debug.md</code>.</div>
+    <div class="meta dz-uvod">
+      Vznikne jeden soubor <code>.md</code>. <b>Stažením ani sdílením se nikam neodešle</b> –
+      teprve když ho někdo uloží do složky <code>debug/</code> v repozitáři a <b>commitne
+      a pushne</b>, dostane se k druhému člověku i k AI. Do appky se stav vrátí až s dalším
+      nasazením: na betě po pushi na <code>main</code>, na produkci až vydáním.
+      Postup je v <code>.claude/rules/debug.md</code>.
+    </div>
     ${segment(
       ROZSAHY.map((r) => ({ ...r, popisek: r.id === 'vybrane' ? `Vybrané (${vybrane.size})` : r.popisek })),
       rozsah,
       'dzRozsah'
     )}
-    <div class="meta" style="margin:8px 2px 8px">K odeslání ${kolik ? `<b>${kolik}</b>` : 'není nic'}${kolik ? '' : ' – zkus jiný rozsah'}.</div>
+    <div class="meta" style="margin:8px 2px 8px">K odeslání ${kolik ? `<b>${kolik}</b>` : 'není nic'}${kolik ? '' : ' – zkus jiný rozsah'}. Po stažení se appka zeptá, jestli je označit jako odeslané – bez toho se po týdnu nepozná, co už v repozitáři je.</div>
     <div class="btnrow" style="margin:0">
       <button class="btn" id="dzMd"${kolik ? '' : ' disabled'}>${IC('i-save')}Stáhnout .md</button>
       <button class="btn primary" id="dzSdilet"${kolik ? '' : ' disabled'}>${IC('i-sdilet')}Sdílet</button>
     </div>
 
     <div class="sechd">${IC('i-save')}Záloha záznamů</div>
-    <div class="meta" style="margin:0 2px 8px">Aby se poznámky neztratily při přeinstalaci appky nebo změně adresy. Do běžné zálohy Vandrbuchu <b>nepatří</b> – ta je o cestách, tohle o vývoji.</div>
+    <div class="meta dz-uvod">
+      Aby se poznámky neztratily při přeinstalaci appky nebo změně adresy. Do běžné zálohy
+      Vandrbuchu <b>nepatří</b> – ta je o cestách, tohle o vývoji. Načtení zálohy záznamy
+      <b>slučuje, nepřepisuje</b>: co už v telefonu je, zůstane, jak je.
+    </div>
     <div class="btnrow" style="margin:0">
       <button class="btn small" id="dzZaloha"${debugData.zaznamy.length ? '' : ' disabled'}>Stáhnout .json</button>
       <label class="btn small" style="cursor:pointer">${IC('i-up')}Načíst zálohu<input id="dzImport" type="file" accept=".json" hidden></label>
@@ -115,7 +125,7 @@ async function poExportu(nazev, zaznamy, prekresli) {
   // Rozliší to porovnání s `vygenerovano` rejstříku.
   const ted = Date.now()
   for (const z of zaznamy) upravZaznam(z.id, { exportovanoDo: nazev, exportovanoV: ted })
-  if (!ulozDebug()) return toast('Označení se neuložilo – v telefonu došlo místo')
+  if (!(await ulozDebug())) return toast('Označení se neuložilo – v telefonu došlo místo')
   toast('Označeno')
   // Bez překreslení by štítek „odesláno" u řádku naskočil až při příštím
   // otevření obrazovky – vypadalo by to, že se označení neuložilo.
@@ -185,7 +195,7 @@ export function napojExport(vybrane, prekresli) {
       const f = e.target.files[0]
       if (!f) return
       const rd = new FileReader()
-      rd.onload = () => {
+      rd.onload = async () => {
         let zaznamy = null
         try {
           zaznamy = zalohaZeSouboru(JSON.parse(rd.result))
@@ -200,7 +210,7 @@ export function napojExport(vybrane, prekresli) {
           return
         }
         const { pridano, preskoceno } = slucZaznamy(zaznamy)
-        if (!ulozDebug()) return toast('Import se neuložil – v telefonu došlo místo')
+        if (!(await ulozDebug())) return toast('Import se neuložil – v telefonu došlo místo')
         toast(
           pridano
             ? `Načteno ${pridano}${preskoceno ? `, ${preskoceno} už tu ${preskoceno === 1 ? 'byl' : 'bylo'}` : ''}`

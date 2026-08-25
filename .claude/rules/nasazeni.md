@@ -60,8 +60,12 @@ signál.
 
 Je to křehké: přejmenovaný chunk by tiše vrátil čtyři megabajty do instalace.
 Proto `vite.config.js` při buildu vypisuje, kolik se předukládá a kolik se
-vynechalo, a `smoke` má na to kontrolu. Dnes: **43 souborů, 3,3 MB na disku,
-~2,4 MB přes síť** (z toho megabajt je stínování terénu).
+vynechalo, a `smoke` má na to kontrolu. Dnes: **35 souborů, 3,05 MB na disku,
+~1,97 MB přes síť** (z toho megabajt je stínování terénu).
+
+Od srpna 2026 vypadávají i **velké ilustrace kategorií** (`*-720`, 540 kB):
+ukazují se jen v otevřeném detailu místa bez vlastní fotky, tedy až po ťuknutí.
+Malá sada (`*-320`) se kreslí na kartách hned a v instalaci zůstává.
 
 **Rejstřík debug poznámek** (`dist/debug-stav.json`) je v předukládaném seznamu taky,
 ale je to **jediný soubor se stabilním jménem, jehož obsah se mezi nasazeními mění** —

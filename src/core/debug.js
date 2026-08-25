@@ -18,7 +18,8 @@
  * v okamžiku zápisu a nešlo by ho zpětně přejmenovat.
  */
 
-import { DEBUGK, nacti, uloz } from './storage.js'
+import { DEBUGK, nacti, smaz } from './storage.js'
+import { nactiDebugDb, ulozDebugDb } from './debugDb.js'
 
 /** Typy záznamu. `znak` jde do `.md` exportu, `ikona` do appky. */
 export const TYPY = [
@@ -88,7 +89,7 @@ export const typZaznamu = (id) => TYPY.find((t) => t.id === id) || TYPY[2]
  *
  * @type {{dalsiCislo: number, zaznamy: Array<Record<string, any>>}}
  */
-export const debugData = nacti(DEBUGK, { dalsiCislo: 1, zaznamy: [] })
+export const debugData = { dalsiCislo: 1, zaznamy: [] }
 
 /**
  * Uloží záznamy.
@@ -98,9 +99,47 @@ export const debugData = nacti(DEBUGK, { dalsiCislo: 1, zaznamy: [] })
  * cestovních dat a u debug poznámky by mátl. Formulář místo toho zůstane
  * otevřený a řekne to sám.
  *
- * @returns {boolean}
+ * ASYNCHRONNÍ od srpna 2026 – záznamy bydlí v IndexedDB (`core/debugDb.js`).
+ *
+ * @returns {Promise<boolean>}
  */
-export const ulozDebug = () => uloz(DEBUGK, debugData).ok
+export async function ulozDebug() {
+  const v = await ulozDebugDb(debugData)
+  return v.ok
+}
+
+/**
+ * Start: načte záznamy z IndexedDB a přestěhuje, co ještě leží ve starém
+ * klíči `vandrbuch:debug` v localStorage.
+ *
+ * ZE STARÉHO KLÍČE SE MAŽE AŽ PO POTVRZENÉM ZÁPISU – stejné pravidlo jako
+ * u fotek, tras a archivu cest. Když se zápis nepovede, zůstane všechno tam,
+ * kde bylo, a zkusí se to při příštím startu znovu.
+ *
+ * Slučuje se, nepřepisuje: v IndexedDB už můžou být novější záznamy (appka
+ * mezitím běžela) a starý klíč je jen zbytek.
+ *
+ * @returns {Promise<number>} kolik se jich přestěhovalo
+ */
+export async function pripravDebug() {
+  const ulozene = await nactiDebugDb()
+  if (ulozene) {
+    debugData.dalsiCislo = ulozene.dalsiCislo || 1
+    debugData.zaznamy = ulozene.zaznamy
+  }
+
+  // `dalsiCislo: 0` jako výchozí je rozlišovač: když klíč neexistuje, zůstane
+  // nula a stěhovat není co. Prázdný, ale existující klíč se naopak uklidí.
+  const stare = nacti(DEBUGK, { dalsiCislo: 0, zaznamy: [] })
+  if (!stare.dalsiCislo && !stare.zaznamy.length) return 0
+
+  const { pridano } = slucZaznamy(stare.zaznamy)
+  if (stare.dalsiCislo > debugData.dalsiCislo) debugData.dalsiCislo = stare.dalsiCislo
+  const v = await ulozDebugDb(debugData)
+  if (!v.ok) return 0
+  smaz(DEBUGK)
+  return pridano
+}
 
 /**
  * Převede jméno na identifikátor do `id` záznamu a do názvu souboru.
@@ -124,6 +163,38 @@ export function sanitizujAutora(s) {
 }
 
 /**
+ * Abeceda podpisu zařízení. Bez `i l o 0 1` – `id` se diktuje nahlas
+ * a čte z commit zprávy, takže zaměnitelné tvary tam nemají co dělat.
+ */
+const ZNAKY = 'abcdefghjkmnpqrstuvwxyz23456789'
+
+/**
+ * Vyrobí podpis zařízení – tři znaky, které odliší tenhle telefon od ostatních.
+ *
+ * Náhodně, ne z něčeho o zařízení: user agent ani rozlišení nejsou jedinečné
+ * (dva stejné telefony) a fingerprinting sem nepatří. Tři znaky z jedenatřiceti
+ * dávají 29 791 možností – při čtyřech zařízeních je šance na shodu 0,02 %,
+ * a i ta se pozná okamžitě, protože kolidovat by musela i čísla záznamů.
+ *
+ * @returns {string}
+ */
+export function novyPodpisZarizeni() {
+  let s = ''
+  for (let i = 0; i < 3; i++) s += ZNAKY[Math.floor(Math.random() * ZNAKY.length)]
+  return s
+}
+
+/**
+ * Prefix `id` – jméno autora a podpis zařízení dohromady.
+ * Bez podpisu (staré záznamy, testy v čistém Node) zůstane jen jméno.
+ *
+ * @param {string} autor
+ * @param {string} [podpis]
+ */
+export const prefixId = (autor, podpis = '') =>
+  podpis ? `${sanitizujAutora(autor)}-${podpis}` : sanitizujAutora(autor)
+
+/**
  * Přidá záznam a vrátí ho i s doplněným `id`.
  *
  * Neukládá – volající musí zavolat `ulozDebug()` a výsledek ohlásit.
@@ -131,9 +202,10 @@ export function sanitizujAutora(s) {
  * @param {Record<string, any>} z  vyplněná pole formuláře
  * @param {string} autor           sanitizovaný identifikátor, viz `sanitizujAutora`
  * @param {number} [ted]           čas vzniku (ms); parametr kvůli testovatelnosti
+ * @param {string} [podpis]        podpis zařízení (`prefs.debugZarizeni`)
  */
-export function pridejZaznam(z, autor, ted = Date.now()) {
-  const a = sanitizujAutora(autor)
+export function pridejZaznam(z, autor, ted = Date.now(), podpis = '') {
+  const a = prefixId(autor, podpis)
   const cislo = debugData.dalsiCislo
   debugData.dalsiCislo = cislo + 1
 
@@ -230,4 +302,51 @@ export function slucZaznamy(zaznamy) {
     if (typeof z.cislo === 'number' && z.cislo >= debugData.dalsiCislo) debugData.dalsiCislo = z.cislo + 1
   }
   return { pridano, preskoceno }
+}
+
+/**
+ * Rozdělí moje záznamy podle toho, jestli už odešly do repozitáře.
+ *
+ * Cizí (naimportované ze zálohy toho druhého) se nepočítají – poznají se
+ * podle `autor`, který nese prefix jejich zařízení.
+ *
+ * @param {string} prefix  dnešní prefix `id`, viz `prefixId`
+ * @returns {{neodeslane: Array<Record<string, any>>, odeslane: Array<Record<string, any>>}}
+ */
+export function mojeZaznamy(prefix) {
+  const moje = debugData.zaznamy.filter((z) => z.autor === prefix)
+  return {
+    neodeslane: moje.filter((z) => !z.exportovanoDo),
+    odeslane: moje.filter((z) => z.exportovanoDo),
+  }
+}
+
+/**
+ * Přepíše prefix `id` u záznamů, které ještě NIKDY neopustily tohle zařízení.
+ *
+ * JEDINÁ VÝJIMKA Z PRAVIDLA „`id` se nikdy nemění“, a je bezpečná právě tím
+ * omezením: na `id`, které nikdy nebylo v exportu, nemůže odkazovat commit,
+ * rejstřík ani konverzace – neexistuje mimo tenhle telefon. Odeslaný záznam
+ * se nepřejmenuje ani omylem; volající o tom musí říct.
+ *
+ * Vzniklo proto, že přejmenování autora šlo do srpna 2026 udělat kdykoli
+ * a bez varování, takže v telefonu zůstala směs `tadeas-001` a `pc-tadeas-002`
+ * podle toho, kdy který záznam vznikl.
+ *
+ * `cislo` se zachovává – číslování musí zůstat rostoucí.
+ *
+ * @param {string} staryPrefix
+ * @param {string} novyPrefix
+ * @returns {number} kolik jich změnilo `id`
+ */
+export function prejmenujNeodeslane(staryPrefix, novyPrefix) {
+  if (!novyPrefix || staryPrefix === novyPrefix) return 0
+  let zmeneno = 0
+  for (const z of debugData.zaznamy) {
+    if (z.autor !== staryPrefix || z.exportovanoDo) continue
+    z.autor = novyPrefix
+    z.id = `${novyPrefix}-${String(z.cislo).padStart(3, '0')}`
+    zmeneno++
+  }
+  return zmeneno
 }
