@@ -54,7 +54,10 @@ const b = await chromium.launch({ executablePath: EDGE, headless: true })
 // colorScheme schválně napevno: od zavedení tmavého režimu by kontrola barvy
 // pozadí jinak dopadla podle toho, jak má vzhled nastavený počítač, na kterém
 // se pouští. Tmavý režim si měří vlastní průchod níž.
-const page = await b.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'light' })
+// acceptDownloads kvůli exportu debug poznámek: `.md` i `.json` se v kontrole
+// opravdu stahují a čte se jejich obsah. Formát `.md` je zároveň vstupem pro
+// scripts/debug-rejstrik.mjs, takže se nesmí rozejít nepozorovaně.
+const page = await b.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'light', acceptDownloads: true })
 
 /**
  * Cizí zdroje, které v testu stejně nejsou dostupné: dlaždice mapy a fotky.
@@ -326,6 +329,58 @@ await kontrola('změna stavu se uložila', () =>
 await kontrola('id se úpravou nezměnilo', () =>
   page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:debug')).zaznamy[0].id), 'tadeas-z-001')
 await kontrola('seznam se sám překreslil', () => page.locator('.dzr .dz-znacka.hotovo').count(), 1)
+
+// Export. Rozsah je segment na obrazovce, ne dialog: navigator.share() se musí
+// zavolat synchronně v obsluze kliknutí a `await` před ním by ho zablokoval.
+await kontrola('export nabízí tři rozsahy', () => page.locator('#dzRozsah button').count(), 3)
+await kontrola('výchozí rozsah jsou nevyřešené', () =>
+  page.locator('#dzRozsah button.on').innerText().then((t) => t.trim()), 'Nevyřešené')
+// Záznam je po předchozí kontrole ve stavu „hotovo", takže do nevyřešených
+// nespadá a export nemá co odeslat – tlačítka musí být zašedlá, ne nefunkční.
+await kontrola('prázdný rozsah zašedne tlačítka', () => page.locator('#dzMd').isDisabled(), true)
+await page.click('#dzRozsah button[data-seg="vse"]')
+await page.waitForTimeout(250)
+await kontrola('rozsah Vše záznam najde', () => page.locator('#dzMd').isDisabled(), false)
+
+// Stažení .md. Playwright zachytí soubor a ověří se jeho obsah – formát je
+// zároveň vstupem pro scripts/debug-rejstrik.mjs, takže se nesmí rozejít.
+const [stazeny] = await Promise.all([page.waitForEvent('download'), page.click('#dzMd')])
+const mdNazev = stazeny.suggestedFilename()
+await kontrola('název .md nese datum, čas i autora', () =>
+  /^\d{4}-\d{2}-\d{2}-\d{4}-tadeas-z\.md$/.test(mdNazev), true)
+const mdCesta = path.join(ROOT, 'dist', '.smoke-export.md')
+await stazeny.saveAs(mdCesta)
+const mdText = fs.readFileSync(mdCesta, 'utf8')
+fs.unlinkSync(mdCesta)
+await kontrola('export má hlavičku pro AI', () => mdText.startsWith('# Vandrbuch — Debug export'), true)
+await kontrola('export odkazuje na pravidlo', () => mdText.includes('.claude/rules/debug.md'), true)
+await kontrola('export nese id záznamu', () => /^## tadeas-z-001 · /m.test(mdText), true)
+// Kontext je víc řádků: čas · obrazovka · online · viewport, pak build a cache.
+await kontrola('export nese sebraný kontext', () => /\*\*Kontext\*\*\n[\s\S]{0,400}\nbuild /.test(mdText), true)
+
+// Po exportu se nabídne označení – u záznamu zůstane, ve kterém souboru odešel.
+await page.waitForTimeout(400)
+await kontrola('po exportu se nabídne označení', () => page.locator('#dialog.show').count(), 1)
+await page.click('#dialogAno')
+await page.waitForTimeout(400)
+await kontrola('u záznamu zůstal název souboru', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:debug')).zaznamy[0].exportovanoDo), mdNazev)
+await kontrola('a v seznamu je vidět odesláno', () => page.locator('.dz-znacka.odeslano').count(), 1)
+
+// Záloha .json a import zpátky. Import nepřepisuje existující id – je to
+// záchrana po přeinstalaci, ne synchronizace.
+const [zaloha] = await Promise.all([page.waitForEvent('download'), page.click('#dzZaloha')])
+await kontrola('název zálohy navazuje na konvenci', () =>
+  /^vandrbuch-debug-zaloha-\d{4}-\d{2}-\d{2}\.json$/.test(zaloha.suggestedFilename()), true)
+const zalohaCesta = path.join(ROOT, 'dist', '.smoke-debug-zaloha.json')
+await zaloha.saveAs(zalohaCesta)
+await kontrola('záloha se představí značkou', () =>
+  JSON.parse(fs.readFileSync(zalohaCesta, 'utf8')).format, 'vandrbuch-debug')
+await page.setInputFiles('#dzImport', zalohaCesta)
+await page.waitForTimeout(500)
+await kontrola('import nezduplikuje, co už tu je', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:debug')).zaznamy.length), 1)
+fs.unlinkSync(zalohaCesta)
 
 // Hromadný výběr a mazání. Úklid je zároveň příprava pro další sekce – smoke
 // nesmí nechat v úložišti záznam, o kterém další kontroly nevědí.

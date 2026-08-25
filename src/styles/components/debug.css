@@ -78,6 +78,7 @@
 .dz-znacka.vysoka{background:var(--upozorneni);color:var(--na-upozorneni);border-color:transparent}
 .dz-znacka.hotovo{background:var(--moss);color:var(--na-akcentu);border-color:transparent}
 .dz-znacka.zahozeno{opacity:.6}
+.dz-znacka.odeslano svg.ic{font-size:11px}
 
 /* Filtry se musí zalomit – dvanáct modulů se na šířku telefonu nevejde
  * a vodorovné rolování by schovalo půlku voleb pod okraj. */

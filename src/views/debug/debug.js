@@ -23,6 +23,7 @@ import { cislaRada, pilulky, sekce } from '../../components/vzory.js'
 import { potvrd } from '../../components/dialog.js'
 import { toast } from '../../components/toast.js'
 import { otevriDebugZapis } from '../../components/debugZapis.js'
+import { exportHtml, napojExport } from './debugExportUI.js'
 import {
   MODULY,
   PRIORITY,
@@ -80,6 +81,7 @@ function radekZaznamu(z) {
       <div class="dzr-meta">
         <span class="dz-znacka ${z.stav}">${esc(stavPopisek(z.stav))}</span>
         <span class="dz-znacka ${z.priorita}">${esc(prioPopisek(z.priorita))}</span>
+        ${z.exportovanoDo ? `<span class="dz-znacka odeslano" title="${esc(z.exportovanoDo)}">${IC('i-sdilet')}odesláno</span>` : ''}
         ${stitky ? `<span class="dzr-moduly">${esc(stitky)}</span>` : ''}
         <span class="dzr-datum">${datum(z.vytvoreno)}</span>
       </div>
@@ -145,9 +147,12 @@ export function renderDebug() {
     <div class="btnrow" style="margin-top:16px">
       <button class="btn primary" id="dzNovy">${IC('i-plus')}Zapsat poznámku</button>
     </div>
+
+    ${exportHtml(vybrane)}
     <div style="height:20px"></div>`
 
   napoj(videt)
+  napojExport(vybrane, renderDebug)
 }
 
 function napoj(videt) {

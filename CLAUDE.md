@@ -68,8 +68,8 @@ npm run slouc            # vysype places-nova.json do places.json a přepočít�
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 13 kontrol
 npm run check-debug      # debug poznámkovač: identita záznamu, export, záloha, 85 bodů
 
-npm run smoke            # proklikání v prohlížeči, 283 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 269 kontrol
+npm run smoke            # proklikání v prohlížeči, 298 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 284 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
@@ -152,7 +152,25 @@ Podrobná pravidla podle oblasti (auto-scoped podle cesty):
 [.claude/rules/database.md](.claude/rules/database.md) ·
 [.claude/rules/kod.md](.claude/rules/kod.md) ·
 [.claude/rules/kontroly.md](.claude/rules/kontroly.md) ·
-[.claude/rules/nasazeni.md](.claude/rules/nasazeni.md).
+[.claude/rules/nasazeni.md](.claude/rules/nasazeni.md) ·
+[.claude/rules/debug.md](.claude/rules/debug.md).
+
+## Debug poznámkovač a složka `debug/`
+
+Nápady, bugy a poznámky se zapisují **přímo v appce za běhu** (kolečko s broukem
+v hlavičce, jen se zapnutým `prefs.debugRezim` — na betě a v `npm run dev` ano,
+na produkci ne). Appka k záznamu přibalí technický kontext, který uživatel
+nepíše: obrazovku, filtry, verzi buildu i cache, online/offline, zaplnění
+úložiště a posledních 20 zachycených chyb. Záznamy leží pod vlastním klíčem
+`vandrbuch:debug`, **do běžné zálohy nepatří** a mají svou vlastní.
+
+Exportují se do jednoho `.md` souboru na export (`debug/RRRR-MM-DD-HHMM-<autor>.md`),
+který se commitne a pushne — tím se dostane k oběma lidem i k AI, která si repo čte.
+`id` záznamu (`tadeas-014`) **se nikdy nemění a nerecykluje**, stejně jako `id` místa.
+
+**Když se záznam vyřeší, commit s opravou ho zároveň odstraní z jeho `.md`
+a přidá řádek do `debug/VYRESENO.md`.** Když ze souboru zmizí poslední záznam,
+soubor se smaže. Celý postup pro AI je v [.claude/rules/debug.md](.claude/rules/debug.md).
 
 Návody pro člověka: [README.md](README.md), schéma dat [src/data/schema.md](src/data/schema.md),
 výklad vzhledu [VZHLED.md](VZHLED.md).
