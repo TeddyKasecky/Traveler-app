@@ -1,6 +1,6 @@
 # Kde jsme skončili
 
-Stav k **20. 8. 2026**. Tenhle soubor je předávka mezi sezeními: co je hotové, co
+Stav k **25. 8. 2026**. Tenhle soubor je předávka mezi sezeními: co je hotové, co
 musíte udělat vy, co se rozhodlo a proč, a co je na řadě. Důkazy a čísla jsou
 v [`PARITA.md`](PARITA.md), odložené nápady v [`NAPADY.md`](NAPADY.md),
 výklad vzhledu ve [`VZHLED.md`](VZHLED.md).
@@ -149,6 +149,61 @@ Kontroly: `check-dny` 113/113 (nové testy pro start/cíl, otisk trasy,
 seřazenou trasu), `check-projekce` 13/13 (nový skript, throttle a projekce
 polohy na trasu), `smoke` 203/203, `check-tokeny` 7/7, `parity` 26/26,
 ruční E2E test reálného volání Routing API.
+
+## 3b. Debug poznámkovač (25. 8. 2026)
+
+Hotovo a na betě, 6 commitů. Nápady, bugy a poznámky se zapisují **přímo
+v appce za běhu** — kolečko s broukem v hlavičce vedle profilu a nastavení.
+Vždycky vidět jsou jen čtyři věci (typ, nadpis, text, čeho se to týká), aby
+šel zápis udělat za deset vteřin jednou rukou v autě; zbytek je pod „Víc
+podrobností". Detail nedodává člověk psaním, ale appka sběrem: obrazovka,
+filtry, verze buildu i cache, online/offline, zaplnění úložiště po klíčích
+a posledních 20 zachycených chyb (buffer běží pořád, ne až po zapnutí
+debug režimu — chyba zachycená později je chyba, která už jednou utekla).
+
+Prohlížeč záznamů (Nastavení → Otevřít poznámkovač) je malý tracker: stavy,
+priority, filtry, hromadný výběr a mazání. Export dělá **jeden `.md` soubor
+na export**, který se uloží do složky `debug/`, commitne a pushne — tím se
+dostane k oběma i k AI, která si repo čte. Vedle toho tlačítko **Sdílet**,
+které soubor předá systémovému menu telefonu (mail, Messenger, WhatsApp,
+uložení do souborů).
+
+**Kolečko se uzavírá.** Appka se nasazuje z téhož repozitáře, do kterého se
+exporty commitují, takže build složku `debug/` přečte a přibalí z ní rejstřík
+(`debug-stav.json`). V archivu je pak u každého mého záznamu vidět, jestli se
+v repozitáři řeší nebo vyřešil, plus oddíl **„Od ostatních"** se záznamy toho
+druhého — aby se totéž nehlásilo dvakrát. Žádný backend, žádný token; obnovuje
+se nasazením, na betě tedy každým pushem na `main`.
+
+Postup, jak má AI se záznamy pracovat (a hlavně že **vyřešený záznam se
+v jednom commitu odstraní z `.md` a přidá se řádek do `debug/VYRESENO.md`**,
+jinak by se autor nikdy nedozvěděl, že je hotovo), je v
+[`.claude/rules/debug.md`](.claude/rules/debug.md).
+
+**Na produkci to vidět není** a je to schválně: `prefs.debugRezim` má výchozí
+hodnotu podle prostředí — na betě a v `npm run dev` zapnuto, na ostré appce
+vypnuto. Přepínač je v Nastavení a řídí jen viditelnost, nikdy sběr dat.
+
+Dvě věci, které se cestou rozhodly jinak, než zněl původní návrh:
+
+- **Na přezdívku se ptá první zápis, ne první export.** `id` záznamu
+  (`tadeas-014`) vzniká při zápisu a nikdy se nemění; doplnit autora později
+  by znamenalo přejmenovat všechna dosud zapsaná `id`.
+- **Verze buildu se odvozuje z commitu, ne ze dne buildu.** První verze brala
+  dnešní datum, čímž se rozbilo ověření nasazení podle otisku v názvu balíku —
+  dva buildy téhož commitu nevyšly stejně.
+
+Kontroly: `check-debug` 108/108 (nový skript; nejdůležitější je round-trip
+`mdExport()` → `postavRejstrik()`, na kterém stojí celá zpětná vazba),
+`smoke` 304/304, `smoke:single` 286/286, `check-handlers` 61/61, `parity`
+26/26, `check-tokeny` 7/7, `check-uloziste` 13/13, `check-dny` 187/187,
+`check-ikony` 8/8 (64 ikon), `check-form`, `validate`.
+
+**Za vyzkoušení stojí:** napsat na telefonu bug, vyexportovat, uložit do
+`debug/`, pushnout a po nasazení bety zkontrolovat, že se u záznamu objevilo
+„v repozitáři". To je jediná zkouška, která ověří celé kolečko naráz.
+
+---
 
 ## 4. Co je na řadě
 
