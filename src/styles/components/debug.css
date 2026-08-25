@@ -70,9 +70,48 @@
 
 /* ---------- prohlížeč poznámek ---------- */
 
-.dz-id{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;color:var(--ink2)}
+.dz-id{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;color:var(--ink2);flex:0 0 auto}
 .dz-znacka{display:inline-flex;align-items:center;gap:4px;font-size:.68rem;font-weight:800;
   padding:2px 8px;border-radius:var(--r-pill);border:var(--line);background:var(--paper);color:var(--ink2)}
+/* Jen dva stavy mají barvu: „vysoká" volá o pozornost, „hotovo" ji odvolává.
+ * Kdyby byly barevné všechny, seznam by se stal barevnou mapou bez hierarchie. */
 .dz-znacka.vysoka{background:var(--upozorneni);color:var(--na-upozorneni);border-color:transparent}
 .dz-znacka.hotovo{background:var(--moss);color:var(--na-akcentu);border-color:transparent}
 .dz-znacka.zahozeno{opacity:.6}
+
+/* Filtry se musí zalomit – dvanáct modulů se na šířku telefonu nevejde
+ * a vodorovné rolování by schovalo půlku voleb pod okraj. */
+.dzf-typ,.dzf-stav,.dzf-priorita,.dzf-modul{flex-wrap:wrap;gap:6px;overflow:visible;margin-bottom:8px}
+.dzf-typ .pilulka,.dzf-stav .pilulka,.dzf-priorita .pilulka,.dzf-modul .pilulka{flex:0 0 auto}
+
+.dzr-lista{display:flex;gap:8px;margin:12px 0 10px}
+.dzr-lista .btn{flex:1 1 0}
+.dzr-lista .btn[disabled]{opacity:.45}
+
+.dzr-seznam{display:flex;flex-direction:column;gap:8px}
+
+.dzr{display:flex;align-items:stretch;gap:0;border:var(--line);border-radius:var(--r-s);
+  background:var(--card);overflow:hidden}
+.dzr.vybrany{border-color:var(--akcent);box-shadow:var(--stin-1)}
+
+/* Zaškrtávátko je <button role="checkbox">, ne <input> – ten v appce není
+ * ani jednou a nešel by sladit se zbytkem. */
+.dzr-check{flex:0 0 auto;width:42px;display:grid;place-items:center;border:0;border-right:var(--line);
+  background:var(--paper);cursor:pointer;color:var(--akcent)}
+.dzr-check svg.ic{font-size:17px}
+.dzr.vybrany .dzr-check{background:var(--akcent);color:var(--na-akcentu);stroke:var(--na-akcentu)}
+
+.dzr-telo{flex:1 1 auto;min-width:0;text-align:left;border:0;background:none;cursor:pointer;
+  padding:10px 12px;display:flex;flex-direction:column;gap:5px}
+.dzr-telo:active{transform:var(--stisk)}
+.dzr-hd{display:flex;align-items:center;gap:7px;min-width:0}
+.dzr-hd svg.ic{font-size:16px;flex:0 0 auto;color:var(--akcent)}
+.dzr-hd b{font-weight:800;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dzr-text{font-size:.76rem;color:var(--ink2);line-height:1.4}
+.dzr-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:.68rem;color:var(--ink2)}
+.dzr-moduly{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.dzr-datum{margin-left:auto;flex:0 0 auto}
+
+.dzr-prazdno{display:flex;flex-direction:column;align-items:center;gap:10px;padding:34px 20px;
+  text-align:center;color:var(--ink2);font-size:.82rem;line-height:1.5}
+.dzr-prazdno svg.ic{font-size:38px;opacity:.4}

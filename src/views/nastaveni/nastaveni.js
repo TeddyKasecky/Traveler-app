@@ -22,11 +22,12 @@ import { prefs, savePrefs } from '../../core/store.js'
 import { zmerUloziste } from '../../core/storage.js'
 import { esc } from '../../core/html.js'
 import { debugData, sanitizujAutora } from '../../core/debug.js'
+import { aktivujZalozku } from '../../core/router.js'
 import { IC } from '../../icons/sprite.js'
 import { segment } from '../../components/vzory.js'
 import { toast } from '../../components/toast.js'
 import { zadej } from '../../components/dialog.js'
-import { otevriDebugZapis, srovnejDebugTlacitko } from '../../components/debugZapis.js'
+import { srovnejDebugTlacitko } from '../../components/debugZapis.js'
 import { jsouVektory, obnovKresbyVMape } from '../../map/podklad.js'
 import { srovnejStavMapy } from './mapaKeStazeni.js'
 
@@ -135,7 +136,7 @@ export async function renderNastaveni() {
     <div class="meta" style="margin:8px 2px 10px">Píše jako: <b id="debugAutorInfo">${esc(prefs.debugAutor || 'zeptáme se při prvním zápisu')}</b></div>
     <div class="btnrow" style="margin:0">
       <button class="btn small" id="debugAutorZmen">Změnit přezdívku</button>
-      <button class="btn small" id="debugOtevri">Zapsat poznámku${zaznamu ? ` (zapsáno ${zaznamu})` : ''}</button>
+      <button class="btn small" id="debugOtevri">Otevřít poznámkovač${zaznamu ? ` (${zaznamu})` : ''}</button>
     </div>
 
     <div class="sechd">${IC('i-book')}O aplikaci</div>
@@ -206,7 +207,7 @@ export async function renderNastaveni() {
     toast(`Píšeš jako ${prefs.debugAutor}`)
   }
 
-  document.getElementById('debugOtevri').onclick = () => otevriDebugZapis()
+  document.getElementById('debugOtevri').onclick = () => aktivujZalozku('debug')
 
   const m = await zmerUloziste()
   const el = document.getElementById('mistoInfo')

@@ -17,6 +17,7 @@ import { renderList } from './list/list.js'
 import { renderPlan } from './plan/plan.js'
 import { renderProfil } from './profil/profil.js'
 import { renderNastaveni } from './nastaveni/nastaveni.js'
+import { renderDebug } from './debug/debug.js'
 import { renderMapaDole } from './mapa/mapa.js'
 import { poPrepnutiNaMapu } from '../map/map.js'
 
@@ -35,5 +36,8 @@ export function registrujZalozky() {
     // adresa i tlačítko zpět.
     profil: { panel: 'panelProfil', render: () => renderProfil() },
     nastaveni: { panel: 'panelNastaveni', render: () => renderNastaveni() },
+    // Poznámkovač otevírá Nastavení. Ze stejného důvodu jako Profil nemá
+    // tlačítko v liště, ale adresu `#debug` a tlačítko zpět má.
+    debug: { panel: 'panelDebug', render: () => renderDebug() },
   })
 }

@@ -152,6 +152,16 @@
   </div>
 </section>
 
+<!-- Prohlížeč debug poznámek. Celý obsah kreslí views/debug/debug.js – na
+     rozdíl od Nastavení tu nic nemá obsluhu navěšenou při startu, takže
+     překreslení při každém otevření nic neztratí. Otevírá se z Nastavení;
+     tlačítko ve spodní liště nemá, tam je pět položek a šestá by je zmáčkla. -->
+<section class="panel" id="panelDebug">
+  <div class="inner">
+    <div id="debugInner"></div>
+  </div>
+</section>
+
 <!-- NASTAVENÍ. Obsah je staticky tady, ne v renderNastaveni(): obsluha se věší
      při startu (filterPanel.js, mapaKeStazeni.js) a hlídá ji check-handlers.
      Kdyby se obrazovka kreslila znovu při každém otevření, obsluha by se

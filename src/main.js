@@ -41,6 +41,7 @@ import { renderDisc } from './views/discover/discover.js'
 import { renderList } from './views/list/list.js'
 import { renderPlan, zavriNavigaci, jeOtevrenaNavigace } from './views/plan/plan.js'
 import { renderMapaDole, initMapaDole } from './views/mapa/mapa.js'
+import { renderDebug } from './views/debug/debug.js'
 import { zastavSledovani } from './views/plan/cesta-zivot.js'
 
 import { registrujServiceWorker } from './pwa/register.js'
@@ -218,6 +219,16 @@ on('poloha', () => {
 on('zivaProjekce', () => {
   if (S.activeTab === 'plan') renderPlan()
   draw()
+})
+
+/**
+ * Zapsal se nebo změnil debug záznam (components/debugZapis.js).
+ *
+ * Přes událost, protože `components/` nemá vědět o obrazovkách. Překresluje
+ * se jen otevřený poznámkovač – jinde se počet záznamů nikde neukazuje.
+ */
+on('debugZmena', () => {
+  if (S.activeTab === 'debug') renderDebug()
 })
 
 /**

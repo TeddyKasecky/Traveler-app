@@ -21,7 +21,7 @@
  */
 
 import { registrujOverlay } from '../core/router.js'
-import { prefs, savePrefs, S } from '../core/store.js'
+import { prefs, savePrefs, S, emit } from '../core/store.js'
 import { esc } from '../core/html.js'
 import { IC } from '../icons/sprite.js'
 import { segment, pilulky } from './vzory.js'
@@ -303,8 +303,11 @@ async function uloz() {
       stav: koncept.stav,
     })
     if (!ohlasZapis()) return
-    toast(`Uloženo ${upravujeSe}`)
+    const bylo = upravujeSe
     zavriDebugZapis()
+    // Přes událost, ne přímým voláním: `components/` nemá vědět o obrazovkách.
+    emit('debugZmena')
+    toast(`Uloženo ${bylo}`)
     return
   }
 
@@ -323,8 +326,9 @@ async function uloz() {
     debugData.dalsiCislo--
     return
   }
-  toast(`Zapsáno ${zaznam.id}`)
   zavriDebugZapis()
+  emit('debugZmena')
+  toast(`Zapsáno ${zaznam.id}`)
 }
 
 /**

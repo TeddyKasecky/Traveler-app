@@ -291,6 +291,63 @@ await kontrola('záznam si nese kontext', () =>
 await kontrola('debug data nejsou v poznámkách z cest', () =>
   page.evaluate(() => localStorage.getItem('vandrbuch:v1').includes('Zkušební záznam')), false)
 
+// Prohlížeč poznámek. Otevírá se z Nastavení – ve spodní liště tlačítko nemá.
+await page.click('#nastaveniOpen')
+await page.waitForTimeout(400)
+await page.click('#debugOtevri')
+await page.waitForTimeout(400)
+await kontrola('poznámkovač se otevřel', () => page.locator('#panelDebug.show').count(), 1)
+await kontrola('poznámkovač má adresu', () => page.evaluate(() => location.hash), '#debug')
+await kontrola('zapsaný záznam je v seznamu', () => page.locator('.dzr').count(), 1)
+await kontrola('řádek nese id', () => page.locator('.dzr .dz-id').innerText(), 'tadeas-z-001')
+await kontrola('řádek nese stav', () => page.locator('.dzr .dz-znacka.nove').count(), 1)
+
+// Filtr, kterému nic neodpovídá, musí vysvětlit proč – prázdná obrazovka
+// bez věty vypadá jako rozbitá appka.
+await page.click('.dzf-typ .pilulka:has-text("Nápad")')
+await page.waitForTimeout(250)
+await kontrola('filtr podle typu zabral', () => page.locator('.dzr').count(), 0)
+await kontrola('prázdný filtr to vysvětlí', () =>
+  page.locator('.dzr-prazdno').innerText().then((t) => /filtru nic neodpov/i.test(t)), true)
+await page.click('.dzf-typ .pilulka:has-text("Vše")')
+await page.waitForTimeout(250)
+await kontrola('zrušení filtru záznam vrátí', () => page.locator('.dzr').count(), 1)
+
+// Ťuknutí na řádek otevře TÝŽ formulář jako zápis, jen v režimu úpravy.
+await page.click('.dzr-telo')
+await page.waitForTimeout(400)
+await kontrola('řádek otevře formulář', () => page.locator('#debugZapis.show').count(), 1)
+await kontrola('úprava má i volbu stavu', () => page.locator('#dzStav button').count(), 4)
+await page.click('#dzStav button[data-seg="hotovo"]')
+await page.click('#dzUloz')
+await page.waitForTimeout(500)
+await kontrola('změna stavu se uložila', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:debug')).zaznamy[0].stav), 'hotovo')
+await kontrola('id se úpravou nezměnilo', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:debug')).zaznamy[0].id), 'tadeas-z-001')
+await kontrola('seznam se sám překreslil', () => page.locator('.dzr .dz-znacka.hotovo').count(), 1)
+
+// Hromadný výběr a mazání. Úklid je zároveň příprava pro další sekce – smoke
+// nesmí nechat v úložišti záznam, o kterém další kontroly nevědí.
+await page.click('.dzr-check')
+await page.waitForTimeout(200)
+await kontrola('výběr se propíše do tlačítka', () =>
+  page.locator('#dzSmaz').innerText().then((t) => t.includes('(1)')), true)
+await page.click('#dzSmaz')
+await page.waitForTimeout(400)
+await kontrola('mazání se ptá', () => page.locator('#dialog.show').count(), 1)
+await page.click('#dialogAno')
+await page.waitForTimeout(400)
+await kontrola('záznam zmizel', () => page.locator('.dzr').count(), 0)
+await kontrola('prázdný poznámkovač poradí', () =>
+  page.locator('.dzr-prazdno').innerText().then((t) => /Zat[ií]m nic/i.test(t)), true)
+// Číslo se po smazání NEVRACÍ – další záznam musí dostat 002.
+await kontrola('číslování se nevrátilo', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:debug')).dalsiCislo), 2)
+
+await page.goBack()
+await page.waitForTimeout(300)
+
 // Objevuj
 await page.click('#tabs button[data-tab="disc"]')
 await page.waitForTimeout(300)
