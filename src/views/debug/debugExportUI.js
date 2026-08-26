@@ -205,13 +205,20 @@ async function posliDoRepa(nazev, text, heslo) {
   }
   let r
   try {
+    // HESLO JDE V TĚLE, NE V HLAVIČCE. Hodnota HTTP hlavičky smí obsahovat jen
+    // znaky do 0xFF, takže heslo s diakritikou shodí `fetch` ještě tady
+    // v prohlížeči – požadavek vůbec neodejde. Stálo to jeden večer hledání,
+    // protože chyba vypadala jako mlčící server.
     r = await fetch('./api/debug', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-vandrbuch-heslo': heslo },
-      body: JSON.stringify({ nazev, text }),
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ nazev, text, heslo }),
     })
-  } catch {
-    return { ok: false, chyba: 'Server neodpověděl. Zkus to za chvíli, nebo použij Stáhnout.' }
+  } catch (e) {
+    // DŮVOD SE PŘIPOJUJE. Bez něj hlásila appka „server neodpověděl“ i tehdy,
+    // když požadavek vůbec neodešel – a hledalo se na úplně špatné straně.
+    const duvod = e && e.message ? ` (${e.message})` : ''
+    return { ok: false, chyba: `Požadavek se nepodařilo odeslat${duvod}. Zkus to za chvíli, nebo použij Stáhnout.` }
   }
 
   let telo = null

@@ -22,6 +22,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const { jmenoSedi, textSedi, sPoradim, shodneHeslo, naBase64, HLAVICKA, STROP_BAJTU, MAX_KOLIZI, REPO, VETEV, SLOZKA } =
   await import(`file://${path.join(ROOT, 'worker', 'index.js').replace(/\\/g, '/')}`)
 
+const zdrojWorkeru = (await import('node:fs')).readFileSync(path.join(ROOT, 'worker', 'index.js'), 'utf8')
+
 const barvy = process.stdout.isTTY && !process.env.NO_COLOR
 const zeleny = (s) => (barvy ? `\x1b[32m${s}\x1b[0m` : s)
 const cerveny = (s) => (barvy ? `\x1b[31m${s}\x1b[0m` : s)
@@ -105,6 +107,14 @@ t('chybějící hlavička neprojde', !shodneHeslo(null, 'tajne-heslo'))
 // a endpoint by byl otevřený. Obsluha to hlídá zvlášť (503), tohle je pojistka.
 t('prázdné proti prázdnému je shoda, ale obsluha ho nepustí', shodneHeslo('', ''))
 
+// HESLO S DIAKRITIKOU MUSÍ PROJÍT. Hodnota HTTP hlavičky smí obsahovat jen
+// znaky do 0xFF, takže `heslíčko` v hlavičce shodí `fetch` ještě v prohlížeči –
+// požadavek vůbec neodejde a aplikace hlásí „server neodpověděl" u serveru,
+// který nikdo neoslovil. Proto se heslo posílá v JSON těle.
+t('heslo s diakritikou se porovná', shodneHeslo('žluťoučké-heslíčko', 'žluťoučké-heslíčko'))
+t('a s emoji taky', shodneHeslo('heslo🐞', 'heslo🐞'))
+t('heslo se nesmí posílat v hlavičce', !/headers[\s\S]{0,120}heslo/i.test(zdrojWorkeru))
+
 console.log('')
 console.log('Kódování a meze')
 console.log('')
@@ -127,7 +137,7 @@ t('repozitář je natvrdo', REPO === 'TeddyKasecky/Traveler-app')
 t('větev je natvrdo', VETEV === 'main')
 t('složka je natvrdo', SLOZKA === 'debug')
 
-const zdroj = (await import('node:fs')).readFileSync(path.join(ROOT, 'worker', 'index.js'), 'utf8')
+const zdroj = zdrojWorkeru
 t('obsluhuje se jediná cesta', (zdroj.match(/'\/api\/debug'/g) || []).length === 1)
 t('všechno ostatní dostane 404', zdroj.includes("return new Response(null, { status: 404 })"))
 t('obsluha je v try/catch', /try \{\s*return await prijmiPoznamky/.test(zdroj))

@@ -624,18 +624,28 @@ if (!SINGLE) {
   await page.click('#dzOdeslat')
   await page.waitForTimeout(500)
   await kontrola('bez hesla se odeslání zeptá', () => page.locator('#dialog.show #dialogVstup').count(), 1)
-  await page.fill('#dialogVstup', 'zkusebni-heslo')
+  // HESLO S DIAKRITIKOU SCHVÁLNĚ. Hodnota HTTP hlavičky smí jen znaky do 0xFF,
+  // takže kdyby se heslo vrátilo z těla do hlavičky, `fetch` by spadl ještě
+  // v prohlížeči a požadavek by vůbec neodešel. Poznalo by se to tím, že místo
+  // odpovědi serveru přijde „nepodařilo odeslat".
+  await page.fill('#dialogVstup', 'žluťoučké-heslíčko')
   await page.click('#dialogAno')
   await page.waitForTimeout(900)
 
   // A TEĎ TO PODSTATNÉ: selhání se musí pojmenovat, ne spolknout. Přesně tím,
   // že se nepojmenovalo, bylo staré tlačítko Sdílet k ničemu.
   await kontrola('selhání se pojmenuje, ne spolkne', () =>
-    page.locator('#dialog.show').innerText().then((x) => /nepovedlo|Heslo|prost\u0159ed/i.test(x)), true)
+    page.locator('#dialog.show').innerText().then((x) => /nepovedlo/i.test(x) && x.length > 40), true)
+  // A ROZLIŠIT, ČÍ CHYBA TO JE. Když se heslo pošle v HTTP hlavičce, `fetch`
+  // spadne kvůli diakritice ještě v prohlížeči a požadavek vůbec neodejde –
+  // appka pak hlásí selhání u serveru, kterého nikdo neoslovil. Heslo v testu
+  // má diakritiku schválně, aby se to tímhle poznalo.
+  await kontrola('a požadavek opravdu odešel', () =>
+    page.locator('#dialog.show').innerText().then((x) => !/nepodařilo odeslat/i.test(x)), true)
   await page.click('#dialogNe').catch(() => page.click('#dialogAno'))
   await page.waitForTimeout(400)
   await kontrola('heslo se uložilo do předvoleb', () =>
-    page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs')).debugHeslo), 'zkusebni-heslo')
+    page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs')).debugHeslo), 'žluťoučké-heslíčko')
   await kontrola('a záznam zůstal neodeslaný', async () =>
     (await debugZaznamy()).zaznamy[0].exportovanoDo, '')
 }

@@ -127,7 +127,13 @@ npx wrangler secret put DEBUG_HESLO    # heslo, které se pak zadá v appce
 ```
 
 **Jen na projektu bety.** Na produkci se secret nenastaví, takže tam Worker
-na odeslání odpoví 503 a endpoint je mrtvý. Heslo se v appce zadá při prvním
+na odeslání odpoví 503 a endpoint je mrtvý.
+
+**Heslo smí obsahovat cokoli včetně diakritiky** – posílá se v JSON těle, ne
+v HTTP hlavičce. Hodnota hlavičky totiž smí jen znaky do 0xFF, takže `heslíčko`
+v hlavičce shodí `fetch` ještě v prohlížeči: požadavek vůbec neodejde a appka
+hlásí selhání u serveru, kterého nikdo neoslovil. Hlídá to `check-worker`
+i `smoke`, kde má testovací heslo diakritiku schválně. Heslo se v appce zadá při prvním
 odeslání a mění se v Nastavení u přezdívky; **v balíčku aplikace není** —
 repozitář je veřejný, takže by z něj šlo vyčíst.
 

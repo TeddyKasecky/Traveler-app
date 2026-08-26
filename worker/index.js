@@ -185,13 +185,7 @@ async function prijmiPoznamky(request, env) {
     return odpoved(503, { chyba: 'Odesílání není na tomhle prostředí nastavené.' })
   }
 
-  // 2. Heslo. Není v balíčku aplikace – zadává se jednou v Nastavení – takže
-  //    se z veřejného repozitáře nedá vyčíst.
-  if (!shodneHeslo(request.headers.get('x-vandrbuch-heslo'), env.DEBUG_HESLO)) {
-    return odpoved(401, { chyba: 'Heslo pro odesílání nesedí.' })
-  }
-
-  // 3. Velikost napřed z hlavičky, ať se obří tělo vůbec nečte.
+  // 2. Velikost napřed z hlavičky, ať se obří tělo vůbec nečte.
   const ohlasenaDelka = Number(request.headers.get('content-length') || 0)
   if (ohlasenaDelka > STROP_BAJTU) return odpoved(413, { chyba: 'Export je moc velký.' })
 
@@ -202,7 +196,22 @@ async function prijmiPoznamky(request, env) {
     return odpoved(400, { chyba: 'Tělo požadavku není platný JSON.' })
   }
 
-  const { nazev, text } = data || {}
+  const { nazev, text, heslo } = data || {}
+
+  // 3. Heslo. Není v balíčku aplikace – zadává se jednou v Nastavení – takže
+  //    se z veřejného repozitáře nedá vyčíst.
+  //
+  //    JDE V TĚLE, NE V HLAVIČCE. Hodnota HTTP hlavičky smí obsahovat jen znaky
+  //    do 0xFF, takže heslo s diakritikou (`heslíčko`) shodí `fetch` ještě
+  //    v prohlížeči – požadavek vůbec neodejde a aplikace hlásí „server
+  //    neodpověděl“ u serveru, který nikdo neoslovil. V JSON těle projde
+  //    cokoli. Kvůli tomu se tělo parsuje dřív, než se ověří heslo; strop
+  //    velikosti výš zajišťuje, že se ani neověřenému požadavku nečte víc,
+  //    než je únosné.
+  if (!shodneHeslo(heslo, env.DEBUG_HESLO)) {
+    return odpoved(401, { chyba: 'Heslo pro odesílání nesedí.' })
+  }
+
   if (!jmenoSedi(nazev)) return odpoved(400, { chyba: 'Název souboru nesedí na očekávaný tvar.' })
   if (!textSedi(text)) return odpoved(400, { chyba: 'Obsah není export z poznámkovače.' })
   if (new TextEncoder().encode(text).length > STROP_BAJTU) {
