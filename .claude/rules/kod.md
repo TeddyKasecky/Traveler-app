@@ -83,8 +83,9 @@ router nesmí znát obrazovky.
 - `esc()` ošetřuje **jen `&` a `<`** — ne `>` ani uvozovky, přestože se používá i uvnitř
   atributů. Je to doslovný přepis původní funkce a „oprava" by změnila výstup na obrazovce.
   Neopravuj bez vyžádání.
-- Obsluha událostí se věší jako `prvek.onclick = …` (ne `addEventListener`), v souladu
-  s originálem. `scripts/check-handlers.mjs` porovnává napojení s originálem za běhu.
+- Obsluha událostí se věší jako `prvek.onclick = …`, ne `addEventListener`. Je to
+  zvyklost zděděná z původní aplikace; míchání obou způsobů znamená, že se obsluha
+  jednou přepíše a podruhé přidá, a to se hledá špatně.
 
 ## Mapa
 
@@ -122,10 +123,10 @@ router nesmí znát obrazovky.
   redesign to zrušil, viz [VZHLED.md](../../VZHLED.md).) Nová barva patří do sémantické
   vrstvy **a do obou tmavých bloků**; že se nerozejdou, hlídá `npm run check-tokeny`.
 - Jeden soubor na komponentu v `src/styles/components/`, zapojení a **pořadí** v `index.css`.
-- **Nový CSS soubor zapiš do `scripts/nove-styly.mjs`** — jinak `parity` započítá jeho
-  `env(safe-area-inset-*)` jako nečekaný rozdíl.
+- **Nový CSS soubor zapiš do `scripts/nove-styly.mjs`** — jinak `check-regrese` započítá
+  jeho `env(safe-area-inset-*)` do sumy, která má sedět na pevné číslo, a spadne.
 - `npm run check-tokeny` hlídá barvy natvrdo, párování světlý/tmavý a kontrast —
-  po zásahu do CSS ho pusť. `check-css` je odstavené, viz `PARITA.md` §10 Q14.
+  po zásahu do CSS ho pusť.
 - Když kreslení potřebuje barvu v JavaScriptu (plátno), přečti si ji z CSS přes
   `getComputedStyle`, ne natvrdo — vzor je v `src/map/podklad.js` a `vektory.js`.
 

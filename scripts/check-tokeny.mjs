@@ -3,10 +3,11 @@
  *
  *   npm run check-tokeny
  *
- * PROČ TENHLE SKRIPT VZNIKL: nahrazuje `check-css`, který porovnával 338 CSS
- * pravidel proti `reference/index-original.html`. Vizuální redesign ten vztah
- * vědomě zrušil (viz VZHLED.md a PARITA.md §10 Q14), takže tamta kontrola
- * ztratila smysl. Tahle hlídá to, co je na novém uspořádání snadné pokazit:
+ * PROČ TENHLE SKRIPT VZNIKL: nahradil `check-css`, který porovnával 338 CSS
+ * pravidel s původní jednosouborovou aplikací. Vizuální redesign ten vztah
+ * vědomě zrušil (viz VZHLED.md), takže tamta kontrola ztratila smysl a v srpnu
+ * 2026 zmizela i s předlohou. Tahle hlídá to, co je na dnešním uspořádání
+ * snadné pokazit:
  *
  *   1. barva zapsaná natvrdo mimo `tokens.css` – rozejde se s paletou
  *      a hlavně se nepřebarví v tmavém režimu,

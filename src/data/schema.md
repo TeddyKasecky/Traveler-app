@@ -286,8 +286,7 @@ rozbilo. Varování je upozornění, commit nezastaví.
 Stejná pravidla používá i formulář na přidání místa — jsou v [`validate.js`](validate.js),
 schválně na jednom místě, aby se nemohla rozejít.
 
-Že `places.json` pořád přesně odpovídá původní aplikaci, se dá kdykoli doložit:
-
-```
-node scripts/extract-places.mjs --check
-```
+Data v `places.json` pocházejí z původní jednosouborové aplikace a přenesla se z ní
+beze změny. Skript, který ten přenos dělal a uměl ho i doložit, zmizel v srpnu 2026
+spolu s předlohou — dnes hlídá `places.json` `npm run validate` proti schématu výš
+a git proti tomu, co v něm bylo včera.

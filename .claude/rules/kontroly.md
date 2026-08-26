@@ -1,17 +1,14 @@
 ---
 paths:
   - scripts/**
-  - PARITA.md
-  - reference/**
 ---
 
 # Ověřovací skripty
 
-_Zjištěno auditem: 13 souborů v `scripts/`, `package.json:7-24`, `PARITA.md`,
-`.githooks/pre-commit`._
+_Zjištěno auditem: `scripts/`, `package.json`, `.githooks/pre-commit`._
 
 **Není tu žádný test framework** — chybí Jest, Vitest, `tests/` i `npm test`. Nezaváděj je
-bez vyžádání. Místo nich je 27 samostatných spustitelných `.mjs` skriptů; každý vypíše
+bez vyžádání. Místo nich je 36 samostatných spustitelných `.mjs` skriptů; každý vypíše
 `X / Y` a skončí kódem 1 při chybě.
 
 ## Co který skript ověřuje
@@ -22,18 +19,15 @@ bez vyžádání. Místo nich je 27 samostatných spustitelných `.mjs` skriptů
 | `check-uloziste.mjs` | `npm run check-uloziste` | stěhování dat mezi úložišti (fotky, CSV, geometrie tras, archiv cest, debug záznamy), chování při plné paměti, odložený zápis poznámky, 36 kontrol |
 | `check-worker.mjs` | `npm run check-worker` | že Cloudflare Worker nepustí dál, co nemá — název souboru, obsah, kolize, heslo, 48 bodů |
 | `check-debug.mjs` | `npm run check-debug` | debug poznámkovač: identita záznamu, podpis zařízení, přejmenování autora, otisk a změna od exportu, `.md` export, záloha, čtení rejstříku zpátky, porovnání s rejstříkem, složka `debug/`, úklid a zavírání, čerstvost proti mainu, čistota zdrojáků, 196 bodů |
-| `extract-places.mjs` | `npm run check-data` | že `places.json` je 1:1 s originálem |
-| `check-css-parity.mjs` | `npm run check-css:original` | 338 CSS pravidel proti originálu — **odstaveno redesignem** |
 | `check-tokeny.mjs` | `npm run check-tokeny` | barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů |
 | `check-dny.mjs` | `npm run check-dny` | dny, výpravy, složky, záloha, body trasy, přesun tažením a úpravy cesty, 203 bodů |
 | `check-projekce.mjs` | `npm run check-projekce` | throttle a projekce polohy na trasu (živé sledování, srpen 2026), 13 bodů |
-| `check-filters-parity.mjs` | `npm run check-filters` | 134 kombinací filtrů |
-| `check-handlers.mjs` | `npm run check-handlers` | napojení tlačítek za běhu, 61/61 |
+| `check-filtry.mjs` | `npm run check-filters` | 134 kombinací filtrů proti druhé implementaci |
 | `check-form.mjs` | `npm run check-form` | že formulář vyrábí platná místa, 18/18 |
 | `check-ikony.mjs` | `npm run check-ikony` | jedna věc = jedno jméno = jedna ikona, 8 bodů |
 | `check-images.mjs` | `npm run check-images` | existenci odkazů na fotky — **chodí na síť** |
 | `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 379 / 339 kontrol |
-| `parity.mjs` | `npm run parity` | kontrolní seznam z `PARITA.md`, 26 bodů |
+| `check-regrese.mjs` | `npm run check-regrese` | PWA, zálohy, fotky, poloha, service worker — 26 bodů v prohlížeči |
 | `perf.mjs` | `npm run perf` | rychlost startu při zpomaleném procesoru |
 | `perf-mapa.mjs` | ručně | plynulost posunu a přiblížení **stažené** malované mapy |
 | `screenshots.mjs` + `compare-screens.mjs` | ručně | 8 obrazovek proti základně, i v tmavém režimu |
@@ -64,12 +58,12 @@ co se vyřešilo) a `vite.config.js` ho tímtéž kódem přibaluje do `dist/deb
 proto **dohoda dvou souborů** (`src/core/debugExport.js` a tenhle) — mění se v obou naráz
 a hlídá to `check-debug`.
 
-`nove-styly.mjs` není kontrola, ale sdílený seznam CSS prvků, které v originále protějšek
-nemají. Používá ho `check-css-parity.mjs` i `parity.mjs` — když měl každý svůj, přidání
-nového prvku tiše shodilo kontrolu bezpečných okrajů. **Nový CSS soubor mimo originál
-přidej tam**, ne do jednotlivých skriptů.
+`nove-styly.mjs` není kontrola, ale seznam CSS souborů, které vznikly až redesignem.
+Používá ho `check-regrese.mjs`, aby jejich `env(safe-area-inset-*)` nepočítal do sumy,
+která má sedět na pevné číslo. **Nový CSS soubor přidej tam**, ne do skriptu — jinak
+tiše shodí kontrolu bezpečných okrajů.
 
-`smoke.mjs`, `check-handlers.mjs`, `screenshots.mjs` a `perf.mjs` řídí **skutečný prohlížeč**:
+`smoke.mjs`, `check-regrese.mjs`, `screenshots.mjs` a `perf.mjs` řídí **skutečný prohlížeč**:
 `playwright-core` + Edge z `C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe`.
 Chromium se schválně nestahuje. Skripty proti `dist/` potřebují napřed `npm run build`,
 `smoke:single` potřebuje `npm run build:single`.
@@ -97,29 +91,32 @@ Chromium se schválně nestahuje. Skripty proti `dist/` potřebují napřed `npm
 | `debug/**` | `npm run debug-uklid -- --kontrola` (hook to udělá sám) |
 | `src/core/storage.js`, `store.js`, `fotoDb.js`, `trasyDb.js`, `trasy.js`, `cesty.js`, `debugDb.js` | `npm run check-uloziste` |
 | `src/core/debug*.js`, `chyby.js`, `src/views/debug/**` | `npm run check-debug` |
-| `src/map/**`, nový CSS soubor | `npm run smoke`, `npm run check-tokeny`, `npm run parity` |
+| `src/map/**`, nový CSS soubor | `npm run smoke`, `npm run check-tokeny`, `npm run check-regrese` |
 | `src/map/vektory.js`, `vbm.js` | k tomu `node scripts/perf-mapa.mjs` — bez měření je „zrychlili jsme to" jen dojem |
 | CSS, `tokens.css` | `npm run check-tokeny` |
 | `store.plan`, dny v plánu, výpravy, záloha | `npm run check-dny` |
 | filtry, hledání | `npm run check-filters` |
-| obsluha tlačítek, nová obrazovka | `npm run check-handlers`, `npm run smoke` |
+| obsluha tlačítek, nová obrazovka | `npm run smoke` |
 | formulář „Přidat místo" | `npm run check-form` |
 | build, service worker | `npm run build && npm run smoke`, `build:single && smoke:single` |
 
 Před `git push` (= nasazení do produkce) projeď aspoň `npm run validate` a `npm run smoke`.
 
-## Parita
+## Porovnání snímků
 
-`reference/index-original.html` je bajtově shodná kopie původní aplikace a **needituje se**.
-Je to vstup pro `check-data`, `check-handlers` a `check-css:original`.
+Přestavba do modulů skončila a od té doby se appka od původní aplikace **záměrně
+rozchází**. V srpnu 2026 proto zmizel `reference/index-original.html` i všechno, co
+sloužilo jen jemu: `check-data`, `check-handlers` a `check-css:original`. `parity.mjs`
+se přejmenoval na `check-regrese.mjs` — jeho 23 z 26 bodů na originálu nikdy nezáviselo
+a tři zbylé mají očekávanou hodnotu zapsanou natvrdo. `check-filters` přežil beze změny:
+původní filtrovací funkci má opsanou přímo v sobě, takže je to dnes **druhá nezávislá
+implementace filtrů**, ne důkaz shody s originálem.
 
-Přestavba je hotová, takže parita už není zákon — je to **regresní síť**. Když vědomě měníš
-vzhled nebo chování, je v pořádku, že se číslo v `PARITA.md` změní: přepiš ho a napiš do
-commitu proč. Neměň skript tak, aby kontrola prošla.
+`PARITA.md` zůstává jako **uzavřený záznam** té přestavby. Cituje se z něj dodnes —
+třeba §8, kde je měřením zamítnuté dělení dat míst. Není to zadání, je to historie:
+nepřepisuj ho a neřiď se jím jako pravidlem.
 
-**Vzhled se od originálu rozešel** vizuálním redesignem (srpen 2026, `PARITA.md` §10 Q14,
-výklad ve `VZHLED.md`). `check-css` proto vypadlo z povinné sady a nahradilo ho
-`check-tokeny`; porovnání snímků se dělá proti **poslední základně**, ne proti originálu:
+Porovnání snímků se dělá proti **poslední odsouhlasené základně**:
 
 ```bash
 node scripts/screenshots.mjs --baseline   # před zásahem
@@ -128,5 +125,5 @@ node scripts/compare-screens.mjs
 ```
 
 Měření snímků kolísá, pokud se nepočká na síť a fonty; `screenshots.mjs` proto blokuje
-dlaždice mapy a fotky z Wikimedia v obou verzích a čeká na `document.fonts.ready`.
-Fonty a Leaflet z CDN se blokovat **nesmějí** — stará verze je odtamtud bere.
+dlaždice mapy a fotky z Wikimedia a čeká na `document.fonts.ready`. Bez toho hlásí
+`compare-screens.mjs` rozdíly, které způsobil jen pomalejší běh.

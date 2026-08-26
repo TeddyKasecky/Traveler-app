@@ -1,11 +1,18 @@
 /**
- * Porovná nové filtrování s původním, kombinaci po kombinaci.
+ * Filtrování kombinaci po kombinaci – 134 jich je.
  *
- *   node scripts/check-filters-parity.mjs
+ *   npm run check-filters
  *
- * Původní visible() je tu opsaná doslova z reference/index-original.html.
- * Skript ji pustí vedle naší filters.js na stejných datech a stejném stavu
- * a porovná nejen počty, ale i konkrétní seznamy id.
+ * JAK TO FUNGUJE: `puvodniVisible()` níž je doslovný opis filtrovací funkce
+ * z původní jednosouborové aplikace. Skript ji pustí vedle naší `filters.js`
+ * na stejných datech a stejném stavu a porovná nejen počty, ale i konkrétní
+ * seznamy id.
+ *
+ * PROČ TO PŘEŽILO ZRUŠENÍ PARITY (srpen 2026): opsaná funkce je součást
+ * tohohle souboru, takže skript nikdy nepotřeboval `reference/index-original.html`
+ * a smazání originálu se ho netklo. Není to už důkaz shody s originálem, ale
+ * druhá nezávislá implementace filtrů – a proti tiché chybě v `filters.js`
+ * je to pořád ta nejlepší síť, kterou tu máme.
  *
  * Jediný očekávaný rozdíl je hledání bez diakritiky – to je odsouhlasená změna
  * a testuje se zvlášť na konci.
@@ -55,7 +62,14 @@ function visibleSkladajici(PLACES, F, store) {
   const q = slozit(F.q)
   return visiblePuvodni(PLACES, { ...F, q: '' }, store).filter((p) => {
     if (!q) return true
-    return slozit(`${p.n} ${p.z} ${p.r} ${p.t} ${p.p} ${p.f || ''}`).includes(q)
+    // `sh` (krátký popis) je tu ZÁMĚRNĚ a musí sedět s `postavIndex()`
+    // v `src/core/search.js`. Původní aplikace ho neprohledávala; přidal ho
+    // nápad N7 v `NAPADY.md` jako odsouhlasenou změnu, jenže tenhle řádek se
+    // tehdy nedopsal. Kontrola pak hlásila sedm rozdílů u dotazů jako
+    // „vodopád“ nebo „ferrata“ – a protože byla červená pořád, přestala
+    // cokoli hlídat. Když se změní seznam polí v `postavIndex()`, patří
+    // změna i sem.
+    return slozit(`${p.n} ${p.z} ${p.r} ${p.t} ${p.p} ${p.f || ''} ${p.sh || ''}`).includes(q)
   })
 }
 

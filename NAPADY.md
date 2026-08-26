@@ -3,7 +3,7 @@
 Odložené nálezy a nápady. **Nic z toho neimplementuju, dokud to výslovně
 neodsouhlasíš** — každý bod mění chování nebo data.
 
-N1–N10 vznikly během přestavby, kdy byla cílem parita. Ta je hotová (`PARITA.md`),
+N1–N10 vznikly během přestavby, kdy byla cílem parita. Ta skončila (`PARITA.md`),
 takže se dnes smějí implementovat; pořád ale až po dohodě. N11 a dál jsou nápady
 k věcem, které v původní aplikaci vůbec nebyly.
 
@@ -14,7 +14,7 @@ k věcem, které v původní aplikaci vůbec nebyly.
 Nechávám 1:1, ale stojí za rozhodnutí.
 
 **N1 — Badge u filtrů nepočítá „Musíme!" — ~~HOTOVO~~**
-`index-original.html:838` sčítal `reg, zeme, typ, coll, free, kids, dogs, wow, stav`
+Původní aplikace sčítala `reg, zeme, typ, coll, free, kids, dogs, wow, stav`
 bez `fire`. `pocetAktivnich()` v `src/core/filters.js` teď `'fire'` počítá spolu
 s ostatními přepínači — zapnutí jen „Musíme!" ukáže odznak na tlačítku Filtry.
 
@@ -322,9 +322,10 @@ uložená předpověď by lhala. To pravidlo platí dál.
 
 **N8 — Kreslená scéna s dodávkou (`vanScene`)**
 Ve fázi 3 zahozena — oživit ji nešlo, hero na Domů by vypadal jinak, a to je zakázané.
-Kód zůstává v `reference/index-original.html:1378-1494` včetně svých šesti animací
-(`vanbob`, `roadmove`, `clouddrift`, `flick`, `smokeup`, `twk`). Kdyby se někdy hodila
-jako alternativa k `VAN_IMG`, dá se vytáhnout odtamtud.
+Kód byl v původní aplikaci na řádcích 1378–1494 včetně svých šesti animací
+(`vanbob`, `roadmove`, `clouddrift`, `flick`, `smokeup`, `twk`). Předloha se v srpnu
+2026 smazala, ale zůstává v historii repozitáře — `git show 75d976c:reference/index-original.html`
+ji vypíše, kdyby se scéna někdy hodila jako alternativa k `VAN_IMG`.
 
 **N9 — Nálady na Domů podle četnosti použití**
 `prefs.moodUse` počítá, kolikrát jsi kterou náladu použila. Nikdy se to nečte.
@@ -353,3 +354,34 @@ kliknutí (proměnná `zobrazeno`, resetuje se na 250 při každé změně sady
 filtrovaných míst). U celého seznamu (580 míst bez filtru) to znamená dvě
 kliknutí navíc, ne skok na plný výpis. Skutečná virtualizace/lazy render
 zůstává neřešená — pořád stojí za měření, kdyby strop rostl výš.
+
+---
+
+## Nástroje a workflow
+
+Nápady k tomu, jak se na projektu pracuje, ne k tomu, co appka umí.
+
+**N17 — Worker nehlídá, jestli `id` ve složce `debug/` už je**
+Když se táž poznámka odešle dvakrát, vzniknou dva soubory s týmž záznamem —
+stalo se to hned první den provozu (`tadeas-f32-008` v `2026-08-26-1835`
+i `-1836`). Appce to nevadí (rejstřík si vybere nejnovější), a právě proto se to
+tiše hromadí. `debug-cerstvost.mjs` duplicitu **odhalí**, ale nezabrání jí,
+a commity z Workeru navíc obcházejí pre-commit hook, takže se na ně
+`debug-uklid --kontrola` nikdy nespustí.
+
+Dvě cesty, dají se i zkombinovat:
+- **Kontrola ve Workeru** — před zápisem se zeptat GitHubu, jestli některý soubor
+  ve složce ten záznam nenese, a odpovědět „už tam je". Přesnější: duplicita
+  vůbec nevznikne. Znamená to ale číst obsah složky při každém odeslání.
+- **GitHub Action** — po commitu do `debug/` pustit `debug-uklid` a výsledek
+  commitnout. Pokryje i to, na co Worker nedosáhne (třeba ručně uložený export),
+  ale uklízí až po sobě, ne před.
+
+**N18 — nepotvrzeno: ukládá se „odesláno" spolehlivě?**
+Tatáž poznámka odešla dvakrát během jedné minuty, což je pozorování za N17.
+Vysvětlení může být úplně obyčejné — nebylo vidět potvrzení, tak to člověk zkusil
+znovu. Kdyby se ale `otiskExportu` po úspěšném odeslání neuložil (zavřená appka,
+plná paměť, chyba v `ulozDebug`), hlásila by appka záznam pořád jako neodeslaný
+a člověk by ho posílal donekonečna. **Není to nález, je to podezření.** Kdyby se
+to opakovalo, začni u toho, jestli se po odeslání zapíše `otiskExportu`
+a `exportovanoDo` do IndexedDB, a jestli se výsledek toho zápisu nezahazuje.

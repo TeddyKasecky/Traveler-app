@@ -1,10 +1,19 @@
 # Kontrolní seznam parity
 
-Doklad, že přestavěná aplikace dělá totéž co původní `index.html`. Každý bod má
-u sebe důkaz, ne tvrzení. Všechno jde spustit znovu příkazy uvedenými u kapitol.
+> **UZAVŘENÝ ZÁZNAM, NE ZADÁNÍ.** Tenhle soubor doložil v roce 2026, že přestavba
+> do modulů nezměnila chování původní jednosouborové aplikace. Tím svou práci
+> odvedl. Od srpna 2026 se appka od originálu **záměrně rozchází**, předloha
+> `reference/index-original.html` je smazaná (zůstává v historii repozitáře)
+> a s ní i skripty, které porovnávaly jen s ní — `check-data`, `check-handlers`
+> a `check-css:original`. `parity.mjs` se přejmenoval na `check-regrese.mjs`.
+>
+> **Nepřepisuj ho a neřiď se jím jako pravidlem.** Čte se z něj dodnes, ale kvůli
+> něčemu jinému: jsou v něm **měření**, která zavírají už rozhodnuté otázky —
+> třeba §8, kde se dělení dat míst zamítlo číslem, ne dojmem. Příkazy uvedené
+> u kapitol proto nemusí existovat.
 
-Referenční kopie originálu je v `reference/index-original.html` a je bajt po bajtu
-shodná s tím, co běží dnes.
+Doklad, že přestavěná aplikace dělá totéž co původní `index.html`. Každý bod má
+u sebe důkaz, ne tvrzení.
 
 ---
 

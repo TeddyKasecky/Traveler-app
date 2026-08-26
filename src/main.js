@@ -104,9 +104,9 @@ for (const b of document.querySelectorAll('#tabs button')) {
   b.onclick = () => aktivujZalozku(b.dataset.tab)
 }
 
-// Původně index-original.html:1240. Při rozdělení do modulů se tenhle řádek
-// ztratil a tlačítko „Moje poloha“ přestalo cokoli dělat – odhalil to až
-// scripts/check-handlers.mjs, který napojení porovnává s originálem za běhu.
+// NESMAZAT. Při rozdělení původní aplikace do modulů se tenhle jediný řádek
+// ztratil a tlačítko „Moje poloha“ přestalo cokoli dělat – bez hlášky, bez
+// chyby v konzoli. Napojení obsluhy je přesně ten druh věci, který zmizí tiše.
 document.getElementById('fabLoc').onclick = zjistiPolohu
 
 // Přepínač podkladu mapy. Výchozí je online mapa z OSM, malovaná je pro cesty

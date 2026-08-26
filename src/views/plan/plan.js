@@ -1712,7 +1712,7 @@ export const jeOtevrenaNavigace = () => document.getElementById('navSheet').clas
  * Naváže tlačítka v nabídce navigace.
  *
  * Nabídka je staticky v `index.html`, takže se tlačítka nevyrábějí znovu –
- * `#planNav` musí existovat od startu, hlídá to `check-handlers`.
+ * `#planNav` musí existovat od startu, jinak se obsluha nemá na co navěsit.
  */
 function napojNavigaci() {
   const nav = document.getElementById('planNav')

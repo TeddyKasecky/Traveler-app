@@ -7,7 +7,7 @@
  * `vandrbuch:v1`, kde jsou všechna uživatelská data a nikde jinde neexistují.
  * Chyba v dělení na dny se nepozná na obrazovce – pozná se až tím, že někomu
  * po obnově ze zálohy chybí zastávka. Tohle je čistý Node bez prohlížeče,
- * stejně jako `check-filters-parity.mjs`, takže běží za zlomek vteřiny
+ * stejně jako `check-filtry.mjs`, takže běží za zlomek vteřiny
  * a dá se pouštět po každé změně.
  *
  * Hlídá čtyři věci, na kterých návrh stojí:

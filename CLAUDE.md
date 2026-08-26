@@ -12,9 +12,11 @@ v repozitáři jako JSON, uživatelská data jen v localStorage prohlížeče.
 > dostane 404, tedy přesně to co dřív. Únikový východ je smazat `main`
 > ze `wrangler.jsonc`. Nic dalšího na server nepatří.
 
-Vzniklo přestavbou jednoho 718 kB souboru `index.html` do modulů. Přestavba je **hotová**
-a doložená v [PARITA.md](PARITA.md); parita už není zákon, ale kontrolní skripty zůstávají
-jako regresní síť.
+Vzniklo přestavbou jednoho 718 kB souboru `index.html` do modulů. Přestavba je **hotová** a doložená
+v [PARITA.md](PARITA.md). Ten soubor je dnes **uzavřený záznam**, ne zadání: od srpna
+2026 se appka od původní aplikace záměrně rozchází, předloha `reference/index-original.html`
+je smazaná a s ní i vše, co porovnávalo jen s ní. Kontrolní skripty zůstávají jako
+regresní síť samy o sobě.
 
 **Uživatelské texty, dokumentace, komentáře i identifikátory v kódu jsou česky.** Anglicky
 zůstávají jen datové zkratky (`p`, `k`, `S`, `F`), názvy z DOM a API Leafletu. Nepřejmenovávej
@@ -23,7 +25,7 @@ zůstávají jen datové zkratky (`p`, `k`, `S`, `F`), názvy z DOM a API Leafle
 **Vzhled se řídí grafickým manuálem „Golden Moss"** — paleta, Playfair Display, měkké
 karty, světlý i tmavý režim. Výklad je ve [VZHLED.md](VZHLED.md), podklady ve složce
 `grafika/` (není v repozitáři). Od srpna 2026 se vzhled od původní aplikace **rozchází
-záměrně**; `check-css` je proto odstavené a nahradilo ho `check-tokeny`.
+záměrně**; `check-css` proto zmizelo a nahradilo ho `check-tokeny`.
 
 ## Kritická pravidla
 
@@ -40,9 +42,6 @@ záměrně**; `check-css` je proto odstavené a nahradilo ho `check-tokeny`.
 - **Nikdy nezahazuj výsledek ukládání.** `save()`, `savePrefs()`, `ulozFotku()` vracejí
   `false`, když se nepovedlo zapsat, a `store.js` z toho posílá `ulozeniSelhalo`. Právě
   zahozený výsledek dřív způsoboval, že poznámky při plné paměti mizely beze slova.
-- **`reference/index-original.html` se needituje.** Je to bajtově shodná kopie původní aplikace
-  a měřítko pro `npm run check-data` a `check-handlers`.
-  V `.gitattributes` má `-text`, aby ji Git nepřepsal na CRLF.
 - **`src/pwa/sw.js` je šablona, ne hotový soubor.** Seznam souborů k uložení do cache a číslo
   verze do ní doplní až `vite.config.js` při buildu (`__PRECACHE__`, `__VERSION__`).
   `dist/sw.js` je generovaný — nikdy ho needituj.
@@ -83,12 +82,10 @@ npm run debug-zavri      # uzavře záznam: -- <id> <hotovo|zahozeno> "důvod"
 
 npm run smoke            # proklikání v prohlížeči, 379 kontrol
 npm run smoke:single     # totéž pro single-file variantu, 339 kontrol
-npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
-npm run check-data       # data 1:1 s původní aplikací
+npm run check-regrese    # PWA, zálohy, fotky, poloha, service worker, 26 bodů
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
 npm run check-dny        # dny, výpravy, body trasy, tažení a úpravy cesty, 203 bodů
 npm run check-filters    # 134 kombinací filtrů
-npm run check-handlers   # napojení tlačítek, 61/61
 npm run check-form       # že formulář vyrábí platná místa, 18/18
 npm run check-ikony      # jedna věc = jedno jméno = jedna ikona, 8 bodů
 npm run check-images     # existence odkazů na fotky (síť)
@@ -134,7 +131,6 @@ Runtime závislosti jsou **dvě** a obě vědomě:
 | `src/styles/` | CSS po dílech, pořadí určuje `index.css`; barvy a rozměry jen z `tokens.css` |
 | `src/pwa/` | `sw.js` (šablona service workeru) a `register.js` |
 | `scripts/` | 24 ověřovacích a přípravných skriptů, viz [.claude/rules/kontroly.md](.claude/rules/kontroly.md) |
-| `reference/` | bajtově shodná kopie původní aplikace — jen ke čtení |
 
 **Moduly se nevolají napřímo — oznamují si změny událostmi** přes `on()`/`emit()` ze
 `src/core/store.js`. Mapa nesmí volat views a naopak; bez toho by přidání obrazovky znamenalo
@@ -306,7 +302,7 @@ kontroly každého kroku.
   c) konflikty řeš podle nejlepšího úsudku; u `src/data/places.json` slučuj po
      jednotlivých záznamech (podle ID), nikdy jako čistý textový diff velkého
      JSON souboru; každé netriviální rozhodnutí u konfliktu popiš v commit zprávě
-  d) spusť existující kontrolní skripty (`npm run smoke`, `check-filters`, `parity`,
+  d) spusť existující kontrolní skripty (`npm run smoke`, `check-filters`, `check-regrese`,
      `check-images`, `perf` – podle toho, co v repu existuje). Pokud cokoliv selže,
      NEPOKRAČUJ do `main`, oprav to nebo nahlas problém.
   e) vytvoř bezpečnostní tag na aktuálním `main` před mergem, formát:
@@ -343,7 +339,7 @@ je `main` jen beta, ne ostrá appka), `traveler-app` sleduje samostatnou větev
      kdyby ho mezitím posunul někdo jiný)
   c) `git merge main` — konflikty řeš stejně opatrně jako při mergi do `main`
      (žádné „vzít moje/jeho" naslepo u `places.json`)
-  d) spusť kontrolní skripty (`npm run smoke`, `check-filters`, `parity`,
+  d) spusť kontrolní skripty (`npm run smoke`, `check-filters`, `check-regrese`,
      `check-images`, `perf` – podle toho, co v repu existuje). Pokud cokoliv
      selže, NEPOKRAČUJ, oprav to nebo nahlas problém.
   e) vytvoř bezpečnostní tag na aktuálním `production` před mergem, formát:
@@ -422,7 +418,7 @@ protože se z košíku do nich tahá.
 - **Dialogy místo `prompt()`/`confirm()`/`alert()`**: `components/dialog.js`
   (`potvrd`, `zadej`, `vyberZeSeznamu`, `vyberVice`, `vyberDatum`,
   `vyberPocetDni`, `oznam`) – jedna karta nad `#backdrop`, promise, zrušení
-  vrací `null`/`false`. Smoke/parity na ně sahají přes `#dialog.show`, ne
+  vrací `null`/`false`. Smoke i check-regrese na ně sahají přes `#dialog.show`, ne
   `page.once('dialog')`. **Datum se vybírá z kalendáře, nikdy nepíše** –
   z mřížky se neplatná hodnota vzít nedá.
 - **Nové klíče ve `store`**: `cesta` (probíhající, čas se počítá ze začátku
@@ -501,7 +497,7 @@ protože se z košíku do nich tahá.
 
 - **`esc()` v `src/core/html.js` ošetřuje jen `&` a `<`**, ne `>` ani uvozovky, přestože se
   používá i uvnitř atributů. Je to doslovný přepis původní funkce. „Oprava" na plné ošetření
-  by změnila výstup na obrazovce a shodila paritu.
+  by změnila výstup na obrazovce.
 - **Kolekce `psi` nemá dlaždici** v Objevuj — 7 míst ji v `col` má, ale `COLL` v
   `collections.js` má jen 11 definic (N5).
 - **Osm `id` má před číslicemi dvě pomlčky** (`…-to-je--057`). Slug se uřízl na pomlčce,

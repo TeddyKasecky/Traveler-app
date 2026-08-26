@@ -4,20 +4,16 @@
  *   node scripts/screenshots.mjs --baseline    → .screenshots/baseline/
  *   node scripts/screenshots.mjs               → .screenshots/aktualni/
  *   node scripts/screenshots.mjs --tmavy       → totéž v tmavém režimu
- *   node scripts/screenshots.mjs --vs-original → původní režim stará vs. nová
  *
- * PROČ TŘI REŽIMY: do léta 2026 tenhle skript dokládal, že přestavba do modulů
- * nezměnila ani pixel proti `reference/index-original.html`. Vizuální redesign
- * (viz VZHLED.md) tenhle vztah vědomě zrušil – porovnávat se starou aplikací už
- * neříká nic, protože se má lišit všechno.
+ * POROVNÁVÁ SE S POSLEDNÍM ODSOUHLASENÝM STAVEM, ne s ničím starším: před
+ * etapou se nafotí `--baseline`, po etapě běžný režim, a `compare-screens.mjs`
+ * ukáže, co se změnilo. U přepisu 44 stínů a 68 obrysů je to jediná realistická
+ * obrana proti „na jedné obrazovce jsem zapomněl :active“.
  *
- * Užitečné je porovnání s **posledním odsouhlaseným stavem**: před etapou se
- * nafotí `--baseline`, po etapě běžný režim, a `compare-screens.mjs` ukáže,
- * co se změnilo. U přepisu 44 stínů a 68 obrysů je to jediná realistická obrana
- * proti „na jedné obrazovce jsem zapomněl :active“.
- *
- * Režim `--vs-original` zůstává pro historické spuštění. Fotí do
- * `<obrazovka>-stara.png` a `-nova.png` jako dřív.
+ * Do srpna 2026 tu byl ještě režim `--vs-original`, který fotil původní
+ * jednosouborovou aplikaci vedle naší. Zmizel s ní: vizuální redesign
+ * (viz VZHLED.md) ten vztah vědomě zrušil, takže porovnání už neříkalo nic –
+ * lišit se má všechno.
  *
  * Všechny verze dostanou stejný stav: uvítání odklikané, žádné poznámky, žádná
  * poloha. Bez toho by se lišily jen proto, že jedna ukazuje uvítání.
@@ -34,13 +30,10 @@ const SNIMKY = path.join(ROOT, '.screenshots')
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
 
 const jeBaseline = process.argv.includes('--baseline')
-const jeOriginal = process.argv.includes('--vs-original')
 const jeTmavy = process.argv.includes('--tmavy')
 
 /** Kam se fotí. Režim je v názvu složky, aby si světlé a tmavé kolo nepřepisovaly snímky. */
-const OUT = jeOriginal
-  ? SNIMKY
-  : path.join(SNIMKY, (jeBaseline ? 'baseline' : 'aktualni') + (jeTmavy ? '-tmavy' : ''))
+const OUT = path.join(SNIMKY, (jeBaseline ? 'baseline' : 'aktualni') + (jeTmavy ? '-tmavy' : ''))
 
 const TYPY = {
   '.html': 'text/html; charset=utf-8',
@@ -200,22 +193,13 @@ async function nafot(adresa, pripona) {
 }
 
 const srvNova = await server(path.join(ROOT, 'dist'), 4192)
-const srvStara = jeOriginal ? await server(path.join(ROOT, 'reference'), 4191) : null
 
-if (jeOriginal) {
-  console.log('Fotím starou verzi…')
-  await nafot('http://localhost:4191/index-original.html', 'stara')
-  console.log('Fotím novou verzi…')
-  await nafot('http://localhost:4192/', 'nova')
-} else {
-  const kam = jeBaseline ? 'základnu' : 'aktuální stav'
-  console.log(`Fotím ${kam}${jeTmavy ? ' (tmavý režim)' : ''}…`)
-  await nafot('http://localhost:4192/', jeTmavy ? 'tmavy' : 'svetly')
-}
+const kam = jeBaseline ? 'základnu' : 'aktuální stav'
+console.log(`Fotím ${kam}${jeTmavy ? ' (tmavý režim)' : ''}…`)
+await nafot('http://localhost:4192/', jeTmavy ? 'tmavy' : 'svetly')
 
 await b.close()
 srvNova.close()
-srvStara?.close()
 
 console.log(`\nHotovo: ${path.relative(ROOT, OUT)}`)
 for (const f of fs.readdirSync(OUT).sort()) {

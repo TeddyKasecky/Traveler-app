@@ -6,9 +6,10 @@
  * filtrů, počet nalezených se řazením a pak řádky míst.
  *
  * PROČ JE OVLÁDÁNÍ V `index.html` A NE TADY: `#q`, `#fReg`, `#fZeme` a `#fTyp`
- * mají obsluhu navěšenou při startu (`filterPanel.js`) a hlídá ji
- * `check-handlers`. Kdyby je `renderList()` tvořil znovu při každém překreslení,
- * obsluha by se ztratila. Vykresluje se proto jen obsah, ne lišta.
+ * mají obsluhu navěšenou při startu (`filterPanel.js`). Kdyby je `renderList()`
+ * tvořil znovu při každém překreslení, obsluha by se ztratila – prvek by na
+ * obrazovce zůstal a jen by přestal reagovat. Vykresluje se proto jen obsah,
+ * ne lišta.
  */
 
 import { S, F, store, save } from '../../core/store.js'

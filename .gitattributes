@@ -1,9 +1,6 @@
-# Všude LF, i na Windows. Bez tohohle by Git při checkoutu přepsal konce řádků
-# na CRLF a rozbil bajtovou shodu s originálem (a dělal šum v diffech).
+# Všude LF, i na Windows. Bez tohohle by Git při checkoutu přepisoval konce
+# řádků na CRLF a dělal šum v diffech.
 * text=auto eol=lf
-
-# Referenční kopie původní aplikace se nesmí měnit vůbec – je to důkaz parity.
-reference/index-original.html -text
 
 # Data míst: odsazená dvěma mezerami, aby diff ukázal jedno změněné pole,
 # ne celý objekt. Do buildu se stejně dostanou bez mezer.

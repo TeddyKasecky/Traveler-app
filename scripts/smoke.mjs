@@ -1879,7 +1879,8 @@ console.log('\n  vzhled:')
   // Ruční volba musí systém přebít a přežít znovunačtení – jinak by uživatel
   // ve tmavém telefonu nemohl vynutit světlý režim.
   // Panel se otevírá přes evaluate: klik přes hit-testing tu kolidoval
-  // s dlaždicí mapy. Že je tlačítko opravdu napojené, hlídá check-handlers.
+  // s dlaždicí mapy. Napojení tlačítka se tím pádem neověřuje tady, ale
+  // tím, že panel po kliknutí opravdu naskočí.
   await tmavaStranka.evaluate(() => document.getElementById('introGo').click())
   await tmavaStranka.evaluate(() => document.getElementById('fabFilter').click())
   await tmavaStranka.waitForTimeout(400)

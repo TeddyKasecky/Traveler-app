@@ -3,7 +3,6 @@ paths:
   - src/data/**
   - scripts/validate-data.mjs
   - scripts/slouc.mjs
-  - scripts/extract-places.mjs
   - import/**
 ---
 

@@ -13,9 +13,7 @@
  * vědomě připne ke konkrétnímu záznamu (`views/debug`).
  *
  * Věší se přes `window.onerror` a `window.onunhandledrejection`, ne přes
- * `addEventListener`: drží to konvenci repa (`prvek.onclick = …`) a hlavně se
- * to nepřiplete do odposlechu v `scripts/check-handlers.mjs`, který
- * `addEventListener` monkeypatchuje a počítá napojení.
+ * `addEventListener` — drží to konvenci repa (`prvek.onclick = …`).
  */
 
 /** Kolik chyb se drží. Víc už nikdo nepřečte a jen by to nafouklo export. */

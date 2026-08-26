@@ -299,7 +299,8 @@ Co se od sady liší a proč:
 
 ## Co hlídá `npm run check-tokeny`
 
-Nahradilo `check-css`, které porovnávalo CSS s původní aplikací.
+Nahradilo `check-css`, které porovnávalo CSS s původní aplikací; to zmizelo
+v srpnu 2026 spolu s předlohou.
 
 1. žádná barva natvrdo mimo `tokens.css` (jediná výjimka je generovaný `fonts.css`;
    `offlinemap.css` výjimku míval, ale barvy malované mapy se přestěhovaly

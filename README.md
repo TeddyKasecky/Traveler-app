@@ -199,13 +199,11 @@ Poprvé je potřeba jednou `npm install`.
 | `npm run smoke` | proklikání v prohlížeči, 56 kontrol |
 | `npm run check-uloziste` | že se poznámky neztratí, když dojde místo |
 | `npm run smoke:single` | totéž pro variantu z disku, 45 kontrol |
-| `npm run parity` | kontrolní seznam z [`PARITA.md`](PARITA.md), 26 bodů |
+| `npm run check-regrese` | PWA, zálohy, fotky, poloha, service worker — 26 bodů |
 | `npm run check-form` | že formulář vyrábí platná místa |
-| `npm run check-handlers` | že žádnému tlačítku nechybí napojení |
 | `npm run check-tokeny` | barvy natvrdo, párování světlý/tmavý, kontrast |
 | `npm run check-dny` | že se dělení plánu na dny neztratí |
 | `npm run check-filters` | 134 kombinací filtrů |
-| `npm run check-data` | že data sedí s původním souborem |
 | `npm run check-images` | že odkazy na fotky na Wikimedia Commons existují |
 | `npm run perf` | rychlost startu při zpomaleném procesoru |
 
@@ -233,7 +231,6 @@ src/
   icons/           sada 45 symbolů
   pwa/             service worker a jeho registrace
   assets/          ikona aplikace a ilustrace dodávky
-reference/         bajtově shodná kopie původní aplikace, na porovnávání
 scripts/           kontroly a pomocníci
 ```
 
@@ -290,8 +287,6 @@ stejný a na variantu se ptá přes `import.meta.env.SINGLE_FILE`.
   `vandrbuch:photos` se při prvním otevření sám vyprázdní.
 - **Nepřepisovat odkazy na fotky.** Kódování diakritiky v adresách z Wikimedia
   Commons je citlivé a chyba se pozná až tím, že se obrázek tiše nenačte.
-- **Nesahat na `reference/index-original.html`.** Je to měřítko, proti kterému se
-  porovnává parita.
 - `id` místa se **nikdy nemění**. Jsou na něj navázané poznámky, hodnocení i plán.
 
 Odložené nápady a známé drobnosti mimo rozsah přestavby jsou v

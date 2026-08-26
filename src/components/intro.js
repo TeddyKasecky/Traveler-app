@@ -5,11 +5,10 @@
  * na pozadí" z grafického manuálu.
  *
  * POZOR NA `#introGo`: musí být viditelné a klikatelné **hned na prvním
- * kroku**. Visí na něm `smoke.mjs`, `parity.mjs`, `check-uloziste.mjs`
- * i `check-handlers.mjs` — všechny čtyři na něj klikají hned po načtení
- * stránky. Kdyby bylo až na posledním kroku, vytuhly by naráz a vypadalo by
- * to jako zaseknutý prohlížeč. Je to zároveň lepší chování: kdo aplikaci zná,
- * nemusí proklikávat tři obrazovky.
+ * kroku**. Visí na něm `smoke.mjs`, `check-regrese.mjs` i `check-uloziste.mjs`
+ * — všechny na něj klikají hned po načtení stránky. Kdyby bylo až na posledním
+ * kroku, vytuhly by naráz a vypadalo by to jako zaseknutý prohlížeč. Je to
+ * zároveň lepší chování: kdo aplikaci zná, nemusí proklikávat tři obrazovky.
  *
  * V single-file variantě se ilustrace nebalí. Jsou vidět jednou za život
  * a každý bajt tam stojí o třetinu víc, protože se inlinuje jako data URI.

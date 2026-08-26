@@ -5,6 +5,11 @@ musíte udělat vy, co se rozhodlo a proč, a co je na řadě. Důkazy a čísla
 v [`PARITA.md`](PARITA.md), odložené nápady v [`NAPADY.md`](NAPADY.md),
 výklad vzhledu ve [`VZHLED.md`](VZHLED.md).
 
+> **Pozor na jména kontrol ve starších záznamech níž.** V srpnu 2026 zmizely
+> `check-handlers`, `check-data` a `check-css:original` spolu s předlohou, proti které
+> porovnávaly, a `parity` se přejmenoval na `check-regrese`. Záznamy o proběhlých
+> kontrolách se **nepřepisují** — byly pravdivé, když vznikly.
+
 ---
 
 ## 1. Co musíte udělat vy

@@ -1,15 +1,22 @@
 /**
- * Kontrolní seznam parity – bod po bodu, s důkazy.
+ * Regresní síť – bod po bodu, s důkazy.
  *
- *   node scripts/parity.mjs
+ *   npm run check-regrese
  *
- * Prochází věci, které si zadání vyžádalo ověřit: instalovatelnost PWA, přežití
- * uložených dat, tlačítko zpět, bezpečné okraje na iPhonu, CSV/zálohy/obnovu,
- * vlastní fotky, polohu, „Překvap mě“ a „Něco blízko“, export plánu.
+ * Prochází věci, u kterých se nejvíc vyplatí vědět, že pořád fungují:
+ * instalovatelnost PWA, přežití uložených dat, tlačítko zpět, bezpečné okraje
+ * na iPhonu, CSV/zálohy/obnovu, vlastní fotky, polohu, „Překvap mě“
+ * a „Něco blízko“, export plánu.
  *
- * Část kontrol je statická (porovnání s originálem), část běží v opravdovém
- * prohlížeči na localhostu – tam je zabezpečený kontext, takže funguje service
- * worker, poloha i schránka. Doplněk k smoke.mjs, ne jeho náhrada.
+ * DO SRPNA 2026 SE JMENOVAL `parity.mjs` a část kontrol porovnávala s
+ * `reference/index-original.html`. Ten je pryč: appka se od původní aplikace
+ * záměrně rozešla, takže porovnávat s ní přestalo dávat smysl. Tři body, které
+ * z ní braly očekávanou hodnotu, ji dnes mají zapsanou natvrdo – u každého je
+ * poznamenané, odkud se vzala. Zbylých 23 na originálu nikdy nezáviselo.
+ *
+ * Část kontrol je statická, část běží v opravdovém prohlížeči na localhostu –
+ * tam je zabezpečený kontext, takže funguje service worker, poloha i schránka.
+ * Doplněk k smoke.mjs, ne jeho náhrada.
  */
 
 import fs from 'node:fs'
@@ -52,7 +59,7 @@ const nadpis = (s) => {
  * Zaznamená jeden bod seznamu.
  * @param {string} popis
  * @param {boolean} ok
- * @param {string} dukaz  co konkrétně to dokazuje – tohle jde do PARITA.md
+ * @param {string} dukaz  co konkrétně to dokazuje – vypíše se vedle výsledku
  */
 const bod = (popis, ok, dukaz) => {
   body.push({ skupina, popis, ok, dukaz })
@@ -71,26 +78,21 @@ const zkus = async (popis, fn) => {
 
 /* ================= statické kontroly ================= */
 
-const original = fs.readFileSync(path.join(ROOT, 'reference', 'index-original.html'), 'utf8')
-
 nadpis('1. Bezpečné okraje na iPhonu (safe-area)')
 
 await zkus('viewport-fit=cover v hlavičce', async () => {
   const nase = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
-  const ok = nase.includes('viewport-fit=cover') && original.includes('viewport-fit=cover')
-  return { ok, dukaz: 'v originále i u nás' }
+  return { ok: nase.includes('viewport-fit=cover'), dukaz: 'v index.html' }
 })
 
-await zkus('stejný počet použití env(safe-area-inset-*)', async () => {
+await zkus('nezmizel žádný bezpečný okraj', async () => {
   // Komentáře se odstraňují: kontrola má měřit skutečná použití v CSS, ne to,
   // kolikrát se `env(safe-area-inset-…)` zmíní ve vysvětlivce nad pravidlem.
-  // Stejně to dělá check-css-parity.mjs, než začne CSS rozebírat.
   const bezKomentaru = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '')
   const spocti = (s) => (bezKomentaru(s).match(/env\(safe-area-inset-/g) || []).length
-  const puvodni = spocti(original.slice(original.indexOf('<style>'), original.indexOf('</style>')))
-  // Prvky, které v originále protějšek nemají. Svůj bezpečný okraj mají správně,
-  // ale do porovnání s originálem nepatří – jinak by jejich přidání vypadalo
-  // jako chyba. Seznam je sdílený s check-css-parity.mjs, viz nove-styly.mjs.
+  // Prvky, které vznikly až redesignem. Svůj bezpečný okraj mají správně, ale
+  // do téhle sumy nepatří – jinak by přidání dalšího vypadalo jako chyba.
+  // Seznam je ve `nove-styly.mjs`; NOVÝ CSS SOUBOR PATŘÍ TAM, ne sem.
   const jeNovy = (f) => NOVE_STYLY.some((n) => f.endsWith(n))
   const vsechny = fs
     .readdirSync(path.join(ROOT, 'src', 'styles'), { recursive: true })
@@ -100,26 +102,33 @@ await zkus('stejný počet použití env(safe-area-inset-*)', async () => {
   const nase = spocti(vsechny.filter((f) => !jeNovy(f)).map(cti).join(''))
   const novy = spocti(vsechny.filter(jeNovy).map(cti).join(''))
 
-  // Tři použití z originálu zmizela s prvky, které přestavba rozvržení zrušila:
+  // OSM JE ZMĚŘENÁ HODNOTA, ne odhad. Původní aplikace měla `env(safe-area-inset-*)`
+  // jedenáctkrát; tři použití zmizela s prvky, které přestavba rozvržení zrušila –
   // plovoucí knoflíky `#fabLoc` a `#fabFilter` (poloha je nově kolečko v mapě,
   // filtry tlačítko ve vyhledávacím řádku) a pilulka `#count` (počet nalezených
   // je v řádku výsledků na Seznamu). Jejich náhrady bezpečný okraj mají, jen
-  // v `mapa.css`, které patří mezi nové prvky. Zbylých osm musí sedět přesně –
-  // kdyby někdo zapomněl na výřez u dalšího prvku, kontrola pořád spadne.
-  const ZRUSENE = 3
-  const ceka = puvodni - ZRUSENE
+  // v `mapa.css`, které patří mezi nové prvky.
+  //
+  // Do srpna 2026 se těch 11 četlo přímo z `reference/index-original.html`.
+  // Ten je pryč, takže je tu výsledek zapsaný natvrdo. Smysl kontroly se tím
+  // nemění: kdyby někdo zapomněl na výřez u dalšího prvku, spadne pořád stejně.
+  const CEKA = 8
   return {
-    ok: nase === ceka,
-    dukaz: `originál ${puvodni}× − ${ZRUSENE} zrušené prvky = ${ceka} · naše ${nase}× (+ ${novy}× v nových prvcích)`,
+    ok: nase === CEKA,
+    dukaz: `čekáno ${CEKA}× · naše ${nase}× (+ ${novy}× v prvcích z redesignu)`,
   }
 })
 
 nadpis('2. Klíče v localStorage se nezměnily')
 
-await zkus('všechny tři klíče doslova jako v originále', async () => {
+await zkus('všechny tři klíče doslova', async () => {
+  // TŘI JMÉNA NATVRDO, protože přesně tahle tři musí zůstat: jsou v nich
+  // všechna uživatelská data a nikde jinde neexistují. Změna klíče je tichá
+  // ztráta dat, nikoli přejmenování. `vandrbuch:photos` už se jen vyprazdňuje
+  // do IndexedDB, ale číst ho appka musí umět napořád.
   const storage = fs.readFileSync(path.join(ROOT, 'src', 'core', 'storage.js'), 'utf8')
   const chybi = ['vandrbuch:v1', 'vandrbuch:photos', 'vandrbuch:prefs'].filter(
-    (k) => !storage.includes(`'${k}'`) || !original.includes(`'${k}'`)
+    (k) => !storage.includes(`'${k}'`)
   )
   return { ok: !chybi.length, dukaz: chybi.length ? `chybí ${chybi}` : 'vandrbuch:v1 · :photos · :prefs' }
 })
@@ -262,8 +271,8 @@ await zkus('zpět zavře detail místa a nechá záložku být', async () => {
   await zpetPage.locator('#listInner .radek').first().click()
   await zpetPage.waitForTimeout(1100)
   const otevreno = await zpetPage.locator('#sheet.show').count()
-  // Ťuknutí na kartu volá goTo(), a to přepíná na mapu – stejně jako originál
-  // (index-original.html:1015). Proto se porovnává záložka před a po, ne #list.
+  // Ťuknutí na kartu volá goTo(), a to přepíná na mapu – tak to bylo od začátku.
+  // Proto se porovnává záložka před a po, ne #list.
   const pred = await zalozka()
   await zpetPage.goBack()
   await zpetPage.waitForTimeout(600)
@@ -601,8 +610,8 @@ bod('žádná chyba v konzoli', chybyKonzole.length === 0, chybyKonzole.length ?
 const selhalo = body.filter((b) => !b.ok)
 console.log(`\n${body.length - selhalo.length}/${body.length} bodů prošlo`)
 
-fs.writeFileSync(path.join(ROOT, '.parita.json'), JSON.stringify(body, null, 2))
-console.log('Podklady: .parita.json')
+fs.writeFileSync(path.join(ROOT, '.regrese.json'), JSON.stringify(body, null, 2))
+console.log('Podklady: .regrese.json')
 
 await prohlizec.close()
 srv.close()

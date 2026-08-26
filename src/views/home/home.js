@@ -256,8 +256,7 @@ export function renderHome() {
   const pozdrav = el.querySelector('.heropas-text h2')
   if (pozdrav) {
     // Id zůstává `hgreet` z původní aplikace, i když se pozdrav přestěhoval
-    // z řádku pod obrázkem do hero pásu – je to pořád ta samá funkce
-    // a `check-handlers` ji podle id hledá.
+    // z řádku pod obrázkem do hero pásu – je to pořád ta samá funkce.
     pozdrav.id = 'hgreet'
     pozdrav.onclick = () => zeptejSeNaJmeno(pozdrav)
   }
