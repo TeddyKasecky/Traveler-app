@@ -68,9 +68,9 @@ npm run preview          # prohlédnutí sestaveného webu
 npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 36 kontrol
-npm run check-debug      # debug poznámkovač: identita, podpis, otisk, export, rejstřík, 139 bodů
+npm run check-debug      # debug poznámkovač: identita, podpis, otisk, export, rejstřík, 151 bodů
 
-npm run smoke            # proklikání v prohlížeči, 343 kontrol
+npm run smoke            # proklikání v prohlížeči, 347 kontrol
 npm run smoke:single     # totéž pro single-file variantu, 323 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
@@ -223,9 +223,15 @@ FNV-1a přes všechno, co jde do `.md` **včetně stavu**; uloží se při ozna�
 „hotovo" si nastavuje autor sám, kdežto o vyřešení rozhoduje repozitář.
 Filtr podle části appky byl zrušen. Rejstřík by na porovnání nestačil:
 `popis` a `navrh` se v něm krátí na 400 znaků a u vyřešených nenese text
-vůbec žádný. Chybějící otisk (záznamy odeslané před srpnem 2026) znamená
-**„nevíme"**, ne „nezměněno". Úprava odeslaného záznamu se ptá, ale jen
-když se otisk opravdu rozejde.
+vůbec žádný. Změna se pozná **dvěma cestami**. Přesná je otisk; jenže ten se ukládá až od
+srpna 2026, takže záznamy odeslané dřív ho nemají — a to byly v okamžiku vydání
+úplně všechny. Druhá cesta proto porovnává přímo s tím, co nese rejstřík
+(`sediSRepem()` v `src/core/debugExport.js`), a jakmile obojí sedne,
+`dorovnejOtisky()` otisk dopočítá a dál rozhoduje ten. Rejstřík nevidí na kroky
+ani na „čekal jsem" — nasazuje se veřejně na web — takže tuhle mezeru zavírá až
+otisk. Dorovnává se jen to, co s rejstříkem **sedí**: doplnit otisk už rozejitému
+záznamu by zmrazilo upravenou podobu jako „odeslanou" a změna by zmizela nadobro.
+Úprava odeslaného záznamu se ptá, ale jen když se otisk opravdu rozejde.
 
 Exportují se do jednoho `.md` souboru na export (`debug/RRRR-MM-DD-HHMM-<autor>.md`),
 který se commitne a pushne — tím se dostane k oběma lidem i k AI, která si repo čte.

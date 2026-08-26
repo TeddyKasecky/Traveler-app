@@ -34,6 +34,7 @@ import { cislaRada, pilulky, segment } from '../../components/vzory.js'
 import { potvrd } from '../../components/dialog.js'
 import { toast } from '../../components/toast.js'
 import { otevriDebugZapis } from '../../components/debugZapis.js'
+import { sediSRepem } from '../../core/debugExport.js'
 import { exportHtml, napojExport } from './debugExportUI.js'
 import { nactiRejstrik, odOstatnich, rejstrikVPameti, stavZRepa } from '../../core/debugRejstrik.js'
 import {
@@ -43,6 +44,7 @@ import {
   TYPY,
   debugData,
   filtrujZaznamy,
+  otiskZaznamu,
   zmenenoOdExportu,
   popisekModulu,
   smazZaznamy,
@@ -164,7 +166,18 @@ export function stadiumZaznamu(z) {
   // co odešlo, je neaktuální i ten soubor ve složce `debug/`, ne až to, co je
   // nasazené. Rozlišovat to by znamenalo dvě červené, které se liší jen tím,
   // jak moc pospíchá další export.
-  if (zmenenoOdExportu(z)) return 'zmeneno'
+  //
+  // DVĚ CESTY, A OBĚ JSOU POTŘEBA. Přesná je otisk (`otiskExportu`), jenže ten
+  // se ukládá až od srpna 2026 při označení odesláno – záznamy odeslané dřív ho
+  // nemají a bez druhé cesty by se u nich změna nikdy nepoznala. To byly
+  // v okamžiku vydání úplně všechny. Druhá cesta porovnává přímo s tím, co nese
+  // rejstřík; jakmile jednou sedne, `dorovnejOtisky()` otisk dopočítá a dál
+  // rozhoduje ten – vidí totiž i na kroky a na „čekal jsem", které rejstřík nemá.
+  if (z.otiskExportu) {
+    if (zmenenoOdExportu(z)) return 'zmeneno'
+  } else if (sediSRepem(z, r) === false) {
+    return 'zmeneno'
+  }
   if (r) return 'namainu'
   if (chybiVRepu(z)) return 'chybi'
   return 'odeslano'
@@ -384,6 +397,33 @@ function filtrHtml(pocet) {
   </div>`
 }
 
+/**
+ * Dopočítá `otiskExportu` u záznamů, které ho ještě nemají a s rejstříkem se
+ * shodují.
+ *
+ * PROČ: otisk se ukládá až od srpna 2026 při označení „odesláno“. Všechno, co
+ * odešlo dřív, ho nemá – a bez otisku se změna pozná jen tou hrubší cestou přes
+ * rejstřík, která nevidí na kroky ani na „čekal jsem“. Tímhle se staré záznamy
+ * jednorázově dorovnají a od té chvíle u nich funguje přesné porovnání.
+ *
+ * DOROVNÁVÁ SE JEN TO, CO S REJSTŘÍKEM SEDÍ. Kdyby se otisk doplnil i záznamu,
+ * který je už teď rozejitý, zmrazila by se jako „odeslaná podoba“ ta upravená
+ * a změna by se ztratila nadobro.
+ *
+ * @returns {Promise<number>} kolik jich přibylo
+ */
+async function dorovnejOtisky() {
+  if (!rejstrikVPameti()) return 0
+  let doplneno = 0
+  for (const z of debugData.zaznamy) {
+    if (!z.exportovanoDo || z.otiskExportu) continue
+    if (sediSRepem(z, stavZRepa(z.id)) !== true) continue
+    z.otiskExportu = otiskZaznamu(z)
+    doplneno++
+  }
+  if (doplneno) await ulozDebug()
+  return doplneno
+}
 /* ================= obrazovka ================= */
 
 export function renderDebug() {
@@ -392,7 +432,8 @@ export function renderDebug() {
 
   // Rejstřík je v samostatném souboru, který build přibalil ze složky `debug/`.
   // Načte se jednou a překreslí – vykreslování zůstává synchronní.
-  if (!rejstrikVPameti()) nactiRejstrik().then((r) => r && renderDebug())
+  if (!rejstrikVPameti()) nactiRejstrik().then((r) => r && dorovnejOtisky().then(renderDebug))
+  else dorovnejOtisky()
 
   const vse = debugData.zaznamy
   // `filtrujZaznamy` umí jen to, co je ve `store` uložené. Stadium je odvozené

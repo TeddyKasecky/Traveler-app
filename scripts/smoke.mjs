@@ -634,6 +634,90 @@ await page.waitForTimeout(800)
 await kontrola('import nezduplikuje, co už tu je', async () => (await debugZaznamy()).zaznamy.length, 1)
 fs.unlinkSync(zalohaCesta)
 
+// REGRESE: ZÁZNAM BEZ OTISKU, KTERÝ REJSTŘÍK ZNÁ.
+//
+// `otiskExportu` se ukládá až od srpna 2026 při označení odesláno. Všechno, co
+// odešlo dřív, ho nemá – a v okamžiku vydání to byly úplně všechny záznamy,
+// takže se u nich změna nedala poznat vůbec a barva rámečku lhala. Tahle sekce
+// hlídá druhou cestu: porovnání přímo s tím, co nese rejstřík, a dopočítání
+// otisku, jakmile obojí sedne.
+if (!SINGLE) {
+  const zaznam = (await debugZaznamy()).zaznamy[0]
+
+  // Rejstřík ten záznam nově zná – přesně v podobě, jakou má appka.
+  const rejstrik = JSON.parse(fs.readFileSync(REJSTRIK_CESTA, 'utf8'))
+  rejstrik.vygenerovano = new Date(Date.now() + 60000).toISOString()
+  rejstrik.zaznamy.push({
+    id: zaznam.id,
+    autor: zaznam.autor,
+    typ: zaznam.typ,
+    nadpis: zaznam.nadpis,
+    moduly: zaznam.moduly,
+    priorita: zaznam.priorita,
+    stav: zaznam.stav,
+    soubor: zaznam.exportovanoDo,
+    popis: zaznam.text,
+    navrh: zaznam.navrh,
+    zdroj: 'export',
+  })
+  fs.writeFileSync(REJSTRIK_CESTA, JSON.stringify(rejstrik, null, 2))
+
+  // A otisk se smaže, jako by záznam odešel ještě před srpnem 2026.
+  await page.evaluate(
+    () =>
+      new Promise((hotovo) => {
+        const r = indexedDB.open('vandrbuch-debug', 1)
+        r.onsuccess = () => {
+          const tr = r.result.transaction('debug', 'readwrite')
+          const sklad = tr.objectStore('debug')
+          const g = sklad.get('data')
+          g.onsuccess = () => {
+            const d = g.result
+            for (const z of d.zaznamy) delete z.otiskExportu
+            sklad.put(d, 'data')
+          }
+          tr.oncomplete = () => hotovo(true)
+          tr.onerror = () => hotovo(false)
+        }
+      })
+  )
+
+  // SKUTEČNÝ RELOAD, ne `goto` na tutéž adresu s jiným fragmentem – ten dokument
+  // nepřenačte a rejstřík by zůstal v paměti ten starý (čte se jednou za běh).
+  await page.evaluate(() => {
+    location.hash = '#debug'
+  })
+  await page.reload({ waitUntil: 'load' })
+  await page.waitForTimeout(2000)
+
+  await kontrola('bez otisku, ale shodný, je na mainu', () => page.locator('.dzr.st-namainu').count(), 1)
+  // Dorovnání: jakmile rejstřík potvrdí shodu, otisk se dopočítá a od té chvíle
+  // rozhoduje přesné porovnání – to vidí i na kroky, které rejstřík nenese.
+  await kontrola('otisk se dopočítal', async () => !!(await debugZaznamy()).zaznamy[0].otiskExportu, true)
+
+  // A teď to, co dřív mlčelo: úprava záznamu, který je na mainu.
+  await page.click('.dzr:not(.cizi) .dzr-telo')
+  await page.waitForTimeout(300)
+  await page.click('.dzr.otevreny [data-upravit]')
+  await page.waitForTimeout(500)
+  await page.fill('#dz-nadpis', 'Upraveno po nasazení')
+  await page.click('#dzUloz')
+  await page.waitForTimeout(400)
+  await kontrola('úprava záznamu z mainu se ptá', () => page.locator('#dialog.show').count(), 1)
+  await page.click('#dialogAno')
+  await page.waitForTimeout(700)
+  await kontrola('a rámeček zčervená', () => page.locator('.dzr.st-zmeneno').count(), 1)
+
+  // Zpátky, ať mazání níž najde, co čeká.
+  await page.click('.dzr.otevreny [data-upravit]')
+  await page.waitForTimeout(500)
+  await page.fill('#dz-nadpis', 'Zkušební záznam ze smoke')
+  await page.click('#dzUloz')
+  await page.waitForTimeout(700)
+  await page.click('.dzr:not(.cizi) .dzr-telo')
+  await page.waitForTimeout(300)
+}
+
 // Hromadný výběr a mazání. Úklid je zároveň příprava pro další sekce – smoke
 // nesmí nechat v úložišti záznam, o kterém další kontroly nevědí.
 await page.click('.dzr-check')

@@ -47,7 +47,7 @@ const {
   TYPY,
 } = await import('../src/core/debug.js')
 
-const { mdExport, zaznamNaMd, bezpecnyText, nazevExportu, nazevZalohy, jsonZaloha, zalohaZeSouboru, casNaText } =
+const { mdExport, zaznamNaMd, bezpecnyText, nazevExportu, nazevZalohy, jsonZaloha, zalohaZeSouboru, casNaText, sediSRepem } =
   await import('../src/core/debugExport.js')
 
 const { zapisChybu, posledniChyby, pocetChyb, zapomenChyby, STROP } = await import('../src/core/chyby.js')
@@ -481,6 +481,66 @@ console.log('\nČíselníky\n')
 t('modulů je jedenáct plus Jiné', MODULY.length === 12 && MODULY[MODULY.length - 1].id === 'jine')
 t('žádný modul se neopakuje', new Set(MODULY.map((m) => m.id)).size === MODULY.length)
 t('každý typ má znak do exportu i ikonu do appky', TYPY.every((x) => x.znak && /^i-[a-z0-9-]+$/.test(x.ikona)))
+
+/* ================= porovnání s rejstříkem ================= */
+
+console.log('')
+console.log('Porovnání s rejstříkem')
+console.log('')
+
+// PROČ TO EXISTUJE: `otiskExportu` se ukládá až od srpna 2026. Záznamy odeslané
+// dřív ho nemají – a to byly v okamžiku vydání ÚPLNĚ VŠECHNY, takže se u nich
+// změna nedala poznat vůbec. Tohle je druhá cesta: porovnat přímo s tím, co
+// o záznamu ví rejstřík.
+const vRepu = {
+  id: 'tadeas-001',
+  autor: 'tadeas',
+  typ: 'bug',
+  nadpis: 'Tlačítko zrušit',
+  moduly: ['detail'],
+  priorita: 'stredni',
+  stav: 'nove',
+  soubor: '2026-08-25-1527-tadeas.md',
+  popis: 'Vrátí mě to do mapy.',
+  navrh: 'Vrátit se odkud jsem přišel.',
+  zdroj: 'export',
+}
+const vAppce = {
+  typ: 'bug',
+  priorita: 'stredni',
+  stav: 'nove',
+  nadpis: 'Tlačítko zrušit',
+  moduly: ['detail'],
+  text: 'Vrátí mě to do mapy.',
+  navrh: 'Vrátit se odkud jsem přišel.',
+  cekal: 'Zůstat v detailu.',
+  kroky: '1. otevřít detail',
+}
+
+t('shodný záznam sedí', sediSRepem(vAppce, vRepu) === true)
+t('změna nadpisu se pozná', sediSRepem({ ...vAppce, nadpis: 'Jiný' }, vRepu) === false)
+t('změna popisu se pozná', sediSRepem({ ...vAppce, text: 'Něco jiného' }, vRepu) === false)
+t('změna návrhu se pozná', sediSRepem({ ...vAppce, navrh: 'Jinak' }, vRepu) === false)
+t('změna priority se pozná', sediSRepem({ ...vAppce, priorita: 'vysoka' }, vRepu) === false)
+t('změna stavu se pozná', sediSRepem({ ...vAppce, stav: 'hotovo' }, vRepu) === false)
+t('změna modulů se pozná', sediSRepem({ ...vAppce, moduly: ['mapa'] }, vRepu) === false)
+
+// Rejstřík na kroky a na „čekal jsem“ nevidí – nasazuje se veřejně na web.
+// Tuhle mezeru zavírá až otisk, jakmile záznam projde novým exportem.
+t('na kroky rejstřík nevidí', sediSRepem({ ...vAppce, kroky: 'úplně jinak' }, vRepu) === true)
+
+// Uzavřený záznam (VYRESENO.md) nenese text vůbec – porovnávat není s čím.
+t('uzavřený se neporovnává', sediSRepem(vAppce, { id: 'tadeas-001', stav: 'hotovo', zdroj: 'vyreseno' }) === null)
+t('bez rejstříku se neporovnává', sediSRepem(vAppce, null) === null)
+
+// Dlouhý text rejstřík krátí na 400 znaků a poslední znak nahradí výpustkou.
+// Bez ohledu na to musí shodný začátek vyjít jako shoda – jinak by KAŽDÁ delší
+// poznámka vycházela jako změněná.
+const dlouhy = 'A'.repeat(900)
+const zkraceny = dlouhy.slice(0, 399) + '…'
+t('dlouhý text se porovná po začátku', sediSRepem({ ...vAppce, text: dlouhy }, { ...vRepu, popis: zkraceny }) === true)
+t('a změna v jeho začátku se pozná',
+  sediSRepem({ ...vAppce, text: 'B' + dlouhy.slice(1) }, { ...vRepu, popis: zkraceny }) === false)
 
 /* ================= čistota zdrojáků ================= */
 

@@ -183,3 +183,51 @@ export function zalohaZeSouboru(data) {
   if (!data || data.format !== 'vandrbuch-debug' || !Array.isArray(data.zaznamy)) return null
   return data.zaznamy
 }
+
+/* ================= porovnání s tím, co je v repozitáři ================= */
+
+/** Rejstřík krátí dlouhá pole na 400 znaků a poslední znak nahradí výpustkou. */
+const STROP_REJSTRIKU = 400
+
+/**
+ * Sedí jedno textové pole s tím, co má rejstřík?
+ *
+ * Rejstřík nese zkrácenou podobu (`zkrat()` v `scripts/debug-rejstrik.mjs`),
+ * takže u dlouhého textu se dá porovnat jen začátek. Kratší z obou stran
+ * rozhoduje – jinak by každá delší poznámka vycházela jako změněná.
+ */
+function sediPole(mistni, zRepa) {
+  const m = bezpecnyText(mistni || '').trim()
+  const r = String(zRepa == null ? '' : zRepa)
+  if (r.length === STROP_REJSTRIKU && r.endsWith('…')) {
+    return m.slice(0, STROP_REJSTRIKU - 1) === r.slice(0, STROP_REJSTRIKU - 1)
+  }
+  return m === r
+}
+
+/**
+ * Shoduje se záznam s podobou, kterou o něm ví repozitář?
+ *
+ * PROČ TO EXISTUJE: `otiskExportu` se ukládá až od srpna 2026 při označení
+ * „odesláno". Záznamy odeslané dřív ho nemají, takže by se u nich změna
+ * nikdy nepoznala – a to byly v okamžiku vydání úplně všechny. Tohle je
+ * druhá cesta: porovnat přímo s tím, co rejstřík nese.
+ *
+ * NEVIDÍ NA VŠECHNO. `debug-stav.json` nese jen nadpis, popis, návrh, typ,
+ * prioritu, stav a moduly – kroky, „čekal jsem" ani „hotovo když" v něm
+ * nejsou, protože se nasazuje veřejně na web. Změna jen v nich se touhle
+ * cestou nepozná; jakmile ale záznam jednou projde exportem s otiskem,
+ * nastoupí přesné porovnání hashů a vidí všechno.
+ *
+ * @param {Record<string, any>} z  záznam z appky
+ * @param {Record<string, any>|null} r  co o něm ví rejstřík
+ * @returns {boolean|null} `null` = nedá se porovnat (uzavřený záznam nebo nic)
+ */
+export function sediSRepem(z, r) {
+  // Uzavřený záznam (`VYRESENO.md`) nenese text vůbec – porovnávat není s čím.
+  if (!z || !r || r.zdroj !== 'export') return null
+  if (z.typ !== r.typ || z.priorita !== r.priorita || z.stav !== r.stav) return false
+  if ((z.moduly || []).join(',') !== (r.moduly || []).join(',')) return false
+  if (bezpecnyText(z.nadpis || '').replace(/\n/g, ' ').trim() !== String(r.nadpis || '')) return false
+  return sediPole(z.text, r.popis) && sediPole(z.navrh, r.navrh)
+}
