@@ -70,8 +70,8 @@ npm run slouc            # vysype places-nova.json do places.json a přepočít�
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 36 kontrol
 npm run check-debug      # debug poznámkovač: identita, podpis, otisk, export, rejstřík, 151 bodů
 
-npm run smoke            # proklikání v prohlížeči, 361 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 329 kontrol
+npm run smoke            # proklikání v prohlížeči, 363 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 331 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů

@@ -358,7 +358,11 @@ function filtrRada(klic, polozky, popisekVse) {
       { id: '', popisek: popisekVse, on: !F[klic] },
       ...polozky.map((p) => ({ id: p.id, popisek: p.popisek, on: F[klic] === p.id })),
     ],
-    `vodorovne dzf-${klic}`
+    // Společná třída `dzf` nese zalamování. Do srpna 2026 vyjmenovávalo CSS
+    // jednotlivé řady ručně a na přejmenovanou `stadium` se zapomnělo –
+    // spadla na vodorovné posouvání z `.pilulky`. Se společnou třídou se na
+    // novou řadu zapomenout nedá, protože žádný seznam neexistuje.
+    `vodorovne dzf dzf-${klic}`
   )
 }
 

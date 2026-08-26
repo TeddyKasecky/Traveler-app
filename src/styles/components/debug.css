@@ -112,8 +112,16 @@
 
 /* Filtry se musí zalomit – dvanáct modulů se na šířku telefonu nevejde
  * a vodorovné rolování by schovalo půlku voleb pod okraj. */
-.dzf-typ,.dzf-stav,.dzf-priorita,.dzf-modul{flex-wrap:wrap;gap:6px;overflow:visible;margin:10px 0 0}
-.dzf-typ .pilulka,.dzf-stav .pilulka,.dzf-priorita .pilulka,.dzf-modul .pilulka{flex:0 0 auto}
+/* ŘADY FILTRU SE ZALAMUJÍ, NEPOSOUVAJÍ. `.pilulky` má vodorovné posouvání
+ * a k němu záporné okraje, aby jelo od kraje k kraji – v panelu filtru je
+ * obojí špatně: pilulky by lezly ven a hledat volbu posouváním je otrava.
+ *
+ * Stylována je společná třída `dzf`, ne výčet jednotlivých řad. Ten výčet tu
+ * byl do srpna 2026 a přejmenovaná řada `stadium` v něm chyběla, takže se
+ * tiše posouvala. Seznam, na který jde zapomenout, je horší než žádný. */
+.dzf{flex-wrap:wrap;gap:6px;overflow:visible;margin:10px 0 0;padding:0;
+  max-width:100%;margin-left:0;margin-right:0}
+.dzf .pilulka{flex:0 0 auto}
 
 /* ---------- štítky ---------- */
 
@@ -153,15 +161,28 @@
 .dzr{position:relative;border:2px solid var(--obrys);border-radius:var(--r-s);
   background:var(--card);overflow:hidden}
 
-/* Jen tady = výchozí obrys, nic navíc: většina záznamů je zrovna tady a barevný
- * seznam bez klidového stavu by nemel hierarchii. */
-.dzr.st-odeslano{border-color:var(--zvyrazneni)}
+/* PALETA JE VOLENÁ NA ROZLIŠITELNOST, ne na líbivost. Do srpna 2026 byly tři
+ * ze čtyř barev teplé hnědooranžové – okr, terakota, hlína – a `--upozorneni`
+ * (#A8522F) s `--clay` (#A6714B) jsou v obou motivech prakticky totéž, takže
+ * „změněné" a „zmizelo" nešlo rozeznat.
+ *
+ * Dnes: šedá (klid) · modrá (na cestě) · zelená (dorazilo) · zelená
+ * přerušovaně (odbyté) · terakota (pozor) · fialová (něco je jinak).
+ * Šest odstínů, které se nepletou ani jeden s druhým.
+ *
+ * `--lake` a `--plum` jsou jinak barvy kategorií míst (jezera, jeskyně).
+ * Tady jde o vývojářskou obrazovku, kterou nikdo na produkci neuvidí, takže
+ * kolize významů nevadí – NEOPRAVOVAT zpátky na teplé odstíny, celý smysl
+ * téhle sady je, že se od sebe liší. Žádná nová barva nepřibyla. */
+.dzr.st-odeslano{border-color:var(--lake)}
 .dzr.st-namainu{border-color:var(--akcent)}
 .dzr.st-zmeneno{border-color:var(--upozorneni)}
-/* Vyřešené je taky mechové, ale ztlumené – „hotovo a založeno". Se šrafurou
- * níž by plné ztlumení bylo dvakrát totéž, takže je mírnější než dřív. */
-.dzr.st-vyreseno{border-color:var(--akcent);opacity:.85}
-.dzr.st-chybi{border-color:var(--clay)}
+.dzr.st-chybi{border-color:var(--plum)}
+/* Vyřešené patří k „je v repu", takže zůstává mechové – ale přerušovaně.
+ * Tenhle zápis už appka používá u štítků z repozitáře (`.dz-znacka.repo`),
+ * takže navazuje na vlastní slovník. Ztlumení je mírné: se šrafurou níž by
+ * plné ztlumení bylo dvakrát totéž. */
+.dzr.st-vyreseno{border-color:var(--akcent);border-style:dashed;opacity:.85}
 
 /* ŠRAFURA U DVOU STADIÍ, KAŽDÁ OPAČNÝM SMĚREM. Obě znamenají „tohle není živý
  * záznam", ale každé z jiného důvodu: vyřešené je odbyté, změněné volá po novém
@@ -178,6 +199,9 @@
 .dzr.st-zmeneno::after{
   background:repeating-linear-gradient(-45deg, var(--upozorneni) 0 2px, transparent 2px 9px)}
 
+/* Hliněná barva zůstává v CSS jen u varovného rámečku uvnitř záznamu –
+ * tam se s ničím neplete, protože stojí sama. */
+
 /* VÝBĚR A ROZBALENÍ UŽ NEJDOU PŘES `border-color` – ten patří stadiu.
  * Výběr kreslí kroužek vně rámečku; zaškrtávátko se navíc celé vybarvuje
  * akcentem, takže signál je dvojitý. Rozbalený záznam vlastní barvu nepotřebuje:
@@ -192,10 +216,12 @@
 .dzl{display:inline-flex;align-items:center;gap:5px}
 .dzl::before{content:'';width:9px;height:9px;border-radius:50%;flex:0 0 auto;
   border:2px solid var(--obrys);background:transparent}
-.dzl.st-odeslano::before{border-color:var(--zvyrazneni)}
+/* Legenda kopíruje rámečky včetně přerušovanosti – jinak přestane být klíčem. */
+.dzl.st-odeslano::before{border-color:var(--lake)}
 .dzl.st-namainu::before{border-color:var(--akcent)}
 .dzl.st-zmeneno::before{border-color:var(--upozorneni)}
-.dzl.st-vyreseno::before{border-color:var(--akcent);opacity:.72}
+.dzl.st-vyreseno::before{border-color:var(--akcent);border-style:dashed}
+.dzl.st-chybi::before{border-color:var(--plum)}
 .dzr-radek{display:flex;align-items:stretch}
 
 /* Zaškrtávátko je <button role="checkbox">, ne <input> – ten v appce není

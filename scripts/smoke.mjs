@@ -515,6 +515,21 @@ await kontrola('a rozbalí se', () => page.locator('.dzf-typ').count(), 1)
 await kontrola('filtr podle části appky je pryč', () => page.locator('.dzf-modul').count(), 0)
 await kontrola('a stavy taky', () => page.locator('.dzf-stav').count(), 0)
 await kontrola('stadium jde filtrovat', () => page.locator('.dzf-stadium .pilulka').count(), 7)
+// ŘADY SE ZALAMUJÍ, NEPOSOUVAJÍ. `.pilulky` má vodorovné posouvání a stačilo
+// zapomenout přejmenovanou třídu ve výčtu, aby se řada stadií tiše začala
+// posouvat. Měří se to na obsah proti šířce, protože posouvání jinak není
+// z DOM poznat – vypadá úplně stejně jako zalomení.
+await kontrola('žádná řada filtru nepřetéká', () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('.dzf')].every((r) => r.scrollWidth <= r.clientWidth + 1)
+  ), true)
+// A stadia se opravdu zalomila na víc řádků – kdyby se vešla na jeden,
+// kontrola výš by prošla i s posouváním.
+await kontrola('stadia se zalomila na dva řádky', () =>
+  page.evaluate(() => {
+    const r = document.querySelector('.dzf-stadium')
+    return new Set([...r.children].map((p) => Math.round(p.getBoundingClientRect().top))).size
+  }).then((n) => n >= 2), true)
 
 // Zapsaný záznam nikam neodešel, takže „na mainu" musí seznam vyprázdnit
 // a „jen tady" ho vrátit.
