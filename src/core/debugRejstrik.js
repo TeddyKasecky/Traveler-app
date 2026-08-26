@@ -67,3 +67,19 @@ export function odOstatnich(mojeIds) {
     .filter((z) => !mojeIds.has(z.id))
     .sort((a, b) => String(b.id).localeCompare(String(a.id)))
 }
+
+/**
+ * Je ten záznam ve skutečnosti můj, jen z jiného zařízení?
+ *
+ * `odOstatnich()` filtruje podle toho, která `id` v telefonu NEMÁM – ne podle
+ * autora. Po vyčištění dat prohlížeče se tak mezi „od ostatních“ objeví
+ * i vlastní poznámky, a bez tohohle rozlišení je od cizích nepoznáš.
+ *
+ * Porovnává se jméno autora, ne celý prefix: `tadeas` z telefonu a
+ * `tadeas-f32` z počítače je tentýž člověk, jen jiné zařízení.
+ *
+ * @param {Record<string, any>} z  záznam z rejstříku
+ * @param {string} mujAutor        `prefs.debugAutor`
+ */
+export const jeMuj = (z, mujAutor) =>
+  !!mujAutor && (z.autor === mujAutor || String(z.autor || '').startsWith(`${mujAutor}-`))

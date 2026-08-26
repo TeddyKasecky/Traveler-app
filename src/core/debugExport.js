@@ -53,7 +53,19 @@ export const nazevZalohy = (cas) => `vandrbuch-debug-zaloha-${datumNaText(cas)}.
 export function bezpecnyText(s) {
   return String(s || '')
     .split('\n')
-    .map((r) => (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(r) || /^\s*#{1,6}\s/.test(r) ? `\\${r.trimStart()}` : r))
+    .map((r) =>
+      // `---`, `***`, `___` by rozdělily soubor na dva záznamy a `# nadpis`
+      // by vyrobil falešnou hlavičku.
+      /^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(r) ||
+      /^\s*#{1,6}\s/.test(r) ||
+      // A `**Něco**` na vlastním řádku ukončí sekci v parseru
+      // (`debug-rejstrik.mjs#sekce`), takže by se popis v rejstříku usekl –
+      // a `sediSRepem()` by pak hlásil „změněno“ navždy, bez ohledu na to,
+      // kolikrát se záznam vyexportuje znovu. Tichá a nezhojitelná past.
+      /^\s*\*\*[^*]+\*\*\s*$/.test(r)
+        ? `\\${r.trimStart()}`
+        : r
+    )
     .join('\n')
 }
 
@@ -143,6 +155,12 @@ export function zaznamNaMd(z) {
 }
 
 /**
+ * Verze formátu `.md`. Zvedá se, když se změní tvar, který čte
+ * `scripts/debug-rejstrik.mjs`. Chybějící řádek v souboru znamená verzi 1.
+ */
+export const VERZE_FORMATU = 1
+
+/**
  * Celý `.md` export.
  *
  * @param {Array<Record<string, any>>} zaznamy
@@ -153,7 +171,11 @@ export function mdExport(zaznamy, { autor, build = '—', filtr = 'vše', cas = 
     `# Vandrbuch — Debug export\n` +
     `Vygenerováno: ${casNaText(cas)} · Záznamů: ${zaznamy.length}` +
     (zaznamy.length ? ` (${souhrnTypu(zaznamy)})` : '') +
-    `\nBuild: ${build} · Autor: ${autor} · Filtr exportu: ${filtr}\n\n` +
+    `\nBuild: ${build} · Autor: ${autor} · Filtr exportu: ${filtr}\n` +
+    // VERZE FORMÁTU. Až se `.md` změní, parser podle ní pozná, co čte, místo
+    // aby na starším souboru tiše selhal a záznamy z rejstříku zmizely.
+    // Soubory bez tohohle řádku jsou z doby před zavedením verzí, tedy verze 1.
+    `Formát: ${VERZE_FORMATU}\n\n` +
     `Export poznámek z appky Vandrbuch. Každý záznam je nápad, bug nebo poznámka\n` +
     `zapsaná za běhu appky. Sekce "Popis" je pozorování uživatele, "Návrh řešení"\n` +
     `je jeho hypotéza — ne ověřený fakt. "Kontext" sbírá appka automaticky.\n\n` +

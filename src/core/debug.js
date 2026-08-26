@@ -206,7 +206,15 @@ export const prefixId = (autor, podpis = '') =>
  */
 export function pridejZaznam(z, autor, ted = Date.now(), podpis = '') {
   const a = prefixId(autor, podpis)
-  const cislo = debugData.dalsiCislo
+
+  // ČÍTAČ JE RYCHLÁ CESTA, NE JEDINÁ PRAVDA. Kdyby se `dalsiCislo` jakkoli
+  // vrátilo – poškozený zápis, ručně upravená záloha, import bez čísel –
+  // vyrobil by tenhle řádek `id`, které v seznamu už je. Dva různé záznamy
+  // pod jedním `id` jsou to nejhorší, co se tu může stát: rejstřík je spáruje
+  // jako jeden a jeden z nich tiše zmizí. Proto se hledá volné.
+  const obsazena = new Set(debugData.zaznamy.map((x) => x.id))
+  let cislo = debugData.dalsiCislo
+  while (obsazena.has(`${a}-${String(cislo).padStart(3, '0')}`)) cislo++
   debugData.dalsiCislo = cislo + 1
 
   const zaznam = {
@@ -232,10 +240,24 @@ export function pridejZaznam(z, autor, ted = Date.now(), podpis = '') {
     /** Název `.md` souboru, ve kterém záznam odešel. Prázdné = ještě neodešel. */
     exportovanoDo: '',
     /**
-     * Otisk podoby, ve které záznam odešel (`otiskZaznamu`). Doplní se až při
-     * označení „odesláno"; prázdné = nevíme, s čím porovnávat.
+     * Otisk podoby, ve které záznam odešel, ve tvaru `1:ab12cd34`. Doplní se
+     * až při označení „odesláno"; prázdné = nevíme, s čím porovnávat.
      */
     otiskExportu: '',
+    /**
+     * Kdy appka poprvé viděla záznam v rejstříku. Rozlišuje „nedorazilo do
+     * repozitáře" od „zmizelo z repozitáře" – bez toho se obojí hlásilo
+     * stejně a u něčeho, co tam nikdy nebylo, to byla lež.
+     */
+    videnVRepu: 0,
+    /**
+     * Co o uzavření záznamu řekl repozitář: `{ stav, dne, poznamka }`.
+     *
+     * Appka si to pamatuje sama, ne jen skrz rejstřík – jinak by zavřený
+     * záznam po vypršení lhůty v rejstříku (`debug-rejstrik.mjs`) přeskočil
+     * na „zmizelo", což je přesně ta lež, kterou `videnVRepu` odstraňuje.
+     */
+    zavreno: null,
     kontext: z.kontext || null,
   }
   debugData.zaznamy.push(zaznam)
@@ -279,34 +301,53 @@ export function filtrujZaznamy({ typ = '', modul = '', stav = '', priorita = '' 
     .sort((a, b) => b.vytvoreno - a.vytvoreno || b.cislo - a.cislo)
 }
 
-/** Co ještě není odbyté. Rozsah exportu „nevyřešené". */
-export const nevyresene = () => debugData.zaznamy.filter((z) => z.stav !== 'hotovo' && z.stav !== 'zahozeno')
 
 /**
  * Přidá záznamy z importované zálohy. Existující `id` se NEPŘEPISUJÍ –
  * import je záchrana po přeinstalaci, ne synchronizace; přepsat cizí novější
  * verzi vlastní starší by byla tichá ztráta.
  *
- * @returns {{pridano: number, preskoceno: number}}
+ * ZÁLOHA MŮŽE BÝT POŠKOZENÁ. Je to obyčejný `.json`, který někdo mohl
+ * upravit rukou nebo slepit z půlky. Záznam bez `id` nebo bez `nadpis` se
+ * proto nevkládá, ale **spočítá** – spolknutý vadný záznam je horší než
+ * hlášená chyba, protože se v seznamu objeví jako „undefined" a v exportu
+ * vyrobí polámanou hlavičku.
+ *
+ * @returns {{pridano: number, preskoceno: number, vadne: number}}
  */
 export function slucZaznamy(zaznamy) {
   const znam = new Set(debugData.zaznamy.map((z) => z.id))
   let pridano = 0
   let preskoceno = 0
+  let vadne = 0
   for (const z of zaznamy || []) {
-    if (!z || !z.id) continue
+    if (!z || typeof z.id !== 'string' || !z.id.trim() || !String(z.nadpis || '').trim()) {
+      vadne++
+      continue
+    }
     if (znam.has(z.id)) {
       preskoceno++
       continue
     }
     znam.add(z.id)
-    debugData.zaznamy.push(z)
+    // Chybějící číselníky se doplní výchozími. Bez toho by se záznam
+    // vykreslil jako „undefined" a v `.md` vyrobil hlavičku, kterou parser
+    // sice přečte, ale se špatnými hodnotami.
+    debugData.zaznamy.push({
+      ...z,
+      typ: typZaznamu(z.typ).id,
+      priorita: PRIORITY.some((p) => p.id === z.priorita) ? z.priorita : 'stredni',
+      stav: STAVY.some((s) => s.id === z.stav) ? z.stav : 'nove',
+      moduly: Array.isArray(z.moduly) ? z.moduly : [],
+    })
     pridano++
     // Číslování musí zůstat nad vším, co v seznamu je – jinak by další zápis
-    // vyrobil id, které už jednou existovalo.
-    if (typeof z.cislo === 'number' && z.cislo >= debugData.dalsiCislo) debugData.dalsiCislo = z.cislo + 1
+    // vyrobil id, které už jednou existovalo. `cislo` v záloze být nemusí
+    // (ručně upravený soubor), takže se v nouzi odvodí z `id`.
+    const cislo = typeof z.cislo === 'number' ? z.cislo : Number((/-(\d+)$/.exec(z.id) || [])[1])
+    if (Number.isFinite(cislo) && cislo >= debugData.dalsiCislo) debugData.dalsiCislo = cislo + 1
   }
-  return { pridano, preskoceno }
+  return { pridano, preskoceno, vadne }
 }
 
 /**
@@ -380,6 +421,26 @@ function hash(s) {
 }
 
 /**
+ * Verze otisku. Zvedá se, když se změní, co se do něj počítá.
+ *
+ * Uložené otisky nesou verzi jako prefix (`1:ab12cd34`), takže se dá poznat,
+ * který už neplatí. Bez toho by změna algoritmu obarvila všechny záznamy
+ * naráz jako změněné a autor by na to koukal jako na chybu appky.
+ * Otisky bez prefixu jsou z doby před zavedením verzí, tedy verze 1.
+ */
+export const VERZE_OTISKU = 1
+
+/**
+ * `1:ab12cd34` → `[1, 'ab12cd34']`. Bez prefixu se bere verze 1.
+ * @param {string} ulozeny
+ * @returns {[number, string]}
+ */
+export function rozlozOtisk(ulozeny) {
+  const m = /^(\d+):(.*)$/.exec(String(ulozeny || ''))
+  return m ? [Number(m[1]), m[2]] : [1, String(ulozeny || '')]
+}
+
+/**
  * Otisk toho, co ze záznamu jde do `.md` exportu.
  *
  * PROČ TO EXISTUJE: záznam, který se po odeslání upravil, vypadal v seznamu
@@ -432,5 +493,11 @@ export function otiskZaznamu(z) {
  */
 export function zmenenoOdExportu(z) {
   if (!z || !z.exportovanoDo || !z.otiskExportu) return false
-  return z.otiskExportu !== otiskZaznamu(z)
+  // JEN OTISKY TÉŽE VERZE. Až se změní, co se do otisku počítá, staré
+  // uložené hodnoty přestanou dávat smysl – a bez tohohle řádku by se
+  // VŠECHNY záznamy naráz obarvily jako změněné. Cizí verze znamená
+  // „nevíme", což je stejná odpověď jako u chybějícího otisku.
+  const [verze, otisk] = rozlozOtisk(z.otiskExportu)
+  if (verze !== VERZE_OTISKU) return false
+  return otisk !== otiskZaznamu(z)
 }

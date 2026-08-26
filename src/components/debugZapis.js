@@ -41,7 +41,7 @@ import {
   debugData,
   najdiZaznam,
   novyPodpisZarizeni,
-  otiskZaznamu,
+  zmenenoOdExportu,
   popisekModulu,
   popisekPriority,
   popisekStavu,
@@ -412,7 +412,10 @@ async function uloz() {
       priorita: koncept.priorita,
       stav: koncept.stav,
     }
-    if (puvodni && puvodni.otiskExportu && puvodni.otiskExportu !== otiskZaznamu({ ...puvodni, ...zmeny })) {
+    // Přes `zmenenoOdExportu()`, ne syrovým porovnáním: uložený otisk nese
+    // prefix verze (`1:ab12cd34`) a syrové `!==` by se lišilo vždycky, takže
+    // by se dialog ptal i po otevření a zavření beze změny.
+    if (puvodni && puvodni.otiskExportu && zmenenoOdExportu({ ...puvodni, ...zmeny })) {
       const dal = await potvrd({
         nadpis: 'Tenhle už je v repozitáři',
         text:

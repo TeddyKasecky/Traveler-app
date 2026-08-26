@@ -39,7 +39,6 @@ const {
   smazZaznamy,
   najdiZaznam,
   filtrujZaznamy,
-  nevyresene,
   slucZaznamy,
   sanitizujAutora,
   zmenenoOdExportu,
@@ -54,6 +53,7 @@ const { zapisChybu, posledniChyby, pocetChyb, zapomenChyby, STROP } = await impo
 
 // Kvůli kontrole čistoty zdrojáků na konci – jinak tenhle skript na disk nesahá.
 const fs = await import('node:fs')
+const os = await import('node:os')
 const path = await import('node:path')
 const { fileURLToPath } = await import('node:url')
 // fileURLToPath, ne ruční ořezávání – cesta obsahuje diakritiku („Anička“).
@@ -145,7 +145,6 @@ t('filtr podle stavu', filtrujZaznamy({ stav: 'nove' }).length === 1)
 t('filtr podle priority', filtrujZaznamy({ priorita: 'vysoka' }).length === 2)
 t('filtry se sčítají', filtrujZaznamy({ typ: 'bug', stav: 'resim' }).length === 1)
 t('nejnovější je nahoře', filtrujZaznamy()[0].nadpis === 'D')
-t('nevyřešené vynechají hotovo i zahozeno', nevyresene().length === 2)
 t('čtení nezapisuje', debugData.zaznamy.length === 4 && debugData.dalsiCislo === 5)
 
 /* ================= buffer zachycených chyb ================= */
@@ -541,6 +540,139 @@ const zkraceny = dlouhy.slice(0, 399) + '…'
 t('dlouhý text se porovná po začátku', sediSRepem({ ...vAppce, text: dlouhy }, { ...vRepu, popis: zkraceny }) === true)
 t('a změna v jeho začátku se pozná',
   sediSRepem({ ...vAppce, text: 'B' + dlouhy.slice(1) }, { ...vRepu, popis: zkraceny }) === false)
+
+/* ================= složka debug/ ================= */
+
+console.log('')
+console.log('Složka debug/')
+console.log('')
+
+// PROČ NAD SKUTEČNOU SLOŽKOU: zbytek skriptu testuje čerstvě vyrobený export
+// proti čerstvému parseru, a ti dva se nikdy nerozejdou – ani kdyby oba shodně
+// nerozuměli tomu, co v repozitáři opravdu leží. Tohle je jediná kontrola,
+// která sáhne na historii.
+const { exportniSoubory, kdeJsouZaznamy, prectiVyreseno, rozeber } = await import('./debug-slozka.mjs')
+const { uklidSlozku } = await import('./debug-uklid.mjs')
+const { zavriZaznam } = await import('./debug-zavri.mjs')
+
+const SLOZKA = path.join(ROOT, 'debug')
+const souboryVeSlozce = exportniSoubory(SLOZKA)
+
+// Každý existující `.md` musí jít přečíst a nesmí se z něj nic ztratit.
+// Chytí to budoucí rozejití formátu proti historii: až se `.md` změní, staré
+// soubory přestanou jít parsovat a záznamy z rejstříku beze stopy zmizí.
+let nesedi = []
+for (const jmeno of souboryVeSlozce) {
+  const text = fs.readFileSync(path.join(SLOZKA, jmeno), 'utf8')
+  const nadpisu = (text.match(/^## /gm) || []).length
+  const precteno = zaznamyZeSouboru(text, jmeno).length
+  if (nadpisu !== precteno) nesedi.push(`${jmeno}: ${nadpisu} nadpisů, ${precteno} přečteno`)
+}
+t(`historii ve složce jde přečíst (${souboryVeSlozce.length} souborů)`, nesedi.length === 0)
+for (const n of nesedi) console.log(`     ${n}`)
+
+// Duplicity appce nevadí (rejstřík si vybere nejnovější), ale člověku ano –
+// a hlavně se bez téhle kontroly tiše nahromadí znovu.
+const kde = kdeJsouZaznamy(SLOZKA)
+const vicekrat = [...kde.entries()].filter(([, soubory]) => soubory.length > 1)
+t('žádné id není ve složce dvakrát', vicekrat.length === 0)
+for (const [id, soubory] of vicekrat) console.log(`     ${id}: ${soubory.join(', ')}`)
+
+// Řádek, který se nedá přečíst, parser tiše přeskočí a záznam z appky zmizí.
+const { uzavrene: zavreneVeSlozce, vadneRadky } = prectiVyreseno(SLOZKA)
+t('každý řádek VYRESENO.md jde přečíst', vadneRadky.length === 0)
+for (const r of vadneRadky) console.log(`     ${r.slice(0, 70)}`)
+
+// Zavřený záznam nemá co zůstávat v `.md` – rejstřík by ho nesl dvakrát.
+const zavreneAleVeSlozce = [...zavreneVeSlozce.keys()].filter((id) => kde.has(id))
+t('nic není zavřené a zároveň ve složce', zavreneAleVeSlozce.length === 0)
+for (const id of zavreneAleVeSlozce) console.log(`     ${id}`)
+
+/* ================= úklid a zavírání ================= */
+
+console.log('')
+console.log('Úklid a zavírání')
+console.log('')
+
+const HRISTE = path.join(os.tmpdir(), `vandrbuch-debug-${process.pid}`)
+const hriste = (jmeno, obsah) => fs.writeFileSync(path.join(HRISTE, jmeno), obsah, 'utf8')
+const precti = (jmeno) => (fs.existsSync(path.join(HRISTE, jmeno)) ? fs.readFileSync(path.join(HRISTE, jmeno), 'utf8') : null)
+
+/** Minimální platný export – hlavička plus záznamy zadaných id. */
+const vyrobExport = (ids) =>
+  ['# Vandrbuch — Debug export\nFormát: 1\n', ...ids.map((id) => `## ${id} · 🐞 Bug · priorita: střední · stav: nové\n### ${id}\n`)].join(
+    '\n---\n'
+  )
+
+fs.rmSync(HRISTE, { recursive: true, force: true })
+fs.mkdirSync(HRISTE, { recursive: true })
+hriste('2026-01-01-1000-tadeas.md', vyrobExport(['tadeas-001', 'tadeas-002']))
+hriste('2026-02-01-1000-tadeas.md', vyrobExport(['tadeas-001', 'tadeas-003']))
+
+let v = uklidSlozku(HRISTE, { jenKontrola: true })
+t('kontrola duplicitu najde', v.duplicity.length === 1 && v.duplicity[0].id === 'tadeas-001')
+t('a nic nezmění', precti('2026-01-01-1000-tadeas.md').includes('## tadeas-001'))
+
+v = uklidSlozku(HRISTE)
+t('úklid starší kopii odstraní', !precti('2026-01-01-1000-tadeas.md').includes('## tadeas-001'))
+t('a v nejnovějším ji nechá', precti('2026-02-01-1000-tadeas.md').includes('## tadeas-001'))
+t('zbytek staršího souboru zůstal', precti('2026-01-01-1000-tadeas.md').includes('## tadeas-002'))
+t('po úklidu už kontrola projde', uklidSlozku(HRISTE, { jenKontrola: true }).duplicity.length === 0)
+
+// Zavření: tři kroky, nebo žádný.
+const zavreni = zavriZaznam('tadeas-002', 'hotovo', 'opraveno', { slozka: HRISTE, ted: Date.parse('2026-03-04') })
+t('zavření projde', zavreni.ok === true)
+t('záznam ze souboru zmizel', !precti('2026-01-01-1000-tadeas.md'))
+t('soubor bez záznamů se smazal', zavreni.smazan === true)
+t('řádek má dohodnutý tvar', zavreni.radek === '- `tadeas-002` · 2026-03-04 · hotovo · opraveno')
+t('a je ve VYRESENO.md', precti('VYRESENO.md').includes(zavreni.radek))
+t('VYRESENO.md se dá přečíst zpátky', prectiVyreseno(HRISTE).uzavrene.get('tadeas-002') === '2026-03-04')
+
+t('dvakrát zavřít nejde', zavriZaznam('tadeas-002', 'hotovo', '', { slozka: HRISTE }).ok === false)
+t('a nezapíše se podruhé', (precti('VYRESENO.md').match(/tadeas-002/g) || []).length === 1)
+t('neznámé id neudělá nic', zavriZaznam('nikdo-001', 'hotovo', '', { slozka: HRISTE }).ok === false)
+t('cizí stav se odmítne', zavriZaznam('tadeas-003', 'skoro', '', { slozka: HRISTE }).ok === false)
+t('a záznam po odmítnutí zůstal', precti('2026-02-01-1000-tadeas.md').includes('## tadeas-003'))
+
+// Úklid vyhodí ze `.md` to, co je už uzavřené – zapomenutý krok při zavírání.
+hriste('2026-04-01-1000-tadeas.md', vyrobExport(['tadeas-002']))
+v = uklidSlozku(HRISTE)
+t('úklid vyhodí, co je už ve VYRESENO.md', v.uzavrene.length === 1 && v.uzavrene[0].id === 'tadeas-002')
+t('a smaže soubor, ze kterého nic nezbylo', !precti('2026-04-01-1000-tadeas.md'))
+
+fs.rmSync(HRISTE, { recursive: true, force: true })
+
+/* ================= stárnutí uzavřených ================= */
+
+console.log('')
+console.log('Stárnutí uzavřených')
+console.log('')
+
+// `VYRESENO.md` se nikdy nezkracuje, takže bez lhůty by každý kdy zavřený
+// záznam jel v `debug-stav.json` napořád – a ten se stahuje SÍTÍ NAPŘED při
+// každém startu appky.
+{
+  const S = path.join(os.tmpdir(), `vandrbuch-stari-${process.pid}`)
+  fs.rmSync(S, { recursive: true, force: true })
+  fs.mkdirSync(S, { recursive: true })
+  const TED = Date.parse('2026-09-01')
+  const den = (posun) => new Date(TED - posun).toISOString().slice(0, 10)
+  fs.writeFileSync(
+    path.join(S, 'VYRESENO.md'),
+    `- \`cerstvy-001\` · ${den(30 * 24 * 3600 * 1000)} · hotovo · nedávno
+` +
+      `- \`prastary-002\` · ${den(400 * 24 * 3600 * 1000)} · hotovo · dávno
+`,
+    'utf8'
+  )
+  const r = postavRejstrik(S, TED)
+  const ids = r.zaznamy.map((z) => z.id)
+  t('čerstvě uzavřený je v rejstříku', ids.includes('cerstvy-001'))
+  t('starý uzavřený už ne', !ids.includes('prastary-002'))
+  // Řádek zůstává napořád – je to jediná historie a AI z ní čte, co se řešilo.
+  t('ale řádek ve VYRESENO.md zůstal', fs.readFileSync(path.join(S, 'VYRESENO.md'), 'utf8').includes('prastary-002'))
+  fs.rmSync(S, { recursive: true, force: true })
+}
 
 /* ================= čistota zdrojáků ================= */
 

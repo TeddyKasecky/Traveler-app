@@ -33,22 +33,48 @@ import {
   nazevZalohy,
   zalohaZeSouboru,
 } from '../../core/debugExport.js'
-import { debugData, nevyresene, otiskZaznamu, slucZaznamy, ulozDebug, upravZaznam } from '../../core/debug.js'
+import {
+  VERZE_OTISKU,
+  debugData,
+  otiskZaznamu,
+  slucZaznamy,
+  ulozDebug,
+  upravZaznam,
+  zmenenoOdExportu,
+} from '../../core/debug.js'
+import { sediSRepem } from '../../core/debugExport.js'
+import { stavZRepa } from '../../core/debugRejstrik.js'
 
 const ROZSAHY = [
-  { id: 'nevyresene', popisek: 'Nevyřešené' },
+  { id: 'kodeslani', popisek: 'Nové a změněné' },
   { id: 'vybrane', popisek: 'Vybrané' },
   { id: 'vse', popisek: 'Vše' },
 ]
 
 /** Zvolený rozsah. Jen v paměti – volba na deset vteřin, ne nastavení. */
-let rozsah = 'nevyresene'
+let rozsah = 'kodeslani'
+
+/**
+ * Co repozitář ještě nemá: nikdy neodeslané a to, co se od odeslání změnilo.
+ *
+ * PROČ NE „nevyřešené“ (do srpna 2026): zavírá se až v repozitáři, takže
+ * lokální `stav` skoro nikdy na „hotovo“ nepřejde – a rozsah tím pádem
+ * posílal pokaždé znovu celý seznam. Pět záznamů skončilo ve dvanácti
+ * kopiích ve čtyřech souborech za dva dny.
+ *
+ * ZÁZNAM ODESLANÝ, ALE ZATÍM NENASAZENÝ SE ZNOVU NEPOSÍLÁ. Appka nepozná
+ * „necommitnuté“ od „nenasazené“ a soubor už jednou vznikl. Když se ztratí,
+ * pozná se to podle stadia „nedorazilo“ a je od toho tlačítko Poslat znovu;
+ * hrubá záchrana je rozsah „Vše“.
+ */
+export const kOdeslani = () =>
+  debugData.zaznamy.filter((z) => !z.exportovanoDo || zmenenoOdExportu(z) || sediSRepem(z, stavZRepa(z.id)) === false)
 
 /** Které záznamy zvolený rozsah pokrývá. */
 function kExportu(vybrane) {
   if (rozsah === 'vse') return debugData.zaznamy.slice()
   if (rozsah === 'vybrane') return debugData.zaznamy.filter((z) => vybrane.has(z.id))
-  return nevyresene()
+  return kOdeslani()
 }
 
 const popisekRozsahu = () => (ROZSAHY.find((r) => r.id === rozsah) || ROZSAHY[0]).popisek.toLowerCase()
@@ -65,12 +91,23 @@ export function exportHtml(vybrane) {
       nasazením: na betě po pushi na <code>main</code>, na produkci až vydáním.
       Postup je v <code>.claude/rules/debug.md</code>.
     </div>
+    <div class="meta dz-uvod">
+      <b>Repozitář i beta jsou veřejné.</b> Co do poznámky napíšeš, bude po
+      commitnutí čitelné komukoli na GitHubu i na webu bety. Názvy výprav
+      a cest se do exportu schválně neposílají — jen jejich velikost.
+    </div>
     ${segment(
       ROZSAHY.map((r) => ({ ...r, popisek: r.id === 'vybrane' ? `Vybrané (${vybrane.size})` : r.popisek })),
       rozsah,
       'dzRozsah'
     )}
-    <div class="meta" style="margin:8px 2px 8px">K odeslání ${kolik ? `<b>${kolik}</b>` : 'není nic'}${kolik ? '' : ' – zkus jiný rozsah'}. Po stažení se appka zeptá, jestli je označit jako odeslané – bez toho se po týdnu nepozná, co už v repozitáři je.</div>
+    <div class="meta" style="margin:8px 2px 8px">${
+      kolik
+        ? `K odeslání <b>${kolik}</b>. Po stažení se rovnou označí jako odeslané – bez toho se po týdnu nepozná, co už v repozitáři je.`
+        : rozsah === 'kodeslani'
+          ? 'Není co poslat: <b>repozitář má všechno</b>, co je v telefonu. Kdyby se soubor cestou ztratil, vezmi rozsah Vše.'
+          : 'Není nic k odeslání – zkus jiný rozsah.'
+    }</div>
     <div class="btnrow" style="margin:0">
       <button class="btn" id="dzMd"${kolik ? '' : ' disabled'}>${IC('i-save')}Stáhnout .md</button>
       <button class="btn primary" id="dzSdilet"${kolik ? '' : ' disabled'}>${IC('i-sdilet')}Sdílet</button>
@@ -113,23 +150,25 @@ function pripravMd(zaznamy) {
  * ne automatika: sdílení se dá na půl cesty zrušit a appka o tom neví.
  */
 async function poExportu(nazev, zaznamy, prekresli) {
-  const dal = await potvrd({
-    nadpis: 'Označit odeslané?',
-    text: `U ${zaznamy.length === 1 ? 'záznamu' : `${zaznamy.length} záznamů`} se poznamená, že ${zaznamy.length === 1 ? 'odešel' : 'odešly'} v souboru ${nazev}.`,
-    ano: 'Označit',
-    ne: 'Teď ne',
-  })
-  if (!dal) return
+  // OZNAČUJE SE AUTOMATICKY, bez dotazu. Do srpna 2026 se ptal dialog
+  // a odpověď „Teď ne“ byla druhá cesta, jak si vyrobit duplicitu: záznam
+  // zůstal neoznačený a příští export ho poslal znovu. Zrušené sdílení se
+  // pozná jinak – `navigator.share()` odmítne slib a sem se vůbec nedojde.
   // Čas odeslání se pamatuje kvůli rejstříku: záznam, který v něm chybí, může
   // být buď ještě nenasazený, nebo odstraněný bez řádku ve VYRESENO.md.
-  // Rozliší to porovnání s `vygenerovano` rejstříku.
   const ted = Date.now()
   // Otisk podoby, která odešla. Bez něj by se pozdější úprava nedala poznat –
   // rejstřík na porovnání nestačí, viz `core/debug.js#otiskZaznamu()`.
   for (const z of zaznamy)
-    upravZaznam(z.id, { exportovanoDo: nazev, exportovanoV: ted, otiskExportu: otiskZaznamu(z) })
+    upravZaznam(z.id, {
+      exportovanoDo: nazev,
+      exportovanoV: ted,
+      // S verzí: až se změní, co se do otisku počítá, pozná se, který už
+      // neplatí, a neobarví se všechny záznamy naráz jako změněné.
+      otiskExportu: `${VERZE_OTISKU}:${otiskZaznamu(z)}`,
+    })
   if (!(await ulozDebug())) return toast('Označení se neuložilo – v telefonu došlo místo')
-  toast('Označeno')
+  toast(`Označeno jako odeslané (${zaznamy.length})`)
   // Bez překreslení by štítek „odesláno" u řádku naskočil až při příštím
   // otevření obrazovky – vypadalo by to, že se označení neuložilo.
   prekresli()
@@ -212,13 +251,14 @@ export function napojExport(vybrane, prekresli) {
           })
           return
         }
-        const { pridano, preskoceno } = slucZaznamy(zaznamy)
+        const { pridano, preskoceno, vadne } = slucZaznamy(zaznamy)
         if (!(await ulozDebug())) return toast('Import se neuložil – v telefonu došlo místo')
-        toast(
-          pridano
-            ? `Načteno ${pridano}${preskoceno ? `, ${preskoceno} už tu ${preskoceno === 1 ? 'byl' : 'bylo'}` : ''}`
-            : 'Všechny záznamy tu už byly'
-        )
+        // Vadné se hlásí schválně: spolknutý poškozený záznam by se v seznamu
+        // ukázal jako „undefined“ a v exportu vyrobil polámanou hlavičku.
+        const dovetek =
+          (preskoceno ? `, ${preskoceno} už tu ${preskoceno === 1 ? 'byl' : 'bylo'}` : '') +
+          (vadne ? `, ${vadne} ${vadne === 1 ? 'poškozený' : 'poškozených'} přeskočeno` : '')
+        toast(pridano ? `Načteno ${pridano}${dovetek}` : `Nic nového${dovetek}`)
         prekresli()
       }
       rd.readAsText(f, 'utf-8')

@@ -73,12 +73,21 @@ function filtryNaText() {
 /** Co je zrovna vybrané – bez toho se u půlky hlášení neví, čeho se týkají. */
 function vyberNaText() {
   const kusy = []
+  // Id místa zůstává – je z veřejných dat `places.json`, takže o uživateli
+  // nic neříká a při hledání chyby je to ta nejužitečnější informace.
   if (S.hiId) kusy.push(`místo ${S.hiId}`)
+  // NÁZVY VÝPRAV A CEST SE NEPOSÍLAJÍ. Export jde do veřejného repozitáře
+  // a rejstřík z něj se servíruje z webu komukoli – „Dovolená s Aničkou“
+  // tam nemá co dělat. Diagnosticky stačí vědět, že výprava byla aktivní
+  // a jak byla velká; jméno neřekne nic, co by pomohlo najít chybu.
   const vyprava = store.vypravaNazev || ''
-  if (vyprava) kusy.push(`výprava „${vyprava}"`)
+  if (vyprava) {
+    const zastavek = (store.vypravy || []).find((v) => v && v.nazev === vyprava)
+    kusy.push(`výprava (${(zastavek && zastavek.zastavky ? zastavek.zastavky.length : store.plan.length) || 0} zastávek)`)
+  }
   const kosik = (store.kosik && store.kosik[vyprava]) || []
   if (kosik.length) kusy.push(`v košíku ${kosik.length}`)
-  if (store.cesta) kusy.push(`jede se („${store.cesta.nazev || 'bez názvu'}")`)
+  if (store.cesta) kusy.push('jede se')
   return kusy.join(' · ')
 }
 

@@ -35,8 +35,9 @@ import { potvrd } from '../../components/dialog.js'
 import { toast } from '../../components/toast.js'
 import { otevriDebugZapis } from '../../components/debugZapis.js'
 import { sediSRepem } from '../../core/debugExport.js'
-import { exportHtml, napojExport } from './debugExportUI.js'
-import { nactiRejstrik, odOstatnich, rejstrikVPameti, stavZRepa } from '../../core/debugRejstrik.js'
+import { exportHtml, kOdeslani, napojExport } from './debugExportUI.js'
+import { jeMuj, nactiRejstrik, odOstatnich, rejstrikVPameti, stavZRepa } from '../../core/debugRejstrik.js'
+import { prefs } from '../../core/store.js'
 import {
   JAK_CASTO,
   PRIORITY,
@@ -44,7 +45,9 @@ import {
   TYPY,
   debugData,
   filtrujZaznamy,
+  VERZE_OTISKU,
   otiskZaznamu,
+  upravZaznam,
   zmenenoOdExportu,
   popisekModulu,
   smazZaznamy,
@@ -75,6 +78,15 @@ const rozbalene = new Set()
 /** Je panel filtrů vytažený? Sbalený je schválně: čtyři řady zabraly půl telefonu. */
 let filtrOtevreny = false
 
+/**
+ * Ukazovat v „Od ostatních“ i odbyté?
+ *
+ * Zavřené záznamy se hromadí a nikdy nemizí, takže by z té půlky obrazovky
+ * byla za rok zeď hotových věcí, ve které se otevřené ztratí. Ve výchozím
+ * stavu se proto nekreslí a počet v segmentu je nepočítá taky.
+ */
+let ciziOdbyte = false
+
 /** Která půlka segmentu je vidět: `moje` | `cizi`. */
 let castka = 'moje'
 
@@ -89,7 +101,13 @@ let castka = 'moje'
  */
 let exportOtevreny = false
 
-/** Krátké datum „24. 8." – rok se dopisuje jen u starších záznamů. */
+/**
+ * Rezerva při porovnávání času rejstříku s časem odeslání. Hodiny telefonu
+ * a build serveru nejsou tytéž a rozdíl v minutách nesmí vyrobit poplach.
+ */
+const HODINA = 3600000
+
+/** Krátké datum „24. 8.“ – rok se dopisuje jen u starších záznamů. */
 function datum(ms) {
   const d = new Date(ms)
   const letos = new Date().getFullYear()
@@ -132,13 +150,13 @@ function chybiVRepu(z) {
   if (stavZRepa(z.id) || !z.exportovanoDo) return false
   const rej = rejstrikVPameti()
   // Rejstřík se nenačetl (offline a nikdy nestažený, jednosouborová varianta) –
-  // pak se nesmí tvrdit, že záznam zmizel. „Nevíme" je jiný stav než „není tam".
+  // pak se nesmí tvrdit, že záznam chybí. „Nevíme“ je jiný stav než „není tam“.
   if (!rej) return false
-  // Rejstřík je starší než odeslání: export se prostě ještě nedostal do gitu
-  // a na server. Strašit v tomhle případě by byl planý poplach při každém
-  // exportu, dokud se nenasadí.
-  if (z.exportovanoV && rej.vygenerovano && Date.parse(rej.vygenerovano) < z.exportovanoV) return false
-  return true
+  // HODINOVÁ REZERVA. Porovnávají se hodiny telefonu a build serveru, a ty
+  // nejsou tytéž. Bez rezervy stačí pár minut posunu, aby se u čerstvě
+  // odeslaného záznamu rozsvítilo varování, přestože je všechno v pořádku.
+  if (!z.exportovanoV || !rej.vygenerovano) return false
+  return Date.parse(rej.vygenerovano) > z.exportovanoV + HODINA
 }
 
 /**
@@ -159,20 +177,22 @@ function chybiVRepu(z) {
  * @returns {'jentady'|'odeslano'|'namainu'|'zmeneno'|'vyreseno'|'chybi'}
  */
 export function stadiumZaznamu(z) {
+  // ZAVŘENÍ SI PAMATUJE APPKA, ne jen rejstřík. Zavřené záznamy z rejstříku
+  // po čase vypadnou (`debug-rejstrik.mjs`), aby nerostl donekonečna –
+  // a bez vlastní paměti by se v ten okamžik přepnuly na „zmizelo“, což by
+  // byla lež o něčem, co se v pořádku vyřešilo.
+  if (z.zavreno) return 'vyreseno'
   const r = stavZRepa(z.id)
   if (r && r.zdroj === 'vyreseno') return 'vyreseno'
   if (!z.exportovanoDo) return 'jentady'
-  // „Změněno" přebíjí „na mainu" i „odesláno": jakmile se text rozejde s tím,
+  // „Změněno“ přebíjí „na mainu“ i „odesláno“: jakmile se text rozejde s tím,
   // co odešlo, je neaktuální i ten soubor ve složce `debug/`, ne až to, co je
-  // nasazené. Rozlišovat to by znamenalo dvě červené, které se liší jen tím,
-  // jak moc pospíchá další export.
+  // nasazené.
   //
   // DVĚ CESTY, A OBĚ JSOU POTŘEBA. Přesná je otisk (`otiskExportu`), jenže ten
-  // se ukládá až od srpna 2026 při označení odesláno – záznamy odeslané dřív ho
-  // nemají a bez druhé cesty by se u nich změna nikdy nepoznala. To byly
-  // v okamžiku vydání úplně všechny. Druhá cesta porovnává přímo s tím, co nese
-  // rejstřík; jakmile jednou sedne, `dorovnejOtisky()` otisk dopočítá a dál
-  // rozhoduje ten – vidí totiž i na kroky a na „čekal jsem", které rejstřík nemá.
+  // se ukládá až od srpna 2026 – záznamy odeslané dřív ho nemají a bez druhé
+  // cesty by se u nich změna nikdy nepoznala. Druhá porovnává přímo s tím, co
+  // nese rejstřík; jakmile jednou sedne, `dorovnejOtisky()` otisk dopočítá.
   if (z.otiskExportu) {
     if (zmenenoOdExportu(z)) return 'zmeneno'
   } else if (sediSRepem(z, r) === false) {
@@ -182,6 +202,17 @@ export function stadiumZaznamu(z) {
   if (chybiVRepu(z)) return 'chybi'
   return 'odeslano'
 }
+
+/**
+ * Nedorazil záznam do repozitáře vůbec, nebo z něj zmizel?
+ *
+ * Do srpna 2026 se obojí hlásilo jako „zmizelo z repozitáře“ – a u něčeho,
+ * co tam nikdy nebylo, to byla lež, která posílala člověka hledat špatným
+ * směrem. Rozliší to `videnVRepu`: kdo tam jednou byl, o tom appka ví.
+ *
+ * @returns {'nedorazilo'|'zmizelo'}
+ */
+const duvodChybejiciho = (z) => (z.videnVRepu ? 'zmizelo' : 'nedorazilo')
 
 /**
  * Legenda pod tlačítky a zároveň hodnoty filtru. Pořadí je cesta záznamu,
@@ -285,14 +316,22 @@ function rozbalenyZaznam(z) {
     </div>
     ${
       chybiVRepu(z)
-        ? `<div class="dzr-varovani">${IC('i-oko-ne')}<div>
-            <b>V repozitáři už tenhle záznam není.</b>
-            Buď se uzavřel bez řádku ve <code>VYRESENO.md</code>, nebo se jeho <code>id</code>
-            srazilo s jiným zařízením a někdo ho v souboru přejmenoval. Smazáním z telefonu
-            o něj nepřijdeš – v repozitáři zůstává a ukáže se v „Od ostatních" pod svým
-            skutečným <code>id</code>.
-            <button class="btn small nebezpecne" data-osirely="${z.id}">Smazat z telefonu</button>
-          </div></div>`
+        ? duvodChybejiciho(z) === 'nedorazilo'
+          ? `<div class="dzr-varovani">${IC('i-oko-ne')}<div>
+              <b>Do repozitáře to nikdy nedorazilo.</b>
+              Soubor <code>${esc(z.exportovanoDo)}</code> vznikl, ale nikdo ho zjevně
+              necommitnul – od té doby proběhlo nasazení a záznam v něm není.
+              Poslat znovu ho vrátí mezi nové a příští export ho vezme s sebou.
+              <button class="btn small" data-znovu="${z.id}">Poslat znovu</button>
+            </div></div>`
+          : `<div class="dzr-varovani">${IC('i-oko-ne')}<div>
+              <b>V repozitáři už tenhle záznam není.</b>
+              Jednou tam byl, teď zmizel – buď se uzavřel bez řádku ve
+              <code>VYRESENO.md</code>, nebo se jeho <code>id</code> srazilo s jiným
+              zařízením a někdo ho v souboru přejmenoval. Smazáním z telefonu o něj
+              nepřijdeš, v repozitáři zůstává pod svým skutečným <code>id</code>.
+              <button class="btn small nebezpecne" data-osirely="${z.id}">Smazat z telefonu</button>
+            </div></div>`
         : ''
     }
     <div class="btnrow dzr-akce">
@@ -308,6 +347,7 @@ function rozbalenyZaznam(z) {
 function radekCizi(z) {
   const t = typZaznamu(z.typ)
   const vyreseno = z.zdroj === 'vyreseno'
+  const moje = jeMuj(z, prefs.debugAutor)
   const otevreny = rozbalene.has(z.id)
   return `<div class="dzr cizi${otevreny ? ' otevreny' : ''}" data-id="${esc(z.id)}">
     <div class="dzr-radek">
@@ -324,6 +364,7 @@ function radekCizi(z) {
               : `${IC('i-globe')}${esc(stavPopisek(z.stav))}`
           }</span>
           ${z.priorita ? `<span class="dz-znacka ${z.priorita}">${esc(prioPopisek(z.priorita))}</span>` : ''}
+          ${moje ? `<span class="dz-znacka">${IC('i-pinme')}moje z jiného zařízení</span>` : ''}
         </div>
       </button>
       <button class="dzr-kopie" data-plne="${esc(z.id)}" title="Plné znění">${IC('i-vice')}</button>
@@ -420,9 +461,21 @@ async function dorovnejOtisky() {
   if (!rejstrikVPameti()) return 0
   let doplneno = 0
   for (const z of debugData.zaznamy) {
+    const r = stavZRepa(z.id)
+    // Kdy appka záznam poprvé viděla v repozitáři. Bez toho by se „nikdy
+    // nedorazil“ nedal odlišit od „byl tam a zmizel“.
+    if (r && !z.videnVRepu) {
+      z.videnVRepu = Date.now()
+      doplneno++
+    }
+    // Uzavření si appka pamatuje sama – rejstřík ho po čase přestane nést.
+    if (r && r.zdroj === 'vyreseno' && !z.zavreno) {
+      z.zavreno = { stav: r.stav, dne: r.vyresenoDne || '', poznamka: r.poznamka || '' }
+      doplneno++
+    }
     if (!z.exportovanoDo || z.otiskExportu) continue
-    if (sediSRepem(z, stavZRepa(z.id)) !== true) continue
-    z.otiskExportu = otiskZaznamu(z)
+    if (sediSRepem(z, r) !== true) continue
+    z.otiskExportu = `${VERZE_OTISKU}:${otiskZaznamu(z)}`
     doplneno++
   }
   if (doplneno) await ulozDebug()
@@ -474,7 +527,9 @@ export function renderDebug() {
     ${segment(
       [
         { id: 'moje', popisek: `Moje (${vse.length})` },
-        { id: 'cizi', popisek: `Od ostatních (${cizi.length})` },
+        // Počet z OTEVŘENÝCH: zavřené se ve výchozím stavu nekreslí, takže by
+        // číslo slibovalo víc, než je vidět.
+        { id: 'cizi', popisek: `Od ostatních (${cizi.filter((z) => z.zdroj !== 'vyreseno').length})` },
       ],
       castka,
       'dzSeg'
@@ -490,6 +545,10 @@ export function renderDebug() {
 
 /** Půlka „Moje": filtr, hromadné akce, seznam, zápis a export. */
 function mojeCast(videt, vse) {
+  const odbytych = vse.filter((z) => stadiumZaznamu(z) === 'vyreseno').length
+  // Kolik čeká na odeslání. Musí to počítat totéž, co pak export opravdu
+  // pošle – proto `kOdeslani()` z `debugExportUI.js`, ne vlastní podmínka.
+  const ceka = kOdeslani().length
   return `
     ${filtrHtml(videt.length)}
 
@@ -497,6 +556,14 @@ function mojeCast(videt, vse) {
       <button class="btn small" id="dzVse">${vybrane.size >= videt.length && videt.length ? 'Zrušit výběr' : 'Vybrat vše z filtru'}</button>
       <button class="btn small nebezpecne" id="dzSmaz"${vybrane.size ? '' : ' disabled'}>Smazat vybrané${vybrane.size ? ` (${vybrane.size})` : ''}</button>
     </div>
+    ${
+      // Odbyté se hromadí a nikdy nemizí. Rejstřík je po půl roce přestane
+      // nasazovat, takže je rozumné je z telefonu časem uklidit – appka si
+      // uzavření pamatuje sama, takže se tím o nic nepřijde.
+      odbytych
+        ? `<div class="dzr-lista"><button class="btn small" id="dzSmazOdbyte">${IC('i-check')}Smazat odbyté (${odbytych})</button></div>`
+        : ''
+    }
 
     ${
       videt.length
@@ -524,7 +591,12 @@ function mojeCast(videt, vse) {
 
     <div class="dz-karta dz-rozbal-karta">
       <button class="dz-rozbal${exportOtevreny ? ' on' : ''}" id="dzExportPrepinac" aria-expanded="${exportOtevreny}">
-        <span>Export</span>${IC('i-sipka')}
+        <span>Export</span>${
+          // Odznak s počtem čekajících. Bez něj visí celá smyčka na tom, že si
+          // člověk vzpomene panel rozbalit – a přitom právě tady se pozná, že
+          // něco ještě nikdo neodeslal.
+          ceka ? `<i class="dz-odznak">${ceka}</i>` : ''
+        }${IC('i-sipka')}
       </button>
       ${exportOtevreny ? `<div class="dz-rozbal-telo">${exportHtml(vybrane)}</div>` : ''}
     </div>`
@@ -534,7 +606,7 @@ function mojeCast(videt, vse) {
 function ciziCast(cizi) {
   const rej = rejstrikVPameti()
   if (!rej) {
-    // `null` znamená „nevíme", ne „nic tam není" – v jednosouborové variantě
+    // `null` znamená „nevíme“, ne „nic tam není“ – v jednosouborové variantě
     // rejstřík neexistuje vůbec a offline se nemusel nikdy stáhnout.
     return `<div class="dzr-prazdno">${IC('i-globe')}<div>
       Stav z repozitáře se nepodařilo načíst. Buď se appka ještě nikdy nespojila se sítí,
@@ -542,23 +614,34 @@ function ciziCast(cizi) {
       <b>Neznamená to, že tam nic není.</b>
     </div></div>`
   }
+  const otevrene = cizi.filter((z) => z.zdroj !== 'vyreseno')
+  const odbyte = cizi.length - otevrene.length
+  const videt = ciziOdbyte ? cizi : otevrene
+
   if (!cizi.length) {
     return `<div class="dzr-prazdno">${IC('i-check')}<div>
       Repozitář nezná nic, co bys neměl v telefonu.
     </div></div>`
   }
-  const otevrene = cizi.filter((z) => z.zdroj !== 'vyreseno')
+
   return `
     <div class="meta dz-uvod">
       Hlášení, která nemáš v telefonu – přišla ze složky <code>debug/</code> při posledním
-      nasazení. Jen ke čtení; ${
-        otevrene.length
-          ? `<b>${otevrene.length}</b> ${sklonuj(otevrene.length, 'je otevřené', 'jsou otevřené', 'je otevřených')}`
-          : 'všechna jsou odbytá'
-      }. Appka o nich ví jen nadpis, popis a návrh řešení – kontext ani zachycené chyby
-      se do repozitáře nenasazují, aby neskončily veřejně na webu.
+      nasazení. Jen ke čtení; appka o nich ví jen nadpis, popis a návrh řešení, protože
+      kontext ani zachycené chyby se do repozitáře nenasazují.
     </div>
-    <div class="dzr-seznam">${cizi.map(radekCizi).join('')}</div>`
+    ${
+      odbyte
+        ? `<div class="dzr-lista"><button class="btn small" id="dzCiziOdbyte">${
+            ciziOdbyte ? `Skrýt odbyté (${odbyte})` : `Ukázat i odbyté (${odbyte})`
+          }</button></div>`
+        : ''
+    }
+    ${
+      videt.length
+        ? `<div class="dzr-seznam">${videt.map(radekCizi).join('')}</div>`
+        : `<div class="dzr-prazdno">${IC('i-check')}<div>Nic otevřeného. Všechno je odbyté.</div></div>`
+    }`
 }
 
 /* ================= obsluha ================= */
@@ -573,6 +656,13 @@ function napoj(videt, cizi) {
 
   // Číslo nahoře je zkratka do filtru, ne druhý nezávislý přepínač – dvě cesty
   // ke stejnému zúžení seznamu si dřív nebo později začnou odporovat.
+  const ciziPrep = document.getElementById('dzCiziOdbyte')
+  if (ciziPrep)
+    ciziPrep.onclick = () => {
+      ciziOdbyte = !ciziOdbyte
+      renderDebug()
+    }
+
   for (const b of document.querySelectorAll('[data-cislo]')) {
     b.onclick = () => {
       if (b.dataset.cislo !== 'vyresene') return
@@ -602,6 +692,20 @@ function napoj(videt, cizi) {
       e.stopPropagation()
       const z = cizi.find((x) => x.id === b.dataset.plne)
       if (z) otevriDebugZapis(null, z)
+    }
+  }
+
+  // Poslat znovu: záznam se vrátí mezi nové, takže ho příští export vezme.
+  // Zahazuje se všechno o odeslání včetně otisku – jinak by se tvářil jako
+  // odeslaný a beze změny, tedy jako něco, co posílat netřeba.
+  for (const b of document.querySelectorAll('[data-znovu]')) {
+    b.onclick = async (e) => {
+      e.stopPropagation()
+      const id = b.dataset.znovu
+      upravZaznam(id, { exportovanoDo: '', exportovanoV: 0, otiskExportu: '' })
+      if (!(await ulozDebug())) return toast('Nepovedlo se uložit – v telefonu došlo místo')
+      toast(`${id} půjde v dalším exportu`)
+      renderDebug()
     }
   }
 
@@ -689,6 +793,26 @@ function napoj(videt, cizi) {
       renderDebug()
     }
   }
+
+  const smazOdbyte = document.getElementById('dzSmazOdbyte')
+  if (smazOdbyte)
+    smazOdbyte.onclick = async () => {
+      const odbyte = debugData.zaznamy.filter((z) => stadiumZaznamu(z) === 'vyreseno')
+      const dal = await potvrd({
+        nadpis: `Smazat ${odbyte.length} ${sklonuj(odbyte.length, 'odbytý', 'odbyté', 'odbytých')}?`,
+        text:
+          'Jsou vyřešené v repozitáři, takže tam zůstávají i s tím, jak dopadly. ' +
+          'Z telefonu zmizí nadobro.',
+        ano: 'Smazat',
+        nebezpecne: true,
+      })
+      if (!dal) return
+      smazZaznamy(odbyte.map((z) => z.id))
+      for (const z of odbyte) rozbalene.delete(z.id)
+      if (!(await ulozDebug())) return toast('Smazání se neuložilo – v telefonu došlo místo')
+      toast(`Smazáno ${odbyte.length}`)
+      renderDebug()
+    }
 
   document.getElementById('dzNovy').onclick = () => otevriDebugZapis()
 }

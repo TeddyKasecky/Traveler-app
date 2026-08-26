@@ -307,3 +307,10 @@
 .dz-rozbal-telo{padding:0 14px 14px;border-top:var(--line)}
 /* První nadpis uvnitř nemá odsazovat od linky dvakrát. */
 .dz-rozbal-telo .sechd:first-child{margin-top:12px}
+
+/* Odznak s počtem čekajících na sbaleném panelu EXPORT. Bez něj visí celá
+ * smyčka „zapiš → vyexportuj → commitni" na tom, že si člověk vzpomene panel
+ * rozbalit – a to je přesně ta manuálnost, které se tu zbavujeme. */
+.dz-odznak{flex:0 0 auto;font-family:var(--f-body);font-style:normal;font-weight:800;
+  font-size:.66rem;letter-spacing:0;min-width:20px;padding:2px 6px;border-radius:var(--r-pill);
+  background:var(--akcent);color:var(--na-akcentu);text-align:center}

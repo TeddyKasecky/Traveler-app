@@ -68,10 +68,12 @@ npm run preview          # prohlédnutí sestaveného webu
 npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 36 kontrol
-npm run check-debug      # debug poznámkovač: identita, podpis, otisk, export, rejstřík, 151 bodů
+npm run check-debug      # debug poznámkovač: identita, otisk, rejstřík, složka debug/, 176 bodů
+npm run debug-uklid      # duplicity a zavřené záznamy ze složky debug/ ven
+npm run debug-zavri      # uzavře záznam: -- <id> <hotovo|zahozeno> "důvod"
 
-npm run smoke            # proklikání v prohlížeči, 363 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 331 kontrol
+npm run smoke            # proklikání v prohlížeči, 370 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 335 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
@@ -251,9 +253,17 @@ obnovuje se nasazením (na betě každý push na `main`). Je to **jediný soubor
 se stabilním jménem, jehož obsah se mezi nasazeními mění**, takže ho service
 worker bere sítí napřed; cache-first by servírovala starý stav navždycky.
 
-**Když se záznam vyřeší, commit s opravou ho zároveň odstraní z jeho `.md`
-a přidá řádek do `debug/VYRESENO.md`.** Když ze souboru zmizí poslední záznam,
-soubor se smaže. Celý postup pro AI je v [.claude/rules/debug.md](.claude/rules/debug.md).
+**Záznam se zavírá příkazem, ne rukou**: `npm run debug-zavri -- <id> <hotovo|zahozeno>
+"důvod"` udělá všechny tři kroky naráz (vyhodit z `.md`, přidat řádek do
+`debug/VYRESENO.md`, smazat prázdný soubor). Ručně napsaný řádek se špatným tvarem
+parser tiše přeskočí a záznam z appky beze stopy zmizí.
+
+**Export posílá jen nové a změněné.** Rozsah „nevyřešené" do srpna 2026 posílal pokaždé
+skoro všechno, takže pět záznamů skončilo ve dvanácti kopiích ve čtyřech souborech.
+Duplicity ve složce hlídá `npm run debug-uklid -- --kontrola` a pre-commit hook.
+Uzavřené záznamy stárnou z rejstříku ven po 180 dnech — `debug-stav.json` se stahuje
+sítí napřed při každém startu a nesmí růst donekonečna. Celý postup pro AI je
+v [.claude/rules/debug.md](.claude/rules/debug.md).
 
 Návody pro člověka: [README.md](README.md), schéma dat [src/data/schema.md](src/data/schema.md),
 výklad vzhledu [VZHLED.md](VZHLED.md).

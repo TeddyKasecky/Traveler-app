@@ -20,7 +20,7 @@ bez vyžádání. Místo nich je 27 samostatných spustitelných `.mjs` skriptů
 |---|---|---|
 | `validate-data.mjs` | `npm run validate` | schéma dat; obal nad `src/data/validate.js` |
 | `check-uloziste.mjs` | `npm run check-uloziste` | stěhování dat mezi úložišti (fotky, CSV, geometrie tras, archiv cest, debug záznamy), chování při plné paměti, odložený zápis poznámky, 36 kontrol |
-| `check-debug.mjs` | `npm run check-debug` | debug poznámkovač: identita záznamu, podpis zařízení, přejmenování autora, otisk a změna od exportu, `.md` export, záloha, čtení rejstříku zpátky, porovnání s rejstříkem, čistota zdrojáků, 151 bodů |
+| `check-debug.mjs` | `npm run check-debug` | debug poznámkovač: identita záznamu, podpis zařízení, přejmenování autora, otisk a změna od exportu, `.md` export, záloha, čtení rejstříku zpátky, porovnání s rejstříkem, složka `debug/`, úklid a zavírání, čistota zdrojáků, 176 bodů |
 | `extract-places.mjs` | `npm run check-data` | že `places.json` je 1:1 s originálem |
 | `check-css-parity.mjs` | `npm run check-css:original` | 338 CSS pravidel proti originálu — **odstaveno redesignem** |
 | `check-tokeny.mjs` | `npm run check-tokeny` | barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů |
@@ -31,7 +31,7 @@ bez vyžádání. Místo nich je 27 samostatných spustitelných `.mjs` skriptů
 | `check-form.mjs` | `npm run check-form` | že formulář vyrábí platná místa, 18/18 |
 | `check-ikony.mjs` | `npm run check-ikony` | jedna věc = jedno jméno = jedna ikona, 8 bodů |
 | `check-images.mjs` | `npm run check-images` | existenci odkazů na fotky — **chodí na síť** |
-| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 363 / 331 kontrol |
+| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 370 / 335 kontrol |
 | `parity.mjs` | `npm run parity` | kontrolní seznam z `PARITA.md`, 26 bodů |
 | `perf.mjs` | `npm run perf` | rychlost startu při zpomaleném procesoru |
 | `perf-mapa.mjs` | ručně | plynulost posunu a přiblížení **stažené** malované mapy |
@@ -43,6 +43,12 @@ bez vyžádání. Místo nich je 27 samostatných spustitelných `.mjs` skriptů
 | `make-relief.mjs` | ručně | stínování terénu z výškopisu — **chodí na síť** |
 | `mvt.mjs` | — | není kontrola: čtení a filtrování vektorových dlaždic pro `make-mapa.mjs` |
 | `mrizka.mjs` | — | není kontrola: definice evropské mřížky, sdílená reliéfem a oběma maskami |
+
+`debug-uklid.mjs` a `debug-zavri.mjs` nejsou kontroly, ale nástroje na složku `debug/`:
+první odstraní duplicitní kopie záznamů a to, co je už ve `VYRESENO.md`, druhý uzavře
+záznam jedním příkazem (`npm run debug-zavri -- <id> <hotovo|zahozeno> "důvod"`) místo tří
+ručních editací. Společnou práci se soubory má `debug-slozka.mjs`. Kontrolu složky pouští
+`check-debug` i pre-commit hook — duplicity appce nevadí, takže se bez ní tiše nahromadí.
 
 `debug-rejstrik.mjs` není jen kontrola: skládá rejstřík složky `debug/` (co je otevřené,
 co se vyřešilo) a `vite.config.js` ho tímtéž kódem přibaluje do `dist/debug-stav.json`.
@@ -80,6 +86,7 @@ Chromium se schválně nestahuje. Skripty proti `dist/` potřebují napřed `npm
 | Sáhl jsi do | Pusť |
 |---|---|
 | `src/data/**` | `npm run validate` (hook to udělá sám) |
+| `debug/**` | `npm run debug-uklid -- --kontrola` (hook to udělá sám) |
 | `src/core/storage.js`, `store.js`, `fotoDb.js`, `trasyDb.js`, `trasy.js`, `cesty.js`, `debugDb.js` | `npm run check-uloziste` |
 | `src/core/debug*.js`, `chyby.js`, `src/views/debug/**` | `npm run check-debug` |
 | `src/map/**`, nový CSS soubor | `npm run smoke`, `npm run check-tokeny`, `npm run parity` |

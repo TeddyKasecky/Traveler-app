@@ -479,11 +479,23 @@ await page.click('#dzSeg button[data-seg="cizi"]')
 await page.waitForTimeout(600)
 if (!SINGLE) {
   await page.waitForSelector('.dzr.cizi', { timeout: 5000 })
-  await kontrola('cizí záznamy jsou vidět', () => page.locator('.dzr.cizi').count(), 2)
+  // ODBYTÉ SE VE VÝCHOZÍM STAVU NEKRESLÍ. Zavřené záznamy nikdy nemizí, takže
+  // by z téhle půlky obrazovky byla za rok zeď hotových věcí. Fixture má dva,
+  // z toho jeden vyřešený – vidět má být jeden.
+  await kontrola('cizí otevřené jsou vidět', () => page.locator('.dzr.cizi').count(), 1)
+  await kontrola('a odbyté schované', () =>
+    page.locator('#dzCiziOdbyte').innerText().then((x) => /Uk[áa]zat i odbyt/.test(x)), true)
+  await kontrola('počet v segmentu je z otevřených', () =>
+    page.locator('#dzSeg button[data-seg="cizi"]').innerText().then((x) => x.includes('(1)')), true)
   await kontrola('cizí záznam se needituje', () => page.locator('.dzr.cizi [data-upravit]').count(), 0)
-  await kontrola('z cizího vede tlačítko na plné znění', () => page.locator('.dzr.cizi [data-plne]').count(), 2)
+  await kontrola('z cizího vede tlačítko na plné znění', () => page.locator('.dzr.cizi [data-plne]').count(), 1)
+  await page.click('#dzCiziOdbyte')
+  await page.waitForTimeout(400)
+  await kontrola('po přepnutí jsou vidět i odbyté', () => page.locator('.dzr.cizi').count(), 2)
   await kontrola('vyřešené cizí nese datum', () =>
     page.locator('.dzr.cizi').nth(1).innerText().then((t) => /21\. 8\./.test(t)), true)
+  await page.click('#dzCiziOdbyte')
+  await page.waitForTimeout(400)
   // Rozbalení ukáže popis; plné znění otevře TÝŽ plát jako úprava, jen zamčený.
   await page.click('.dzr.cizi .dzr-telo')
   await page.waitForTimeout(300)
@@ -577,6 +589,9 @@ await page.waitForTimeout(250)
 // EXPORT JE SBALENÝ POD JEDNÍM PANELEM i se zálohou (srpen 2026). Dohromady
 // to byla čtyři tlačítka a dva odstavce vysvětlení, tedy víc obrazovky než
 // samotný seznam – a opticky to matlo v tom, co je hlavní akce.
+// Odznak na sbaleném panelu říká, kolik čeká na odeslání – bez něj by se na
+// export dalo zapomenout, protože panel je zavřený.
+await kontrola('odznak hlásí čekající', () => page.locator('#dzExportPrepinac .dz-odznak').innerText(), '1')
 await kontrola('export je schovaný', () => page.locator('#dzRozsah').count(), 0)
 await kontrola('a záloha s ním', () => page.locator('#dzZaloha').count(), 0)
 await page.click('#dzExportPrepinac')
@@ -587,14 +602,10 @@ await kontrola('a je v něm i záloha', () => page.locator('#dzZaloha').count(),
 // Rozsah je segment na obrazovce, ne dialog: navigator.share() se musí zavolat
 // synchronně v obsluze kliknutí a `await` před ním by ho zablokoval.
 await kontrola('export nabízí tři rozsahy', () => page.locator('#dzRozsah button').count(), 3)
-await kontrola('výchozí rozsah jsou nevyřešené', () =>
-  page.locator('#dzRozsah button.on').innerText().then((t) => t.trim()), 'Nevyřešené')
-// Záznam je po předchozí kontrole ve stavu „hotovo", takže do nevyřešených
-// nespadá a export nemá co odeslat – tlačítka musí být zašedlá, ne nefunkční.
-await kontrola('prázdný rozsah zašedne tlačítka', () => page.locator('#dzMd').isDisabled(), true)
-await page.click('#dzRozsah button[data-seg="vse"]')
-await page.waitForTimeout(250)
-await kontrola('rozsah Vše záznam najde', () => page.locator('#dzMd').isDisabled(), false)
+await kontrola('výchozí rozsah jsou nové a změněné', () =>
+  page.locator('#dzRozsah button.on').innerText().then((t) => t.trim()), 'Nové a změněné')
+// Záznam ještě nikam neodešel, takže do „nových a změněných" patří.
+await kontrola('neodeslaný záznam je v rozsahu', () => page.locator('#dzMd').isDisabled(), false)
 
 // Stažení .md. Playwright zachytí soubor a ověří se jeho obsah – formát je
 // zároveň vstupem pro scripts/debug-rejstrik.mjs, takže se nesmí rozejít.
@@ -613,13 +624,27 @@ await kontrola('export nese id i s podpisem zařízení', () =>
 // Kontext je víc řádků: čas · obrazovka · online · viewport, pak build a cache.
 await kontrola('export nese sebraný kontext', () => /\*\*Kontext\*\*\n[\s\S]{0,400}\nbuild /.test(mdText), true)
 
-// Po exportu se nabídne označení – u záznamu zůstane, ve kterém souboru odešel.
-await page.waitForTimeout(400)
-await kontrola('po exportu se nabídne označení', () => page.locator('#dialog.show').count(), 1)
-await page.click('#dialogAno')
-await page.waitForTimeout(700)
+// OZNAČENÍ JE AUTOMATICKÉ. Dřív se ptal dialog a odpověď „Teď ne" byla druhá
+// cesta, jak si vyrobit duplicitu: záznam zůstal neoznačený a příští export
+// ho poslal znovu.
+await page.waitForTimeout(900)
+await kontrola('označení se neptá', () => page.locator('#dialog.show').count(), 0)
 await kontrola('u záznamu zůstal název souboru', async () =>
   (await debugZaznamy()).zaznamy[0].exportovanoDo, mdNazev)
+// TOHLE JE CELÝ SMYSL NOVÉHO ROZSAHU: druhý export nesmí vyrobit další kopii.
+// Pět záznamů skončilo ve dvanácti kopiích ve čtyřech souborech za dva dny,
+// protože „nevyřešené" posílalo pokaždé znovu všechno.
+await kontrola('druhý export už nemá co poslat', () => page.locator('#dzMd').isDisabled(), true)
+await kontrola('a řekne to slovy', () =>
+  page.locator('.dz-rozbal-telo').innerText().then((x) => /nen[ií] nic|Nen[ií] co/i.test(x)), true)
+// Ale „Vše" ho pořád najde – to je záchrana, když se soubor ztratí.
+await page.click('#dzRozsah button[data-seg="vse"]')
+await page.waitForTimeout(300)
+await kontrola('rozsah Vše záznam pořád najde', () => page.locator('#dzMd').isDisabled(), false)
+// A odznak po odeslání zmizí – nic nečeká.
+await kontrola('odznak po odeslání zmizel', () => page.locator('#dzExportPrepinac .dz-odznak').count(), 0)
+await page.click('#dzRozsah button[data-seg="kodeslani"]')
+await page.waitForTimeout(300)
 // Rejstřík je STARŠÍ než tenhle export, takže „odesláno" je pravda a hlásit
 // „zmizelo z repozitáře" by byl planý poplach po každém exportu do nasazení.
 await page.click('.dzr:not(.cizi) .dzr-telo')

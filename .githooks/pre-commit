@@ -1,25 +1,47 @@
 #!/bin/sh
 #
-# Před každým commitem zkontroluje data míst, pokud se něco v src/data/ změnilo.
+# Před každým commitem zkontroluje to, co se právě mění:
+#   - data míst, když se sáhlo do src/data/,
+#   - složku debug/, když se sáhlo do ní.
 # Varování commit nezastaví, chyby ano.
 #
 # Aby se hook spouštěl, musí být jednou nastavené:
 #   git config core.hooksPath .githooks
 # (Nastavení je lokální, do repozitáře se neukládá. Je to i v README.)
 
-if ! git diff --cached --name-only --diff-filter=ACM | grep -q '^src/data/'; then
+zmeneno=$(git diff --cached --name-only --diff-filter=ACM)
+
+echo "$zmeneno" | grep -q '^src/data/' && data=1 || data=0
+echo "$zmeneno" | grep -q '^debug/' && ladeni=1 || ladeni=0
+
+if [ "$data" = "0" ] && [ "$ladeni" = "0" ]; then
   exit 0
 fi
 
 if ! command -v node >/dev/null 2>&1; then
-  echo "pre-commit: node není v PATH, kontrolu dat přeskakuji."
+  echo "pre-commit: node není v PATH, kontroly přeskakuji."
   exit 0
 fi
 
-echo "pre-commit: kontroluji data míst…"
-if ! node scripts/validate-data.mjs; then
-  echo ""
-  echo "Commit zastaven – data míst obsahují chyby."
-  echo "Oprav je, nebo kontrolu jednorázově přeskoč: git commit --no-verify"
-  exit 1
+if [ "$data" = "1" ]; then
+  echo "pre-commit: kontroluji data míst…"
+  if ! node scripts/validate-data.mjs; then
+    echo ""
+    echo "Commit zastaven – data míst obsahují chyby."
+    echo "Oprav je, nebo kontrolu jednorázově přeskoč: git commit --no-verify"
+    exit 1
+  fi
+fi
+
+# Duplicity ve složce debug/ appce nevadí – rejstřík si vybere nejnovější –
+# a právě proto se bez kontroly tiše nahromadí. Pět záznamů skončilo ve
+# dvanácti kopiích ve čtyřech souborech za dva dny, než si toho někdo všiml.
+if [ "$ladeni" = "1" ]; then
+  echo "pre-commit: kontroluji složku debug/…"
+  if ! node scripts/debug-uklid.mjs --kontrola; then
+    echo ""
+    echo "Commit zastaven – ve složce debug/ je co uklidit."
+    echo "Spusť \`npm run debug-uklid\` a commitni znovu."
+    exit 1
+  fi
 fi

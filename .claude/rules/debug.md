@@ -78,28 +78,63 @@ v kontextu proti dnešnímu stavu).
 
 ## Když se záznam uzavře
 
-Ve **stejném commitu**, který nese opravu:
+**Jedním příkazem, ne rukou.** Ve stejném commitu, který nese opravu:
 
-a) **odstraň záznam z jeho `.md` souboru** (celou sekci i s oddělovačem `---`),
-
-b) **přidej řádek do `debug/VYRESENO.md`** ve tvaru
-
-```markdown
-- `tadeas-014` · 2026-09-02 · hotovo · Mapa nezobrazuje špendlíky po obnovení ze zálohy
-- `anicka-003` · 2026-09-02 · zahozeno · duplicita k tadeas-014
+```bash
+npm run debug-zavri -- tadeas-014 hotovo "mapa se po obnovení ze zálohy překreslí"
+npm run debug-zavri -- anicka-003 zahozeno "duplicita k tadeas-014"
 ```
 
-c) **když ze souboru zmizel poslední záznam, smaž i soubor.**
+Skript udělá všechny tři kroky, nebo neudělá nic: vyhodí sekci z `.md`, přidá
+řádek do `debug/VYRESENO.md` a smaže soubor, ze kterého zmizel poslední záznam.
+Odmítne neznámé `id`, už zavřený záznam i jiný stav než `hotovo`/`zahozeno`.
 
-Bod (b) je ten důležitý. Bez něj by appka o záznamu ztratila stopu a autor by
-se nikdy nedozvěděl, že je hotovo — právě proto poznámkovač vznikl. Hash commitu
-v řádku není: vzniká v tomtéž commitu, takže v okamžiku psaní ještě neexistuje.
-Dohledá se `git log -S tadeas-014`.
+**Ručně to nedělej.** Řádek ve `VYRESENO.md` má přesný tvar a ten, který mu
+neodpovídá, parser **tiše přeskočí** — záznam pak z rejstříku zmizí, autor
+u něj v appce uvidí „nedorazilo" a nikdy se nedozví, že je hotovo. Právě kvůli
+tomu poznámkovač vznikl, takže je to ta nejhorší možná tichá chyba.
 
-**`VYRESENO.md` se nikdy nemaže ani nepřepisuje**, jen se do něj přidává.
+Hash commitu v řádku není: vzniká v tomtéž commitu, takže v okamžiku psaní
+ještě neexistuje. Dohledá se `git log -S tadeas-014`.
 
-Bez pravidla (a) a (c) by složka za měsíc zarostla a AI by četla kontext,
-který už neplatí.
+**`VYRESENO.md` se nikdy nemaže ani nepřepisuje**, jen se do něj přidává. Je to
+jediná stopa po záznamu, který už ve složce není, a appka z něj bere stav
+zpátky. Je to zároveň jediný soubor ve složce, na kterém může vzniknout
+konflikt v gitu — řeší se ponecháním obou řádků.
+
+**Uzavřené záznamy stárnou z rejstříku ven** po 180 dnech
+(`PLATNOST_UZAVRENYCH` v `scripts/debug-rejstrik.mjs`). Bez toho by každý kdy
+zavřený záznam jel v `debug-stav.json` napořád, a ten se stahuje sítí napřed
+při každém startu appky. Řádek ve `VYRESENO.md` zůstává; appka si uzavření
+navíc pamatuje sama, takže se nikomu nepřepne na „zmizelo".
+
+## Úklid složky
+
+```bash
+npm run debug-uklid              # uklidí
+npm run debug-uklid -- --kontrola   # jen nahlásí, nic nemění
+```
+
+Když je totéž `id` ve víc souborech, platí ten **nejnovější** a starší kopie se
+odstraní. Vyhodí se i záznamy, které jsou už ve `VYRESENO.md`. Prázdný soubor
+se smaže.
+
+Kontrolu pouští **pre-commit hook**, kdykoli se ve složce `debug/` něco mění,
+a `npm run check-debug`. Duplicity totiž appce nevadí — rejstřík si vybere
+nejnovější — takže se bez kontroly tiše nahromadí: v srpnu 2026 skončilo pět
+záznamů ve dvanácti kopiích ve čtyřech souborech za dva dny.
+
+**Soubory ve složce se nepřejmenovávají.** Pravidlo „platí nejnovější" stojí na
+abecedním pořadí názvů, které začínají datem a časem — přejmenování by tiše
+změnilo, co platí.
+
+## Co je veřejné
+
+Repozitář i beta jsou veřejné. **Co je v záznamu, si po commitnutí může
+přečíst kdokoli** — na GitHubu i na webu bety, kam se nadpisy, popisy a návrhy
+řešení nasazují v `debug-stav.json`. Kontext, kroky ani zachycené chyby se
+tam nenasazují a názvy výprav a cest se do exportu vůbec neposílají, jen
+jejich velikost (`src/core/debugKontext.js`).
 
 ## Když se záznam v appce po odeslání změní
 

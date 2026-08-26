@@ -30,6 +30,7 @@ import { fileURLToPath } from 'node:url'
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 const { PRIORITY, STAVY, TYPY, MODULY } = await import('../src/core/debug.js')
+const { VERZE_FORMATU } = await import('../src/core/debugExport.js')
 
 /** Popisek → id. V `.md` jsou popisky, v appce se pracuje s id. */
 const podlePopisku = (seznam) => new Map(seznam.map((x) => [x.popisek.toLowerCase(), x.id]))
@@ -85,6 +86,18 @@ function zaznamZeSekce(kus, soubor) {
 
 /** Rozebere jeden exportovaný `.md`. První kus je hlavička souboru, ne záznam. */
 export function zaznamyZeSouboru(text, soubor) {
+  // VERZE FORMÁTU z hlavičky. Chybějící řádek znamená verzi 1 – tak vypadaly
+  // soubory před srpnem 2026 a musí jít číst dál. Vyšší neznámá verze se
+  // NESMÍ tiše přeskočit: záznamy by z rejstříku zmizely a autor by u nich
+  // v appce viděl „nedorazilo“, což by byla lež o něčem, co v repozitáři leží.
+  const hlavicka = text.split(/\n---\n/)[0]
+  const verze = Number((/^Form[áa]t:\s*(\d+)\s*$/m.exec(hlavicka) || [, 1])[1])
+  if (verze > VERZE_FORMATU) {
+    throw new Error(
+      `${soubor}: formát ${verze}, ale tenhle skript umí nejvýš ${VERZE_FORMATU}. ` +
+        'Aktualizuj repozitář, jinak ten soubor nikdo nepřečte.'
+    )
+  }
   return text
     .split(/\n---\n/)
     .slice(1)
@@ -109,6 +122,19 @@ export function vyreseneZeSouboru(text) {
     })
   }
   return ven
+}
+
+/**
+ * Jak dlouho se uzavřený záznam ještě nasazuje s aplikací. Půl roku je
+ * s rezervou dost na to, aby ho autor uviděl i po dlouhé pauze – a přitom
+ * rejstřík neroste donekonečna.
+ */
+export const PLATNOST_UZAVRENYCH = 180 * 24 * 3600 * 1000
+
+/** Stáří data `2026-09-02` v ms. Neplatné datum se bere jako čerstvé. */
+function stari(iso, ted) {
+  const kdy = Date.parse(`${iso}T00:00:00Z`)
+  return Number.isFinite(kdy) ? ted - kdy : 0
 }
 
 /**
@@ -149,6 +175,16 @@ export function postavRejstrik(korenDebug = path.join(ROOT, 'debug'), ted = Date
   const vyresenyPath = path.join(korenDebug, 'VYRESENO.md')
   if (fs.existsSync(vyresenyPath)) {
     for (const v of vyreseneZeSouboru(fs.readFileSync(vyresenyPath, 'utf8'))) {
+      // STARÉ UZAVŘENÉ SE DO REJSTŘÍKU NEBEROU. `VYRESENO.md` se nikdy
+      // nezkracuje, takže by každý kdy zavřený záznam jel v `debug-stav.json`
+      // napořád – a ten se stahuje SÍTÍ NAPŘED při každém startu appky.
+      // Po roce by si každý při každém otevření tahal seznam všeho, co kdy
+      // bylo hotové. Řádek v souboru zůstává jako historie, jen se nenasazuje.
+      //
+      // Že se tím nikomu nepřepne zavřený záznam na „zmizelo": appka si
+      // uzavření pamatuje sama (`zavreno` v `src/core/debug.js`), jakmile ho
+      // jednou v rejstříku uvidí.
+      if (stari(v.vyresenoDne, ted) > PLATNOST_UZAVRENYCH) continue
       const puvodni = podleId.get(v.id)
       podleId.set(v.id, puvodni ? { ...puvodni, ...v } : v)
     }
