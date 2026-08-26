@@ -134,9 +134,12 @@ const kontrola = async (popis, fn, ocekavano) => {
 // viz VZHLED.md) + `i-zalozka` + `i-slozka` + `i-zamek` (ukončené cesty
 // v knihovně, srpen 2026) + `i-dum` (uložené pozice v profilu, srpen 2026)
 // + `i-oko-ne` (schování běžných míst u mapy, srpen 2026)
-// + `i-brouk` (debug poznámkovač, srpen 2026).
+// + `i-brouk` (debug poznámkovač, srpen 2026)
+// + `i-seznam` a `i-obnovit` (zkratka do poznámkovače a reset v hlavičce,
+//   srpen 2026 – brouk se znovu použít nedal, dvě sousední kolečka s toutéž
+//   ikonou by nešlo rozeznat).
 // Číslo se mění jen s vědomým přidáním do sprite.svg.
-await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 64)
+await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 66)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
 // Nad mapou jsou čtyři rychlé pilulky „moje věci" (Vše, Uložená, Musíme!,
@@ -264,9 +267,23 @@ await kontrola('poznámkovač má přepínač', () => page.locator('#debugSeg bu
 await kontrola('bez bety je poznámkovač vypnutý', () =>
   page.locator('#debugSeg button.on').innerText().then((t) => t.trim()), 'Vypnutý')
 await kontrola('a kolečko v hlavičce není vidět', () => page.locator('#debugOpen').isVisible(), false)
+// Tři vývojářská kolečka řídí jeden přepínač, takže se nesmí rozejít –
+// dvě viditelná a jedno schované by vypadalo jako chyba.
+await kontrola('ani zkratka do poznámkovače', () => page.locator('#debugSeznam').isVisible(), false)
+await kontrola('ani reset', () => page.locator('#debugReset').isVisible(), false)
 await page.click('#debugSeg button:not(.on)')
 await page.waitForTimeout(200)
 await kontrola('zapnutí přepínače kolečko ukáže', () => page.locator('#debugOpen').isVisible(), true)
+await kontrola('a s ním zkratku do poznámkovače', () => page.locator('#debugSeznam').isVisible(), true)
+await kontrola('a reset', () => page.locator('#debugReset').isVisible(), true)
+// Pět koleček se na úzký telefon vejde jen bez nápisu VANDRBUCH. Příznak
+// dává JavaScript, protože `h1` je v DOM PŘED tlačítky a selektorem se na
+// ně odsud nedosáhne. Bez toho poslední kolečko leze mimo obrazovku.
+await kontrola('hlavička se vejde do šířky', () =>
+  page.evaluate(() => {
+    const brand = document.getElementById('brand')
+    return brand.scrollWidth <= brand.getBoundingClientRect().width + 1
+  }), true)
 await kontrola('volba se uložila', () =>
   page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs')).debugRezim), true)
 
@@ -410,8 +427,14 @@ await kontrola('debug data nejsou v poznámkách z cest', () =>
 await kontrola('a nejsou ani ve vlastním klíči localStorage', () =>
   page.evaluate(() => localStorage.getItem('vandrbuch:debug')), null)
 
-// Prohlížeč poznámek. Otevírá se z Nastavení – ve spodní liště tlačítko nemá.
-// Načítá se dynamickým importem, takže první vykreslení chvíli trvá.
+// Prohlížeč poznámek. Od srpna 2026 vede do něj zkratka přímo z hlavičky –
+// do teď se otevíral jen oklikou přes Nastavení. Načítá se dynamickým
+// importem, takže první vykreslení chvíli trvá.
+await page.click('#debugSeznam')
+await page.waitForTimeout(700)
+await kontrola('zkratka v hlavičce otevře poznámkovač', () => page.evaluate(() => location.hash), '#debug')
+// A cesta přes Nastavení musí fungovat dál – je to jediná na produkci, kde
+// hlavička kolečka nemá.
 await page.click('#nastaveniOpen')
 await page.waitForTimeout(400)
 await page.click('#debugOtevri')
@@ -1699,6 +1722,57 @@ if (!SINGLE) {
 
   await page.evaluate(() => document.getElementById('podkladBtn').click())
   await page.context().setOffline(false)
+}
+
+/* ---------- reset aplikace (jen hostovaná varianta) ---------- */
+
+// ÚPLNĚ NA KONCI SCHVÁLNĚ: reset odregistruje service worker a smaže jeho
+// cache, takže by kontroly výš shodil.
+//
+// Tohle je ta část, která se nesmí odbýt. Tlačítko, které maže cache, musí
+// mít doloženo, že NEMAŽE DATA. Kdo sem jednou připíše `localStorage.clear()`,
+// zahodí jediné, co v téhle appce nejde ničím nahradit.
+if (!SINGLE) {
+  console.log('')
+  console.log('  reset aplikace:')
+
+  // Značka se píše do `vandrbuch:draft`, ne do `vandrbuch:v1`. Ten totiž
+  // aplikace při odchodu ze stránky přepíše obsahem z paměti (pagehide →
+  // save()), takže by značka zmizela i bez resetu a kontrola by lhala.
+  // Přesně na tuhle past upozorňuje CLAUDE.md u úklidu ve smoke.
+  await page.evaluate(() => {
+    localStorage.setItem('vandrbuch:draft', JSON.stringify({ n: 'tohle nesmí reset smazat' }))
+    // Značka v okně: po skutečném načtení znovu tam být nesmí. Bez ní by
+    // kontrola prošla, i kdyby tlačítko neudělalo vůbec nic.
+    window.__predResetem = true
+  })
+
+  await kontrola('před resetem cache existuje', () =>
+    page.evaluate(() => caches.keys().then((k) => k.some((x) => x.startsWith('vandrbuch-')))), true)
+
+  await page.click('#debugReset')
+  await page.waitForTimeout(4000)
+
+  // Online se reset nesmí odmítnout – dialog by znamenal, že se neprovedl.
+  await kontrola('reset se online neodmítl', () => page.locator('#dialog.show').count(), 0)
+  await kontrola('stránka se opravdu načetla znovu', () =>
+    page.evaluate(() => !window.__predResetem), true)
+  await kontrola('aplikace po resetu naběhla', () => page.locator('#totalN').innerText(), '580')
+
+  // A teď to podstatné. Service worker se mezitím zaregistroval znovu a cache
+  // si postavil taky – to je správně, appka má po resetu zase fungovat
+  // offline. Kontroluje se proto, co zůstat MUSÍ, ne co zmizelo.
+  await kontrola('DATA V localStorage RESET PŘEŽILA', () =>
+    page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:draft') || '{}').n),
+    'tohle nesmí reset smazat')
+  await kontrola('a předvolby taky', () =>
+    page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs')).debugRezim), true)
+  await kontrola('poznámky v úložišti zůstaly', () =>
+    page.evaluate(() => !!localStorage.getItem('vandrbuch:v1')), true)
+  await kontrola('databáze s fotkami zůstala', () =>
+    page.evaluate(() => indexedDB.databases().then((d) => d.some((x) => x.name === 'vandrbuch'))), true)
+
+  await page.evaluate(() => localStorage.removeItem('vandrbuch:draft'))
 }
 
 /* ---------- vzhled: tmavý režim ---------- */

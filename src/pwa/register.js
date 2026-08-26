@@ -42,3 +42,48 @@ export function registrujServiceWorker() {
 
 /** Pojistka proti smyčce překreslování. */
 let uzSePrekresluje = false
+
+/**
+ * Načte aplikaci znovu a zahodí přitom cache service workeru.
+ *
+ * PROČ TO EXISTUJE: po nasazení nové verze na betu servíruje service worker
+ * ještě chvíli starou z cache a obyčejné obnovení stránky s tím nehne –
+ * `controllerchange` výš zabere jen do tří vteřin od startu a jen když se
+ * nová verze zrovna stáhla. Jediné, co při ladění spolehlivě zabíralo, bylo
+ * aplikaci zavřít a znovu otevřít.
+ *
+ * NEMAŽE UŽIVATELSKÁ DATA a mazat je nikdy nesmí. Poznámky, hodnocení, plán,
+ * výpravy (localStorage), fotky, trasy, archiv cest, debug záznamy a stažená
+ * mapa (IndexedDB) zůstávají netknuté – smaže se jen to, co si prohlížeč umí
+ * stáhnout znovu. Kdo sem přidá `localStorage.clear()`, zahodí jediné, co
+ * v téhle appce nejde ničím nahradit.
+ *
+ * Rozepsaná poznámka se neztratí: `location.reload()` spustí `pagehide`
+ * a na něm visí doplach `save()` (viz `main.js`).
+ *
+ * OFFLINE SE TO ODMÍTNE. Po smazání cache by nebylo co načíst a zbyla by bílá
+ * stránka až do chvíle, kdy bude signál – na cestě přesně to, co se stát nesmí.
+ *
+ * @returns {Promise<boolean>} `false` = neudělalo se nic (offline)
+ */
+export async function resetujAppku() {
+  if (!navigator.onLine) return false
+
+  try {
+    if ('caches' in window) {
+      const klice = await caches.keys()
+      // Jen naše klíče. Původ může hostit i něco jiného a mazat cizí cache
+      // by bylo přesně to, co tenhle soubor nemá dělat.
+      await Promise.all(klice.filter((k) => k.startsWith('vandrbuch-')).map((k) => caches.delete(k)))
+    }
+    if ('serviceWorker' in navigator) {
+      const registrace = await navigator.serviceWorker.getRegistrations()
+      await Promise.all(registrace.map((r) => r.unregister()))
+    }
+  } catch {
+    // Zakázané úložiště nebo prohlížeč bez cache API – načíst znovu se dá tak jako tak.
+  }
+
+  location.reload()
+  return true
+}

@@ -30,7 +30,7 @@ import { initPlusMenu } from './components/plusMenu.js'
 import { initVyberMista, otevriVyber } from './components/vyberMista.js'
 import { initIntro } from './components/intro.js'
 import { initAddForm } from './components/addForm.js'
-import { initDialog } from './components/dialog.js'
+import { initDialog, oznam } from './components/dialog.js'
 import { initKosikFab } from './components/kosikFab.js'
 import { initDebugZapis, otevriDebugZapis, srovnejDebugTlacitko } from './components/debugZapis.js'
 import { initPorovnani } from './views/porovnani/porovnani.js'
@@ -47,7 +47,7 @@ import { renderMapaDole, initMapaDole } from './views/mapa/mapa.js'
 import { renderProfil } from './views/profil/profil.js'
 import { zastavSledovani } from './views/plan/cesta-zivot.js'
 
-import { registrujServiceWorker } from './pwa/register.js'
+import { registrujServiceWorker, resetujAppku } from './pwa/register.js'
 
 /* ---------- statické části stránky ---------- */
 
@@ -125,6 +125,20 @@ document.getElementById('nastaveniOpen').onclick = () => aktivujZalozku('nastave
 // obrazovkách) a vidět jen se zapnutým přepínačem v Nastavení – viditelnost
 // srovnává srovnejDebugTlacitko(), sběr chyb na ní nezávisí.
 document.getElementById('debugOpen').onclick = () => otevriDebugZapis()
+// Zkratka do prohlížeče záznamů – totéž, co dělá tlačítko v Nastavení.
+document.getElementById('debugSeznam').onclick = () => aktivujZalozku('debug')
+// Reset: zahodí cache service workeru a načte appku znovu. Offline se odmítne
+// a řekne proč – po smazání cache by bez signálu nebylo co načíst.
+document.getElementById('debugReset').onclick = async () => {
+  if (await resetujAppku()) return
+  oznam({
+    nadpis: 'Teď to nejde',
+    text:
+      'Načtení znovu potřebuje síť: zahazuje se při něm uložená kopie aplikace ' +
+      'a bez signálu by nebylo co stáhnout zpátky. Poznámky, plány ani fotky ' +
+      'to nikdy nemaže.',
+  })
+}
 srovnejDebugTlacitko()
 
 /* ---------- kdo na co reaguje ---------- */

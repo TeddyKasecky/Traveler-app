@@ -595,6 +595,16 @@ export function initDebugZapis() {
 
 /** Srovná viditelnost tlačítka v hlavičce podle přepínače v Nastavení. */
 export function srovnejDebugTlacitko() {
-  const b = document.getElementById('debugOpen')
-  if (b) b.hidden = !prefs.debugRezim
+  // Všechna tři vývojářská kolečka naráz: zápis, prohlížeč a reset. Řídí je
+  // jeden přepínač, takže se nesmí rozejít – dvě viditelná a jedno schované
+  // by vypadalo jako chyba.
+  for (const id of ['debugOpen', 'debugSeznam', 'debugReset']) {
+    const b = document.getElementById(id)
+    if (b) b.hidden = !prefs.debugRezim
+  }
+  // Příznak na `body` kvůli hlavičce: s pěti kolečky se na úzkém telefonu
+  // nevejde nápis VANDRBUCH a musí zmizet. CSS na to samo nedosáhne –
+  // `h1` stojí v DOM PŘED tlačítky, takže sourozenecký selektor `~` ho nevybere.
+  // Stejný vzor jako `body[data-tab]`, kterým se schovává chrome mapy.
+  document.body.classList.toggle('debug-rezim', !!prefs.debugRezim)
 }

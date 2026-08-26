@@ -77,4 +77,6 @@
 <symbol id="i-dum" viewBox="0 0 24 24"><path class="f" opacity=".18" d="M4 11L12 4l8 7v9H4z"/><path d="M4 11L12 4l8 7v9H4V11z"/><rect x="10" y="14" width="4" height="6" class="fi"/></symbol>
 <symbol id="i-brouk" viewBox="0 0 24 24"><ellipse cx="12" cy="13.4" rx="5.4" ry="6.4" class="f" opacity=".18"/><ellipse cx="12" cy="13.4" rx="5.4" ry="6.4"/><path d="M12 7.2v12.6"/><circle cx="12" cy="5.8" r="2.2"/><path d="M10.5 4.1 9 2.6M13.5 4.1 15 2.6"/><path d="M6.7 9.9 3.9 8.4M6.6 13.4H3.4M6.9 16.9 4.2 18.6M17.3 9.9l2.8-1.5M17.4 13.4h3.2M17.1 16.9l2.7 1.7"/></symbol>
 <symbol id="i-oko-ne" viewBox="0 0 24 24"><path d="M3 3l18 18" stroke-width="2"/><path d="M9.9 5.1A10.4 10.4 0 0 1 12 5c5 0 9 4 10.5 7-.6 1.2-1.5 2.5-2.7 3.7M6.5 6.5C4.5 7.8 3 9.6 1.5 12c1.5 3 5.5 7 10.5 7 1.4 0 2.7-.3 3.9-.8" opacity=".85"/><path d="M9.9 9.9a3.2 3.2 0 0 0 4.2 4.2" opacity=".85"/></symbol>
+<symbol id="i-seznam" viewBox="0 0 24 24"><circle cx="5" cy="6.5" r="1.6" class="f"/><circle cx="5" cy="12" r="1.6" class="f"/><circle cx="5" cy="17.5" r="1.6" class="f"/><path d="M9.5 6.5H20M9.5 12H20M9.5 17.5H17"/></symbol>
+<symbol id="i-obnovit" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20.4 3.6V8h-4.4" class="f"/></symbol>
 </defs></svg>

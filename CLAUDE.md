@@ -70,8 +70,8 @@ npm run slouc            # vysype places-nova.json do places.json a přepočít�
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 36 kontrol
 npm run check-debug      # debug poznámkovač: identita, podpis, otisk, export, rejstřík, 151 bodů
 
-npm run smoke            # proklikání v prohlížeči, 347 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 323 kontrol
+npm run smoke            # proklikání v prohlížeči, 361 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 329 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
@@ -148,7 +148,7 @@ _Odvozeno ze skutečného kódu — žádný linter to nevynucuje._
 - Parametry typované JSDoc anotacemi (`@param {Record<string, any>} p`), ne TypeScriptem.
 - CSS: barvy a rozměry výhradně přes proměnné z `tokens.css`, nikdy natvrdo. Nová barva
   patří do sémantické vrstvy **a do obou tmavých bloků** — viz [VZHLED.md](VZHLED.md).
-- Ikony jsou symboly v `src/icons/sprite.svg` (61 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
+- Ikony jsou symboly v `src/icons/sprite.svg` (66 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
 
 Podrobná pravidla podle oblasti (auto-scoped podle cesty):
 [.claude/rules/database.md](.claude/rules/database.md) ·
@@ -199,7 +199,13 @@ nebo výsledek výpočtu. Druhé tam nepatří.
 
 Nápady, bugy a poznámky se zapisují **přímo v appce za běhu** (kolečko s broukem
 v hlavičce, jen se zapnutým `prefs.debugRezim` — na betě a v `npm run dev` ano,
-na produkci ne). Appka k záznamu přibalí technický kontext, který uživatel
+na produkci ne). **V hlavičce jsou tři vývojářská kolečka a řídí je týž
+přepínač**: zápis (brouk), zkratka do poznámkovače a červený reset, který
+zahodí cache service workeru a načte aplikaci znovu — po nasazení nové verze
+totiž servíruje starou z cache a obyčejné obnovení stránky s tím nehne.
+`resetujAppku()` v `src/pwa/register.js` **nemaže uživatelská data** a offline
+se odmítne, protože by po smazání cache nebylo co načíst. S pěti kolečky se na
+úzký telefon nevejde nápis v hlavičce, takže ho `body.debug-rezim` schová. Appka k záznamu přibalí technický kontext, který uživatel
 nepíše: obrazovku, filtry, verzi buildu i cache, online/offline, zaplnění
 úložiště a posledních 20 zachycených chyb. Záznamy leží v IndexedDB
 (`src/core/debugDb.js`, databáze `vandrbuch-debug`; do srpna 2026 v klíči

@@ -33,6 +33,14 @@
          V hlavičce, protože ta je fixed a je tedy na všech obrazovkách –
          vpravo dole už v Plánu sedí košík a plovoucí „+" nad mapou. -->
     <button id="debugOpen" hidden title="Zapsat nápad, bug nebo poznámku"><svg class="ic"><use href="#i-brouk"/></svg></button>
+    <!-- Zkratka do prohlížeče záznamů. Do teď se otevíral jen oklikou přes
+         Nastavení, což je při každodenním ladění na betě cesta navíc. -->
+    <button id="debugSeznam" hidden title="Otevřít poznámkovač"><svg class="ic"><use href="#i-seznam"/></svg></button>
+    <!-- Načte aplikaci znovu a přitom zahodí cache service workeru. Ten totiž
+         po nasazení nové verze ještě chvíli servíruje starou a obyčejné
+         obnovení stránky s tím nehne – jediné, co zabíralo, bylo aplikaci
+         zavřít a otevřít. Uživatelských dat se to nedotkne, viz pwa/register.js. -->
+    <button id="debugReset" hidden class="nebezpecne" title="Načíst aplikaci znovu bez cache"><svg class="ic"><use href="#i-obnovit"/></svg></button>
     <button id="profilOpen" title="Profil"><svg class="ic"><use href="#i-profil"/></svg></button>
     <button id="nastaveniOpen" title="Nastavení"><svg class="ic"><use href="#i-nastaveni"/></svg></button>
   </div>
