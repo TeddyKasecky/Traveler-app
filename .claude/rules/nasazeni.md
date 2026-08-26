@@ -116,12 +116,29 @@ v žádné podobě ve výsledném JS, ne jen že je vypnutá. Bezpečné i pro
 `build:single`: štítek se tam nikdy nezobrazí bez ohledu na proměnnou,
 protože offline soubor nemá „prostředí", ke kterému by se vztahoval.
 
-Worker nemá žádný kód — `wrangler.jsonc` nemá `main`, jen `assets.directory: "./dist"`.
-Bez toho souboru `wrangler deploy` neví, co nasadit, začne hledat konfiguraci sám
-a zakopne o `vite.config.js`. Stejný `wrangler.jsonc` (s `name: "traveler-app"`)
-slouží oběma projektům — `name` v souboru neurčuje, na kterou Cloudflare
-appku push jde, to řídí výhradně větev, na kterou je projekt v dashboardu
-napojený.
+Bez `wrangler.jsonc` `wrangler deploy` neví, co nasadit, začne hledat konfiguraci
+sám a zakopne o `vite.config.js`. Stejný soubor (s `name: "traveler-app"`) slouží
+oběma projektům — `name` v něm neurčuje, na kterou Cloudflare appku push jde,
+to řídí výhradně větev, na kterou je projekt v dashboardu napojený.
+
+**Worker má od srpna 2026 kód** (`main: "worker/index.js"`); do té doby žádný
+neměl a Cloudflare jen rozdávala hotové soubory z `dist/`. Statické soubory se
+ale vyhodnocují **dřív** než Worker (`run_worker_first` je ve výchozím stavu
+vypnuté), takže se na servírování aplikace nic nemění — ke kódu doputuje jen to,
+co na žádný soubor nesedlo, a na to se vrací 404 stejně jako dřív.
+
+Kód je v **kořeni repa, ne v `src/`**: `src/` bere Vite a zabalil by ho do
+aplikace.
+
+**Kdyby se cokoli pokazilo, únikový východ je jeden řádek:** smazat `main`
+ze `wrangler.jsonc` a nasadit. Tím je Worker zase bez kódu a chování se vrací
+přesně tam, kde bylo.
+
+Pozor: **žádná místní kontrola Worker neověří.** `smoke` si pouští vlastní
+statický server, takže ho nikdy nevidí; jediné, co jde udělat předem, je
+`npx --yes wrangler@4 deploy --dry-run`. Zbytek se pozná až na nasazené betě —
+proto se každá změna Workeru nasazuje samostatně a hned se ověří, že appka
+naběhne, service worker se zaregistruje a offline režim funguje.
 
 **`not_found_handling: "none"` se nesmí přepnout na `single-page-application".** Aplikace si
 při instalaci ukládá do cache soubory s otiskem obsahu v názvu; kdyby některý chyběl, dostal

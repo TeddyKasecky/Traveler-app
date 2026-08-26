@@ -711,7 +711,13 @@ function zdrojoveSoubory(koren, ven = []) {
   return ven
 }
 
-const zdrojaky = [...zdrojoveSoubory(path.join(ROOT, 'src')), ...zdrojoveSoubory(path.join(ROOT, 'scripts'))]
+const zdrojaky = [
+  ...zdrojoveSoubory(path.join(ROOT, 'src')),
+  ...zdrojoveSoubory(path.join(ROOT, 'scripts')),
+  // `worker/` je mimo `src/` schválně (Vite by ho zabalil do aplikace),
+  // takže by na něj tenhle výčet jinak nedosáhl.
+  ...zdrojoveSoubory(path.join(ROOT, 'worker')),
+]
 const spinave = zdrojaky.filter((c) => nesePodivnyZnak(fs.readFileSync(c, 'utf8')))
 t(`žádný zdroják nenese řídicí znak (${zdrojaky.length} souborů)`, spinave.length === 0)
 for (const c of spinave) console.log(`     ${path.relative(ROOT, c)}`)
