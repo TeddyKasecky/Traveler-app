@@ -23,6 +23,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { varovani, zkontrolujCerstvost } from './debug-cerstvost.mjs'
 import {
   VYCHOZI_SLOZKA,
   exportniSoubory,
@@ -98,6 +99,18 @@ export function uklidSlozku(slozka = VYCHOZI_SLOZKA, { jenKontrola = false } = {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const jenKontrola = process.argv.includes('--kontrola')
+
+  // TADY SE JEN VARUJE, NEBLOKUJE. Úklid je přesně to, co člověk pouští PO
+  // mergi, aby po sobě uklidil – blokovat ho kvůli zastaralé složce by bylo
+  // do kruhu. Kód se proto nemění, jen se nahoru napíše, že to, co bude vidět
+  // níž, nemusí být celý obrázek.
+  if (!process.argv.includes('--bez-kontroly')) {
+    const c = zkontrolujCerstvost()
+    // „Nezname" se píše šedě: neověřený stav (offline) není nález, jen poznámka.
+    if (c.stav === 'pozadu') console.log(`${cerveny(varovani(c))}\n`)
+    else if (c.stav === 'nezname') console.log(`${seda(varovani(c))}\n`)
+  }
+
   const v = uklidSlozku(VYCHOZI_SLOZKA, { jenKontrola })
 
   for (const d of v.duplicity) {
@@ -113,7 +126,10 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
 
   const nalezu = v.duplicity.length + v.uzavrene.length + v.vadneRadky.length
   if (!nalezu) {
-    console.log(zeleny('Složka debug/ je v pořádku.'))
+    // „Není co uklidit“, ne „je v pořádku“: nad zastaralou složkou visí výš
+    // varování, že aktuální NENÍ, a dvě opačné věty o téže složce si čtenář
+    // přebere jako protimluv. Tenhle skript ověřuje jen vnitřní pořádek.
+    console.log(zeleny('Ve složce debug/ není co uklidit.'))
     process.exit(0)
   }
 

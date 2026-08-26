@@ -21,7 +21,7 @@ bez vyžádání. Místo nich je 27 samostatných spustitelných `.mjs` skriptů
 | `validate-data.mjs` | `npm run validate` | schéma dat; obal nad `src/data/validate.js` |
 | `check-uloziste.mjs` | `npm run check-uloziste` | stěhování dat mezi úložišti (fotky, CSV, geometrie tras, archiv cest, debug záznamy), chování při plné paměti, odložený zápis poznámky, 36 kontrol |
 | `check-worker.mjs` | `npm run check-worker` | že Cloudflare Worker nepustí dál, co nemá — název souboru, obsah, kolize, heslo, 48 bodů |
-| `check-debug.mjs` | `npm run check-debug` | debug poznámkovač: identita záznamu, podpis zařízení, přejmenování autora, otisk a změna od exportu, `.md` export, záloha, čtení rejstříku zpátky, porovnání s rejstříkem, složka `debug/`, úklid a zavírání, čistota zdrojáků, 176 bodů |
+| `check-debug.mjs` | `npm run check-debug` | debug poznámkovač: identita záznamu, podpis zařízení, přejmenování autora, otisk a změna od exportu, `.md` export, záloha, čtení rejstříku zpátky, porovnání s rejstříkem, složka `debug/`, úklid a zavírání, čerstvost proti mainu, čistota zdrojáků, 196 bodů |
 | `extract-places.mjs` | `npm run check-data` | že `places.json` je 1:1 s originálem |
 | `check-css-parity.mjs` | `npm run check-css:original` | 338 CSS pravidel proti originálu — **odstaveno redesignem** |
 | `check-tokeny.mjs` | `npm run check-tokeny` | barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů |
@@ -50,6 +50,13 @@ první odstraní duplicitní kopie záznamů a to, co je už ve `VYRESENO.md`, d
 záznam jedním příkazem (`npm run debug-zavri -- <id> <hotovo|zahozeno> "důvod"`) místo tří
 ručních editací. Společnou práci se soubory má `debug-slozka.mjs`. Kontrolu složky pouští
 `check-debug` i pre-commit hook — duplicity appce nevadí, takže se bez ní tiše nahromadí.
+
+`debug-cerstvost.mjs` je k nim třetí a jako jediný z nich **chodí na síť**:
+`git fetch` a porovnání složky proti `origin/main`. Poznámky commituje Worker rovnou
+na `main`, takže se složka mění i bez pushe a zastaralý checkout jinak není poznat —
+výpis rejstříku a úklid proto varují a `debug-zavri` odmítne (zapisuje jako jediný
+nevratně). Selhání kontroly (offline, timeout, chybějící `origin`) nikdy neblokuje.
+Rozhodnutí nese čistá `rozborDiffu()`, aby šlo testovat bez gitu a bez sítě.
 
 `debug-rejstrik.mjs` není jen kontrola: skládá rejstřík složky `debug/` (co je otevřené,
 co se vyřešilo) a `vite.config.js` ho tímtéž kódem přibaluje do `dist/debug-stav.json`.

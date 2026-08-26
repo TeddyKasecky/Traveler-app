@@ -31,6 +31,41 @@ Datum na začátku názvu řadí složku chronologicky samo, čas brání přeps
 exportů za den, jméno autora řeší kolizi mezi zařízeními. Konflikt v gitu
 nehrozí — každý export je nový soubor.
 
+## Než na složce začneš pracovat
+
+**Složka se mění i bez toho, aby někdo něco pushnul.** Poznámky commituje
+Cloudflare Worker rovnou přes GitHub API (`worker/index.js`), takže na `main`
+může hlášení přibýt kdykoli — třeba minutu předtím, než si sedneš k triáži.
+Zastaralý checkout se pozná jedině dotazem na síť.
+
+Hlídat si to nemusíš, hlídají to nástroje samy:
+
+| Nástroj | Když je složka pozadu |
+|---|---|
+| `npm run debug-rejstrik -- --vypis` | varuje nad výpisem |
+| `npm run debug-uklid` | varuje, návratový kód nemění |
+| `npm run debug-zavri` | **odmítne a nic nezapíše** |
+
+Zavírání je přísné schválně: ze tří nástrojů nad složkou je jediný, který
+zapisuje **nevratně** — řádek ve `VYRESENO.md` se nikdy nemaže. Nad starým
+stavem by zavřel záznam ve starším souboru, zatímco na `main` už může ležet
+novější export s týmž `id`.
+
+Srovná se to obyčejně:
+
+```bash
+git fetch origin && git merge origin/main
+```
+
+**Bez sítě to nikdy neblokuje.** Offline, chybějící `origin` i timeout skončí
+poznámkou „nedalo se ověřit" a práce jde dál — kontrola má chránit před tichou
+chybou, ne vyrobit novou. `debug-zavri --bez-kontroly` ji přeskočí, ale je to
+únikový východ, ne běžná cesta.
+
+Kód je ve `scripts/debug-cerstvost.mjs`. **Do `postavRejstrik()` nepatří** —
+tu volá `vite.config.js` při každém buildu a fetch uvnitř by znamenal build
+závislý na síti.
+
 ## Čtyři pravidla, která se neporušují
 
 1. **`id` záznamu (`tadeas-a7f-014`) se nikdy nemění a nikdy nerecykluje.**

@@ -36,9 +36,13 @@ fi
 # Duplicity ve složce debug/ appce nevadí – rejstřík si vybere nejnovější –
 # a právě proto se bez kontroly tiše nahromadí. Pět záznamů skončilo ve
 # dvanácti kopiích ve čtyřech souborech za dva dny, než si toho někdo všiml.
+#
+# --bez-kontroly vypíná JEN ověřování proti origin/main, ne úklid samotný:
+# commit nesmí čekat na síť. Zastaralou složku hlídá výpis rejstříku
+# a `debug-zavri`, kde je na to čas.
 if [ "$ladeni" = "1" ]; then
   echo "pre-commit: kontroluji složku debug/…"
-  if ! node scripts/debug-uklid.mjs --kontrola; then
+  if ! node scripts/debug-uklid.mjs --kontrola --bez-kontroly; then
     echo ""
     echo "Commit zastaven – ve složce debug/ je co uklidit."
     echo "Spusť \`npm run debug-uklid\` a commitni znovu."

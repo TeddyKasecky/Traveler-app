@@ -198,6 +198,7 @@ export function postavRejstrik(korenDebug = path.join(ROOT, 'debug'), ted = Date
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const barvy = process.stdout.isTTY && !process.env.NO_COLOR
   const zeleny = (s) => (barvy ? `\x1b[32m${s}\x1b[0m` : s)
+  const cerveny = (s) => (barvy ? `\x1b[31m${s}\x1b[0m` : s)
   const seda = (s) => (barvy ? `\x1b[2m${s}\x1b[0m` : s)
 
   const { zaznamy } = postavRejstrik()
@@ -205,6 +206,19 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   const uzavrene = zaznamy.filter((z) => z.zdroj === 'vyreseno')
 
   if (process.argv.includes('--vypis')) {
+    // KONTROLA ČERSTVOSTI PATŘÍ JEN SEM, nikdy do `postavRejstrik()`. Tu volá
+    // `pluginDebugRejstrik` ve `vite.config.js` při každém buildu – síťové
+    // volání uvnitř by znamenalo build závislý na síti.
+    //
+    // Dynamický import ze stejného důvodu: takhle se modul se `child_process`
+    // do buildu ani nenačte. Výpis je vstupní bod triáže, takže je to zároveň
+    // to nejdůležitější místo, kde má být vidět, že složka není aktuální –
+    // poznámky commituje Worker rovnou na `main`, i bez cizího pushe.
+    const { varovani, zkontrolujCerstvost } = await import('./debug-cerstvost.mjs')
+    const c = zkontrolujCerstvost()
+    if (c.stav === 'pozadu') console.log(`\n${cerveny(varovani(c))}`)
+    else if (c.stav === 'nezname') console.log(`\n${seda(varovani(c))}`)
+
     console.log(`\nOtevřené záznamy (${otevrene.length})\n`)
     for (const z of otevrene) {
       console.log(`  ${z.id.padEnd(16)} ${z.typ.padEnd(9)} ${z.priorita.padEnd(8)} ${z.nadpis}`)

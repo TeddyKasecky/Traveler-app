@@ -674,6 +674,98 @@ console.log('')
   fs.rmSync(S, { recursive: true, force: true })
 }
 
+/* ================= čerstvost složky proti mainu ================= */
+
+console.log('')
+console.log('Čerstvost složky')
+console.log('')
+
+// PROČ TAHLE KONTROLA EXISTUJE: poznámky commituje Cloudflare Worker rovnou
+// přes GitHub API, takže se `main` mění i bez toho, aby někdo něco pushnul.
+// Zastaralý checkout se tím pádem pozná jedině dotazem na síť – a triáž nebo
+// zavření záznamu nad starým stavem je tichá chyba.
+//
+// Testuje se ČISTÁ funkce nad textem: rozhodnutí je v ní celé, kdežto `git`
+// a síť by z téhle kontroly udělaly něco, co bez internetu neprojde.
+const { rozborDiffu, varovani } = await import('./debug-cerstvost.mjs')
+
+{
+  const v = rozborDiffu('A\tdebug/2026-08-27-0900-anicka.md\n')
+  t('přibylý soubor na mainu = chybí mi', v.chybejici.includes('debug/2026-08-27-0900-anicka.md'))
+  t('a není mezi změněnými', v.zmenene.length === 0)
+}
+
+{
+  // TOHLE JE TA PODSTATNÁ. `D` znamená „mám ho já a origin ne“, tedy vlastní
+  // rozpracovaný export. Kdyby se hlásil, varovala by kontrola pokaždé, když
+  // mám něco nepushnutého – a varování, které svítí pořád, nikdo nečte.
+  const v = rozborDiffu('D\tdebug/2026-08-26-1200-tadeas.md\n')
+  t('vlastní nepushnutý export se NEHLÁSÍ', v.chybejici.length === 0 && v.zmenene.length === 0)
+}
+
+{
+  const v = rozborDiffu('M\tdebug/VYRESENO.md\n')
+  t('změněné VYRESENO.md se hlásí', v.zmenene.includes('debug/VYRESENO.md'))
+  t('a není mezi chybějícími', v.chybejici.length === 0)
+}
+
+{
+  const v = rozborDiffu('A\tsrc/main.js\nA\tdebug/x.md\n')
+  t('soubor mimo debug/ se ignoruje', v.chybejici.length === 1 && v.chybejici[0] === 'debug/x.md')
+}
+
+{
+  // Přejmenování má tři sloupce (`R100\tstary\tnovy`) a bere se ten poslední.
+  // Soubory ve složce se sice nepřejmenovávají, ale git to takhle umí ohlásit
+  // a spolknout takový řádek by znamenalo přehlédnutý soubor.
+  const v = rozborDiffu('R100\tdebug/stary.md\tdebug/novy.md\n')
+  t('přejmenování se čte podle cílového jména', v.chybejici.includes('debug/novy.md'))
+}
+
+t('prázdný výstup = čerstvé', rozborDiffu('').chybejici.length === 0)
+t('prázdné řádky nevadí', rozborDiffu('\n\nA\tdebug/x.md\n\n').chybejici.length === 1)
+t('CRLF nevadí', rozborDiffu('A\tdebug/x.md\r\n').chybejici.includes('debug/x.md'))
+t('undefined nespadne', rozborDiffu(undefined).chybejici.length === 0)
+
+t('čerstvé nic nehlásí', varovani({ stav: 'cerstve', chybejici: [], zmenene: [], duvod: '' }) === null)
+t(
+  'neověřený stav se pozná od zastaralého',
+  /nedal ověřit/.test(varovani({ stav: 'nezname', chybejici: [], zmenene: [], duvod: 'offline' }))
+)
+{
+  const h = varovani({ stav: 'pozadu', chybejici: ['debug/x.md'], zmenene: [], duvod: '' })
+  t('varování jmenuje soubor', h.includes('debug/x.md'))
+  t('a radí, jak to srovnat', h.includes('git merge origin/main'))
+}
+
+// Zapojení do nástrojů. Kontroluje se ZDROJ, protože spustit ty tři nástroje
+// naostro by znamenalo sáhnout na síť a na skutečnou složku.
+{
+  const zavri = fs.readFileSync(path.join(ROOT, 'scripts', 'debug-zavri.mjs'), 'utf8')
+  t('debug-zavri kontrolu volá', zavri.includes('zkontrolujCerstvost()'))
+  // Musí být PŘED zápisem: řádek ve VYRESENO.md se nikdy nemaže.
+  t(
+    'a to před prvním zápisem',
+    zavri.indexOf('zkontrolujCerstvost()') < zavri.indexOf('const v = zavriZaznam(')
+  )
+  // Uvnitř `zavriZaznam()` být nesmí – ta běží i tady nad dočasnou složkou.
+  t(
+    'ne uvnitř zavriZaznam(), ta musí jít testovat bez sítě',
+    zavri.indexOf('zkontrolujCerstvost()') > zavri.indexOf('export function zavriZaznam')
+  )
+
+  const rejstrik = fs.readFileSync(path.join(ROOT, 'scripts', 'debug-rejstrik.mjs'), 'utf8')
+  // postavRejstrik() volá vite.config.js při KAŽDÉM buildu. Fetch uvnitř by
+  // znamenal build závislý na síti.
+  t(
+    'rejstřík kontroluje až v CLI, ne v postavRejstrik()',
+    rejstrik.indexOf('zkontrolujCerstvost()') > rejstrik.indexOf("process.argv.includes('--vypis')")
+  )
+
+  const hook = fs.readFileSync(path.join(ROOT, '.githooks', 'pre-commit'), 'utf8')
+  t('pre-commit hook na síť nesahá', hook.includes('--bez-kontroly'))
+}
+
 /* ================= čistota zdrojáků ================= */
 
 console.log('')

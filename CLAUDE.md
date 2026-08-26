@@ -76,7 +76,7 @@ npm run preview          # prohlédnutí sestaveného webu
 npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 36 kontrol
-npm run check-debug      # debug poznámkovač: identita, otisk, rejstřík, složka debug/, 176 bodů
+npm run check-debug      # debug poznámkovač: identita, otisk, rejstřík, složka debug/, 196 bodů
 npm run check-worker     # že Worker nepustí dál, co nemá, 48 bodů
 npm run debug-uklid      # duplicity a zavřené záznamy ze složky debug/ ven
 npm run debug-zavri      # uzavře záznam: -- <id> <hotovo|zahozeno> "důvod"
@@ -267,6 +267,12 @@ worker bere sítí napřed; cache-first by servírovala starý stav navždycky.
 `debug/VYRESENO.md`, smazat prázdný soubor). Ručně napsaný řádek se špatným tvarem
 parser tiše přeskočí a záznam z appky beze stopy zmizí.
 
+**Než na složce začneš pracovat, musí sedět s `main`.** Worker do ní commituje
+rovnou přes GitHub API, takže hlášení přibývají i tehdy, když nikdo nic nepushnul,
+a zastaralý checkout se pozná jedině dotazem na síť. Hlídají to samy nástroje
+(`scripts/debug-cerstvost.mjs`): výpis rejstříku a úklid varují, `debug-zavri`
+**odmítne** — je z nich jediný, který zapisuje nevratně. Offline to nikdy neblokuje.
+
 **Export posílá jen nové a změněné.** Rozsah „nevyřešené" do srpna 2026 posílal pokaždé
 skoro všechno, takže pět záznamů skončilo ve dvanácti kopiích ve čtyřech souborech.
 Duplicity ve složce hlídá `npm run debug-uklid -- --kontrola` a pre-commit hook.
@@ -288,6 +294,11 @@ kontroly každého kroku.
   `<prefix>` načti z `CLAUDE.local.md`. Pokud `CLAUDE.local.md` nebo prefix chybí,
   zeptej se uživatele jednou a ulož ho tam.
 - Commituj a pushuj na osobní větev průběžně, bez ptaní.
+- **Před triáží hlášení a před zavíráním debug záznamů si dohoň `main`**
+  (`git fetch origin && git merge origin/main`). Do složky `debug/` commituje
+  poznámky Cloudflare Worker rovnou přes GitHub API, takže se mění i tehdy, když
+  nikdo nic nepushnul. Nástroje nad `debug/` si to hlídají samy — viz
+  [.claude/rules/debug.md](.claude/rules/debug.md).
 - Než sloučíš svou větev do `main`, VŽDY v tomto pořadí:
   a) `git fetch origin`
   b) smerguj/rebase aktuální `main` do své osobní větve jako první (konflikty

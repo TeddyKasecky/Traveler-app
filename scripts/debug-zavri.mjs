@@ -21,6 +21,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { varovani, zkontrolujCerstvost } from './debug-cerstvost.mjs'
 import {
   VYCHOZI_SLOZKA,
   VYRESENO,
@@ -34,6 +35,7 @@ import {
 const barvy = process.stdout.isTTY && !process.env.NO_COLOR
 const zeleny = (s) => (barvy ? `\x1b[32m${s}\x1b[0m` : s)
 const cerveny = (s) => (barvy ? `\x1b[31m${s}\x1b[0m` : s)
+const seda = (s) => (barvy ? `\x1b[2m${s}\x1b[0m` : s)
 
 /** Stavy, kterými se dá zavřít. Jiný `.md` ani rejstřík nezná. */
 export const ZAVIRACI_STAVY = ['hotovo', 'zahozeno']
@@ -107,10 +109,30 @@ export function zavriZaznam(id, stav, duvod, { slozka = VYCHOZI_SLOZKA, ted = Da
 /* ---------- spuštění z příkazové řádky ---------- */
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  const [id, stav, ...zbytek] = process.argv.slice(2)
+  const argumenty = process.argv.slice(2)
+  const bezKontroly = argumenty.includes('--bez-kontroly')
+  const [id, stav, ...zbytek] = argumenty.filter((a) => a !== '--bez-kontroly')
   if (!id || !stav) {
     console.error('Použití: npm run debug-zavri -- <id> <hotovo|zahozeno> "krátký důvod"')
     process.exit(1)
+  }
+
+  // NAD ZASTARALOU SLOŽKOU SE ODMÍTÁ, ne jen varuje. Ze tří nástrojů nad
+  // `debug/` je tenhle jediný, který zapisuje NEVRATNĚ – řádek ve `VYRESENO.md`
+  // se nikdy nemaže. A protože poznámky commituje Worker rovnou na `main`,
+  // může tam ležet novější export s týmž `id`, o kterém tenhle checkout neví.
+  //
+  // Kontrola je tady, ne v `zavriZaznam()`: ta funkce běží i v `check-debug`
+  // nad dočasnou složkou a na síť sahat nesmí.
+  if (!bezKontroly) {
+    const c = zkontrolujCerstvost()
+    if (c.stav === 'pozadu') {
+      console.error(cerveny(varovani(c)))
+      console.error('\nAž to bude srovnané, spusť příkaz znovu.')
+      console.error(seda('(Přeskočit jde přepínačem --bez-kontroly, ale jen když víš proč.)'))
+      process.exit(1)
+    }
+    if (c.stav === 'nezname') console.error(seda(varovani(c)))
   }
 
   const v = zavriZaznam(id, stav, zbytek.join(' '))
