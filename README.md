@@ -155,7 +155,7 @@ na jednom místě:
 | Kolekce (`col`) | [`src/data/collections.js`](src/data/collections.js) | klíč, popisek, ikona |
 | Nálada na Domů | [`src/data/moods.js`](src/data/moods.js) | popisek, ikona, kategorie |
 
-Ikony jsou v [`src/icons/sprite.svg`](src/icons/sprite.svg), je jich 45 a jmenují
+Ikony jsou v [`src/icons/sprite.svg`](src/icons/sprite.svg), je jich 66 a jmenují
 se `i-neco`. Používá se jméno symbolu bez mřížky, třeba `i-van`.
 
 ---
@@ -196,14 +196,18 @@ Poprvé je potřeba jednou `npm install`.
 
 | Příkaz | Co ověří |
 |---|---|
-| `npm run smoke` | proklikání v prohlížeči, 56 kontrol |
-| `npm run check-uloziste` | že se poznámky neztratí, když dojde místo |
-| `npm run smoke:single` | totéž pro variantu z disku, 45 kontrol |
+| `npm run smoke` | proklikání v prohlížeči, 379 kontrol |
+| `npm run smoke:single` | totéž pro variantu z disku, 339 kontrol |
+| `npm run check-uloziste` | že se poznámky neztratí, když dojde místo, 36 kontrol |
 | `npm run check-regrese` | PWA, zálohy, fotky, poloha, service worker — 26 bodů |
-| `npm run check-form` | že formulář vyrábí platná místa |
-| `npm run check-tokeny` | barvy natvrdo, párování světlý/tmavý, kontrast |
-| `npm run check-dny` | že se dělení plánu na dny neztratí |
-| `npm run check-filters` | 134 kombinací filtrů |
+| `npm run check-dny` | dny, výpravy, body trasy a úpravy cesty, 203 bodů |
+| `npm run check-debug` | poznámkovač od zápisu po stav z repozitáře, 196 bodů |
+| `npm run check-filters` | 134 kombinací filtrů proti druhé implementaci |
+| `npm run check-worker` | že server nepustí dál, co nemá, 48 bodů |
+| `npm run check-projekce` | sledování polohy na trase, 13 bodů |
+| `npm run check-ikony` | jedna věc = jedno jméno = jedna ikona, 8 bodů |
+| `npm run check-tokeny` | barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů |
+| `npm run check-form` | že formulář vyrábí platná místa, 18 bodů |
 | `npm run check-images` | že odkazy na fotky na Wikimedia Commons existují |
 | `npm run perf` | rychlost startu při zpomaleném procesoru |
 
@@ -223,16 +227,27 @@ Jeden soubor = jedna zodpovědnost. Žádný framework, žádná knihovna na vzh
 src/
   main.js          spojení všeho dohromady, nic víc
   data/            místa, číselníky, kontrola dat, schema.md
-  core/            čistá logika: stav, hledání, filtry, směrování, geo, CSV, úložiště
+  core/            čistá logika: stav, hledání, filtry, směrování, geo, CSV,
+                   úložiště (localStorage i pět databází v IndexedDB),
+                   sběr chyb a datová vrstva poznámkovače
   map/             Leaflet: mapa, špendlíky, čára plánu, mini-mapa, offline podklad
   components/      díly použité na víc obrazovkách
-  views/           obrazovky – Domů, Objevuj, Seznam, Plán, Detail
+  views/           obrazovky – Domů, Mapa, Objevuj, Seznam, Plán, Detail,
+                   Profil, Nastavení, Porovnání a poznámkovač
   styles/          CSS rozdělené po dílech; pořadí určuje index.css
-  icons/           sada 45 symbolů
+  icons/           sada 66 symbolů
   pwa/             service worker a jeho registrace
-  assets/          ikona aplikace a ilustrace dodávky
+  assets/          ikona aplikace, ilustrace dodávky a 32 obrázků VW Transporteru
 scripts/           kontroly a pomocníci
+worker/            jediná serverová věc: příjem debug poznámek (viz sekce 10)
+debug/             nápady a bugy zapsané v appce, jeden .md soubor na odeslání
 ```
+
+**Plán je největší obrazovka** a má tři karty: **Na cestě** (probíhající cesta),
+**V plánu** (knihovna výprav) a **Za námi** (ukončené cesty po letech).
+Itinerář jedné výpravy — dny, zastávky, vlastní body, poznámky — se otevírá
+ťuknutím na výpravu v knihovně. Košík uložených míst je plovoucí plát, vytáhne
+se kolečkem vpravo dole.
 
 **Přidání obrazovky:** složka ve `views/`, záznam v `src/views/index.js`,
 tlačítko v `index.html`. Nic jiného.
@@ -281,15 +296,88 @@ stejný a na variantu se ptá přes `import.meta.env.SINGLE_FILE`.
 
 ## 9. Na co si dát pozor
 
-- **Neměnit klíče v úložišti** (`vandrbuch:v1`, `vandrbuch:prefs`, `vandrbuch:data`).
-  Jsou v nich všechny poznámky a hodnocení. Fotky se přestěhovaly do IndexedDB,
-  protože localStorage má strop 5 MB a fotky v něm dusily poznámky; starý klíč
-  `vandrbuch:photos` se při prvním otevření sám vyprázdní.
+- **Neměnit klíče v úložišti.** Jsou v nich úplně všechna uživatelská data
+  a nikde jinde neexistují — přejmenovaný klíč je tichá ztráta dat, ne
+  přejmenování. V localStorage jsou `vandrbuch:v1` (poznámky, hodnocení, plán,
+  výpravy), `vandrbuch:prefs`, `vandrbuch:data` (import CSV) a `vandrbuch:draft`
+  (rozepsaný formulář). V IndexedDB je pět databází: `vandrbuch` (fotky),
+  `vandrbuch-trasy`, `vandrbuch-cesty`, `vandrbuch-mapa` a `vandrbuch-debug`.
+  Dva staré klíče, `vandrbuch:photos` a `vandrbuch:debug`, se při prvním
+  otevření samy přestěhují a vyprázdní.
+- **Co se dá dopočítat, do `vandrbuch:v1` nepatří.** Tohle je dnes nejdůležitější
+  datové pravidlo projektu. localStorage má strop kolem 5 MB na všechno dohromady
+  a při každém uložení se zapisuje celý obsah naráz — takže jedna velká věc uvnitř
+  zdraží každé uložení poznámky a nakonec shodí ukládání všeho. Přesně to se stalo
+  v srpnu 2026: záznam měl 4 270 kB (85 % stropu) a 95 % z toho byly přepočítané
+  trasy, které se daly kdykoli spočítat znovu. Dělicí čára: **co uživatel napsal
+  nebo rozhodl** zůstává v `vandrbuch:v1`, **co si appka umí spočítat znovu nebo
+  co se hromadí** patří do IndexedDB.
+- **Nezahazovat výsledek ukládání.** `save()`, `savePrefs()` a `ulozFotku()`
+  vracejí `false`, když se nepovedlo zapsat. Zahozený výsledek dřív způsoboval,
+  že poznámky při plné paměti mizely beze slova.
 - **Nepřepisovat odkazy na fotky.** Kódování diakritiky v adresách z Wikimedia
   Commons je citlivé a chyba se pozná až tím, že se obrázek tiše nenačte.
 - `id` místa se **nikdy nemění**. Jsou na něj navázané poznámky, hodnocení i plán.
 
-Odložené nápady a známé drobnosti mimo rozsah přestavby jsou v
-[`NAPADY.md`](NAPADY.md). Doklad o shodě s původní aplikací je v
-[`PARITA.md`](PARITA.md). Kde se skončilo a co je na řadě, shrnuje
-[`STAV.md`](STAV.md).
+Odložené nápady a známé drobnosti jsou v [`NAPADY.md`](NAPADY.md), nedodělky
+a závady v [`BUGS.md`](BUGS.md). Kde se skončilo a co je na řadě, shrnuje
+[`STAV.md`](STAV.md). [`PARITA.md`](PARITA.md) je **uzavřený záznam** přestavby
+z původní jednosouborové aplikace — čte se z něj kvůli měřením, která zavírají
+už rozhodnuté otázky, ale není to zadání ani měřítko.
+
+---
+
+## 10. Poznámkovač: zapsat nápad nebo chybu přímo v appce
+
+Nápady a chyby se nepíšou do souboru na počítači, ale **přímo v aplikaci ve
+chvíli, kdy na ně narazíš** — klidně na cestě v telefonu. Aplikace k záznamu
+sama přibalí, co bys stejně nevypsala: na jaké obrazovce jsi byla, jaké měla
+zapnuté filtry, jestli byl signál, jak je zaplněné úložiště a posledních
+dvacet chyb, které si potichu zachytila.
+
+### Kde to je
+
+V hlavičce jsou **tři kolečka**: brouk (zapsat), seznam (prohlížet zapsané)
+a červený reset (zahodit uloženou verzi a načíst appku znovu — po nasazení nové
+verze totiž prohlížeč servíruje starou z paměti a obyčejné obnovení s tím nehne).
+
+Kolečka jsou vidět **na betě a ve `npm run dev`, na ostré appce ne**. Přepíná
+je Nastavení → Poznámkovač. Reset **nemaže žádná data** — jen uloženou kopii
+aplikace.
+
+### Jak se záznam dostane k druhému člověku
+
+Tlačítkem **Odeslat do repozitáře** v panelu Export. Záznam odletí na server,
+ten ho uloží do složky `debug/` a beta se sama přestaví. Žádné stahování,
+přenášení souboru ani ruční commit. Poprvé se to zeptá na heslo; nastavuje se
+jednou a mění v Nastavení u přezdívky.
+
+**Stáhnout .md** zůstává jako záložní cesta, kdyby odesílání nejelo. Stažený
+soubor patří do složky `debug/` **beze změny názvu** — pořadí názvů určuje,
+který záznam platí.
+
+### Jak poznáš, co se s tvým hlášením děje
+
+Barvou rámečku v seznamu. Šedý = zatím jen v telefonu. Okrový = odesláno.
+Mechový = repozitář o něm ví. Terakotový = od odeslání jsi ho upravila, takže
+v repozitáři leží starší znění (pošli ho znovu). Ztlumený mechový = vyřešeno.
+Legenda je přímo pod tlačítky seznamu.
+
+Stav se do appky vrací **při každém nasazení bety**, tedy do pár minut po tom,
+co někdo hlášení vyřeší. Žádný účet ani přihlášení k tomu není potřeba.
+
+### Zavření záznamu
+
+Dělá se příkazem, ne ručně:
+
+```bash
+npm run debug-zavri -- tadeas-a7f-014 hotovo "krátký důvod"
+```
+
+Ručně napsaný řádek se špatným tvarem parser **tiše přeskočí** a záznam
+z aplikace beze stopy zmizí — autor by se pak nikdy nedozvěděl, že je hotovo.
+Podrobný postup je v [`.claude/rules/debug.md`](.claude/rules/debug.md).
+
+> **Repozitář i beta jsou veřejné.** Co napíšeš do nadpisu, popisu a návrhu
+> řešení, si po odeslání může přečíst kdokoli. Technický kontext, kroky ani
+> zachycené chyby se ven nenasazují.
