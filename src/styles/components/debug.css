@@ -147,9 +147,38 @@
 
 .dzr-seznam{display:flex;flex-direction:column;gap:8px}
 
-.dzr{border:var(--line);border-radius:var(--r-s);background:var(--card);overflow:hidden}
-.dzr.vybrany{border-color:var(--akcent);box-shadow:var(--stin-1)}
-.dzr.otevreny{border-color:var(--akcent)}
+/* RÁMEČEK NESE STADIUM vůči repozitáři (srpen 2026). Šířka je 2px u všech
+ * stavů včetně výchozího – míchat 1px a 2px by posouvalo obsah o pixel při
+ * každé změně stadia. */
+.dzr{border:2px solid var(--obrys);border-radius:var(--r-s);background:var(--card);overflow:hidden}
+
+/* Jen tady = výchozí obrys, nic navíc: většina záznamů je zrovna tady a barevný
+ * seznam bez klidového stavu by nemel hierarchii. */
+.dzr.st-odeslano{border-color:var(--zvyrazneni)}
+.dzr.st-namainu{border-color:var(--akcent)}
+.dzr.st-zmeneno{border-color:var(--upozorneni)}
+/* Vyřešené je taky mechové, ale ztlumené – „hotovo a založeno". */
+.dzr.st-vyreseno{border-color:var(--akcent);opacity:.72}
+.dzr.st-chybi{border-color:var(--clay)}
+
+/* VÝBĚR A ROZBALENÍ UŽ NEJDOU PŘES `border-color` – ten patří stadiu.
+ * Výběr kreslí kroužek vně rámečku; zaškrtávátko se navíc celé vybarvuje
+ * akcentem, takže signál je dvojitý. Rozbalený záznam vlastní barvu nepotřebuje:
+ * panel pod ním má jiné pozadí a linku nahoře. */
+.dzr.vybrany{box-shadow:0 0 0 2px var(--akcent), var(--stin-1)}
+.dzr.otevreny{box-shadow:var(--stin-1)}
+
+/* ---------- legenda stadií ---------- */
+
+.dzr-legenda{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 2px 12px;
+  font-size:.68rem;font-weight:700;color:var(--ink2)}
+.dzl{display:inline-flex;align-items:center;gap:5px}
+.dzl::before{content:'';width:9px;height:9px;border-radius:50%;flex:0 0 auto;
+  border:2px solid var(--obrys);background:transparent}
+.dzl.st-odeslano::before{border-color:var(--zvyrazneni)}
+.dzl.st-namainu::before{border-color:var(--akcent)}
+.dzl.st-zmeneno::before{border-color:var(--upozorneni)}
+.dzl.st-vyreseno::before{border-color:var(--akcent);opacity:.72}
 .dzr-radek{display:flex;align-items:stretch}
 
 /* Zaškrtávátko je <button role="checkbox">, ne <input> – ten v appce není

@@ -44,6 +44,7 @@ import {
   TYPY,
   debugData,
   filtrujZaznamy,
+  zmenenoOdExportu,
   popisekModulu,
   smazZaznamy,
   typZaznamu,
@@ -132,6 +133,46 @@ function chybiVRepu(z) {
 }
 
 /**
+ * Stadium záznamu vůči repozitáři – jedna hodnota pro rámeček i pro legendu.
+ *
+ * PROČ TO VZNIKLO: v seznamu nebylo poznat, co už je na `main` a co je tedy
+ * odbyté. Kdo hlášení procházel, musel každé rozkliknout, aby to zjistil –
+ * přesně ta práce, kterou má tracker ušetřit.
+ *
+ * `null` z `rejstrikVPameti()` znamená **„nevíme"**, ne „není tam": offline
+ * appka rejstřík nikdy nestáhla a jednosouborová varianta ho nemá vůbec.
+ * Stadium pak nesmí tvrdit „na mainu" a zůstane na „odesláno".
+ *
+ * U VYŘEŠENÉHO SE ZMĚNA NEKONTROLUJE. Uzavřený záznam se znovu neexportuje,
+ * takže by červený rámeček jen strašil kvůli něčemu, co nikdo řešit nebude.
+ *
+ * @param {Record<string, any>} z
+ * @returns {'jentady'|'odeslano'|'namainu'|'zmeneno'|'vyreseno'|'chybi'}
+ */
+export function stadiumZaznamu(z) {
+  const r = stavZRepa(z.id)
+  if (r && r.zdroj === 'vyreseno') return 'vyreseno'
+  if (!z.exportovanoDo) return 'jentady'
+  // „Změněno" přebíjí „na mainu" i „odesláno": jakmile se text rozejde s tím,
+  // co odešlo, je neaktuální i ten soubor ve složce `debug/`, ne až to, co je
+  // nasazené. Rozlišovat to by znamenalo dvě červené, které se liší jen tím,
+  // jak moc pospíchá další export.
+  if (zmenenoOdExportu(z)) return 'zmeneno'
+  if (r) return 'namainu'
+  if (chybiVRepu(z)) return 'chybi'
+  return 'odeslano'
+}
+
+/** Legenda pod tlačítky. Pořadí je cesta záznamu, ne abeceda. */
+const STADIA = [
+  { id: 'jentady', popisek: 'jen tady' },
+  { id: 'odeslano', popisek: 'odesláno' },
+  { id: 'namainu', popisek: 'na mainu' },
+  { id: 'zmeneno', popisek: 'změněné' },
+  { id: 'vyreseno', popisek: 'vyřešené' },
+]
+
+/**
  * Štítek „co o tom ví repozitář" – oddělený od mého vlastního stavu.
  *
  * Repozitář je informace, ne autorita nad mým seznamem: můj `stav` se podle
@@ -172,7 +213,7 @@ function radekZaznamu(z) {
   const zaskrtnuty = vybrane.has(z.id)
   const otevreny = rozbalene.has(z.id)
 
-  return `<div class="dzr${zaskrtnuty ? ' vybrany' : ''}${otevreny ? ' otevreny' : ''}" data-id="${z.id}">
+  return `<div class="dzr st-${stadiumZaznamu(z)}${zaskrtnuty ? ' vybrany' : ''}${otevreny ? ' otevreny' : ''}" data-id="${z.id}">
     <div class="dzr-radek">
       <button class="dzr-check" role="checkbox" aria-checked="${zaskrtnuty}" data-check="${z.id}"
         aria-label="Vybrat ${z.id}">${zaskrtnuty ? IC('i-check') : ''}</button>
@@ -395,6 +436,14 @@ function mojeCast(videt, vse) {
       <button class="btn small" id="dzVse">${vybrane.size >= videt.length && videt.length ? 'Zrušit výběr' : 'Vybrat vše z filtru'}</button>
       <button class="btn small nebezpecne" id="dzSmaz"${vybrane.size ? '' : ' disabled'}>Smazat vybrané${vybrane.size ? ` (${vybrane.size})` : ''}</button>
     </div>
+
+    ${
+      videt.length
+        ? `<div class="dzr-legenda">${STADIA.map(
+            (s) => `<span class="dzl st-${s.id}">${esc(s.popisek)}</span>`
+          ).join('')}</div>`
+        : ''
+    }
 
     ${
       videt.length

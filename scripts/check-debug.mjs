@@ -31,6 +31,7 @@ const {
   debugData,
   mojeZaznamy,
   novyPodpisZarizeni,
+  otiskZaznamu,
   prefixId,
   prejmenujNeodeslane,
   pridejZaznam,
@@ -41,6 +42,7 @@ const {
   nevyresene,
   slucZaznamy,
   sanitizujAutora,
+  zmenenoOdExportu,
   MODULY,
   TYPY,
 } = await import('../src/core/debug.js')
@@ -331,6 +333,63 @@ t('a číslo si nechal', najdiZaznam('pc-tadeas-a7f-011').cislo === neodeslany.c
 t('cizího se to nedotklo', najdiZaznam('anicka-007') !== null)
 t('stejný prefix nic nedělá', prejmenujNeodeslane('pc-tadeas-a7f', 'pc-tadeas-a7f') === 0)
 t('prázdný nový prefix nic nedělá', prejmenujNeodeslane('pc-tadeas-a7f', '') === 0)
+
+/* ================= otisk: co z toho je na mainu ================= */
+
+console.log('')
+console.log('Otisk záznamu')
+console.log('')
+
+// Rejstřík na tohle nestačí: `popis` a `navrh` se v něm krátí na 400 znaků
+// a u záznamů uzavřených přes VYRESENO.md nenese text vůbec žádný.
+const zaklad = {
+  typ: 'bug',
+  priorita: 'stredni',
+  stav: 'nove',
+  nadpis: 'Tlačítko zrušit',
+  moduly: ['detail'],
+  text: 'Vrátí mě to do mapy.',
+  cekal: 'Zůstat v detailu.',
+  kroky: '1. otevřít detail',
+  jakCasto: 'vzdy',
+  motivace: '',
+  hotovoKdyz: '',
+  navrh: 'Vrátit se odkud jsem přišel.',
+}
+
+const o = otiskZaznamu(zaklad)
+t('otisk je osm hexa znaků', /^[0-9a-f]{8}$/.test(o))
+t('a pro tentýž záznam vyjde stejný', otiskZaznamu({ ...zaklad }) === o)
+t('prázdný záznam nespadne', otiskZaznamu(null) === '')
+
+t('změna nadpisu otisk změní', otiskZaznamu({ ...zaklad, nadpis: 'Jiný' }) !== o)
+t('změna popisu taky', otiskZaznamu({ ...zaklad, text: 'Něco jiného' }) !== o)
+t('změna návrhu taky', otiskZaznamu({ ...zaklad, navrh: 'Jinak' }) !== o)
+t('změna priority taky', otiskZaznamu({ ...zaklad, priorita: 'vysoka' }) !== o)
+t('změna modulů taky', otiskZaznamu({ ...zaklad, moduly: ['mapa'] }) !== o)
+// Stav se počítá schválně: v `.md` v repozitáři stojí `stav: nové`, takže
+// lokální „hotovo" znamená, že tam opravdu leží něco jiného.
+t('změna stavu taky', otiskZaznamu({ ...zaklad, stav: 'hotovo' }) !== o)
+// Kontext se sbírá jednou při zápisu a nikdy nemění – v otisku nemá co dělat.
+t('kontext otisk nemění', otiskZaznamu({ ...zaklad, kontext: { obrazovka: 'Mapa' } }) === o)
+// Přesun slova mezi poli nesmí vyjít jako žádná změna (proto oddělovač  ).
+t('přesun textu mezi poli je změna', otiskZaznamu({ ...zaklad, text: 'Vrátí mě to do mapy. Zůstat v detailu.', cekal: '' }) !== o)
+
+console.log('')
+console.log('Změna od exportu')
+console.log('')
+
+t('neodeslaný záznam není změněný', zmenenoOdExportu({ ...zaklad }) === false)
+// Chybějící otisk znamená „nevíme", ne „nezměněno" – záznamy odeslané před
+// srpnem 2026 ho nemají a nesmí se tvářit jako změněné.
+t('odeslaný bez otisku se netváří jako změněný',
+  zmenenoOdExportu({ ...zaklad, exportovanoDo: 'x.md' }) === false)
+t('odeslaný se shodným otiskem není změněný',
+  zmenenoOdExportu({ ...zaklad, exportovanoDo: 'x.md', otiskExportu: o }) === false)
+t('odeslaný s jiným textem JE změněný',
+  zmenenoOdExportu({ ...zaklad, nadpis: 'Přepsáno', exportovanoDo: 'x.md', otiskExportu: o }) === true)
+t('a stačí i změna stavu',
+  zmenenoOdExportu({ ...zaklad, stav: 'hotovo', exportovanoDo: 'x.md', otiskExportu: o }) === true)
 
 /* ================= export → rejstřík a zpátky ================= */
 

@@ -231,6 +231,11 @@ export function pridejZaznam(z, autor, ted = Date.now(), podpis = '') {
     upraveno: 0,
     /** Název `.md` souboru, ve kterém záznam odešel. Prázdné = ještě neodešel. */
     exportovanoDo: '',
+    /**
+     * Otisk podoby, ve které záznam odešel (`otiskZaznamu`). Doplní se až při
+     * označení „odesláno"; prázdné = nevíme, s čím porovnávat.
+     */
+    otiskExportu: '',
     kontext: z.kontext || null,
   }
   debugData.zaznamy.push(zaznam)
@@ -349,4 +354,83 @@ export function prejmenujNeodeslane(staryPrefix, novyPrefix) {
     zmeneno++
   }
   return zmeneno
+}
+
+/* ================= otisk: co z toho je na mainu ================= */
+
+/**
+ * FNV-1a, osm hexa znaků.
+ *
+ * Doslova stejná funkce jako `hash()` ve `views/plan/routing.js` a ze stejného
+ * důvodu: není to kryptografie a nemá být, jde jen o to poznat na `===`, že se
+ * něco změnilo. Kopie schválně – `routing.js` je o trasách a `core/debug.js`
+ * o poznámkách, sdílet kvůli osmi řádkům modul by svázalo dvě věci, které
+ * spolu nemají nic společného. **Když se jedna změní, druhá o tom vědět
+ * nepotřebuje.**
+ *
+ * @param {string} s
+ */
+function hash(s) {
+  let h = 0x811c9dc5
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h.toString(16).padStart(8, '0')
+}
+
+/**
+ * Otisk toho, co ze záznamu jde do `.md` exportu.
+ *
+ * PROČ TO EXISTUJE: záznam, který se po odeslání upravil, vypadal v seznamu
+ * stejně jako neupravený – v repozitáři přitom ležela stará verze a nikdo se
+ * to nedozvěděl. Rejstřík (`debug-stav.json`) na porovnání nestačí: `popis`
+ * a `navrh` se v něm krátí na 400 znaků a u záznamů uzavřených přes
+ * `VYRESENO.md` nenese text vůbec žádný.
+ *
+ * POČÍTÁ SE I `stav`. V `.md` v repozitáři stojí `stav: nové`, takže když si
+ * ho lokálně přepneš na `hotovo`, repozitář opravdu drží něco jiného – a to
+ * je přesně to, co má otisk hlásit. Pořadí polí je stejné jako v
+ * `debugExport.js#zaznamNaMd()`, ať se to dá porovnat očima.
+ *
+ * `kontext` v otisku NENÍ: sbírá se jednou při zápisu a nikdy se nemění,
+ * takže by do hashe jen přidal práci.
+ *
+ * @param {Record<string, any>} z
+ * @returns {string} osm hexa znaků
+ */
+export function otiskZaznamu(z) {
+  if (!z) return ''
+  const casti = [
+    z.typ,
+    z.priorita,
+    z.stav,
+    z.nadpis,
+    (z.moduly || []).join(','),
+    z.text,
+    z.cekal,
+    z.kroky,
+    z.jakCasto,
+    z.motivace,
+    z.hotovoKdyz,
+    z.navrh,
+  ]
+  // Oddělovač, který se v textu vyskytnout nemůže – při spojení mezerou by
+  // přesun slova mezi poli vyšel jako žádná změna.
+  return hash(casti.map((c) => String(c == null ? '' : c)).join('\u0000'))
+}
+
+/**
+ * Liší se záznam od toho, co v jeho podobě odešlo do repozitáře?
+ *
+ * CHYBĚJÍCÍ OTISK ZNAMENÁ „NEVÍME", NE „NEZMĚNĚNO". Záznamy odeslané před
+ * srpnem 2026 `otiskExportu` nemají a nesmí se tvářit jako změněné – strašit
+ * u něčeho, co se ověřit nedá, je horší než mlčet.
+ *
+ * @param {Record<string, any>} z
+ * @returns {boolean}
+ */
+export function zmenenoOdExportu(z) {
+  if (!z || !z.exportovanoDo || !z.otiskExportu) return false
+  return z.otiskExportu !== otiskZaznamu(z)
 }

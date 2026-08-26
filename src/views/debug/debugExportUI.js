@@ -33,7 +33,7 @@ import {
   nazevZalohy,
   zalohaZeSouboru,
 } from '../../core/debugExport.js'
-import { debugData, nevyresene, slucZaznamy, ulozDebug, upravZaznam } from '../../core/debug.js'
+import { debugData, nevyresene, otiskZaznamu, slucZaznamy, ulozDebug, upravZaznam } from '../../core/debug.js'
 
 const ROZSAHY = [
   { id: 'nevyresene', popisek: 'Nevyřešené' },
@@ -124,7 +124,10 @@ async function poExportu(nazev, zaznamy, prekresli) {
   // být buď ještě nenasazený, nebo odstraněný bez řádku ve VYRESENO.md.
   // Rozliší to porovnání s `vygenerovano` rejstříku.
   const ted = Date.now()
-  for (const z of zaznamy) upravZaznam(z.id, { exportovanoDo: nazev, exportovanoV: ted })
+  // Otisk podoby, která odešla. Bez něj by se pozdější úprava nedala poznat –
+  // rejstřík na porovnání nestačí, viz `core/debug.js#otiskZaznamu()`.
+  for (const z of zaznamy)
+    upravZaznam(z.id, { exportovanoDo: nazev, exportovanoV: ted, otiskExportu: otiskZaznamu(z) })
   if (!(await ulozDebug())) return toast('Označení se neuložilo – v telefonu došlo místo')
   toast('Označeno')
   // Bez překreslení by štítek „odesláno" u řádku naskočil až při příštím

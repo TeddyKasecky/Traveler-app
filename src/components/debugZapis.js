@@ -41,6 +41,7 @@ import {
   debugData,
   najdiZaznam,
   novyPodpisZarizeni,
+  otiskZaznamu,
   popisekModulu,
   popisekPriority,
   popisekStavu,
@@ -392,7 +393,12 @@ async function uloz() {
   }
 
   if (upravujeSe) {
-    upravZaznam(upravujeSe, {
+    // ÚPRAVA UŽ ODESLANÉHO ZÁZNAMU. V repozitáři leží podoba, která odešla –
+    // změna se tam dostane až dalším exportem a do té doby jsou to dvě různé
+    // věci pod jedním `id`. Ptá se to jen tehdy, když se obsah opravdu mění:
+    // otevřít a zavřít formulář beze změny nemá nic připomínat.
+    const puvodni = najdiZaznam(upravujeSe)
+    const zmeny = {
       typ: koncept.typ,
       nadpis: koncept.nadpis.trim(),
       text: koncept.text.trim(),
@@ -405,7 +411,20 @@ async function uloz() {
       hotovoKdyz: koncept.hotovoKdyz.trim(),
       priorita: koncept.priorita,
       stav: koncept.stav,
-    })
+    }
+    if (puvodni && puvodni.otiskExportu && puvodni.otiskExportu !== otiskZaznamu({ ...puvodni, ...zmeny })) {
+      const dal = await potvrd({
+        nadpis: 'Tenhle už je v repozitáři',
+        text:
+          `${upravujeSe} odešel v souboru ${puvodni.exportovanoDo}. Změna se tam dostane až ` +
+          'dalším exportem – do té doby tam leží stará verze. V seznamu bude záznam ' +
+          'označený jako změněný, ať se na to nezapomene.',
+        ano: 'Uložit změnu',
+        ne: 'Nechat být',
+      })
+      if (!dal) return
+    }
+    upravZaznam(upravujeSe, zmeny)
     if (!(await ohlasZapis())) return
     const bylo = upravujeSe
     zavriDebugZapis()

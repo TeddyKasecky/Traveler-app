@@ -101,6 +101,19 @@ Dohledá se `git log -S tadeas-014`.
 Bez pravidla (a) a (c) by složka za měsíc zarostla a AI by četla kontext,
 který už neplatí.
 
+## Když se záznam v appce po odeslání změní
+
+Autor smí odeslaný záznam dál upravovat — appka se ho na to zeptá a označí ho
+v seznamu terakotovým rámečkem („změněné"). Pozná to podle `otiskExportu`,
+osmiznakového otisku podoby, která odešla (`otiskZaznamu()` v
+`src/core/debug.js`). **V repozitáři tím pádem může ležet starší text, než
+má autor v telefonu.** Řeší se to tak, že autor záznam vyexportuje znovu;
+`id` zůstává, takže nový export ten starý v rejstříku nahradí.
+
+Pro AI z toho plyne jedno: než se pustíš do řešení podle staršího exportu,
+**stojí za to se zeptat, jestli k tomu autor nemá novější znění** — hlavně
+u záznamu, který leží ve složce déle.
+
 ## Vztah k `BUGS.md` a `NAPADY.md`
 
 `debug/` je průběžný proud z terénu. `BUGS.md` je pro věci, které jsou na

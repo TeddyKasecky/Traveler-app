@@ -426,6 +426,11 @@ await kontrola('zapsaný záznam je v seznamu', () => page.locator('.dzr:not(.ci
 await kontrola('řádek nese stav', () => page.locator('.dzr:not(.cizi) .dz-znacka.stav.nove').count(), 1)
 await kontrola('řádek nenese id', () => page.locator('.dzr:not(.cizi) .dz-id').count(), 0)
 
+// STADIUM VŮČI REPOZITÁŘI nese barva rámečku. Čerstvě zapsaný záznam nikam
+// neodešel, takže je „jen tady" – barevný by tvrdil něco, co není pravda.
+await kontrola('čerstvý záznam je jen tady', () => page.locator('.dzr.st-jentady').count(), 1)
+await kontrola('legenda je pod tlačítky', () => page.locator('.dzr-lista + .dzr-legenda .dzl').count(), 5)
+
 // Ťuknutí ROZBALÍ, neotevře úpravu. Teprve tlačítko uvnitř otevře formulář.
 await page.click('.dzr:not(.cizi) .dzr-telo')
 await page.waitForTimeout(300)
@@ -565,7 +570,36 @@ await kontrola('u záznamu zůstal název souboru', async () =>
 await page.click('.dzr:not(.cizi) .dzr-telo')
 await page.waitForTimeout(300)
 await kontrola('a v rozbaleném je vidět odesláno', () => page.locator('.dz-znacka.odeslano').count(), 1)
+// Rejstřík tenhle záznam nezná (je z fixture), takže stadium zůstává „odesláno",
+// ne „na mainu" – tvrdit „na mainu" bez potvrzení z rejstříku by byla lež.
+await kontrola('po exportu je stadium odesláno', () => page.locator('.dzr.st-odeslano').count(), 1)
 await kontrola('nenasazený export nestraší', () => page.locator('.dz-znacka.repo.chybi').count(), 0)
+// ÚPRAVA UŽ ODESLANÉHO se musí zeptat: v repozitáři leží podoba, která odešla,
+// a změna se tam dostane až dalším exportem.
+await page.click('.dzr.otevreny [data-upravit]')
+await page.waitForTimeout(500)
+await page.fill('#dz-nadpis', 'Přepsáno po exportu')
+await page.click('#dzUloz')
+await page.waitForTimeout(400)
+await kontrola('úprava odeslaného se ptá', () => page.locator('#dialog.show').count(), 1)
+await kontrola('a řekne proč', () =>
+  page.locator('#dialog.show').innerText().then((x) => /repozit[áa]ři/i.test(x)), true)
+await page.click('#dialogAno')
+await page.waitForTimeout(700)
+// Otisk se rozešel s tím, co odešlo – rámeček to musí říct.
+await kontrola('po úpravě je stadium změněné', () => page.locator('.dzr.st-zmeneno').count(), 1)
+
+// Zpátky na původní nadpis, ať další sekce pracují s tím, co čekají.
+// A rovnou kontrola: vrácení na odeslanou podobu se NEPTÁ – otisk zase sedí,
+// takže není na co upozorňovat.
+await page.click('.dzr.otevreny [data-upravit]')
+await page.waitForTimeout(500)
+await page.fill('#dz-nadpis', 'Zkušební záznam ze smoke')
+await page.click('#dzUloz')
+await page.waitForTimeout(700)
+await kontrola('návrat k odeslané podobě se neptá', () => page.locator('#dialog.show').count(), 0)
+await kontrola('a stadium se vrátí na odesláno', () => page.locator('.dzr.st-odeslano').count(), 1)
+
 await page.click('.dzr:not(.cizi) .dzr-telo')
 await page.waitForTimeout(300)
 
