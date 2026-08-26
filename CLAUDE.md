@@ -68,10 +68,10 @@ npm run preview          # prohlédnutí sestaveného webu
 npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 36 kontrol
-npm run check-debug      # debug poznámkovač: identita, podpis, otisk, export, rejstřík, 138 bodů
+npm run check-debug      # debug poznámkovač: identita, podpis, otisk, export, rejstřík, 139 bodů
 
-npm run smoke            # proklikání v prohlížeči, 339 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 319 kontrol
+npm run smoke            # proklikání v prohlížeči, 343 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 323 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
@@ -217,7 +217,11 @@ mechový = rejstřík ho zná, terakotový = od odeslání se změnil, ztlumený
 mechový = vyřešeno, hliněný = zmizel z repozitáře. Legenda je pod tlačítky
 seznamu. Změnu pozná `otiskZaznamu()` v `src/core/debug.js` — osmiznakový
 FNV-1a přes všechno, co jde do `.md` **včetně stavu**; uloží se při označení
-„odesláno" a porovnává se s dnešní podobou. Rejstřík by na to nestačil:
+„odesláno" a porovnává se s dnešní podobou. Vyřešené a změněné jsou navíc
+šrafované, každé opačným směrem. **Filtr se prochází podle stadia, ne podle
+`stav`** — vlastní stav se dál edituje ve formuláři a jde do `.md`, ale
+„hotovo" si nastavuje autor sám, kdežto o vyřešení rozhoduje repozitář.
+Filtr podle části appky byl zrušen. Rejstřík by na porovnání nestačil:
 `popis` a `navrh` se v něm krátí na 400 znaků a u vyřešených nenese text
 vůbec žádný. Chybějící otisk (záznamy odeslané před srpnem 2026) znamená
 **„nevíme"**, ne „nezměněno". Úprava odeslaného záznamu se ptá, ale jen

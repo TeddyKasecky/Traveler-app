@@ -38,7 +38,6 @@ import { exportHtml, napojExport } from './debugExportUI.js'
 import { nactiRejstrik, odOstatnich, rejstrikVPameti, stavZRepa } from '../../core/debugRejstrik.js'
 import {
   JAK_CASTO,
-  MODULY,
   PRIORITY,
   STAVY,
   TYPY,
@@ -51,8 +50,19 @@ import {
   ulozDebug,
 } from '../../core/debug.js'
 
-/** Aktivní filtry. Prázdná hodnota = neuplatní se. */
-const F = { typ: '', modul: '', stav: '', priorita: '' }
+/**
+ * Aktivní filtry. Prázdná hodnota = neuplatní se.
+ *
+ * FILTRUJE SE PODLE STADIA, NE PODLE `stav` (srpen 2026). Vlastní `stav`
+ * záznamu se dál edituje ve formuláři a jde do `.md`, ale procházet podle něj
+ * seznam nedávalo smysl: „hotovo“ si nastavuje autor sám, kdežto o tom, jestli
+ * je věc opravdu vyřešená, rozhoduje repozitář – a to říká stadium pravdivěji.
+ *
+ * Filtr podle části appky zmizel úplně. Moduly nejsou vidět ani v řádku, takže
+ * filtrovat podle nich byla střelba naslepo; dvanáct pilulek na dva řádky byl
+ * přitom největší kus panelu.
+ */
+const F = { typ: '', stadium: '', priorita: '' }
 
 /** Zaškrtnuté záznamy pro hromadné akce. Set, ne pole – testuje se členství. */
 const vybrane = new Set()
@@ -65,9 +75,6 @@ let filtrOtevreny = false
 
 /** Která půlka segmentu je vidět: `moje` | `cizi`. */
 let castka = 'moje'
-
-/** Ukazovat jen to, co repozitář hlásí jako vyřešené (čtvrté číslo nahoře). */
-let jenVyresene = false
 
 /**
  * Je blok EXPORT vytažený? Zavřený je schválně.
@@ -163,13 +170,21 @@ export function stadiumZaznamu(z) {
   return 'odeslano'
 }
 
-/** Legenda pod tlačítky. Pořadí je cesta záznamu, ne abeceda. */
+/**
+ * Legenda pod tlačítky a zároveň hodnoty filtru. Pořadí je cesta záznamu,
+ * ne abeceda.
+ *
+ * `chybi` je tu schválně, přestože se snad nikdy neukáže: legenda je klíč
+ * k barvám, takže hliněný rámeček musí umět vysvětlit – a záznam v tom stavu
+ * by jinak nešel vyfiltrovat žádnou hodnotou.
+ */
 const STADIA = [
   { id: 'jentady', popisek: 'jen tady' },
   { id: 'odeslano', popisek: 'odesláno' },
   { id: 'namainu', popisek: 'na mainu' },
   { id: 'zmeneno', popisek: 'změněné' },
   { id: 'vyreseno', popisek: 'vyřešené' },
+  { id: 'chybi', popisek: 'zmizelo' },
 ]
 
 /**
@@ -335,7 +350,7 @@ function filtrRada(klic, polozky, popisekVse) {
 }
 
 /** Kolik filtrů je zapnutých – do popisku sbaleného panelu. */
-const kolikFiltru = () => Object.values(F).filter(Boolean).length + (jenVyresene ? 1 : 0)
+const kolikFiltru = () => Object.values(F).filter(Boolean).length
 
 /**
  * Panel filtrů, sbalený.
@@ -356,13 +371,12 @@ function filtrHtml(pocet) {
       filtrOtevreny
         ? `<div class="dzf-telo">
             ${filtrRada('typ', TYPY, 'Vše')}
-            ${filtrRada('stav', STAVY, 'Každý stav')}
+            ${filtrRada('stadium', STADIA, 'Každé stadium')}
             ${filtrRada('priorita', PRIORITY, 'Každá priorita')}
-            ${filtrRada('modul', MODULY, 'Všechny části')}
             <div class="dz-napoveda">
-              <b>Stav je tvůj</b>, ne repozitáře: „řeším" znamená, že na tom děláš ty.
-              Co si o záznamu myslí repozitář, je vidět až po rozbalení jako přerušovaný
-              štítek – a appka podle něj tvůj stav nikdy sama nepřepíše.
+              <b>Stadium je cesta záznamu do repozitáře</b>, ne tvůj stav. Vlastní stav
+              si dál nastavuješ ve formuláři a jde do exportu – jen se podle něj
+              neprochází, protože o tom, co je opravdu vyřešené, rozhoduje repozitář.
             </div>
           </div>`
         : ''
@@ -381,8 +395,10 @@ export function renderDebug() {
   if (!rejstrikVPameti()) nactiRejstrik().then((r) => r && renderDebug())
 
   const vse = debugData.zaznamy
-  let videt = filtrujZaznamy(F)
-  if (jenVyresene) videt = videt.filter(vyresenoVRepu)
+  // `filtrujZaznamy` umí jen to, co je ve `store` uložené. Stadium je odvozené
+  // z rejstříku a otisku, takže se filtruje až tady.
+  let videt = filtrujZaznamy({ typ: F.typ, priorita: F.priorita })
+  if (F.stadium) videt = videt.filter((z) => stadiumZaznamu(z) === F.stadium)
   // Výběr se musí očistit o to, co je zrovna odfiltrované nebo smazané –
   // jinak by „smazat vybrané" sáhlo i na záznamy, které nejsou vidět.
   for (const id of [...vybrane]) if (!videt.some((z) => z.id === id)) vybrane.delete(id)
@@ -450,7 +466,7 @@ function mojeCast(videt, vse) {
         ? `<div class="dzr-seznam">${videt.map(radekZaznamu).join('')}</div>`
         : `<div class="dzr-prazdno">${IC('i-brouk')}<div>${
             vse.length
-              ? jenVyresene
+              ? F.stadium === 'vyreseno'
                 ? 'Nic tvého zatím repozitář neuzavřel.'
                 : 'Tomuhle filtru nic neodpovídá.'
               : 'Zatím nic. Zapiš první poznámku kolečkem v hlavičce.'
@@ -510,10 +526,12 @@ function napoj(videt, cizi) {
     }
   }
 
+  // Číslo nahoře je zkratka do filtru, ne druhý nezávislý přepínač – dvě cesty
+  // ke stejnému zúžení seznamu si dřív nebo později začnou odporovat.
   for (const b of document.querySelectorAll('[data-cislo]')) {
     b.onclick = () => {
       if (b.dataset.cislo !== 'vyresene') return
-      jenVyresene = !jenVyresene
+      F.stadium = F.stadium === 'vyreseno' ? '' : 'vyreseno'
       castka = 'moje'
       renderDebug()
     }

@@ -52,6 +52,13 @@ const { mdExport, zaznamNaMd, bezpecnyText, nazevExportu, nazevZalohy, jsonZaloh
 
 const { zapisChybu, posledniChyby, pocetChyb, zapomenChyby, STROP } = await import('../src/core/chyby.js')
 
+// Kvůli kontrole čistoty zdrojáků na konci – jinak tenhle skript na disk nesahá.
+const fs = await import('node:fs')
+const path = await import('node:path')
+const { fileURLToPath } = await import('node:url')
+// fileURLToPath, ne ruční ořezávání – cesta obsahuje diakritiku („Anička“).
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+
 const barvy = process.stdout.isTTY && !process.env.NO_COLOR
 const zeleny = (s) => (barvy ? `\x1b[32m${s}\x1b[0m` : s)
 const cerveny = (s) => (barvy ? `\x1b[31m${s}\x1b[0m` : s)
@@ -372,7 +379,7 @@ t('změna modulů taky', otiskZaznamu({ ...zaklad, moduly: ['mapa'] }) !== o)
 t('změna stavu taky', otiskZaznamu({ ...zaklad, stav: 'hotovo' }) !== o)
 // Kontext se sbírá jednou při zápisu a nikdy nemění – v otisku nemá co dělat.
 t('kontext otisk nemění', otiskZaznamu({ ...zaklad, kontext: { obrazovka: 'Mapa' } }) === o)
-// Přesun slova mezi poli nesmí vyjít jako žádná změna (proto oddělovač  ).
+// Přesun slova mezi poli nesmí vyjít jako žádná změna (proto se pole spojují nulovým bajtem).
 t('přesun textu mezi poli je změna', otiskZaznamu({ ...zaklad, text: 'Vrátí mě to do mapy. Zůstat v detailu.', cekal: '' }) !== o)
 
 console.log('')
@@ -474,6 +481,48 @@ console.log('\nČíselníky\n')
 t('modulů je jedenáct plus Jiné', MODULY.length === 12 && MODULY[MODULY.length - 1].id === 'jine')
 t('žádný modul se neopakuje', new Set(MODULY.map((m) => m.id)).size === MODULY.length)
 t('každý typ má znak do exportu i ikonu do appky', TYPY.every((x) => x.znak && /^i-[a-z0-9-]+$/.test(x.ikona)))
+
+/* ================= čistota zdrojáků ================= */
+
+console.log('')
+console.log('Čistota zdrojáků')
+console.log('')
+
+// PROČ TAHLE KONTROLA EXISTUJE: dvakrát se stalo, že se do zdrojáku dostal
+// pravý bajt 0x00 místo escape sekvence – ta se cestou přes shell sklopila
+// na skutečný znak. JavaScript to přeloží, kontroly prošly a nikdo si toho
+// nevšiml; poznalo se to teprve tím, že `grep` začal ten soubor považovat
+// za binární a přestal v něm hledat.
+//
+// Povolený je jen tabulátor (9) a konec řádku (10, 13). Cokoli dalšího pod
+// 32 je překlep, ne záměr.
+//
+// ŽÁDNÝ REGULÁRNÍ VÝRAZ A ŽÁDNÝ ESCAPE: kontrola, která hlídá řídicí znaky,
+// je nesmí mít ani ve svém vlastním zdrojáku. Porovnání kódů je navíc
+// srozumitelnější než třída se šesti rozsahy.
+function nesePodivnyZnak(s) {
+  for (let i = 0; i < s.length; i++) {
+    const k = s.charCodeAt(i)
+    if (k < 32 && k !== 9 && k !== 10 && k !== 13) return true
+  }
+  return false
+}
+
+function zdrojoveSoubory(koren, ven = []) {
+  if (!fs.existsSync(koren)) return ven
+  for (const polozka of fs.readdirSync(koren, { withFileTypes: true })) {
+    if (polozka.name.startsWith('.') || polozka.name === 'node_modules') continue
+    const cesta = path.join(koren, polozka.name)
+    if (polozka.isDirectory()) zdrojoveSoubory(cesta, ven)
+    else if (/[.](m?js|css|json|md|html|svg)$/.test(polozka.name)) ven.push(cesta)
+  }
+  return ven
+}
+
+const zdrojaky = [...zdrojoveSoubory(path.join(ROOT, 'src')), ...zdrojoveSoubory(path.join(ROOT, 'scripts'))]
+const spinave = zdrojaky.filter((c) => nesePodivnyZnak(fs.readFileSync(c, 'utf8')))
+t(`žádný zdroják nenese řídicí znak (${zdrojaky.length} souborů)`, spinave.length === 0)
+for (const c of spinave) console.log(`     ${path.relative(ROOT, c)}`)
 
 console.log(`\n${ok}/${ok + chyb} kontrol prošlo`)
 process.exit(chyb ? 1 : 0)

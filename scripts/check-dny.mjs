@@ -28,8 +28,8 @@ const { rozpoznejSouradnice, pridejBod, vsechnyBody, DRUHY } =
   await import('../src/views/plan/body.js')
 
 const barvy = process.stdout.isTTY && !process.env.NO_COLOR
-const zeleny = (s) => (barvy ? `[32m${s}[0m` : s)
-const cerveny = (s) => (barvy ? `[31m${s}[0m` : s)
+const zeleny = (s) => (barvy ? `\x1b[32m${s}\x1b[0m` : s)
+const cerveny = (s) => (barvy ? `\x1b[31m${s}\x1b[0m` : s)
 
 let ok = 0
 let chyb = 0

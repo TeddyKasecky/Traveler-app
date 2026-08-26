@@ -429,7 +429,9 @@ await kontrola('řádek nenese id', () => page.locator('.dzr:not(.cizi) .dz-id')
 // STADIUM VŮČI REPOZITÁŘI nese barva rámečku. Čerstvě zapsaný záznam nikam
 // neodešel, takže je „jen tady" – barevný by tvrdil něco, co není pravda.
 await kontrola('čerstvý záznam je jen tady', () => page.locator('.dzr.st-jentady').count(), 1)
-await kontrola('legenda je pod tlačítky', () => page.locator('.dzr-lista + .dzr-legenda .dzl').count(), 5)
+// Šest stadií, ne pět: legenda je klíč k barvám, takže musí vysvětlit i hliněný
+// rámeček „zmizelo z repozitáře", i když se snad nikdy neukáže.
+await kontrola('legenda je pod tlačítky', () => page.locator('.dzr-lista + .dzr-legenda .dzl').count(), 6)
 
 // Ťuknutí ROZBALÍ, neotevře úpravu. Teprve tlačítko uvnitř otevře formulář.
 await page.click('.dzr:not(.cizi) .dzr-telo')
@@ -485,7 +487,22 @@ await kontrola('filtr je schovaný pod tlačítkem', () => page.locator('.dzf-ty
 await page.click('#dzfPrepinac')
 await page.waitForTimeout(250)
 await kontrola('a rozbalí se', () => page.locator('.dzf-typ').count(), 1)
-await kontrola('modul jde pořád filtrovat', () => page.locator('.dzf-modul .pilulka').count(), 13)
+// Tři řady, ne čtyři: filtr podle části appky zmizel (moduly nejsou vidět ani
+// v řádku) a řada „stav" ustoupila stadiím, podle kterých se seznam prochází.
+await kontrola('filtr podle části appky je pryč', () => page.locator('.dzf-modul').count(), 0)
+await kontrola('a stavy taky', () => page.locator('.dzf-stav').count(), 0)
+await kontrola('stadium jde filtrovat', () => page.locator('.dzf-stadium .pilulka').count(), 7)
+
+// Zapsaný záznam nikam neodešel, takže „na mainu" musí seznam vyprázdnit
+// a „jen tady" ho vrátit.
+await page.click('.dzf-stadium .pilulka:has-text("na mainu")')
+await page.waitForTimeout(250)
+await kontrola('filtr podle stadia zabral', () => page.locator('.dzr:not(.cizi)').count(), 0)
+await page.click('.dzf-stadium .pilulka:has-text("jen tady")')
+await page.waitForTimeout(250)
+await kontrola('a správné stadium záznam najde', () => page.locator('.dzr:not(.cizi)').count(), 1)
+await page.click('.dzf-stadium .pilulka:has-text("Každé stadium")')
+await page.waitForTimeout(250)
 
 // Filtr, kterému nic neodpovídá, musí vysvětlit proč – prázdná obrazovka
 // bez věty vypadá jako rozbitá appka.

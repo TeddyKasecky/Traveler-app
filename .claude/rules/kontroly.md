@@ -20,7 +20,7 @@ bez vyžádání. Místo nich je 27 samostatných spustitelných `.mjs` skriptů
 |---|---|---|
 | `validate-data.mjs` | `npm run validate` | schéma dat; obal nad `src/data/validate.js` |
 | `check-uloziste.mjs` | `npm run check-uloziste` | stěhování dat mezi úložišti (fotky, CSV, geometrie tras, archiv cest, debug záznamy), chování při plné paměti, odložený zápis poznámky, 36 kontrol |
-| `check-debug.mjs` | `npm run check-debug` | debug poznámkovač: identita záznamu, podpis zařízení, přejmenování autora, otisk a změna od exportu, `.md` export, záloha, čtení rejstříku zpátky, 138 bodů |
+| `check-debug.mjs` | `npm run check-debug` | debug poznámkovač: identita záznamu, podpis zařízení, přejmenování autora, otisk a změna od exportu, `.md` export, záloha, čtení rejstříku zpátky, čistota zdrojáků, 139 bodů |
 | `extract-places.mjs` | `npm run check-data` | že `places.json` je 1:1 s originálem |
 | `check-css-parity.mjs` | `npm run check-css:original` | 338 CSS pravidel proti originálu — **odstaveno redesignem** |
 | `check-tokeny.mjs` | `npm run check-tokeny` | barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů |
@@ -31,7 +31,7 @@ bez vyžádání. Místo nich je 27 samostatných spustitelných `.mjs` skriptů
 | `check-form.mjs` | `npm run check-form` | že formulář vyrábí platná místa, 18/18 |
 | `check-ikony.mjs` | `npm run check-ikony` | jedna věc = jedno jméno = jedna ikona, 8 bodů |
 | `check-images.mjs` | `npm run check-images` | existenci odkazů na fotky — **chodí na síť** |
-| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 339 / 319 kontrol |
+| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 343 / 323 kontrol |
 | `parity.mjs` | `npm run parity` | kontrolní seznam z `PARITA.md`, 26 bodů |
 | `perf.mjs` | `npm run perf` | rychlost startu při zpomaleném procesoru |
 | `perf-mapa.mjs` | ručně | plynulost posunu a přiblížení **stažené** malované mapy |
@@ -70,6 +70,10 @@ Chromium se schválně nestahuje. Skripty proti `dist/` potřebují napřed `npm
 - Výstup česky, `X / Y` na konci, `process.exit(1)` při chybě. Barvy jen když
   `process.stdout.isTTY && !process.env.NO_COLOR`.
 - Rozlišuj **chyba** (kód 1) a **varování** (kód se nemění) — stejně jako `validate-data.mjs`.
+- **Žádné řídicí znaky ve zdrojáku.** Dvakrát se stalo, že se místo escape sekvence
+  zapsal skutečný bajt (0x00, 0x1B) — kód fungoval, ale `grep` začal soubor
+  považovat za binární a přestal v něm hledat. Hlídá to `check-debug` na konci;
+  povolený je jen tabulátor a konec řádku.
 
 ## Kdy co pustit
 

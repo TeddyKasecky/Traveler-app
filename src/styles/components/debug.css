@@ -150,16 +150,33 @@
 /* RÁMEČEK NESE STADIUM vůči repozitáři (srpen 2026). Šířka je 2px u všech
  * stavů včetně výchozího – míchat 1px a 2px by posouvalo obsah o pixel při
  * každé změně stadia. */
-.dzr{border:2px solid var(--obrys);border-radius:var(--r-s);background:var(--card);overflow:hidden}
+.dzr{position:relative;border:2px solid var(--obrys);border-radius:var(--r-s);
+  background:var(--card);overflow:hidden}
 
 /* Jen tady = výchozí obrys, nic navíc: většina záznamů je zrovna tady a barevný
  * seznam bez klidového stavu by nemel hierarchii. */
 .dzr.st-odeslano{border-color:var(--zvyrazneni)}
 .dzr.st-namainu{border-color:var(--akcent)}
 .dzr.st-zmeneno{border-color:var(--upozorneni)}
-/* Vyřešené je taky mechové, ale ztlumené – „hotovo a založeno". */
-.dzr.st-vyreseno{border-color:var(--akcent);opacity:.72}
+/* Vyřešené je taky mechové, ale ztlumené – „hotovo a založeno". Se šrafurou
+ * níž by plné ztlumení bylo dvakrát totéž, takže je mírnější než dřív. */
+.dzr.st-vyreseno{border-color:var(--akcent);opacity:.85}
 .dzr.st-chybi{border-color:var(--clay)}
+
+/* ŠRAFURA U DVOU STADIÍ, KAŽDÁ OPAČNÝM SMĚREM. Obě znamenají „tohle není živý
+ * záznam", ale každé z jiného důvodu: vyřešené je odbyté, změněné volá po novém
+ * exportu. Opačný sklon je rozliší i tomu, kdo barvy špatně rozeznává – barva
+ * sama by na to byla slabý signál.
+ *
+ * Kreslí se přes ::after, ne do `background`: uvnitř karty je vlastní pozadí
+ * u rozbaleného panelu i u zaškrtávátka a šrafura má jít přes všechno stejně.
+ * `pointer-events: none` je povinné – pod tím leží tlačítka. */
+.dzr.st-vyreseno::after,
+.dzr.st-zmeneno::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:.12}
+.dzr.st-vyreseno::after{
+  background:repeating-linear-gradient(45deg, var(--akcent) 0 2px, transparent 2px 9px)}
+.dzr.st-zmeneno::after{
+  background:repeating-linear-gradient(-45deg, var(--upozorneni) 0 2px, transparent 2px 9px)}
 
 /* VÝBĚR A ROZBALENÍ UŽ NEJDOU PŘES `border-color` – ten patří stadiu.
  * Výběr kreslí kroužek vně rámečku; zaškrtávátko se navíc celé vybarvuje
