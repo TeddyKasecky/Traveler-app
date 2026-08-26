@@ -381,6 +381,14 @@ export const prefs = nacti(PREFK, {
    */
   debugZarizeni: '',
   /**
+   * Heslo pro odesílání poznámek do repozitáře (`worker/index.js`).
+   *
+   * NENÍ V BALÍČKU APLIKACE a nikdy tam být nesmí – repozitář je veřejný,
+   * takže by šlo vyčíst a na tu adresu by mohl psát kdokoli. Zadává se jednou
+   * při prvním odeslání a leží jen tady, v telefonu.
+   */
+  debugHeslo: '',
+  /**
    * Řazení výprav v knihovně: 'abecedne' | 'nejnovejsi' | 'zastavky' | 'zadne'.
    * Používalo se od srpna 2026, ale ve výchozích hodnotách chybělo – čtenář
    * kódu ho tu nenašel, přestože v telefonech dávno je.

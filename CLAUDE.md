@@ -4,6 +4,14 @@ Cestovatelská databáze a wishlist míst po Evropě: 580 míst, mapa, plánova�
 a hodnocení. **Statická PWA — žádný server, žádná databáze, žádný backend.** Data míst jsou
 v repozitáři jako JSON, uživatelská data jen v localStorage prohlížeče.
 
+> **Jediná výjimka (srpen 2026):** Cloudflare Worker má od té doby kód
+> (`worker/index.js`) a obsluhuje **jednu jedinou adresu** `POST /api/debug` —
+> odeslání debug poznámky do složky `debug/`. Nesahá na uživatelská data,
+> neovlivňuje offline běh, je vidět jen se zapnutým `prefs.debugRezim` a na
+> produkci je mrtvý, protože se tam nenastavuje secret. Všechno ostatní
+> dostane 404, tedy přesně to co dřív. Únikový východ je smazat `main`
+> ze `wrangler.jsonc`. Nic dalšího na server nepatří.
+
 Vzniklo přestavbou jednoho 718 kB souboru `index.html` do modulů. Přestavba je **hotová**
 a doložená v [PARITA.md](PARITA.md); parita už není zákon, ale kontrolní skripty zůstávají
 jako regresní síť.
@@ -69,11 +77,12 @@ npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 36 kontrol
 npm run check-debug      # debug poznámkovač: identita, otisk, rejstřík, složka debug/, 176 bodů
+npm run check-worker     # že Worker nepustí dál, co nemá, 45 bodů
 npm run debug-uklid      # duplicity a zavřené záznamy ze složky debug/ ven
 npm run debug-zavri      # uzavře záznam: -- <id> <hotovo|zahozeno> "důvod"
 
-npm run smoke            # proklikání v prohlížeči, 370 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 335 kontrol
+npm run smoke            # proklikání v prohlížeči, 378 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 339 kontrol
 npm run parity           # kontrolní seznam z PARITA.md, 26 bodů
 npm run check-data       # data 1:1 s původní aplikací
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů

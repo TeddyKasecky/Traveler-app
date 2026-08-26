@@ -13,6 +13,7 @@
     "check-uloziste": "node scripts/check-uloziste.mjs",
     "check-debug": "node scripts/check-debug.mjs",
     "debug-rejstrik": "node scripts/debug-rejstrik.mjs",
+    "check-worker": "node scripts/check-worker.mjs",
     "debug-uklid": "node scripts/debug-uklid.mjs",
     "debug-zavri": "node scripts/debug-zavri.mjs",
     "check-dny": "node scripts/check-dny.mjs",

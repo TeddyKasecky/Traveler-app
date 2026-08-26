@@ -607,6 +607,39 @@ await kontrola('výchozí rozsah jsou nové a změněné', () =>
 // Záznam ještě nikam neodešel, takže do „nových a změněných" patří.
 await kontrola('neodeslaný záznam je v rozsahu', () => page.locator('#dzMd').isDisabled(), false)
 
+// SDÍLET UŽ NEEXISTUJE. Nedělalo nic: Chromium nepustí `.md` přes Web Share
+// (není na seznamu povolených přípon), takže kód spadl do větve „stáhnout“,
+// a `.catch(() => {})` navíc polykal každou chybu.
+await kontrola('tlačítko Sdílet je pryč', () => page.locator('#dzSdilet').count(), 0)
+await kontrola('místo něj je Odeslat do repozitáře', () => page.locator('#dzOdeslat').count(), SINGLE ? 0 : 1)
+// Stáhnout zůstává napořád jako záložní cesta a musí u sebe mít návod –
+// bez něj člověk neví, kam se stažený soubor dává.
+await kontrola('Stáhnout zůstalo', () => page.locator('#dzMd').count(), 1)
+await kontrola('a nese návod, kam soubor patří', () =>
+  page.locator('.dz-rozbal-telo').innerText().then((x) => /slo\u017eky <?code>?debug|slo\u017eky .?debug/i.test(x) || /debug\//.test(x)), true)
+
+if (!SINGLE) {
+  // Bez hesla se odeslání musí zeptat – heslo není v balíčku aplikace, protože
+  // repozitář je veřejný a šlo by ho vyčíst.
+  await page.click('#dzOdeslat')
+  await page.waitForTimeout(500)
+  await kontrola('bez hesla se odeslání zeptá', () => page.locator('#dialog.show #dialogVstup').count(), 1)
+  await page.fill('#dialogVstup', 'zkusebni-heslo')
+  await page.click('#dialogAno')
+  await page.waitForTimeout(900)
+
+  // A TEĎ TO PODSTATNÉ: selhání se musí pojmenovat, ne spolknout. Přesně tím,
+  // že se nepojmenovalo, bylo staré tlačítko Sdílet k ničemu.
+  await kontrola('selhání se pojmenuje, ne spolkne', () =>
+    page.locator('#dialog.show').innerText().then((x) => /nepovedlo|Heslo|prost\u0159ed/i.test(x)), true)
+  await page.click('#dialogNe').catch(() => page.click('#dialogAno'))
+  await page.waitForTimeout(400)
+  await kontrola('heslo se uložilo do předvoleb', () =>
+    page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs')).debugHeslo), 'zkusebni-heslo')
+  await kontrola('a záznam zůstal neodeslaný', async () =>
+    (await debugZaznamy()).zaznamy[0].exportovanoDo, '')
+}
+
 // Stažení .md. Playwright zachytí soubor a ověří se jeho obsah – formát je
 // zároveň vstupem pro scripts/debug-rejstrik.mjs, takže se nesmí rozejít.
 const [stazeny] = await Promise.all([page.waitForEvent('download'), page.click('#dzMd')])

@@ -108,6 +108,32 @@ zavřený záznam jel v `debug-stav.json` napořád, a ten se stahuje sítí nap
 při každém startu appky. Řádek ve `VYRESENO.md` zůstává; appka si uzavření
 navíc pamatuje sama, takže se nikomu nepřepne na „zmizelo".
 
+## Odeslání z appky
+
+Poznámky se do repozitáře dostávají **tlačítkem Odeslat do repozitáře**
+v panelu Export. Appka pošle hotový `.md` na `POST /api/debug`, Cloudflare
+Worker (`worker/index.js`) ho commitne do `debug/` na větev `main` a beta se
+přestaví sama. Žádný soubor, žádné přenášení, žádný ruční commit.
+
+**Stáhnout zůstává jako záložní cesta** pro případ, že odesílání nejede.
+Stažený soubor patří do `debug/` **beze změny názvu** — pořadí názvů určuje,
+který záznam platí.
+
+### Nastavení (jednou, jen na betě)
+
+```bash
+npx wrangler secret put GITHUB_TOKEN   # fine-grained PAT, jen tenhle repozitář, contents: write
+npx wrangler secret put DEBUG_HESLO    # heslo, které se pak zadá v appce
+```
+
+**Jen na projektu bety.** Na produkci se secret nenastaví, takže tam Worker
+na odeslání odpoví 503 a endpoint je mrtvý. Heslo se v appce zadá při prvním
+odeslání a mění se v Nastavení u přezdívky; **v balíčku aplikace není** —
+repozitář je veřejný, takže by z něj šlo vyčíst.
+
+Co Worker nikdy neudělá: nepřepíše existující soubor, nic nemaže, nesáhne
+mimo `debug/` ani na jinou větev než `main`. Hlídá to `npm run check-worker`.
+
 ## Úklid složky
 
 ```bash

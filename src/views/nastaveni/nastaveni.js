@@ -136,6 +136,7 @@ export async function renderNastaveni() {
     <div class="meta" style="margin:8px 2px 10px">Píše jako: <b id="debugAutorInfo">${esc(prefs.debugAutor || 'zeptáme se při prvním zápisu')}</b></div>
     <div class="btnrow" style="margin:0">
       <button class="btn small" id="debugAutorZmen">Změnit přezdívku</button>
+      <button class="btn small" id="debugHesloZmen">Heslo odesílání</button>
       <button class="btn small" id="debugOtevri">Otevřít poznámkovač${zaznamu ? ` (${zaznamu})` : ''}</button>
     </div>
 
@@ -243,6 +244,24 @@ export async function renderNastaveni() {
     if (!savePrefs()) return
     document.getElementById('debugAutorInfo').textContent = prefs.debugAutor
     toast(`Píšeš jako ${prefs.debugAutor}`)
+  }
+
+  // Heslo pro odesílání do repozitáře. Není v balíčku aplikace – repozitář je
+  // veřejný, takže by šlo vyčíst a na endpoint by mohl psát kdokoli.
+  document.getElementById('debugHesloZmen').onclick = async () => {
+    const zadane = await zadej({
+      nadpis: 'Heslo pro odesílání',
+      text:
+        'Chrání adresu, na kterou appka posílá poznámky do repozitáře. ' +
+        'Musí sedět na to, co je nastavené v Cloudflare. Prázdné heslo odesílání vypne – ' +
+        'zbyde tlačítko Stáhnout.',
+      vychozi: prefs.debugHeslo,
+      placeholder: 'heslo',
+    })
+    if (zadane === null) return
+    prefs.debugHeslo = String(zadane).trim()
+    if (!savePrefs()) return
+    toast(prefs.debugHeslo ? 'Heslo uložené' : 'Heslo smazané')
   }
 
   document.getElementById('debugOtevri').onclick = () => aktivujZalozku('debug')

@@ -20,11 +20,11 @@
  * v klientském kódu a repozitář je veřejný.
  */
 
-import { prefs } from '../../core/store.js'
 import { IC } from '../../icons/sprite.js'
 import { stahniJson, stahniSoubor } from '../../core/csv.js'
+import { prefs, savePrefs } from '../../core/store.js'
 import { segment } from '../../components/vzory.js'
-import { oznam, potvrd } from '../../components/dialog.js'
+import { oznam, zadej } from '../../components/dialog.js'
 import { toast } from '../../components/toast.js'
 import {
   jsonZaloha,
@@ -109,8 +109,20 @@ export function exportHtml(vybrane) {
           : 'Není nic k odeslání – zkus jiný rozsah.'
     }</div>
     <div class="btnrow" style="margin:0">
+      ${
+        // V jednosouborové variantě není kam poslat – běží z disku.
+        import.meta.env.SINGLE_FILE
+          ? ''
+          : `<button class="btn primary" id="dzOdeslat"${kolik ? '' : ' disabled'}>${IC('i-sdilet')}Odeslat do repozitáře</button>`
+      }
       <button class="btn" id="dzMd"${kolik ? '' : ' disabled'}>${IC('i-save')}Stáhnout .md</button>
-      <button class="btn primary" id="dzSdilet"${kolik ? '' : ' disabled'}>${IC('i-sdilet')}Sdílet</button>
+    </div>
+    <div class="dz-napoveda">
+      <b>Stáhnout</b> je záložní cesta pro případ, že odesílání nejede.
+      Soubor pak patří do složky <code>debug/</code> v repozitáři:
+      1. ulož ho tam beze změny názvu — <b>pořadí názvů určuje, který záznam platí</b>,
+      2. commitni a pushni na <code>main</code>,
+      3. po přestavbě bety se stav vrátí do appky sám.
     </div>
 
     <div class="sechd">${IC('i-save')}Záloha záznamů</div>
@@ -175,6 +187,88 @@ async function poExportu(nazev, zaznamy, prekresli) {
 }
 
 /**
+ * Odešle hotový `.md` Workeru, který ho commitne do `debug/`.
+ *
+ * PROČ SE POSÍLÁ HOTOVÝ TEXT, NE DATA: `.md` vyrábí `mdExport()`, jehož formát
+ * hlídá `check-debug` round-tripem proti parseru rejstříku. Kdyby si ho skládal
+ * Worker, existoval by formát na dvou místech a hlídané by bylo jen jedno.
+ *
+ * KAŽDÉ SELHÁNÍ SE POJMENUJE. Předchůdce tohohle tlačítka (Sdílet) měl
+ * `.catch(() => {})`, takže se po kliknutí nestalo nic a nikdo se nedozvěděl
+ * proč. To se opakovat nesmí.
+ *
+ * @returns {Promise<{ok: true, nazev: string} | {ok: false, chyba: string}>}
+ */
+async function posliDoRepa(nazev, text, heslo) {
+  if (!navigator.onLine) {
+    return { ok: false, chyba: 'Nejsi online. Poznámky zůstávají v telefonu, zkus to znovu se signálem.' }
+  }
+  let r
+  try {
+    r = await fetch('./api/debug', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-vandrbuch-heslo': heslo },
+      body: JSON.stringify({ nazev, text }),
+    })
+  } catch {
+    return { ok: false, chyba: 'Server neodpověděl. Zkus to za chvíli, nebo použij Stáhnout.' }
+  }
+
+  let telo = null
+  try {
+    telo = await r.json()
+  } catch {
+    /* nečitelná odpověď – rozliší se níž, ať se nehlásí „chyba 200" */
+  }
+
+  if (r.ok && telo && telo.nazev) return { ok: true, nazev: telo.nazev }
+  if (!telo) {
+    // Odpověď, které appka nerozumí. Typicky když Worker vůbec neběží a místo
+    // něj odpoví statický server stránkou.
+    return { ok: false, chyba: 'Odpovědělo něco jiného než odesílání. Zkontroluj, jestli je nastavené.' }
+  }
+  if (r.status === 401) {
+    return { ok: false, chyba: 'Heslo pro odesílání nesedí. Změnit ho jde v Nastavení u přezdívky.' }
+  }
+  if (r.status === 503) {
+    return { ok: false, chyba: 'Odesílání není na tomhle prostředí nastavené. Použij Stáhnout.' }
+  }
+  if (r.status === 409) {
+    return { ok: false, chyba: 'Soubor s tímhle názvem už v repozitáři je. Zkus to za minutu.' }
+  }
+  return { ok: false, chyba: telo.chyba || `Server odpověděl chybou ${r.status}.` }
+}
+
+/**
+ * Zeptá se na heslo, když ještě žádné není.
+ *
+ * Heslo NENÍ v balíčku aplikace – zadává se jednou a leží v `prefs`. Kdyby se
+ * shipovalo s kódem, dalo by se vyčíst z veřejného repozitáře a endpoint by
+ * byl otevřený komukoli.
+ *
+ * @returns {Promise<string|null>} null = zrušeno, odesílání se nedokončí
+ */
+async function zajistiHeslo() {
+  if (prefs.debugHeslo) return prefs.debugHeslo
+  const zadane = await zadej({
+    nadpis: 'Heslo pro odesílání',
+    text:
+      'Odesílání poznámek do repozitáře je chráněné heslem, aby na tu adresu ' +
+      'nemohl psát kdokoli. Zadává se jednou; změnit ho jde v Nastavení ' +
+      'u přezdívky.',
+    placeholder: 'heslo',
+    ano: 'Uložit',
+  })
+  if (zadane === null) return null
+  prefs.debugHeslo = String(zadane).trim()
+  if (!savePrefs()) {
+    await oznam({ nadpis: 'Nastavení se neuložilo', text: 'V telefonu došlo místo. Uvolni ho a zkus to znovu.' })
+    return null
+  }
+  return prefs.debugHeslo
+}
+
+/**
  * @param {Set<string>} vybrane  zaškrtnuté záznamy z prohlížeče
  * @param {() => void} prekresli
  */
@@ -196,29 +290,28 @@ export function napojExport(vybrane, prekresli) {
     }
   }
 
-  const sdil = document.getElementById('dzSdilet')
-  if (sdil && !sdil.disabled) {
-    // ŽÁDNÉ `await` před `navigator.share()` – viz hlavička souboru.
-    sdil.onclick = () => {
+  const odesli = document.getElementById('dzOdeslat')
+  if (odesli && !odesli.disabled) {
+    odesli.onclick = async () => {
       const zaznamy = kExportu(vybrane)
-      const { text, nazev } = pripravMd(zaznamy)
-      const soubor = new File([text], nazev, { type: 'text/markdown' })
+      const heslo = await zajistiHeslo()
+      if (heslo === null) return
 
-      if (!navigator.canShare || !navigator.canShare({ files: [soubor] })) {
-        // Desktopový prohlížeč ani jednosouborová varianta sdílení souborů
-        // neumějí. Tiše spadnout na stažení je lepší než tlačítko, které nic
-        // neudělá – výsledek je tentýž soubor, jen jinou cestou.
-        stahniSoubor(text, nazev, 'text/markdown')
-        toast('Sdílení tenhle prohlížeč neumí – soubor se stáhl')
-        poExportu(nazev, zaznamy, prekresli)
+      const { text, nazev } = pripravMd(zaznamy)
+      odesli.disabled = true
+      const v = await posliDoRepa(nazev, text, heslo)
+      odesli.disabled = false
+
+      if (!v.ok) {
+        // CHYBA SE VŽDYCKY POJMENUJE. Tichý `catch` u dřívějšího tlačítka
+        // Sdílet znamenal, že se po kliknutí nestalo doslova nic a nikdo
+        // se nedozvěděl proč – kvůli tomu se to tlačítko rušilo.
+        await oznam({ nadpis: 'Odeslání se nepovedlo', text: v.chyba })
         return
       }
-
-      navigator
-        .share({ files: [soubor], title: nazev })
-        .then(() => poExportu(nazev, zaznamy, prekresli))
-        // Zrušené sdílení je AbortError, ne chyba – mlčet je správná odpověď.
-        .catch(() => {})
+      // Jméno z odpovědi, ne to naše: Worker ho mohl při kolizi posunout.
+      await poExportu(v.nazev, zaznamy, prekresli)
+      toast(`Odesláno do repozitáře (${zaznamy.length})`)
     }
   }
 
