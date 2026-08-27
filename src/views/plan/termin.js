@@ -138,7 +138,7 @@ export async function nactiPocasi(bod, { hodin = 24, dnu = 7, fahrenheity = fals
   const params = new URLSearchParams({
     latitude: String(bod.lat.toFixed(3)),
     longitude: String(bod.lon.toFixed(3)),
-    hourly: 'temperature_2m,precipitation,weather_code',
+    hourly: 'temperature_2m,precipitation,precipitation_probability,weather_code',
     daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset',
     timezone: 'auto',
     forecast_days: String(dnu),
@@ -166,6 +166,9 @@ export async function nactiPocasi(bod, { hodin = 24, dnu = 7, fahrenheity = fals
       kodPocasi: h.weather_code[i],
       teplota: h.temperature_2m[i],
       srazkyMm: h.precipitation[i],
+      // Uložené předpovědi z doby před srpnem 2026 tohle pole nemají.
+      // Vykreslení s tím počítá a údaj vynechá – `null` je platný stav.
+      destProcent: h.precipitation_probability ? h.precipitation_probability[i] : null,
     })),
     dny: d.time.map((datum, i) => ({
       datum,

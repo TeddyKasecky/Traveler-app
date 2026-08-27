@@ -240,6 +240,11 @@ await kontrola('mřížka „Možná dnes"', () => page.locator('#homeInner .fot
 await kontrola('Domů má sekci počasí', () => page.locator('#homePocasi').count(), 1)
 await kontrola('bez polohy nabídne tlačítko', () => page.locator('#homePocasiPoloha').count(), 1)
 await kontrola('a nic nestahuje', () => page.evaluate(() => window.__pocasiDotazu), 0)
+// Místo, odkud se předpověď bere, se doplňuje do pravého slotu nadpisu
+// (`poznId` v `sekce()`). Bez polohy zůstane prázdné, ale MUSÍ TAM BÝT –
+// kdyby `sekce()` slot nevykreslila, nemělo by se kam zapsat a lokace by
+// se nikdy neukázala, aniž by co spadlo.
+await kontrola('nadpis má slot na lokaci', () => page.locator('#homePocasiKde').count(), 1)
 await kontrola('statistika míst', () => page.locator('#homeInner .cislo b').first().innerText(), '580')
 // Přehled 32 bikeparků odešel do kolekce „Na kolo". Ceny se ale ztratit
 // nesměly – kontrola „ceny bikeparku v detailu" níž ověřuje, že jsou v detailu.

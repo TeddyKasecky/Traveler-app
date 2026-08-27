@@ -81,8 +81,8 @@ npm run check-worker     # že Worker nepustí dál, co nemá, 48 bodů
 npm run debug-uklid      # duplicity a zavřené záznamy ze složky debug/ ven
 npm run debug-zavri      # uzavře záznam: -- <id> <hotovo|zahozeno> "důvod"
 
-npm run smoke            # proklikání v prohlížeči, 410 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 370 kontrol
+npm run smoke            # proklikání v prohlížeči, 411 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 371 kontrol
 npm run check-regrese    # PWA, zálohy, fotky, poloha, service worker, 26 bodů
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
 npm run check-dny        # dny, výpravy, body trasy, tažení a úpravy cesty, 203 bodů
@@ -516,6 +516,15 @@ trasy přes Mapy.com.
   Bez signálu se ukáže poslední stažená i s tím, kdy se stáhla — prázdno nikdy.
 - Volba **„jen na wifi" pozná jen Android**; `navigator.connection` v Safari
   neexistuje, takže se tam chová jako vypnutá. Je to napsané u přepínače.
+- **Odkud předpověď je, se počítá lokálně.** Vedle nadpisu stojí nejbližší
+  město a vzdálenost („Bolzano · 44 km"), spočítané z 985 měst v
+  `src/data/mesta.json`. Ten soubor je v předukládané cache, takže to funguje
+  i bez signálu — reverzní geokódování by bylo čtvrté síťové volání za běhu
+  a mlčelo by přesně tam, kde se člověk ptá nejčastěji.
+- **Pruh hodin má předěl dne.** Zítřejší dlaždice mají tmavší plochu a na
+  hranici stojí svislý popisek; pod pruhem je vlastní posouvač, protože
+  systémový je na mobilu schovaný a bez něj není poznat, kde se člověk
+  v těch 24 hodinách pohybuje.
 - Kódy počasí překládá `pocasiPodleKodu()` ve `views/plan/termin.js`. Do srpna
   2026 vracela za oblačno **list** (`i-leaf`), protože sprite mrak neměl —
   přibyly `i-mrak`, `i-polojasno`, `i-mlha` a `i-mrholeni`, odvozené z `i-rain`

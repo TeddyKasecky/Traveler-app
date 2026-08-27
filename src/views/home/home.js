@@ -30,7 +30,7 @@ import { obrazekMista } from '../../data/kategorieFoto.js'
 import { PHOTOS } from '../../core/store.js'
 import { heroPas, sekce, fotomrizka, radek, cislaRada } from '../../components/vzory.js'
 import { vypravaKarta, napojVypravu } from '../../components/vypravaKarta.js'
-import { pocasiHtml, pocasiProBod } from '../../components/pocasi.js'
+import { napojPocasi, nejblizsiMesto, pocasiHtml, pocasiProBod } from '../../components/pocasi.js'
 import { goTo } from '../../map/map.js'
 import heroObr from '../../assets/hero/domu.webp'
 
@@ -191,7 +191,9 @@ export function renderHome() {
     // POČASÍ HNED POD VÝPRAVOU, jak si to vyžádalo hlášení `pc-tadeas-001`:
     // „rozpis hodin a rozpis dní pod rozpisem plánu na cestě". Obsah se doplní
     // až po načtení – `renderHome()` je synchronní, kdežto předpověď je síť.
-    (prefs.pocasi ? sekce('Počasí u tebe') + '<div id="homePocasi"></div>' : '') +
+    (prefs.pocasi
+      ? sekce('Počasí u tebe', { poznId: 'homePocasiKde' }) + '<div id="homePocasi"></div>'
+      : '') +
     (blizko
       ? sekce('Nejblíž odsud', { pozn: fmtKm(blizko.km) }) +
         (() => {
@@ -316,6 +318,16 @@ async function naplnPocasi() {
   kam.innerHTML = p
     ? pocasiHtml(p)
     : `<div class="meta">Předpověď se nepodařilo načíst. Zkusím to zase, až bude signál.</div>`
+
+  if (p) napojPocasi(kam)
+
+  // Odkud se předpověď bere. Počítá se z `mesta.json`, tedy BEZ DOTAZU NA SÍŤ –
+  // doplní se proto i tehdy, když se samotná předpověď načíst nepodařila.
+  const kde = document.getElementById('homePocasiKde')
+  if (kde) {
+    const nazev = await nejblizsiMesto(S.userPos)
+    if (nazev && document.getElementById('homePocasiKde') === kde) kde.textContent = nazev
+  }
 }
 
 /** Vymění pozdrav za políčko a uloží oslovení. */

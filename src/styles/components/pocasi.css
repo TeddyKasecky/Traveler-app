@@ -13,11 +13,41 @@
 .pocasi-hod{flex:0 0 auto;scroll-snap-align:start;display:flex;flex-direction:column;
   align-items:center;gap:3px;min-width:52px;padding:9px 6px;
   background:var(--plocha);border:var(--line);border-radius:var(--r-s)}
+/* ZÍTŘEJŠÍ HODINY NA TMAVŠÍ PLOŠE. Pruh sahá 24 hodin dopředu a bez rozlišení
+ * se v něm člověk ztratí – tohle je vidět koutkem oka a nedělá to čáry navíc.
+ * Popisek `.pocasi-predel` říká totéž slovy pro toho, kdo barvy nerozezná. */
+.pocasi-hod.zitra{background:var(--plocha2)}
 .pocasi-hod span{font-size:.66rem;font-weight:700;color:var(--text2)}
 .pocasi-hod svg.ic{font-size:19px;color:var(--akcent);stroke:var(--akcent)}
 .pocasi-hod b{font-family:var(--f-disp);font-size:.92rem;font-weight:700}
 /* Srážky jen když opravdu něco spadne – prázdný řádek by pruh jen zvýšil. */
 .pocasi-hod i{font-style:normal;font-size:.6rem;font-weight:700;color:var(--zvyrazneni)}
+/* Pravděpodobnost je vždycky, milimetry jen když prší – proto je procento
+ * tlumenější: nese se pořád a nemá přebíjet teplotu. */
+.pocasi-hod .pocasi-hod-dest{color:var(--text2)}
+
+/* Svislý popisek mezi dlaždicemi – „dnes" na začátku, „zítra" na hranici
+ * půlnoci. Psaný na výšku, aby zabral co nejmíň místa v pruhu.
+ *
+ * SAMOTNÝ TEXT NESTAČIL. Šestnáct pixelů širokého bledého písma vedle sebe
+ * splynulo s okrajem a při prvním pohledu nebylo poznat, že tam něco je –
+ * proto ta svislá linka, která z popisku dělá viditelný předěl. */
+.pocasi-predel{flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+  writing-mode:vertical-rl;transform:rotate(180deg);
+  padding:0 6px 0 4px;font-family:var(--f-disp);font-size:.6rem;font-weight:900;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--text2)}
+/* Zítřek je ten důležitý předěl – dostane akcentní barvu i linku vpravo,
+ * tedy na straně, kde nový den začíná. */
+.pocasi-predel.zitra{color:var(--akcent);border-right:2px solid var(--akcent);margin-right:4px}
+
+/* Posouvač pod pruhem. Systémový je na mobilu schovaný (`scrollbar-width:none`
+ * výš), takže bez tohohle není vidět, kde se člověk v těch 24 hodinách
+ * pohybuje. DISKRÉTNÍ SCHVÁLNĚ: běhoun v akcentní barvě působil jako pruh
+ * přes půl obrazovky a přebíjel počasí samotné. */
+.pocasi-posuvnik{position:relative;height:2px;margin:0 2px 12px;
+  background:var(--obrys);border-radius:2px;overflow:hidden}
+.pocasi-posuvnik i{position:absolute;top:0;bottom:0;left:0;
+  background:var(--text3);border-radius:2px;transition:left .08s linear}
 
 .pocasi-dny{display:flex;flex-direction:column;gap:6px}
 

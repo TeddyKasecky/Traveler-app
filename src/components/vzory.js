@@ -56,11 +56,14 @@ export function heroPas({ obrazek, nadpis, podtitulek = '', vpravo = '' }) {
  * @param {string} [o.akceId]  id, na které se věší obsluha
  * @param {string} [o.pozn]  místo akce jen šedý text (např. „Přetáhni pro změnu pořadí“)
  */
-export function sekce(popisek, { akce = '', akceId = '', pozn = '' } = {}) {
+export function sekce(popisek, { akce = '', akceId = '', pozn = '', poznId = '' } = {}) {
+  // `poznId` je tu kvůli údajům, které se dopočítají až po vykreslení –
+  // třeba nejbližší město u počasí, které čeká na dotažení `mesta.json`.
+  // Prázdná poznámka se pak vykreslí taky, aby bylo kam zapsat.
   const vpravo = akce
     ? `<button class="sekce-akce"${akceId ? ` id="${akceId}"` : ''}>${esc(akce)}${IC('i-sipka', 'font-size:12px')}</button>`
-    : pozn
-      ? `<span class="sekce-pozn">${esc(pozn)}</span>`
+    : pozn || poznId
+      ? `<span class="sekce-pozn"${poznId ? ` id="${poznId}"` : ''}>${esc(pozn)}</span>`
       : ''
   return `<div class="sekce">${esc(popisek)}${vpravo}</div>`
 }

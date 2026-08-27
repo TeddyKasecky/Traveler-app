@@ -17,6 +17,7 @@
 
 import { prefs } from '../core/store.js'
 import { esc } from '../core/html.js'
+import { dkm } from '../core/geo.js'
 import { IC } from '../icons/sprite.js'
 import { klicPocasi, nactiPocasiZeSchranky, ulozPocasi } from '../core/pocasiDb.js'
 import { nactiPocasi, pocasiPodleKodu } from '../views/plan/termin.js'
@@ -80,6 +81,42 @@ export async function pocasiProBod(bod, { ted = Date.now(), vynutit = false } = 
   }
 }
 
+/**
+ * Nejbližší město i se vzdáleností – „Innsbruck · 12 km".
+ *
+ * BEZ JEDINÉHO DOTAZU NA SÍŤ. Appka má 985 evropských měst se souřadnicemi
+ * v `src/data/mesta.json` a ten soubor je v předukládané cache, takže to
+ * funguje i bez signálu. Reverzní geokódování přes Nominatim by bylo čtvrté
+ * síťové volání za běhu a offline by mlčelo – přesně tam, kde se člověk na
+ * „kde to vlastně jsem" ptá nejčastěji.
+ *
+ * Vzdálenost je v popisku schválně: v horách bývá nejbližší město za kopcem
+ * a bez ní by to vypadalo, že předpověď je přímo tam.
+ *
+ * @param {{lat:number, lon:number}} bod
+ * @returns {Promise<string>}  prázdný řetězec, když se data nepodaří načíst
+ */
+export async function nejblizsiMesto(bod) {
+  if (!bod || !Number.isFinite(bod.lat)) return ''
+  try {
+    const { mesta } = (await import('../data/mesta.json')).default
+    let nej = null
+    let nejKm = Infinity
+    for (const [lat, lon, nazev] of mesta) {
+      const km = dkm(bod, { lat, lon })
+      if (km < nejKm) {
+        nejKm = km
+        nej = nazev
+      }
+    }
+    if (!nej) return ''
+    // Do dvou kilometrů je vzdálenost šum – člověk je prostě „v Innsbrucku".
+    return nejKm < 2 ? nej : `${nej} · ${Math.round(nejKm)} km`
+  } catch {
+    return ''
+  }
+}
+
 /** „18:40" z ISO času, který Open-Meteo vrací v místní zóně bodu. */
 const hodina = (iso) => String(iso || '').slice(11, 16)
 
@@ -90,6 +127,20 @@ function kratkyDen(iso, ted = Date.now()) {
   if (d.toDateString() === dnes.toDateString()) return 'dnes'
   const DNY = ['ne', 'po', 'út', 'st', 'čt', 'pá', 'so']
   return `${DNY[d.getDay()]} ${d.getDate()}. ${d.getMonth() + 1}.`
+}
+
+/**
+ * Popisek předělu v pruhu hodin: „dnes", „zítra", jinak datum.
+ *
+ * Dál než na zítřek pruh nedosáhne (24 hodin), ale třetí den je tam možný —
+ * když se člověk dívá ve 23:30, spadne do pruhu i pozítřejší ráno.
+ */
+function popisekDne(d, ted = Date.now()) {
+  const dnes = new Date(ted)
+  if (d.toDateString() === dnes.toDateString()) return 'dnes'
+  const zitra = new Date(ted + 86400000)
+  if (d.toDateString() === zitra.toDateString()) return 'zítra'
+  return `${d.getDate()}. ${d.getMonth() + 1}.`
 }
 
 /** Zaokrouhlená teplota se stupněm. Prázdno projde jako pomlčka. */
@@ -125,15 +176,36 @@ export function pocasiHtml(p, { ted = Date.now() } = {}) {
   const ted6 = ted - 3600000
   const hodiny = p.hodiny.filter((h) => new Date(h.cas).getTime() >= ted6).slice(0, HODIN)
 
+  // PŘEDĚL DNE. Pruh sahá 24 hodin dopředu a bez značky se v něm člověk
+  // ztratí – neví, kde končí dnešek. Řeší to dvě věci naráz: zítřejší dlaždice
+  // mají tmavší plochu (vidět koutkem oka) a na hranici stojí popisek.
+  let denPredchozi = ''
   const pruh = hodiny
     .map((h) => {
+      const d = new Date(h.cas)
+      const den = h.cas.slice(0, 10)
+      const zitra = den !== hodiny[0].cas.slice(0, 10)
+
+      // Popisek se vloží před první dlaždici a pak vždy, když se přehoupne
+      // datum. `denPredchozi` drží stav mezi průchody mapy.
+      const predel =
+        den !== denPredchozi
+          ? `<div class="pocasi-predel${zitra ? ' zitra' : ''}">${esc(popisekDne(d, ted))}</div>`
+          : ''
+      denPredchozi = den
+
       const { ikona } = pocasiPodleKodu(h.kodPocasi)
-      const srazky = Number(h.srazkyMm) > 0 ? `<i>${String(h.srazkyMm).replace('.', ',')} mm</i>` : ''
-      return `<div class="pocasi-hod">
+      // Procento je vždy, milimetry jen když opravdu něco spadne – prázdný
+      // řádek „0 mm" by pruh jen zvýšil. Uložené předpovědi z doby před
+      // srpnem 2026 pravděpodobnost nemají, takže se vynechá i ta.
+      const dest = Number.isFinite(h.destProcent) ? `<i class="pocasi-hod-dest">${h.destProcent} %</i>` : ''
+      const mm = Number(h.srazkyMm) > 0 ? `<i>${String(h.srazkyMm).replace('.', ',')} mm</i>` : ''
+
+      return `${predel}<div class="pocasi-hod${zitra ? ' zitra' : ''}">
         <span>${esc(hodina(h.cas))}</span>
         ${IC(ikona)}
         <b>${stupne(h.teplota)}</b>
-        ${srazky}
+        ${dest}${mm}
       </div>`
     })
     .join('')
@@ -162,5 +234,42 @@ export function pocasiHtml(p, { ted = Date.now() } = {}) {
     ? `<div class="meta pocasi-stari">Staženo ${esc(kdyStazeno(p.stazeno, ted))} – novější se nepodařilo načíst.</div>`
     : ''
 
-  return `${stari}<div class="pocasi-pruh">${pruh}</div><div class="pocasi-dny">${dny}</div>`
+  // Vlasová lišta s běhounkem pod pruhem. Sama o sobě je to jen prvek –
+  // hýbe s ní `napojPocasi()`, které se věší až po vložení do stránky.
+  return `${stari}<div class="pocasi-pruh">${pruh}</div>
+    <div class="pocasi-posuvnik"><i></i></div>
+    <div class="pocasi-dny">${dny}</div>`
+}
+
+/**
+ * Naváže posouvač pod pruhem hodin.
+ *
+ * PROČ VŮBEC: pruh sahá 24 hodin dopředu, takže je vidět jen jeho třetina
+ * a bez ukazatele není poznat, kde se člověk pohybuje. Systémový posuvník
+ * je na mobilu schovaný (`scrollbar-width:none`), takže si ho appka kreslí
+ * sama – zato tenkou linkou, ne pruhem přes celou obrazovku.
+ *
+ * @param {HTMLElement} korenovyPrvek  prvek, do kterého se počasí vykreslilo
+ */
+export function napojPocasi(korenovyPrvek) {
+  const pruh = korenovyPrvek.querySelector('.pocasi-pruh')
+  const posuvnik = korenovyPrvek.querySelector('.pocasi-posuvnik')
+  if (!pruh || !posuvnik) return
+  const behoun = posuvnik.firstElementChild
+
+  const srovnej = () => {
+    const celkem = pruh.scrollWidth
+    const videt = pruh.clientWidth
+    // Když se pruh vejde celý, posouvač nemá co ukazovat.
+    if (celkem <= videt + 1) {
+      posuvnik.hidden = true
+      return
+    }
+    posuvnik.hidden = false
+    behoun.style.width = `${(videt / celkem) * 100}%`
+    behoun.style.left = `${(pruh.scrollLeft / celkem) * 100}%`
+  }
+
+  pruh.onscroll = srovnej
+  srovnej()
 }
