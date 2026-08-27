@@ -417,6 +417,18 @@ export const prefs = nacti(PREFK, {
   pocasiJenWifi: false,
   /** `celsius` nebo `fahrenheit`. Jednotka je i v klíči schránky. */
   pocasiJednotky: 'celsius',
+
+  /**
+   * Pořadí sekcí na Domů (pole `id` z `views/home/sekce.js`).
+   *
+   * PRÁZDNÉ ZNAMENÁ VÝCHOZÍ, ne „nic neukazovat". A `id`, které tu chybí
+   * (protože sekce přibyla až v novější verzi), se při čtení přidá NA KONEC –
+   * jinak by lidem s uloženým pořadím každá nová sekce tiše zmizela.
+   * Rozebráno u `poradiSekci()`.
+   */
+  domuPoradi: [],
+  /** Které sekce Domů jsou schované. Pole `id`, prázdné = všechno vidět. */
+  domuSkryte: [],
 })
 
 /**

@@ -29,6 +29,14 @@ import { toast } from '../../components/toast.js'
 import { vyberZeSeznamu, zadej } from '../../components/dialog.js'
 import { srovnejDebugTlacitko } from '../../components/debugZapis.js'
 import { pocetPocasi, zahodVsechnoPocasi } from '../../core/pocasiDb.js'
+import {
+  SEKCE_DOMU,
+  jeSkryta,
+  poradiSekci,
+  posunSekci,
+  prepniSekci,
+  vratVychoziSekce,
+} from '../home/sekce.js'
 import { jsouVektory, obnovKresbyVMape } from '../../map/podklad.js'
 import { srovnejStavMapy } from './mapaKeStazeni.js'
 
@@ -118,6 +126,45 @@ export async function renderNastaveni() {
       )}
     </div>`
   )
+
+  // DOMŮ – co je na ní vidět a v jakém pořadí (hlášení `tadeas-f32-009`).
+  // Registr sekcí je ve `views/home/sekce.js`; odsud se jen čtou názvy
+  // a důvody, ať se seznam nerozejde s tím, co se doopravdy kreslí.
+  const poradi = poradiSekci()
+  const schovanych = poradi.filter(jeSkryta).length
+  doPrihradky(
+    'nastDomu',
+    `<div class="sechd">${IC('i-van')}Sekce na Domů</div>
+    <div class="meta">Šipkami se přeskládají, okem vypnou. Pozdrav nahoře zůstává vždycky.</div>
+    <div class="sekcetab">${poradi
+      .map((id, i) => {
+        const s = SEKCE_DOMU.find((x) => x.id === id)
+        if (!s) return ''
+        const skryta = jeSkryta(id)
+        const proc = s.proc()
+        return `<div class="sekceradek${skryta ? ' skryta' : ''}">
+          <div class="sekceradek-text">
+            <b>${esc(s.nazev)}</b>
+            ${proc ? `<span>${esc(proc)}</span>` : ''}
+          </div>
+          <button class="ikonbtn" data-sekce-nahoru="${id}" title="Nahoru"${i === 0 ? ' disabled' : ''}>${IC('i-up')}</button>
+          <button class="ikonbtn" data-sekce-dolu="${id}" title="Dolů"${i === poradi.length - 1 ? ' disabled' : ''}>${IC('i-down')}</button>
+          <button class="ikonbtn" data-sekce-oko="${id}" title="${skryta ? 'Zapnout' : 'Vypnout'}">${IC(skryta ? 'i-oko-ne' : 'i-oko')}</button>
+        </div>`
+      })
+      .join('')}</div>
+    <div class="btnrow">
+      <button class="btn small" id="domuVychozi">Výchozí pořadí</button>
+    </div>`
+  )
+
+  // Odznak v hlavičce skupiny. Zavřená skupina tím řekne, že je něco vypnuté –
+  // jinak by se schovaná sekce hledala těžko.
+  const odznak = document.getElementById('domuOdznak')
+  if (odznak) {
+    odznak.textContent = String(schovanych)
+    odznak.hidden = schovanych === 0
+  }
 
   // POČASÍ – vlastní skupina, protože má vlastní volby a vlastní schránku.
   // Vypnuté počasí NESÁHNE NA SÍŤ VŮBEC, ne že se jen neukáže: na roamingu je
@@ -238,6 +285,46 @@ export async function renderNastaveni() {
     <div class="sechd">${IC('i-globe')}Zdroje dat</div>
     <div class="meta">Podklad malované mapy: <b>OpenStreetMap</b> přes Protomaps (ODbL) · obrysy zemí <b>Natural Earth</b> (public domain) · stínování terénu z výškopisu <b>elevation-tiles-prod</b> (SRTM, GMTED) · online dlaždice <b>OpenStreetMap</b>.</div>`
   )
+
+  // Sekce Domů. Po každé změně se tabulka překreslí, takže ZAMĚŘENÍ SE MUSÍ
+  // VRÁTIT na tutéž šipku – bez toho skočí na začátek a ťuknout třikrát za
+  // sebou nejde. Na počítači s klávesnicí to štve nejvíc.
+  // POSLEDNÍ POSUN ŠIPKU ZNECITLIVÍ – sekce dojela na kraj a dál nemá kam.
+  // Zaměření pak nesmí spadnout na začátek stránky: přebere ho sousední
+  // tlačítko téhož řádku, aby ruka zůstala tam, kde pracovala.
+  const znovuDomu = (id, znacky) => {
+    renderNastaveni()
+    for (const z of znacky) {
+      const b = document.querySelector(`[${z}="${id}"]`)
+      if (b && !b.disabled) return b.focus()
+    }
+  }
+  for (const b of document.querySelectorAll('[data-sekce-nahoru]')) {
+    b.onclick = () => {
+      const id = b.dataset.sekceNahoru
+      if (posunSekci(id, -1)) znovuDomu(id, ['data-sekce-nahoru', 'data-sekce-dolu'])
+    }
+  }
+  for (const b of document.querySelectorAll('[data-sekce-dolu]')) {
+    b.onclick = () => {
+      const id = b.dataset.sekceDolu
+      if (posunSekci(id, 1)) znovuDomu(id, ['data-sekce-dolu', 'data-sekce-nahoru'])
+    }
+  }
+  for (const b of document.querySelectorAll('[data-sekce-oko]')) {
+    b.onclick = () => {
+      const id = b.dataset.sekceOko
+      prepniSekci(id)
+      znovuDomu(id, ['data-sekce-oko'])
+    }
+  }
+  const vychozi = document.getElementById('domuVychozi')
+  if (vychozi)
+    vychozi.onclick = () => {
+      vratVychoziSekce()
+      renderNastaveni()
+      toast('Domů je zase jako na začátku')
+    }
 
   // Počasí. Přepnutí se propíše i na Domů – bez toho by se vypnuté počasí
   // schovalo až po přepnutí záložky sem a zpátky.

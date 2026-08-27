@@ -185,7 +185,7 @@ const zavriDetail = async () => {
 //   srpen 2026 – brouk se znovu použít nedal, dvě sousední kolečka s toutéž
 //   ikonou by nešlo rozeznat).
 // Číslo se mění jen s vědomým přidáním do sprite.svg.
-await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 70)
+await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 71)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
 // Nad mapou jsou čtyři rychlé pilulky „moje věci" (Vše, Uložená, Musíme!,
@@ -334,9 +334,9 @@ await kontrola('Nastavení má správu vlastních dat', () =>
 
 // SBALITELNÉ SKUPINY (hlášení tadeas-001). Dvanáct oddílů pod sebou se na
 // telefonu scrollovalo donekonečna, takže se všechno kromě Vzhledu schovalo.
-await kontrola('Nastavení má osm skupin', () => page.locator('#panelNastaveni .sbalka').count(), 8)
+await kontrola('Nastavení má devět skupin', () => page.locator('#panelNastaveni .sbalka').count(), 9)
 await kontrola('a všechny startují zavřené', () =>
-  page.locator('#panelNastaveni .sbalka-telo[hidden]').count(), 8)
+  page.locator('#panelNastaveni .sbalka-telo[hidden]').count(), 9)
 await kontrola('Vzhled zůstává vidět bez rozbalování', () =>
   page.locator('#panelNastaveni .motivbtn').first().isVisible(), true)
 // TOHLE JE TA PODSTATNÁ. Sbalená skupina se jen SKRÝVÁ – kdyby se odstranila
@@ -354,7 +354,53 @@ await kontrola('dvě skupiny otevřené naráz', () =>
 // Hustota kreseb patří k mapě, ne na konec obrazovky jako dřív.
 await kontrola('kresby jsou uvnitř skupiny Mapa', () => page.locator('#nastMapa #kresbySeg').count(), 1)
 
+// SKLÁDÁNÍ OBRAZOVKY DOMŮ (hlášení `tadeas-f32-009`). Tabulka v Nastavení musí
+// zůstat srostlá s tím, co se doopravdy kreslí – registr je jeden a čtou ho oba.
+await rozbal('domu')
+await kontrola('skupina Domů má sedm sekcí', () => page.locator('.sekceradek').count(), 7)
+// Kraje: nahoru z prvního a dolů z posledního nevede nikam, tak to má být vidět.
+await kontrola('šipka nahoru u první je znecitlivěná', () =>
+  page.locator('.sekceradek').first().locator('[data-sekce-nahoru]').isDisabled(), true)
+await kontrola('šipka dolů u poslední je znecitlivěná', () =>
+  page.locator('.sekceradek').last().locator('[data-sekce-dolu]').isDisabled(), true)
+
+const prvniSekce = () => page.evaluate(() =>
+  document.querySelector('#homeInner .sekce')?.firstChild?.textContent.trim() || '')
+
+// Šipka opravdu přeskládá Domů, ne jen řádek v tabulce.
+await page.click('[data-sekce-dolu="vyprava"]')
+await page.waitForTimeout(150)
+await page.click('#tabs button[data-tab="home"]')
+await page.waitForTimeout(500)
+await kontrola('posun šipkou přeskládá Domů', prvniSekce, 'Počasí u tebe')
+
+// Zhasnuté oko sekci z Domů odstraní a odznak u skupiny to přizná.
+await page.click('#nastaveniOpen')
+await page.waitForTimeout(300)
+await rozbal('domu')
+await page.click('[data-sekce-oko="pocasi"]')
+await page.waitForTimeout(150)
+await kontrola('odznak počítá schované', () => page.locator('#domuOdznak').innerText(), '1')
+await page.click('#tabs button[data-tab="home"]')
+await page.waitForTimeout(500)
+await kontrola('zhasnutá sekce zmizí z Domů', () => page.locator('#homePocasi').count(), 0)
+
+// „Výchozí pořadí" musí vrátit VŠECHNO – pořadí i zhasnuté. Bez toho by po něm
+// zůstala schovaná sekce a nikdo by nevěděl, kde ji hledat.
+await page.click('#nastaveniOpen')
+await page.waitForTimeout(300)
+await rozbal('domu')
+await page.click('#domuVychozi')
+await page.waitForTimeout(200)
+await kontrola('„Výchozí pořadí" zhasnuté zase rozsvítí', () =>
+  page.locator('#domuOdznak').isHidden(), true)
+await page.click('#tabs button[data-tab="home"]')
+await page.waitForTimeout(500)
+await kontrola('a vrátí i pořadí', prvniSekce, 'Naše výprava')
+
 // POČASÍ MÁ VLASTNÍ SKUPINU s přepínačem, intervalem a smazáním schránky.
+await page.click('#nastaveniOpen')
+await page.waitForTimeout(300)
 await rozbal('pocasi')
 await kontrola('skupina Počasí má přepínač', () => page.locator('#pocasiSeg button').count(), 2)
 await kontrola('a tři intervaly stahování', () => page.locator('#pocasiIntervalSeg button').count(), 3)

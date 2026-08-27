@@ -65,3 +65,26 @@
 .sbalka-odznak{flex:0 0 auto;font-family:var(--f-body);font-style:normal;font-weight:800;
   font-size:.66rem;letter-spacing:0;min-width:20px;padding:2px 6px;border-radius:var(--r-pill);
   background:var(--akcent);color:var(--na-akcentu);text-align:center}
+
+/* Tabulka sekcí Domů (hlášení tadeas-f32-009). Řádek: název, dvě šipky, oko.
+ * Šipky na krajích jsou znecitlivěné, ne mlčky bez účinku – po ťuknutí, které
+ * nic neudělá, člověk hledá chybu u sebe. */
+.sekcetab{display:flex;flex-direction:column;gap:6px;margin:0 0 10px}
+.sekceradek{display:flex;align-items:center;gap:6px;padding:7px 8px 7px 11px;
+  background:var(--plocha);border:var(--line);border-radius:var(--r-s)}
+.sekceradek-text{flex:1;min-width:0}
+.sekceradek-text b{display:block;font-size:.8rem;font-weight:800}
+/* Proč je sekce zrovna prázdná – „potřebuje polohu". Zapnout ji jde dál, jen
+ * je jasné, že za tím nestojí chyba. */
+.sekceradek-text span{display:block;font-size:.66rem;font-weight:600;color:var(--text3)}
+.sekceradek .ikonbtn{flex:0 0 auto;width:32px;height:32px}
+.sekceradek .ikonbtn[disabled]{opacity:.3;pointer-events:none}
+/* Schovaná sekce ztlumeně – v seznamu zůstává, aby se dala zase zapnout. */
+.sekceradek.skryta{opacity:.55}
+.sekceradek.skryta .ikonbtn[data-sekce-oko]{opacity:1}
+
+/* Když se zhasne úplně všechno, Domů to musí říct – jinak vypadá rozbitě. */
+.domu-prazdno{display:flex;gap:11px;align-items:center;padding:18px 14px;margin:8px 0;
+  background:var(--plocha);border:var(--line);border-radius:var(--r-s);
+  font-size:.82rem;line-height:1.45;color:var(--text2)}
+.domu-prazdno svg.ic{flex:0 0 auto;font-size:22px;color:var(--text3);stroke:var(--text3)}

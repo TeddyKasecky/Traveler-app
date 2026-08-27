@@ -156,7 +156,7 @@ _Odvozeno ze skutečného kódu — žádný linter to nevynucuje._
 - Parametry typované JSDoc anotacemi (`@param {Record<string, any>} p`), ne TypeScriptem.
 - CSS: barvy a rozměry výhradně přes proměnné z `tokens.css`, nikdy natvrdo. Nová barva
   patří do sémantické vrstvy **a do obou tmavých bloků** — viz [VZHLED.md](VZHLED.md).
-- Ikony jsou symboly v `src/icons/sprite.svg` (70 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
+- Ikony jsou symboly v `src/icons/sprite.svg` (71 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
 
 Podrobná pravidla podle oblasti (auto-scoped podle cesty):
 [.claude/rules/database.md](.claude/rules/database.md) ·
@@ -533,6 +533,33 @@ trasy přes Mapy.com.
 Zbytek hlášení `pc-tadeas-001` (dny v Itineráři, detail místa, karta Na cestě
 a klimatické normály) je zapsaný v [NAPADY.md](NAPADY.md) jako N19 a N20
 i s tím, co je už rozhodnuté.
+
+## Skládání obrazovky Domů (srpen 2026)
+
+**Domů si každý poskládá sám** — Nastavení → Domů má tabulku sedmi sekcí
+s šipkami a okem (hlášení `tadeas-f32-009`). Pořadí i zhasnuté sekce jsou
+v `prefs.domuPoradi` a `prefs.domuSkryte`, takže jdou do zálohy.
+
+- **Registr je JEDEN a čtou ho dva** — `src/views/home/sekce.js`. Domů z něj
+  vykresluje, Nastavení bere názvy a důvody do tabulky. Kdyby si Nastavení
+  psalo vlastní seznam, do měsíce by se rozešly.
+- **`html()` je funkce, ne řetězec.** `renderHome()` dřív spočítala všechno
+  napřed — šest průchodů přes 580 míst — a teprve pak skládala HTML. Takhle
+  schovaná sekce nestojí ani ten výpočet.
+- **Čtení pořadí musí unést tři věci**, jinak se appka rozbije potichu:
+  chybějící předvolba → výchozí; `id`, které v uloženém pořadí není (přibyla
+  nová sekce) → **na konec**, ne pryč; `id` dvakrát nebo neznámé → zahodit,
+  protože dvakrát vykreslená sekce udělá dvě stejná `id` v DOM a obsluha se
+  navěsí jen na první.
+- **Pozdrav v hero pásu sekce není** a nezhasíná — je to hlavička obrazovky.
+- **Počasí má dva vypínače a je to správně.** Oko v tabulce řídí jen rozvržení
+  Domů, hlavní přepínač ve skupině Počasí rozhoduje i o síti. Kdyby oko psalo
+  do `prefs.pocasi`, přišel by o počasí i Itinerář, až tam přibude (N19).
+  Vypnuté počasí se z Domů **odstraní**, nezůstane po něm prázdný nadpis.
+- **Zhasnout jde i všechno** — Domů pak ukáže nápovědu, kde se to zapíná. Bez
+  ní vypadá appka rozbitě a je to stav na dvě ťuknutí.
+- **Výchozí pořadí musí zůstat dnešní**: `smoke` ověřuje, že za jízdy je první
+  sekce „Právě jedeme", a snímky obrazovek že se Domů nezměnila.
 
 ## Známé vlastnosti (neopravovat bez vyžádání)
 

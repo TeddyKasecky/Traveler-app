@@ -39,7 +39,7 @@ src/views/        obrazovky, jedna složka na obrazovku
 src/components/   díly použité na víc obrazovkách
 src/map/          všechno kolem Leafletu
 src/styles/       CSS po dílech, pořadí určuje index.css
-src/icons/        sprite.svg (70 symbolů) + vkládání
+src/icons/        sprite.svg (71 symbolů) + vkládání
 src/pwa/          šablona service workeru + registrace  → viz nasazeni.md
 ```
 
@@ -132,5 +132,5 @@ router nesmí znát obrazovky.
 
 ## Ikony
 
-Symboly v `src/icons/sprite.svg`, 70 kusů, jména `i-neco`. Vkládají se `IC('i-van')`
+Symboly v `src/icons/sprite.svg`, 71 kusů, jména `i-neco`. Vkládají se `IC('i-van')`
 nebo `<svg class="ic"><use href="#i-van"/></svg>`. Nová ikona = symbol do sprite.svg.
