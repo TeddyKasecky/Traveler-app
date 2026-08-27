@@ -2115,6 +2115,81 @@ console.log('\n  vzhled:')
 // `npm run preview` by je ukázal jako skutečné.
 if (REJSTRIK_PUVODNI !== null) fs.writeFileSync(REJSTRIK_CESTA, REJSTRIK_PUVODNI)
 
+// SAMOTNÝ PRUH PŘEDPOVĚDI. Do teď ho nekontroloval nikdo: bez povolené polohy
+// se počasí nestahuje, takže smoke viděl jen tlačítko „Ukázat počasí u mě".
+// Předpověď se proto podvrhne – deterministicky, ať kontrola neplave podle
+// toho, jestli zrovna venku prší.
+//
+// STOJÍ TO ÚPLNĚ NA KONCI SCHVÁLNĚ. Ťuknutí na „Ukázat počasí u mě" uloží
+// polohu do `S.userPos`, a ta v paměti zůstane až do konce běhu – vzít zpátky
+// se nedá ani přes `clearPermissions()`, protože to řídí jen budoucí dotazy.
+// Kontroly „Co dál?" výš přitom měří právě stav BEZ polohy. Odsud už nikomu
+// nevadí; navíc tím zůstane nedotčené i počítadlo dotazů na počasí.
+await page.context().grantPermissions(['geolocation'])
+await page.context().setGeolocation({ latitude: 50.087, longitude: 14.421 })
+await page.route('**/api.open-meteo.com/**', async (route) => {
+  const cas = [], teplota = [], srazky = [], pravd = [], kod = []
+  // ČASY MUSÍ BÝT OD TEĎ, ne pevné datum: `pocasiHtml()` zahazuje hodiny
+  // starší než hodinu zpátky, takže by se předpověď s pevným datem celá
+  // vyfiltrovala a pruh by zůstal prázdný.
+  const zacatek = new Date()
+  zacatek.setMinutes(0, 0, 0)
+  // MÍSTNÍ ČAS, NE UTC. Open-Meteo s `timezone=auto` vrací časy bez značky
+  // pásma a appka je tak i čte; `toISOString()` by je posunul o pásmo a první
+  // dlaždice by spadly do minulosti, kde je vykreslení zahodí.
+  const dvojmistne = (n) => String(n).padStart(2, '0')
+  const mistni = (d) =>
+    `${d.getFullYear()}-${dvojmistne(d.getMonth() + 1)}-${dvojmistne(d.getDate())}` +
+    `T${dvojmistne(d.getHours())}:${dvojmistne(d.getMinutes())}`
+  for (let i = 0; i < 24; i++) {
+    cas.push(mistni(new Date(zacatek.getTime() + i * 3600000)))
+    teplota.push(20 - i * 0.3)
+    // Prší jen ve čtyřech hodinách z dvaceti čtyř – přesně ten poměr, kvůli
+    // kterému milimetry vypadaly jako chybějící údaj.
+    srazky.push(i >= 20 ? Number((i - 19.6).toFixed(1)) : 0)
+    pravd.push(i >= 20 ? 40 + i : 0)
+    kod.push(i >= 20 ? 61 : 0)
+  }
+  const den = [], maxT = [], minT = [], denKod = [], denPravd = [], vychod = [], zapad = []
+  for (let i = 0; i < 7; i++) {
+    const d = mistni(new Date(zacatek.getTime() + i * 86400000)).slice(0, 10)
+    den.push(d); maxT.push(25 - i); minT.push(13 - i); denKod.push(3); denPravd.push(20 + i)
+    vychod.push(`${d}T05:00`); zapad.push(`${d}T21:00`)
+  }
+  await route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({
+      hourly_units: { precipitation: 'mm', precipitation_probability: '%' },
+      hourly: { time: cas, temperature_2m: teplota, precipitation: srazky, precipitation_probability: pravd, weather_code: kod },
+      daily: { time: den, weather_code: denKod, temperature_2m_max: maxT, temperature_2m_min: minT, precipitation_probability_max: denPravd, sunrise: vychod, sunset: zapad },
+    }),
+  })
+})
+await page.click('#tabs button[data-tab="home"]')
+await page.waitForTimeout(500)
+const ukazPocasi = page.locator('#homePocasi button')
+if (await ukazPocasi.count()) await ukazPocasi.first().click()
+await page.waitForTimeout(1500)
+await kontrola('pruh má 24 hodin', () => page.locator('.pocasi-hod').count(), 24)
+// TOHLE JE TA PODSTATNÁ. Milimetry se do srpna 2026 kreslily jen když opravdu
+// něco spadlo, kdežto procento i nulové – a protože v běžné předpovědi prší
+// pár hodin z dvaceti čtyř, vypadalo množství srážek jako chybějící údaj.
+await kontrola('milimetry jsou na KAŽDÉ hodině, i nulové', () => page.locator('.pocasi-hod-mm').count(), 24)
+await kontrola('procenta taky na každé', () => page.locator('.pocasi-hod-dest').count(), 24)
+await kontrola('zvýrazněné jsou jen hodiny, kdy prší', () => page.locator('.pocasi-hod-mm.prsi').count(), 4)
+// Dlaždice musí být stejně vysoké – kdyby řádek některé chyběl, pruh by se
+// zubatil a přeskakování očima po teplotách by přestalo fungovat.
+await kontrola('všechny dlaždice stejně vysoké', () =>
+  page.evaluate(() =>
+    new Set([...document.querySelectorAll('.pocasi-hod')].map((e) => Math.round(e.getBoundingClientRect().height))).size), 1)
+// Předěly jsou dva – „dnes" na začátku a „zítra" o půlnoci. Mezi půlnocí
+// a jednou ale žádná další půlnoc do 24 hodin nespadne, takže se kontroluje
+// „aspoň jeden": pevná dvojka by v tu hodinu padala bez příčiny.
+await kontrola('předěl dne v pruhu stojí', () =>
+  page.locator('.pocasi-predel').count().then((n) => n >= 1), true)
+await kontrola('a týdenní předpověď má sedm dní', () => page.locator('.pocasi-den').count(), 7)
+await page.unroute('**/api.open-meteo.com/**')
+
 /* ---------- shrnutí ---------- */
 
 console.log()

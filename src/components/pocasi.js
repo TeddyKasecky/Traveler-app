@@ -195,11 +195,18 @@ export function pocasiHtml(p, { ted = Date.now() } = {}) {
       denPredchozi = den
 
       const { ikona } = pocasiPodleKodu(h.kodPocasi)
-      // Procento je vždy, milimetry jen když opravdu něco spadne – prázdný
-      // řádek „0 mm" by pruh jen zvýšil. Uložené předpovědi z doby před
-      // srpnem 2026 pravděpodobnost nemají, takže se vynechá i ta.
+      // OBOJÍ VŽDYCKY, I NULA. Do srpna 2026 se milimetry kreslily jen když
+      // opravdu něco spadlo, kdežto procento i nulové – a právě ta asymetrie
+      // dělala dojem, že množství srážek v appce chybí. V běžné předpovědi
+      // prší dvě tři hodiny z dvaceti čtyř a bývají na konci pruhu, takže se
+      // člověk k jedinému milimetru nedoroloval a viděl dvacet krát „0 %".
+      // Nula je platná odpověď na „kolik naprší" a musí být vidět stejně jako
+      // procento; navíc mají díky tomu všechny dlaždice stejně řádků.
       const dest = Number.isFinite(h.destProcent) ? `<i class="pocasi-hod-dest">${h.destProcent} %</i>` : ''
-      const mm = Number(h.srazkyMm) > 0 ? `<i>${String(h.srazkyMm).replace('.', ',')} mm</i>` : ''
+      const mmCislo = Number(h.srazkyMm)
+      const mm = Number.isFinite(mmCislo)
+        ? `<i class="${mmCislo > 0 ? 'pocasi-hod-mm prsi' : 'pocasi-hod-mm'}">${String(h.srazkyMm).replace('.', ',')} mm</i>`
+        : ''
 
       return `${predel}<div class="pocasi-hod${zitra ? ' zitra' : ''}">
         <span>${esc(hodina(h.cas))}</span>

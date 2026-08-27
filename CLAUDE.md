@@ -525,6 +525,13 @@ trasy přes Mapy.com.
   hranici stojí svislý popisek; pod pruhem je vlastní posouvač, protože
   systémový je na mobilu schovaný a bez něj není poznat, kde se člověk
   v těch 24 hodinách pohybuje.
+- **Na každé hodině je procento i milimetry, včetně nul.** Do srpna 2026 se
+  milimetry kreslily jen když opravdu něco spadlo, kdežto procento i nulové —
+  a protože v běžné předpovědi prší dvě tři hodiny z dvaceti čtyř a bývají na
+  konci pruhu, vypadalo množství srážek jako chybějící údaj. Nula je platná
+  odpověď na „kolik naprší"; zvýrazněné (`.prsi`) jsou jen hodiny, kdy opravdu
+  prší, takže barevné zůstává jen to, co má člověk hledat. Díky tomu mají
+  navíc všechny dlaždice stejně řádků a pruh se nezubatí.
 - Kódy počasí překládá `pocasiPodleKodu()` ve `views/plan/termin.js`. Do srpna
   2026 vracela za oblačno **list** (`i-leaf`), protože sprite mrak neměl —
   přibyly `i-mrak`, `i-polojasno`, `i-mlha` a `i-mrholeni`, odvozené z `i-rain`

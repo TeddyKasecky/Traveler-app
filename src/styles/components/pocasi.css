@@ -25,11 +25,16 @@
 .pocasi-hod span{font-size:.66rem;font-weight:700;color:var(--text2)}
 .pocasi-hod svg.ic{font-size:19px;color:var(--akcent);stroke:var(--akcent)}
 .pocasi-hod b{font-family:var(--f-disp);font-size:.92rem;font-weight:700}
-/* Srážky jen když opravdu něco spadne – prázdný řádek by pruh jen zvýšil. */
 .pocasi-hod i{font-style:normal;font-size:.6rem;font-weight:700;color:var(--zvyrazneni)}
-/* Pravděpodobnost je vždycky, milimetry jen když prší – proto je procento
- * tlumenější: nese se pořád a nemá přebíjet teplotu. */
-.pocasi-hod .pocasi-hod-dest{color:var(--text2)}
+/* PROCENTO I MILIMETRY JSOU NA KAŽDÉ DLAŽDICI, včetně nul – jinak vypadá
+ * množství srážek jako chybějící údaj, protože v běžné předpovědi prší pár
+ * hodin z dvaceti čtyř. Oboje je proto tlumené: nese se pořád a nemá
+ * přebíjet teplotu, která je na dlaždici to hlavní. */
+.pocasi-hod .pocasi-hod-dest,
+.pocasi-hod .pocasi-hod-mm{color:var(--text2)}
+/* Zvýrazní se teprve, když opravdu něco spadne. Tím zůstane pruh přehledný:
+ * barevné je jen to, co má člověk hledat. */
+.pocasi-hod .pocasi-hod-mm.prsi{color:var(--zvyrazneni)}
 
 /* Svislý popisek mezi dlaždicemi – „dnes" na začátku, „zítra" na hranici
  * půlnoci. Psaný na výšku, aby zabral co nejmíň místa v pruhu.
