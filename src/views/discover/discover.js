@@ -2,7 +2,7 @@
  * Záložka Objevuj – „nevím, kam chci".
  *
  * Skladba podle mockupu `grafika/…11_09_49 (2).png`: hero pás s otázkou,
- * oblíbené kolekce jako dlaždice, nálady jako pilulky, karusel doporučených
+ * oblíbené kolekce jako dlaždice, nálady jako pilulky, mřížka doporučených
  * a rychlá inspirace. Oblasti zůstávají dole.
  *
  * PROČ SEM PŘIŠLY NÁLADY: v předloze jsou právě tady, a dává to smysl —
@@ -21,14 +21,20 @@ import { obrazekMista } from '../../data/kategorieFoto.js'
 import { PHOTOS } from '../../core/store.js'
 import { IC } from '../../icons/sprite.js'
 import { hash } from '../../components/postcard.js'
-import { heroPas, sekce, dlazdice, pilulky, karusel, radek } from '../../components/vzory.js'
+import { heroPas, sekce, dlazdice, pilulky, fotomrizka, radek } from '../../components/vzory.js'
 import { toast } from '../../components/toast.js'
 import { goTo, draw, priblizNaFiltr } from '../../map/map.js'
 import { applyMood } from '../home/moods.js'
 import heroObr from '../../assets/hero/objevuj.webp'
 
-/** Kolik karet se vejde do karuselu doporučených. */
-const DOPORUCENYCH = 8
+/**
+ * Kolik karet je v mřížce doporučených – tři sloupce, tři řady.
+ *
+ * Do srpna 2026 jich bylo osm a byl to posuvný pás, kde na počtu nezáleželo.
+ * V mřížce po třech by osmá řada zůstala rozbitá (3 + 3 + 2), takže přibyla
+ * devátá. Objevuj je obrazovka na inspiraci, tak ať je jí plná řada.
+ */
+const DOPORUCENYCH = 9
 /** Oblast se nabídne, až když v ní jsou aspoň dvě místa. */
 const MIN_V_OBLASTI = 2
 
@@ -87,7 +93,7 @@ const INSPIRACE = [
 ]
 
 /**
- * Vybere místa do karuselu doporučených.
+ * Vybere místa do mřížky doporučených.
  *
  * Los je vážený stejně jako „Překvap mě" (nenavštívená mají náskok, priorita
  * a hodnocení váhu zvyšují), ale **seed je datum**, ne náhoda: během dne se
@@ -165,7 +171,7 @@ export function renderDisc() {
     sekce('Jakou máte náladu?') +
     pilulky(nalady, 'nalady') +
     sekce('Doporučené pro vás', { akce: 'Zobrazit vše', akceId: 'discVse' }) +
-    karusel(karty) +
+    fotomrizka(karty) +
     (inspirace.length
       ? sekce('Rychlá inspirace') +
         inspirace

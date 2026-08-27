@@ -212,14 +212,14 @@ await kontrola('uvítání zavřené', () => page.locator('#intro.show').count()
 // Domů
 await kontrola('Domů je aktivní', () => page.locator('#panelHome.show').count(), 1)
 // Domů se přestavěla na společné díly: hero pás s pozdravem místo obrázku
-// dodávky (ta je nově na mapě, na trase plánu), karta výpravy, karusel
-// „Možná dnes" a řada čísel.
+// dodávky (ta je nově na mapě, na trase plánu), karta výpravy, mřížka
+// „Možná dnes" (od srpna 2026 tři sloupce místo posuvného pásu) a řada čísel.
 await kontrola('hero pás s pozdravem', () => page.locator('#homeInner .heropas-obr').count(), 1)
 await kontrola('karta výpravy na Domů', () => page.locator('#homeInner .vkarta').count(), 1)
 // Sbalit se karta dá jen na Mapě. Šipku tam kreslí `views/mapa/mapa.js`, ne
 // sdílená `vypravaKarta()` — kdyby ji kreslila ta, objevila by se i tady.
 await kontrola('na Domů se karta sbalit nedá', () => page.locator('#homeInner .vk-sbal').count(), 0)
-await kontrola('karusel „Možná dnes"', () => page.locator('#homeInner .fotokarta').count().then((n) => n > 0))
+await kontrola('mřížka „Možná dnes"', () => page.locator('#homeInner .fotomrizka .fotokarta').count(), 6)
 await kontrola('statistika míst', () => page.locator('#homeInner .cislo b').first().innerText(), '580')
 // Přehled 32 bikeparků odešel do kolekce „Na kolo". Ceny se ale ztratit
 // nesměly – kontrola „ceny bikeparku v detailu" níž ověřuje, že jsou v detailu.
@@ -946,7 +946,7 @@ await kontrola('kolekce v Objevuj', () => page.locator('.dlazdice-kus').count(),
 await kontrola('nálady v Objevuj', () => page.locator('.nalady .pilulka').count(), 6)
 // Karusel má od přestavby Domů dvě obrazovky, takže se musí počítat jen ten
 // na Objevuj – bez `#discInner` by se sečetly oba a číslo by nic neznamenalo.
-await kontrola('karusel doporučených', () => page.locator('#discInner .karusel .fotokarta').count(), 8)
+await kontrola('mřížka doporučených', () => page.locator('#discInner .fotomrizka .fotokarta').count(), 9)
 await kontrola('oblasti v Objevuj', () => page.locator('.reg').count() )
 
 // Výřez: po oddálení na celý svět musí být vidět všechna místa. Tohle je pojistka

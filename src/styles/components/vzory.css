@@ -126,22 +126,34 @@
 .radek-vpravo .ikonbtn{width:34px;height:34px}
 .radek-vpravo .stavpill{font-size:.64rem;padding:4px 9px}
 
-/* ---------- karusel fotokaret ---------- */
-.karusel{display:flex;gap:11px;overflow-x:auto;scroll-snap-type:x mandatory;
-  margin:0 -14px;padding:2px 14px 6px;scrollbar-width:none}
-.karusel::-webkit-scrollbar{display:none}
-.fotokarta{position:relative;flex:0 0 auto;width:152px;height:186px;scroll-snap-align:start;
+/* ---------- mřížka fotokaret ---------- */
+/* DO SRPNA 2026 TO BYL POSUVNÝ PÁS (`.karusel`). Na obrazovku se vešly dvě
+ * a půl karty a o zbytku se člověk dozvěděl jen tím, že zkusil táhnout prstem.
+ * Dnes jsou vidět všechny naráz: Domů 3 × 2, Objevuj 3 × 3.
+ *
+ * POZOR: `.karusel-radky` níž je JINÁ komponenta – pás *řádků* pro „Uložená
+ * místa" na Mapě – a ta se posouvá dál. Nepřejmenovávat ji s tímhle. */
+.fotomrizka{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-bottom:2px}
+/* Poměr stran je přesně ten, co měla pevná karta 152 × 186 – šířku dnes řídí
+ * sloupec, výška ji dopočítá. Na telefonu 390 px z toho vyjde 113 px na kartu. */
+.fotokarta{position:relative;aspect-ratio:152/186;
   border-radius:var(--r);overflow:hidden;background:var(--plocha2);box-shadow:var(--stin-1);
   transition:transform .16s var(--pop)}
 .fotokarta:active{transform:var(--stisk)}
 .fotokarta img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 /* Přechod, aby byl název čitelný i na světlém akvarelu. */
-.fotokarta-text{position:absolute;inset:auto 0 0 0;padding:26px 11px 10px;
+.fotokarta-text{position:absolute;inset:auto 0 0 0;padding:20px 8px 7px;
   background:linear-gradient(180deg,transparent,rgba(27,36,26,.82));color:var(--zn-ivory)}
-.fotokarta-text h3{margin:0;font-family:var(--f-disp);font-weight:700;font-size:.98rem;line-height:1.15;
+.fotokarta-text h3{margin:0;font-family:var(--f-disp);font-weight:700;font-size:.78rem;line-height:1.15;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.fotokarta-text span{font-size:.72rem;font-weight:600;opacity:.86}
-.fotokarta-meta{margin-top:4px;font-size:.72rem;font-weight:700;color:var(--zvyrazneni);display:flex;gap:5px;align-items:center}
+/* JEDEN ŘÁDEK S TŘEMI TEČKAMI, ne zalomení. Na 113 px široké kartě by se
+ * „Severní Porýní-Vestfálsko" nebo „půl dne - den" rozlily přes tři řádky
+ * a z karty by byla zeď písmen přes foto. */
+.fotokarta-text span{display:block;font-size:.63rem;font-weight:600;opacity:.86;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fotokarta-meta{margin-top:2px;font-size:.63rem;font-weight:700;color:var(--zvyrazneni);
+  display:flex;gap:4px;align-items:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fotokarta-meta svg.ic{flex:0 0 auto}
 
 /* ---------- dlaždice ---------- */
 /* Čtyři sloupce i na telefonu – tak to má předloha. Dlaždice je proto úzká

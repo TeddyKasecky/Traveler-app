@@ -2,7 +2,7 @@
  * Záložka Domů – „co dnes".
  *
  * Skladba ze společných dílů podle grafického manuálu: hero pás s pozdravem,
- * karta výpravy, karusel „Možná dnes", řádky rozkoukaných míst a čísla.
+ * karta výpravy, mřížka „Možná dnes", řádky rozkoukaných míst a čísla.
  *
  * CO ODSUD ODEŠLO A KAM:
  *   - **Bikeparky (32 karet)** do kolekce „Na kolo" v Objevuj. Byla to jedna
@@ -28,12 +28,12 @@ import { hash } from '../../components/postcard.js'
 import { openWizard } from '../../components/wizard.js'
 import { obrazekMista } from '../../data/kategorieFoto.js'
 import { PHOTOS } from '../../core/store.js'
-import { heroPas, sekce, karusel, radek, cislaRada } from '../../components/vzory.js'
+import { heroPas, sekce, fotomrizka, radek, cislaRada } from '../../components/vzory.js'
 import { vypravaKarta, napojVypravu } from '../../components/vypravaKarta.js'
 import { goTo } from '../../map/map.js'
 import heroObr from '../../assets/hero/domu.webp'
 
-/** Kolik karet se vejde do karuselu „Možná dnes". */
+/** Kolik karet je v mřížce „Možná dnes" – tři sloupce, dvě řady. */
 const TIPU = 6
 /** Kolik rozkoukaných řádků se vypíše. */
 const ROZKOUKANYCH = 3
@@ -203,7 +203,7 @@ export function renderHome() {
         })()
       : '') +
     sekce('Možná dnes. Možná někdy.') +
-    karusel(karty) +
+    fotomrizka(karty) +
     (pozn.length
       ? sekce('Rozkoukané', { pozn: 'místa s poznámkou' }) +
         pozn

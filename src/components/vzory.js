@@ -2,7 +2,7 @@
  * Stavební díly rozvržení podle grafických předloh.
  *
  * PROČ TENHLE SOUBOR EXISTUJE: mockupy ve složce `grafika/` stojí na devíti
- * opakujících se dílech — hero pás, popisek sekce, řádek s náhledem, karusel,
+ * opakujících se dílech — hero pás, popisek sekce, řádek s náhledem, mřížka fotokaret,
  * dlaždice, pilulky, segment, panel statistik a stavová pilulka. Každá
  * obrazovka je z nich složená. Kdyby si je psala každá zvlášť, do měsíce by se
  * rozešly a redesign by se rozpadl na pět různých vzhledů.
@@ -117,17 +117,21 @@ export function radek({
 }
 
 /**
- * Karusel fotokaret s názvem přes obrázek.
+ * Mřížka fotokaret s názvem přes obrázek – tři sloupce.
  *
- * Posouvá se vodorovně a zachytává se na kartách (`scroll-snap`). Předlohy ho
- * mají u „Doporučené pro vás" a „Uložená místa".
+ * DO SRPNA 2026 SE JMENOVALA `karusel()` a byl to posuvný pás. Na obrazovku
+ * se vešly dvě a půl karty a o zbytku se člověk dozvěděl jedině tím, že zkusil
+ * táhnout prstem. Dnes jsou vidět všechny naráz: Domů 3 × 2, Objevuj 3 × 3.
+ *
+ * Pás z aplikace úplně nezmizel – „Uložená místa" na Mapě ho mají dál, ale je
+ * to jiná komponenta (`.karusel-radky`) a jsou v ní řádky, ne fotokarty.
  *
  * @param {Array<{obrazek:string, nadpis:string, podnadpis?:string, meta?:string, id?:string, vyrez?:string}>} karty
  * @param {string} [tridy]
  */
-export function karusel(karty, tridy = '') {
+export function fotomrizka(karty, tridy = '') {
   if (!karty.length) return ''
-  return `<div class="karusel ${tridy}">${karty
+  return `<div class="fotomrizka ${tridy}">${karty
     .map(
       (k) => `<div class="fotokarta"${k.id ? ` data-id="${k.id}"` : ''}>
         ${k.obrazek ? `<img src="${k.obrazek}" alt="" loading="lazy" decoding="async"${k.vyrez ? ` style="object-position:${k.vyrez}"` : ''}${k.zaloha ? ` data-zaloha="${k.zaloha}" onerror="this.onerror=null;this.src=this.dataset.zaloha"` : ''}>` : ''}
