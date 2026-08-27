@@ -24,7 +24,7 @@ import { esc, sklonuj } from '../../core/html.js'
 import { debugData, mojeZaznamy, prefixId, prejmenujNeodeslane, sanitizujAutora, ulozDebug } from '../../core/debug.js'
 import { aktivujZalozku } from '../../core/router.js'
 import { IC } from '../../icons/sprite.js'
-import { segment } from '../../components/vzory.js'
+import { napojSbalky, segment } from '../../components/vzory.js'
 import { toast } from '../../components/toast.js'
 import { vyberZeSeznamu, zadej } from '../../components/dialog.js'
 import { srovnejDebugTlacitko } from '../../components/debugZapis.js'
@@ -59,9 +59,35 @@ function obnovInfoOZaloze() {
   el.style.fontWeight = dni < 0 || dni >= 7 ? '800' : ''
 }
 
+/**
+ * Vloží HTML do přihrádky, když v stránce je.
+ *
+ * Přihrádek je sedm, po jedné ve sbalitelné skupině v `index.html`. Do srpna
+ * 2026 to byl jediný `#nastaveniInner` na konci obrazovky; rozdělily je
+ * skupiny, protože dvanáct oddílů pod sebou se na telefonu scrollovalo
+ * donekonečna (hlášení `tadeas-001`).
+ *
+ * @param {string} id
+ * @param {string} html
+ */
+/**
+ * Které skupiny jsou rozbalené. Jen v paměti, do předvoleb schválně ne:
+ * po zavření aplikace se všechno zase sbalí, takže se Nastavení vždycky
+ * otevře krátké. Přežít musí jen překreslení, kterých je při jednom otevření
+ * obrazovky několik.
+ * @type {Set<string>}
+ */
+const otevreneSkupiny = new Set()
+
+function doPrihradky(id, html) {
+  const el = document.getElementById(id)
+  if (el) el.innerHTML = html
+}
+
 export async function renderNastaveni() {
-  const wrap = document.getElementById('nastaveniInner')
-  if (!wrap) return
+  // Stačí jedna přihrádka jako důkaz, že je obrazovka v stránce – buď jsou
+  // tam všechny, nebo žádná.
+  if (!document.getElementById('nastMapa')) return
 
   obnovInfoOZaloze()
 
@@ -74,8 +100,10 @@ export async function renderNastaveni() {
   // vidět, že tam něco leží – jinak by se na zapsané poznámky snadno zapomnělo.
   const zaznamu = debugData.zaznamy.length
 
-  wrap.innerHTML = `
-    <div class="sechd">${IC('i-strom')}Kresby krajiny</div>
+  // MAPA – k offline mapě v `index.html` patří i hustota kreseb.
+  doPrihradky(
+    'nastMapa',
+    `<div class="sechd">${IC('i-strom')}Kresby krajiny</div>
     <div class="meta" style="margin:0 2px 10px">Stromy a hory kreslené do mapy. Stojí na skutečných lesích a skutečných hřebenech.${kresbyJdou ? '' : ' <b>Napřed je potřeba stáhnout malovanou mapu.</b>'}</div>
     <div class="volbakresby${kresbyJdou ? '' : ' nejde'}">
       ${segment(
@@ -87,9 +115,13 @@ export async function renderNastaveni() {
         prefs.kresby || 'huste',
         'kresbySeg'
       )}
-    </div>
+    </div>`
+  )
 
-    <div class="sechd">${IC('i-route')}Řazení výprav</div>
+  // PLÁNOVÁNÍ A TRASY – tři oddíly, takže si nadpisy uvnitř nechávají.
+  doPrihradky(
+    'nastPlan',
+    `<div class="sechd">${IC('i-route')}Řazení výprav</div>
     <div class="meta" style="margin:0 2px 10px">Jak řadit výpravy v knihovně a ve složkách. Řazení se nemění tím, kterou výpravu si otevřeš.</div>
     ${segment(
       [
@@ -119,34 +151,49 @@ export async function renderNastaveni() {
     <div class="volbaapiklic nejde">
       <input type="text" placeholder="Zatím není k dispozici" disabled>
       <button class="btn small" disabled>Uložit</button>
-    </div>
+    </div>`
+  )
 
-    <div class="sechd">${IC('i-globe')}Místo v telefonu</div>
-    <div class="meta" id="mistoInfo" style="margin:0 2px 10px">Počítá se…</div>
+  // ZBYLÉ ČTYŘI SKUPINY MAJÍ JEDEN ODDÍL, takže se nadpis uvnitř vynechává –
+  // jinak by na obrazovce stál dvakrát pod sebou, jednou v hlavičce skupiny
+  // a hned zas v těle.
+  doPrihradky('nastMisto', `<div class="meta" id="mistoInfo" style="margin:0 2px 10px">Počítá se…</div>`)
 
-    <div class="sechd">${IC('i-van')}Karta výpravy</div>
-    <div class="meta" style="margin:0 2px 10px">Karta „Naplánovat výlet" se ukáže při prvním otevření Mapy, pak je sbalená do bubliny vpravo dole.</div>
+  doPrihradky(
+    'nastKarta',
+    `<div class="meta" style="margin:0 2px 10px">Karta „Naplánovat výlet" se ukáže při prvním otevření Mapy, pak je sbalená do bubliny vpravo dole.</div>
     <div class="btnrow" style="margin:0">
       <button class="btn small" id="vypravaZnovu">Ukázat ji znovu</button>
-    </div>
+    </div>`
+  )
 
-    <div class="sechd">${IC('i-brouk')}Debug poznámkovač</div>
-    <div class="meta" style="margin:0 2px 10px">Zápis nápadu, bugu nebo poznámky za běhu appky, i s technickým kontextem. Přepínač řídí <b>jen</b> to, jestli je v hlavičce vidět kolečko – zachytávání chyb běží vždycky.</div>
+  doPrihradky(
+    'nastPoznamkovac',
+    `<div class="meta" style="margin:0 2px 10px">Zápis nápadu, bugu nebo poznámky za běhu appky, i s technickým kontextem. Přepínač řídí <b>jen</b> to, jestli je v hlavičce vidět kolečko – zachytávání chyb běží vždycky.</div>
     ${segment([{ id: 'zap', popisek: 'Zapnutý' }, { id: 'vyp', popisek: 'Vypnutý' }], prefs.debugRezim ? 'zap' : 'vyp', 'debugSeg')}
     <div class="meta" style="margin:8px 2px 10px">Píše jako: <b id="debugAutorInfo">${esc(prefs.debugAutor || 'zeptáme se při prvním zápisu')}</b></div>
     <div class="btnrow" style="margin:0">
       <button class="btn small" id="debugAutorZmen">Změnit přezdívku</button>
       <button class="btn small" id="debugHesloZmen">Heslo odesílání</button>
       <button class="btn small" id="debugOtevri">Otevřít poznámkovač${zaznamu ? ` (${zaznamu})` : ''}</button>
-    </div>
+    </div>`
+  )
 
-    <div class="sechd">${IC('i-book')}O aplikaci</div>
-    <div class="meta" style="margin:0 2px 4px">Vandrbuch je statická aplikace bez serveru. Poznámky, hodnocení a fotky nikam neodcházejí – jsou jen v tomhle telefonu.</div>
-    <div class="meta" style="margin:0 2px 10px">Podklad malované mapy: <b>OpenStreetMap</b> přes Protomaps (ODbL) · obrysy zemí <b>Natural Earth</b> (public domain) · stínování terénu z výškopisu <b>elevation-tiles-prod</b> (SRTM, GMTED) · online dlaždice <b>OpenStreetMap</b>.</div>
-  `
+  doPrihradky(
+    'nastOAplikaci',
+    `<div class="meta" style="margin:0 2px 4px">Vandrbuch je statická aplikace bez serveru. Poznámky, hodnocení a fotky nikam neodcházejí – jsou jen v tomhle telefonu.</div>
+    <div class="meta" style="margin:0 2px 10px">Podklad malované mapy: <b>OpenStreetMap</b> přes Protomaps (ODbL) · obrysy zemí <b>Natural Earth</b> (public domain) · stínování terénu z výškopisu <b>elevation-tiles-prod</b> (SRTM, GMTED) · online dlaždice <b>OpenStreetMap</b>.</div>`
+  )
 
-  // Obsluha se věší při každém otevření – `#nastaveniInner` se překresluje,
-  // takže tu na rozdíl od statických částí nehrozí, že se ztratí.
+  // PŘEPÍNÁNÍ SKUPIN. Hlavičky jsou staticky v `index.html` a překreslením
+  // přihrádek se neztratí, ale navěsit se musí – při prvním otevření obrazovky
+  // tenhle kód ještě neběžel. Věšet znovu nevadí, `onclick` se přepisuje.
+  napojSbalky(document.getElementById('panelNastaveni'), otevreneSkupiny)
+
+  // Obsluha se věší při každém otevření – přihrádky se překreslují, takže tu
+  // na rozdíl od statických částí v `index.html` nehrozí, že se ztratí.
+  // Právě proto se sbalené skupiny SKRÝVAJÍ a neodstraňují: statické prvky
+  // (#expBtn, #csvIn, #mapaStahni…) dostaly obsluhu jednou při startu.
   for (const b of document.querySelectorAll('#kresbySeg button')) {
     b.onclick = () => {
       if (!kresbyJdou) return

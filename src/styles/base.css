@@ -1,5 +1,14 @@
 /* Reset a základ dokumentu. */
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* ATRIBUT `hidden` MUSÍ SCHOVAT, I KDYŽ MÁ PRVEK VLASTNÍ `display`.
+ * Prohlížeč ho prosazuje jen slabým výchozím pravidlem, které přebije každá
+ * třída s `display` – a `.btn` má `display:flex`. Projevovalo se to tím, že
+ * Nastavení nabízelo „Smazat" u malované mapy, která stažená vůbec nebyla:
+ * `srovnejStavMapy()` atribut poctivě nastavovala, jen se nic nedělo.
+ * Změřeno v srpnu 2026 – ze všech prvků s `hidden` se takhle kreslil jediný,
+ * takže tenhle řádek nic dalšího neschová. Drží i sbalené skupiny
+ * v Nastavení a Profilu (`components/sbalka.css`). */
+[hidden]{display:none !important}
 html,body{margin:0;height:100%;overflow:hidden;font-family:var(--f-body);background:var(--paper);color:var(--ink)}
 button{font-family:var(--f-body);cursor:pointer;color:var(--ink)}
 svg.ic{width:1em;height:1em;display:inline-block;vertical-align:-.12em;stroke:var(--ink);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}

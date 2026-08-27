@@ -18,6 +18,7 @@ import { S, store, PHOTOS, prefs, savePrefs } from '../../core/store.js'
 import { esc } from '../../core/html.js'
 import { IC } from '../../icons/sprite.js'
 import { toast } from '../../components/toast.js'
+import { napojSbalky, sbalka } from '../../components/vzory.js'
 import { vyberAutaHtml, napojVyberAuta } from '../../components/vyberAuta.js'
 import { zobrazPolohu, vyberBod } from '../../map/map.js'
 import { PROFILOVE, pripisProfilove } from '../plan/achievementy.js'
@@ -49,7 +50,7 @@ function achievementyProfilu() {
   pripisProfilove()
   const ziskanych = PROFILOVE.filter((a) => store.achievementy[a.id]).length
   return `
-    <div class="sechd">${IC('i-spark')}Achievementy <span class="achv-pocet">${ziskanych} z ${PROFILOVE.length}</span></div>
+    <div class="meta" style="margin:0 2px 10px">Získáno <b>${ziskanych}</b> z ${PROFILOVE.length}.</div>
     <div class="achv-mriz profil">${PROFILOVE.map((a) => {
       const ma = !!store.achievementy[a.id]
       let prubeh = ''
@@ -67,6 +68,14 @@ function achievementyProfilu() {
 
 /** Jedna dlaždice s číslem. */
 const dlazdice = (hodnota, popis) => `<div class="pstat"><b>${hodnota}</b><span>${esc(popis)}</span></div>`
+
+/**
+ * Které skupiny jsou rozbalené. Stejně jako v Nastavení jen v paměti –
+ * Profil se překresluje po každé změně jména, auta i pozice a stav to musí
+ * přežít, ale po zavření aplikace se má obrazovka zase otevřít krátká.
+ * @type {Set<string>}
+ */
+const otevreneSkupiny = new Set()
 
 export function renderProfil() {
   const wrap = document.getElementById('profilInner')
@@ -104,13 +113,14 @@ export function renderProfil() {
     </div>
     <div class="meta" style="margin:6px 2px 0">Použije se v pozdravu na Domů. Nikam se neposílá.</div>
 
-    ${achievementyProfilu()}
-
-    <div class="sechd">${IC('i-van')}Čím jezdíme</div>
-    <div class="meta" style="margin:0 2px 10px">Vybrané auto jezdí po mapě na místě tvé polohy.</div>
-    ${vyberAutaHtml()}
-
-    ${pozicHtml()}
+    ${sbalka('achievementy', 'Achievementy', achievementyProfilu(), { ikona: 'i-spark' })}
+    ${sbalka(
+      'auto',
+      'Čím jezdíme',
+      `<div class="meta" style="margin:0 2px 10px">Vybrané auto jezdí po mapě na místě tvé polohy.</div>${vyberAutaHtml()}`,
+      { ikona: 'i-van' }
+    )}
+    ${sbalka('pozice', 'Uložené pozice', pozicHtml(), { ikona: 'i-dum' })}
   `
 
   // Jméno se ukládá při odchodu z políčka, ne při každém písmenu: savePrefs()
@@ -118,6 +128,11 @@ export function renderProfil() {
   // důvod má saveOdlozene() u poznámek.
   // Po změně auta se hned přestaví značka polohy – ať je změna vidět bez
   // přepnutí na mapu a zpátky.
+  // JMÉNO A „CO MÁŠ ZA SEBOU" ZŮSTÁVAJÍ VIDĚT, zbytek je ve sbalitelných
+  // skupinách – hlášení `tadeas-001`. Mřížka 96 aut a dvacet achievementů
+  // dělaly z Profilu obrazovku, která se scrollovala donekonečna.
+  napojSbalky(wrap, otevreneSkupiny)
+
   napojVyberAuta(wrap, () => {
     zobrazPolohu()
     toast('Auto vybráno')

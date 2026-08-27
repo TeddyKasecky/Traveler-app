@@ -179,6 +179,9 @@
   <div class="inner">
     <h2 class="nadpis-obrazovky"><svg class="ic"><use href="#i-nastaveni"/></svg>Nastavení</h2>
 
+    <!-- VZHLED ZŮSTÁVÁ OTEVŘENÝ. Je to jediná věc, na kterou se sahá často;
+         všechno ostatní je ve sbalitelných skupinách níž (hlášení tadeas-001,
+         dvanáct oddílů pod sebou se na telefonu scrollovalo donekonečna). -->
     <div class="sechd"><svg class="ic"><use href="#i-sliders"/></svg>Vzhled</div>
     <div class="motivrow" id="motivRow">
       <button class="motivbtn" data-motiv="svetly"><svg class="ic"><use href="#i-sun"/></svg>Světlý</button>
@@ -186,43 +189,97 @@
       <button class="motivbtn" data-motiv="system"><svg class="ic"><use href="#i-sliders"/></svg>Podle systému</button>
     </div>
 
-    <!-- Malovaná mapa Evropy. Má několik megabajtů, takže není součástí
-         instalace a stahuje se odsud na vyžádání do IndexedDB. -->
-    <div class="sechd"><svg class="ic"><use href="#i-map"/></svg>Offline mapa</div>
-    <div class="meta" style="margin:0 2px 10px">Čím se kreslí mapa bez signálu. Online mapa z OpenStreetMap se přepíná pilulkou přímo v mapě.</div>
-    <div class="volbarow" id="offlineVolba">
-      <button class="volba" data-offline="zjednodusena">
-        <b>Zjednodušená</b><span>Obrysy zemí, města a stínování terénu. Je v aplikaci, funguje hned.</span>
+    <!-- SKUPINY SE JEN SKRÝVAJÍ, NEODSTRAŇUJÍ. Obsluha níž se věší jednou při
+         startu (initFilterPanel, initMapaKeStazeni), takže odstraněním z DOM
+         by tlačítka po prvním sbalení tiše přestala fungovat. Přepínání řeší
+         napojSbalky() z components/vzory.js.
+
+         Prázdné přihrádky `nast*` plní renderNastaveni() při každém otevření –
+         je to totéž, co dřív dělal jediný #nastaveniInner, jen na sedm míst. -->
+
+    <div class="sbalka">
+      <button class="sbalka-hlava" data-sbalka="mapa" aria-expanded="false">
+        <svg class="ic"><use href="#i-map"/></svg><span>Mapa</span><svg class="ic"><use href="#i-sipka"/></svg>
       </button>
-      <button class="volba" data-offline="stazena">
-        <b>Malovaná</b><span>K tomu lesy, louky, pole, řeky, silnice a kreslená krajina. Musí se stáhnout.</span>
+      <div class="sbalka-telo" data-sbalka-telo="mapa" hidden>
+        <!-- Malovaná mapa Evropy. Má několik megabajtů, takže není součástí
+             instalace a stahuje se odsud na vyžádání do IndexedDB. -->
+        <div class="sechd"><svg class="ic"><use href="#i-map"/></svg>Offline mapa</div>
+        <div class="meta" style="margin:0 2px 10px">Čím se kreslí mapa bez signálu. Online mapa z OpenStreetMap se přepíná pilulkou přímo v mapě.</div>
+        <div class="volbarow" id="offlineVolba">
+          <button class="volba" data-offline="zjednodusena">
+            <b>Zjednodušená</b><span>Obrysy zemí, města a stínování terénu. Je v aplikaci, funguje hned.</span>
+          </button>
+          <button class="volba" data-offline="stazena">
+            <b>Malovaná</b><span>K tomu lesy, louky, pole, řeky, silnice a kreslená krajina. Musí se stáhnout.</span>
+          </button>
+        </div>
+        <div class="mapastav" id="mapaStav"></div>
+        <div class="btnrow" style="margin:0">
+          <button class="btn primary" id="mapaStahni"><svg class="ic"><use href="#i-save"/></svg>Stáhnout mapu</button>
+          <button class="btn small" id="mapaSmaz" hidden>Smazat</button>
+        </div>
+        <div class="mapapruh" id="mapaPruh" hidden><i></i></div>
+        <div id="nastMapa"></div>
+      </div>
+    </div>
+
+    <div class="sbalka">
+      <button class="sbalka-hlava" data-sbalka="plan" aria-expanded="false">
+        <svg class="ic"><use href="#i-route"/></svg><span>Plánování a trasy</span><svg class="ic"><use href="#i-sipka"/></svg>
       </button>
-    </div>
-    <div class="mapastav" id="mapaStav"></div>
-    <div class="btnrow" style="margin:0">
-      <button class="btn primary" id="mapaStahni"><svg class="ic"><use href="#i-save"/></svg>Stáhnout mapu</button>
-      <button class="btn small" id="mapaSmaz" hidden>Smazat</button>
-    </div>
-    <div class="mapapruh" id="mapaPruh" hidden><i></i></div>
-
-    <div class="sechd"><svg class="ic"><use href="#i-save"/></svg>Zálohy a data</div>
-    <div class="meta" style="margin:0 2px 10px">Poznámky, hodnocení i fotky jsou jen v tomhle telefonu. Záloha je jediná cesta, jak si je přenést jinam.</div>
-    <div class="btnrow" style="margin:0">
-      <button class="btn primary" id="expBtn"><svg class="ic"><use href="#i-save"/></svg>Stáhnout zálohu</button>
-      <label class="btn" style="cursor:pointer"><svg class="ic"><use href="#i-up"/></svg>Obnovit ze zálohy<input id="impIn" type="file" accept=".json" hidden></label>
-    </div>
-    <div class="meta" id="zalohaInfo" style="margin-top:7px"></div>
-
-    <div class="sechd"><svg class="ic"><use href="#i-book"/></svg>Vlastní data míst</div>
-    <div class="meta" style="margin:0 2px 10px">CSV se sloupci z „vse-dohromady-v3" nahradí vestavěných 580 míst. Poznámky a hodnocení zůstanou.</div>
-    <div class="btnrow" style="margin:0">
-      <label class="btn small" style="cursor:pointer"><svg class="ic"><use href="#i-book"/></svg>Načíst CSV<input id="csvIn" type="file" accept=".csv" hidden></label>
-      <button class="btn small" id="dataReset">Vrátit vestavěná data</button>
+      <div class="sbalka-telo" data-sbalka-telo="plan" hidden><div id="nastPlan"></div></div>
     </div>
 
-    <!-- Živé části: místo v telefonu, připomínka výpravy a zdroje dat.
-         Plní je views/nastaveni/nastaveni.js při každém otevření. -->
-    <div id="nastaveniInner"></div>
+    <div class="sbalka">
+      <button class="sbalka-hlava" data-sbalka="zalohy" aria-expanded="false">
+        <svg class="ic"><use href="#i-save"/></svg><span>Zálohy a data</span><svg class="ic"><use href="#i-sipka"/></svg>
+      </button>
+      <div class="sbalka-telo" data-sbalka-telo="zalohy" hidden>
+        <div class="sechd"><svg class="ic"><use href="#i-save"/></svg>Zálohy</div>
+        <div class="meta" style="margin:0 2px 10px">Poznámky, hodnocení i fotky jsou jen v tomhle telefonu. Záloha je jediná cesta, jak si je přenést jinam.</div>
+        <div class="btnrow" style="margin:0">
+          <button class="btn primary" id="expBtn"><svg class="ic"><use href="#i-save"/></svg>Stáhnout zálohu</button>
+          <label class="btn" style="cursor:pointer"><svg class="ic"><use href="#i-up"/></svg>Obnovit ze zálohy<input id="impIn" type="file" accept=".json" hidden></label>
+        </div>
+        <div class="meta" id="zalohaInfo" style="margin-top:7px"></div>
+
+        <div class="sechd"><svg class="ic"><use href="#i-book"/></svg>Vlastní data míst</div>
+        <div class="meta" style="margin:0 2px 10px">CSV se sloupci z „vse-dohromady-v3" nahradí vestavěných 580 míst. Poznámky a hodnocení zůstanou.</div>
+        <div class="btnrow" style="margin:0">
+          <label class="btn small" style="cursor:pointer"><svg class="ic"><use href="#i-book"/></svg>Načíst CSV<input id="csvIn" type="file" accept=".csv" hidden></label>
+          <button class="btn small" id="dataReset">Vrátit vestavěná data</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sbalka">
+      <button class="sbalka-hlava" data-sbalka="karta" aria-expanded="false">
+        <svg class="ic"><use href="#i-van"/></svg><span>Karta výpravy</span><svg class="ic"><use href="#i-sipka"/></svg>
+      </button>
+      <div class="sbalka-telo" data-sbalka-telo="karta" hidden><div id="nastKarta"></div></div>
+    </div>
+
+    <div class="sbalka">
+      <button class="sbalka-hlava" data-sbalka="misto" aria-expanded="false">
+        <svg class="ic"><use href="#i-globe"/></svg><span>Místo v telefonu</span><svg class="ic"><use href="#i-sipka"/></svg>
+      </button>
+      <div class="sbalka-telo" data-sbalka-telo="misto" hidden><div id="nastMisto"></div></div>
+    </div>
+
+    <div class="sbalka">
+      <button class="sbalka-hlava" data-sbalka="poznamkovac" aria-expanded="false">
+        <svg class="ic"><use href="#i-brouk"/></svg><span>Poznámkovač</span><svg class="ic"><use href="#i-sipka"/></svg>
+      </button>
+      <div class="sbalka-telo" data-sbalka-telo="poznamkovac" hidden><div id="nastPoznamkovac"></div></div>
+    </div>
+
+    <div class="sbalka">
+      <button class="sbalka-hlava" data-sbalka="oaplikaci" aria-expanded="false">
+        <svg class="ic"><use href="#i-book"/></svg><span>O aplikaci</span><svg class="ic"><use href="#i-sipka"/></svg>
+      </button>
+      <div class="sbalka-telo" data-sbalka-telo="oaplikaci" hidden><div id="nastOAplikaci"></div></div>
+    </div>
     <div style="height:20px"></div>
   </div>
 </section>

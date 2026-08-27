@@ -131,6 +131,23 @@ const kontrola = async (popis, fn, ocekavano) => {
 }
 
 /**
+ * Rozbalí sbalitelnou skupinu v Nastavení nebo v Profilu.
+ *
+ * Od srpna 2026 jsou obě obrazovky poskládané ze skupin, které startují
+ * zavřené (hlášení `tadeas-001`) – na skrytý prvek Playwright neklikne, takže
+ * kroky níž musí skupinu napřed otevřít. Podruhé už nic nedělá, aby se dvojím
+ * voláním omylem zase nezavřela.
+ *
+ * @param {string} id  hodnota `data-sbalka`
+ */
+const rozbal = async (id) => {
+  const hlava = page.locator(`[data-sbalka="${id}"]`)
+  if ((await hlava.getAttribute('aria-expanded')) === 'true') return
+  await hlava.click()
+  await page.waitForTimeout(300)
+}
+
+/**
  * Zavře detail místa tlačítkem zpět a počká, až opravdu zmizí.
  *
  * PROČ NE JEDNO `goBack()`: detail i dialog nad ním se oba registrují jako
@@ -241,11 +258,23 @@ await kontrola('Profil má čísla', () => page.locator('#profilInner .pstat').c
 await kontrola('Profil už nemá nastavení', () =>
   page.locator('#panelProfil #expBtn, #panelProfil .motivbtn, #panelProfil #csvIn').count(), 0)
 
+// SBALITELNÉ SKUPINY (hlášení tadeas-001). Jméno a čísla „Co máš za sebou"
+// zůstávají vidět – kvůli nim se Profil otevírá. Schovala se mřížka 96 aut,
+// dvacet achievementů a seznam pozic.
+await kontrola('Profil má tři skupiny', () => page.locator('#panelProfil .sbalka').count(), 3)
+await kontrola('a všechny startují zavřené', () =>
+  page.locator('#panelProfil .sbalka-telo[hidden]').count(), 3)
+await kontrola('jméno je vidět bez rozbalování', () => page.locator('#profilJmeno').isVisible(), true)
+await kontrola('čísla taky', () => page.locator('#panelProfil .pstat').first().isVisible(), true)
+await kontrola('mřížka aut naopak schovaná', () =>
+  page.locator('#panelProfil .autovolba').first().isVisible(), false)
+
 // VÝBĚR BODU Z MAPY MUSÍ VRÁTIT TAM, ODKUD SE PŘIŠLO (hlášení tadeas-002).
 // `vyberBod()` se přepne na mapu; do srpna 2026 si nepamatovalo, odkud, takže
 // člověk po výběru i po zrušení zůstal stát na mapě a musel se proklikat zpět.
 // Testuje se z Profilu, protože je to nejkratší cesta k té službě – z plánu
 // vede přes výpravu, den a průvodce bodem, ale kód je tentýž.
+await rozbal('pozice')
 await page.click('#pozicePridat')
 await page.waitForTimeout(300)
 await page.fill('#dialogVstup', 'Zkušební pozice')
@@ -277,6 +306,28 @@ await kontrola('Nastavení má zálohu a obnovu', () =>
 await kontrola('Nastavení má přepínač vzhledu', () => page.locator('#panelNastaveni .motivbtn').count(), 3)
 await kontrola('Nastavení má správu vlastních dat', () =>
   page.locator('#panelNastaveni #csvIn, #panelNastaveni #dataReset').count(), 2)
+
+// SBALITELNÉ SKUPINY (hlášení tadeas-001). Dvanáct oddílů pod sebou se na
+// telefonu scrollovalo donekonečna, takže se všechno kromě Vzhledu schovalo.
+await kontrola('Nastavení má sedm skupin', () => page.locator('#panelNastaveni .sbalka').count(), 7)
+await kontrola('a všechny startují zavřené', () =>
+  page.locator('#panelNastaveni .sbalka-telo[hidden]').count(), 7)
+await kontrola('Vzhled zůstává vidět bez rozbalování', () =>
+  page.locator('#panelNastaveni .motivbtn').first().isVisible(), true)
+// TOHLE JE TA PODSTATNÁ. Sbalená skupina se jen SKRÝVÁ – kdyby se odstranila
+// z DOM, přišla by o obsluhu navěšenou při startu (initFilterPanel) a
+// „Stáhnout zálohu" by po prvním sbalení tiše přestalo fungovat.
+await kontrola('prvek ve sbalené skupině zůstává v DOM', () =>
+  page.locator('#panelNastaveni #expBtn').count(), 1)
+await kontrola('ale vidět není', () => page.locator('#expBtn').isVisible(), false)
+await rozbal('zalohy')
+await kontrola('po rozbalení je vidět', () => page.locator('#expBtn').isVisible(), true)
+// Otevřených smí být víc naráz – skupiny se nezavírají navzájem.
+await rozbal('mapa')
+await kontrola('dvě skupiny otevřené naráz', () =>
+  page.locator('#panelNastaveni .sbalka-telo:not([hidden])').count(), 2)
+// Hustota kreseb patří k mapě, ne na konec obrazovky jako dřív.
+await kontrola('kresby jsou uvnitř skupiny Mapa', () => page.locator('#nastMapa #kresbySeg').count(), 1)
 // Malovaná mapa Evropy má několik megabajtů, takže není v instalaci a stahuje
 // se odsud. Test ji nestahuje – ověřuje jen, že se nabízí a hlásí správný stav.
 await kontrola('Nastavení nabízí stažení mapy', () => page.locator('#mapaStahni').isVisible(), true)
@@ -286,6 +337,7 @@ await kontrola('bez stažení hlásí, že mapa není', () =>
 // co se nemá odkud vzít, je horší než to nenabídnout.
 await kontrola('bez balíku nejde malovanou zvolit', () =>
   page.locator('.volba[data-offline="stazena"]').isDisabled(), true)
+await rozbal('misto')
 await kontrola('Nastavení hlásí místo v telefonu', () =>
   page.locator('#mistoInfo').innerText().then((t) => t.length > 10), true)
 // Hustota kreseb: tři stupně a bez stažené mapy zašedlé, protože kresby
@@ -309,6 +361,7 @@ await kontrola('a kolečko v hlavičce není vidět', () => page.locator('#debug
 // dvě viditelná a jedno schované by vypadalo jako chyba.
 await kontrola('ani zkratka do poznámkovače', () => page.locator('#debugSeznam').isVisible(), false)
 await kontrola('ani reset', () => page.locator('#debugReset').isVisible(), false)
+await rozbal('poznamkovac')
 await page.click('#debugSeg button:not(.on)')
 await page.waitForTimeout(200)
 await kontrola('zapnutí přepínače kolečko ukáže', () => page.locator('#debugOpen').isVisible(), true)
@@ -475,6 +528,7 @@ await kontrola('zkratka v hlavičce otevře poznámkovač', () => page.evaluate(
 // hlavička kolečka nemá.
 await page.click('#nastaveniOpen')
 await page.waitForTimeout(400)
+await rozbal('poznamkovac')
 await page.click('#debugOtevri')
 await page.waitForTimeout(700)
 await kontrola('poznámkovač se otevřel', () => page.locator('#panelDebug.show').count(), 1)
@@ -629,7 +683,7 @@ await page.waitForTimeout(250)
 // samotný seznam – a opticky to matlo v tom, co je hlavní akce.
 // Odznak na sbaleném panelu říká, kolik čeká na odeslání – bez něj by se na
 // export dalo zapomenout, protože panel je zavřený.
-await kontrola('odznak hlásí čekající', () => page.locator('#dzExportPrepinac .dz-odznak').innerText(), '1')
+await kontrola('odznak hlásí čekající', () => page.locator('#dzExportPrepinac .sbalka-odznak').innerText(), '1')
 await kontrola('export je schovaný', () => page.locator('#dzRozsah').count(), 0)
 await kontrola('a záloha s ním', () => page.locator('#dzZaloha').count(), 0)
 await page.click('#dzExportPrepinac')
@@ -654,7 +708,7 @@ await kontrola('místo něj je Odeslat do repozitáře', () => page.locator('#dz
 // bez něj člověk neví, kam se stažený soubor dává.
 await kontrola('Stáhnout zůstalo', () => page.locator('#dzMd').count(), 1)
 await kontrola('a nese návod, kam soubor patří', () =>
-  page.locator('.dz-rozbal-telo').innerText().then((x) => /slo\u017eky <?code>?debug|slo\u017eky .?debug/i.test(x) || /debug\//.test(x)), true)
+  page.locator('.dz-export .sbalka-telo').innerText().then((x) => /slo\u017eky <?code>?debug|slo\u017eky .?debug/i.test(x) || /debug\//.test(x)), true)
 
 if (!SINGLE) {
   // Bez hesla se odeslání musí zeptat – heslo není v balíčku aplikace, protože
@@ -717,13 +771,13 @@ await kontrola('u záznamu zůstal název souboru', async () =>
 // protože „nevyřešené" posílalo pokaždé znovu všechno.
 await kontrola('druhý export už nemá co poslat', () => page.locator('#dzMd').isDisabled(), true)
 await kontrola('a řekne to slovy', () =>
-  page.locator('.dz-rozbal-telo').innerText().then((x) => /nen[ií] nic|Nen[ií] co/i.test(x)), true)
+  page.locator('.dz-export .sbalka-telo').innerText().then((x) => /nen[ií] nic|Nen[ií] co/i.test(x)), true)
 // Ale „Vše" ho pořád najde – to je záchrana, když se soubor ztratí.
 await page.click('#dzRozsah button[data-seg="vse"]')
 await page.waitForTimeout(300)
 await kontrola('rozsah Vše záznam pořád najde', () => page.locator('#dzMd').isDisabled(), false)
 // A odznak po odeslání zmizí – nic nečeká.
-await kontrola('odznak po odeslání zmizel', () => page.locator('#dzExportPrepinac .dz-odznak').count(), 0)
+await kontrola('odznak po odeslání zmizel', () => page.locator('#dzExportPrepinac .sbalka-odznak').count(), 0)
 await page.click('#dzRozsah button[data-seg="kodeslani"]')
 await page.waitForTimeout(300)
 // Rejstřík je STARŠÍ než tenhle export, takže „odesláno" je pravda a hlásit

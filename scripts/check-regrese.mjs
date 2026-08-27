@@ -573,6 +573,11 @@ await zkus('„Vrátit vestavěná data“ obnoví 580 míst', async () => {
   // byla v panelu Filtry, který na přepnutí záložky nereaguje.
   await page.click('#nastaveniOpen')
   await page.waitForTimeout(400)
+  // A od srpna 2026 i rozbalit skupinu – Nastavení je poskládané ze
+  // sbalitelných skupin, které startují zavřené (hlášení tadeas-001),
+  // a na skrytý prvek se kliknout nedá.
+  await page.click('[data-sbalka="zalohy"]')
+  await page.waitForTimeout(300)
   await page.click('#dataReset')
   await page.waitForTimeout(300)
   // Potvrzení je od srpna 2026 vlastní dialog, ne nativní confirm.

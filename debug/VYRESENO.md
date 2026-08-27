@@ -7,3 +7,4 @@ stav zpátky. Řádky skládá `npm run debug-zavri`, ne ruka: ručně napsaný
 - `tadeas-003` · 2026-08-27 · hotovo · klik v dialogu ani na závěsu už detail nezavře
 - `tadeas-002` · 2026-08-27 · hotovo · výběr bodu z mapy vrací zpátky, po potvrzení i po zrušení
 - `tadeas-f32-008` · 2026-08-27 · zahozeno · zkouška odesílání, ne hlášení
+- `tadeas-001` · 2026-08-27 · hotovo · Nastavení i Profil poskládané do sbalitelných skupin

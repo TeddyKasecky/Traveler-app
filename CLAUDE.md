@@ -80,8 +80,8 @@ npm run check-worker     # že Worker nepustí dál, co nemá, 48 bodů
 npm run debug-uklid      # duplicity a zavřené záznamy ze složky debug/ ven
 npm run debug-zavri      # uzavře záznam: -- <id> <hotovo|zahozeno> "důvod"
 
-npm run smoke            # proklikání v prohlížeči, 389 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 339 kontrol
+npm run smoke            # proklikání v prohlížeči, 402 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 362 kontrol
 npm run check-regrese    # PWA, zálohy, fotky, poloha, service worker, 26 bodů
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
 npm run check-dny        # dny, výpravy, body trasy, tažení a úpravy cesty, 203 bodů

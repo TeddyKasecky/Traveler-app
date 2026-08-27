@@ -1,0 +1,42 @@
+/* Sbalitelná skupina – hlavička s šipkou a tělo pod ní.
+ *
+ * PROČ JE TO SAMOSTATNÝ SOUBOR: vzhled vznikl pro panel EXPORT v poznámkovači
+ * a bydlel v `debug.css`. Když ho v srpnu 2026 dostalo i Nastavení (dvanáct
+ * oddílů pod sebou) a Profil, byly by z jednoho vzhledu tři kopie ve třech
+ * souborech – a do měsíce tři různé podoby. Díl je ve `components/vzory.js`,
+ * styl tady, obojí pod jedním jménem.
+ *
+ * Tělo se SKRÝVÁ (`hidden`), neodstraňuje – půlka Nastavení je staticky
+ * v `index.html` a obsluha se na ni věší jednou při startu. Výklad je
+ * u `sbalka()` ve `vzory.js`. */
+
+/* Karta je opsaná z `.dz-karta` v poznámkovači, jen bez vnitřního odsazení –
+ * to si řeší hlavička a tělo každé zvlášť. */
+.sbalka{background:var(--card);border:var(--line);border-radius:var(--r-s);
+  margin:0 0 12px;overflow:hidden}
+
+.sbalka-hlava{display:flex;align-items:center;gap:10px;width:100%;padding:14px;
+  border:0;background:none;color:var(--ink);cursor:pointer;
+  font-family:var(--f-disp);font-weight:900;font-size:.95rem;
+  text-transform:uppercase;letter-spacing:.09em}
+.sbalka-hlava span{flex:1;text-align:left}
+.sbalka-hlava:active{opacity:.6}
+
+/* Ikona vlevo je jen ozdoba oddílu, šipka vpravo nese stav. Rozliší je
+ * pořadí: `:first-child` je vždycky ta oddílová, poslední vždycky šipka. */
+.sbalka-hlava svg.ic{flex:0 0 auto;font-size:17px;color:var(--ink2)}
+.sbalka-hlava svg.ic:last-child{transition:transform .18s var(--pop)}
+/* Šipka dolů zavřeno, doprava-dolů otevřeno – stejná logika jako u složek
+ * v knihovně Výprav, jen bez výchozího otočení: skupina začíná zavřená. */
+.sbalka-hlava.on svg.ic:last-child{transform:rotate(90deg)}
+
+.sbalka-telo{padding:0 14px 14px;border-top:var(--line)}
+/* První nadpis uvnitř nemá odsazovat od linky dvakrát. */
+.sbalka-telo .sechd:first-child{margin-top:12px}
+
+/* Odznak s počtem na sbalené hlavičce. Bez něj visí smyčka „zapiš →
+ * vyexportuj → commitni" na tom, že si člověk vzpomene panel rozbalit –
+ * a přesně to je ta manuálnost, které se tu zbavujeme. */
+.sbalka-odznak{flex:0 0 auto;font-family:var(--f-body);font-style:normal;font-weight:800;
+  font-size:.66rem;letter-spacing:0;min-width:20px;padding:2px 6px;border-radius:var(--r-pill);
+  background:var(--akcent);color:var(--na-akcentu);text-align:center}

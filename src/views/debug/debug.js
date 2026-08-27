@@ -589,16 +589,16 @@ function mojeCast(videt, vse) {
       <button class="btn primary" id="dzNovy">${IC('i-plus')}Zapsat poznámku</button>
     </div>
 
-    <div class="dz-karta dz-rozbal-karta">
-      <button class="dz-rozbal${exportOtevreny ? ' on' : ''}" id="dzExportPrepinac" aria-expanded="${exportOtevreny}">
+    <div class="sbalka dz-export">
+      <button class="sbalka-hlava${exportOtevreny ? ' on' : ''}" id="dzExportPrepinac" aria-expanded="${exportOtevreny}">
         <span>Export</span>${
           // Odznak s počtem čekajících. Bez něj visí celá smyčka na tom, že si
           // člověk vzpomene panel rozbalit – a přitom právě tady se pozná, že
           // něco ještě nikdo neodeslal.
-          ceka ? `<i class="dz-odznak">${ceka}</i>` : ''
+          ceka ? `<i class="sbalka-odznak">${ceka}</i>` : ''
         }${IC('i-sipka')}
       </button>
-      ${exportOtevreny ? `<div class="dz-rozbal-telo">${exportHtml(vybrane)}</div>` : ''}
+      ${exportOtevreny ? `<div class="sbalka-telo">${exportHtml(vybrane)}</div>` : ''}
     </div>`
 }
 

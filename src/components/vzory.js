@@ -263,3 +263,63 @@ export function stavPill(stav) {
 export function ikonBtn(ikona, { id = '', titul = '', on = false } = {}) {
   return `<button class="ikonbtn${on ? ' on' : ''}"${id ? ` id="${id}"` : ''}${titul ? ` title="${esc(titul)}"` : ''}>${IC(ikona)}</button>`
 }
+
+/**
+ * Sbalitelná skupina – hlavička s šipkou a tělo pod ní.
+ *
+ * PROČ VZNIKLA: Nastavení mělo dvanáct oddílů pod sebou v jedné řadě a Profil
+ * sedm, z toho tři s mřížkou devadesáti šesti aut. Na telefonu se obojí
+ * scrollovalo donekonečna (hlášení `tadeas-001`). Vzhled je opsaný z panelu
+ * EXPORT v poznámkovači, který tenhle problém řešil první.
+ *
+ * TĚLO SE SKRÝVÁ, NEODSTRAŇUJE. Půlka Nastavení je staticky v `index.html`
+ * a obsluha se na ni věší **jednou při startu** (`initFilterPanel()`,
+ * `initMapaKeStazeni()`). Kdyby sbalení prvky z DOM vyhodilo, „Stáhnout zálohu"
+ * by po prvním sbalení přestalo fungovat a nikde by to neblikklo. Skrytí navíc
+ * nic nestojí: mřížka aut má `loading="lazy"`, takže se schované obrázky
+ * stejně nestahují.
+ *
+ * Panel EXPORT v poznámkovači si svoje vykreslování nechává – tělo si renderuje
+ * podmíněně, protože se mu obsluha věší až při otevření. Sdílí se vzhled, ne
+ * mechanika.
+ *
+ * @param {string} id      stabilní jméno skupiny, drží se v něm otevřenost
+ * @param {string} nadpis
+ * @param {string} obsah   HTML těla
+ * @param {Object} [o]
+ * @param {string} [o.ikona]
+ * @param {boolean} [o.otevreno]
+ */
+export function sbalka(id, nadpis, obsah, { ikona = '', otevreno = false } = {}) {
+  return `<div class="sbalka">
+    <button class="sbalka-hlava${otevreno ? ' on' : ''}" data-sbalka="${esc(id)}" aria-expanded="${otevreno}">
+      ${ikona ? IC(ikona) : ''}<span>${esc(nadpis)}</span>${IC('i-sipka')}
+    </button>
+    <div class="sbalka-telo" data-sbalka-telo="${esc(id)}"${otevreno ? '' : ' hidden'}>${obsah}</div>
+  </div>`
+}
+
+/**
+ * Naváže přepínání skupin uvnitř `koren` a hlásí změnu volajícímu.
+ *
+ * Otevřenost si drží volající v `Set`u, ne tenhle díl: Nastavení i Profil se
+ * překreslují a stav musí překreslení přežít. Do předvoleb se neukládá –
+ * po zavření aplikace se všechno zase sbalí, takže obrazovka je vždycky krátká.
+ *
+ * @param {HTMLElement} koren
+ * @param {Set<string>} otevrene
+ */
+export function napojSbalky(koren, otevrene) {
+  for (const hlava of koren.querySelectorAll('[data-sbalka]')) {
+    hlava.onclick = () => {
+      const id = hlava.dataset.sbalka
+      const telo = koren.querySelector(`[data-sbalka-telo="${id}"]`)
+      const nove = !otevrene.has(id)
+      if (nove) otevrene.add(id)
+      else otevrene.delete(id)
+      hlava.classList.toggle('on', nove)
+      hlava.setAttribute('aria-expanded', String(nove))
+      if (telo) telo.hidden = !nove
+    }
+  }
+}

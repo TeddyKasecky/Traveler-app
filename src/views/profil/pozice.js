@@ -19,7 +19,6 @@ import { pocetOdkazuNaPozici } from '../plan/routing.js'
 export function pozicHtml() {
   const seznam = ulozenePozice()
   return `
-    <div class="sechd">${IC('i-dum')}Uložené pozice</div>
     ${
       seznam.length
         ? seznam
