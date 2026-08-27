@@ -155,7 +155,7 @@ na jednom místě:
 | Kolekce (`col`) | [`src/data/collections.js`](src/data/collections.js) | klíč, popisek, ikona |
 | Nálada na Domů | [`src/data/moods.js`](src/data/moods.js) | popisek, ikona, kategorie |
 
-Ikony jsou v [`src/icons/sprite.svg`](src/icons/sprite.svg), je jich 66 a jmenují
+Ikony jsou v [`src/icons/sprite.svg`](src/icons/sprite.svg), je jich 70 a jmenují
 se `i-neco`. Používá se jméno symbolu bez mřížky, třeba `i-van`.
 
 ---
@@ -196,8 +196,8 @@ Poprvé je potřeba jednou `npm install`.
 
 | Příkaz | Co ověří |
 |---|---|
-| `npm run smoke` | proklikání v prohlížeči, 402 kontrol |
-| `npm run smoke:single` | totéž pro variantu z disku, 362 kontrol |
+| `npm run smoke` | proklikání v prohlížeči, 410 kontrol |
+| `npm run smoke:single` | totéž pro variantu z disku, 370 kontrol |
 | `npm run check-uloziste` | že se poznámky neztratí, když dojde místo, 36 kontrol |
 | `npm run check-regrese` | PWA, zálohy, fotky, poloha, service worker — 26 bodů |
 | `npm run check-dny` | dny, výpravy, body trasy a úpravy cesty, 203 bodů |

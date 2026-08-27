@@ -1,0 +1,46 @@
+/* Předpověď počasí – vodorovný pruh hodin a seznam dní.
+ *
+ * VODOROVNÝ PRUH TU JE SCHVÁLNĚ, i když se z Domů v srpnu 2026 posuvný pás
+ * fotokaret vyhodil a nahradila ho mřížka. Rozdíl je v tom, co se posouvá:
+ * fotky míst žádné pořadí nemají a mřížka je ukáže všechny naráz, kdežto
+ * ČAS JE ČÁRA. Dvacet čtyři hodin pod sebou by byl sloupec přes tři obrazovky
+ * a čtení „co bude odpoledne" by bylo horší, ne lepší. */
+
+.pocasi-pruh{display:flex;gap:4px;overflow-x:auto;margin:0 -14px 12px;padding:2px 14px 4px;
+  scrollbar-width:none;scroll-snap-type:x proximity}
+.pocasi-pruh::-webkit-scrollbar{display:none}
+
+.pocasi-hod{flex:0 0 auto;scroll-snap-align:start;display:flex;flex-direction:column;
+  align-items:center;gap:3px;min-width:52px;padding:9px 6px;
+  background:var(--plocha);border:var(--line);border-radius:var(--r-s)}
+.pocasi-hod span{font-size:.66rem;font-weight:700;color:var(--text2)}
+.pocasi-hod svg.ic{font-size:19px;color:var(--akcent);stroke:var(--akcent)}
+.pocasi-hod b{font-family:var(--f-disp);font-size:.92rem;font-weight:700}
+/* Srážky jen když opravdu něco spadne – prázdný řádek by pruh jen zvýšil. */
+.pocasi-hod i{font-style:normal;font-size:.6rem;font-weight:700;color:var(--zvyrazneni)}
+
+.pocasi-dny{display:flex;flex-direction:column;gap:6px}
+
+.pocasi-den{display:flex;align-items:center;gap:8px;padding:9px 11px;
+  background:var(--plocha);border:var(--line);border-radius:var(--r-s)}
+.pocasi-den svg.ic{flex:0 0 auto;font-size:18px;color:var(--akcent);stroke:var(--akcent)}
+/* Den v týdnu má pevnou šířku, aby ikony pod sebou lícovaly i u „dnes“. */
+.pocasi-den-kdy{flex:0 0 auto;min-width:3.6rem;font-size:.74rem;font-weight:800;color:var(--text2)}
+/* Slovní popis ustoupí první – na úzkém telefonu je ikona srozumitelnější. */
+.pocasi-den-popis{flex:1;min-width:0;font-size:.74rem;font-weight:600;color:var(--text2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pocasi-den-teplota{flex:0 0 auto;font-family:var(--f-disp);font-size:.95rem;font-weight:700}
+/* Noční teplota je ta druhá v pořadí důležitosti, tak i ve váze. */
+.pocasi-den-teplota i{font-style:normal;font-size:.78rem;font-weight:600;color:var(--text2);margin-left:4px}
+
+.pocasi-dest,.pocasi-slunce{flex:0 0 auto;display:flex;align-items:center;gap:3px;
+  font-size:.66rem;font-weight:700;color:var(--text2)}
+.pocasi-dest svg.ic,.pocasi-slunce svg.ic{font-size:13px}
+
+.pocasi-stari{margin:0 2px 8px}
+
+/* Na úzkém telefonu se řádek dne nevejde celý: východ a západ slunce jsou
+ * z těch čtyř údajů nejméně naléhavé, tak jdou první pryč. */
+@media (max-width:380px){
+  .pocasi-slunce{display:none}
+}

@@ -12,7 +12,7 @@
  * nového prvku tiše shodilo kontrolu bezpečných okrajů v `check-regrese.mjs`, protože
  * se aktualizoval jen ten druhý.
  */
-export const NOVE_STYLY = ['addform.css', 'pruh.css', 'podklad.css', 'motiv.css', 'profil.css', 'plan-dny.css', 'plan.css', 'kosikFab.css', 'porovnani.css', 'vzory.css', 'mapa.css', 'dialog.css', 'debug.css', 'sbalka.css']
+export const NOVE_STYLY = ['addform.css', 'pruh.css', 'podklad.css', 'motiv.css', 'profil.css', 'plan-dny.css', 'plan.css', 'kosikFab.css', 'porovnani.css', 'vzory.css', 'mapa.css', 'dialog.css', 'debug.css', 'sbalka.css', 'pocasi.css']
 
 /** Cesty tak, jak se píšou v `src/styles/index.css`. */
 export const NOVE_STYLY_CESTY = NOVE_STYLY.map((f) => `./components/${f}`)

@@ -59,6 +59,19 @@ const b = await chromium.launch({ executablePath: EDGE, headless: true })
 // scripts/debug-rejstrik.mjs, takže se nesmí rozejít nepozorovaně.
 const page = await b.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'light', acceptDownloads: true })
 
+// POČÍTADLO DOTAZŮ NA POČASÍ. Kontroly níž ověřují, že vypnuté počasí na síť
+// nesáhne – a to se jinak než počítáním nedokáže. Sčítá se v prohlížeči, ne
+// přes `page.route`, protože ten by dotaz odchytil a tím i změnil chování.
+await page.addInitScript(() => {
+  window.__pocasiDotazu = 0
+  const puvodni = window.fetch
+  window.fetch = function (...a) {
+    const url = String((a[0] && a[0].url) || a[0] || '')
+    if (url.includes('open-meteo')) window.__pocasiDotazu++
+    return puvodni.apply(this, a)
+  }
+})
+
 /**
  * Archiv ukončených cest z IndexedDB.
  *
@@ -172,7 +185,7 @@ const zavriDetail = async () => {
 //   srpen 2026 – brouk se znovu použít nedal, dvě sousední kolečka s toutéž
 //   ikonou by nešlo rozeznat).
 // Číslo se mění jen s vědomým přidáním do sprite.svg.
-await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 66)
+await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 70)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
 // Nad mapou jsou čtyři rychlé pilulky „moje věci" (Vše, Uložená, Musíme!,
@@ -220,6 +233,13 @@ await kontrola('karta výpravy na Domů', () => page.locator('#homeInner .vkarta
 // sdílená `vypravaKarta()` — kdyby ji kreslila ta, objevila by se i tady.
 await kontrola('na Domů se karta sbalit nedá', () => page.locator('#homeInner .vk-sbal').count(), 0)
 await kontrola('mřížka „Možná dnes"', () => page.locator('#homeInner .fotomrizka .fotokarta').count(), 6)
+
+// POČASÍ U TVÉ POLOHY (hlášení pc-tadeas-001). Kontrola běží bez povolené
+// polohy, a to je schválně: appka si o ni SAMA ŘÍCT NESMÍ. Místo předpovědi
+// má nabídnout tlačítko a na Open-Meteo nesáhnout.
+await kontrola('Domů má sekci počasí', () => page.locator('#homePocasi').count(), 1)
+await kontrola('bez polohy nabídne tlačítko', () => page.locator('#homePocasiPoloha').count(), 1)
+await kontrola('a nic nestahuje', () => page.evaluate(() => window.__pocasiDotazu), 0)
 await kontrola('statistika míst', () => page.locator('#homeInner .cislo b').first().innerText(), '580')
 // Přehled 32 bikeparků odešel do kolekce „Na kolo". Ceny se ale ztratit
 // nesměly – kontrola „ceny bikeparku v detailu" níž ověřuje, že jsou v detailu.
@@ -309,9 +329,9 @@ await kontrola('Nastavení má správu vlastních dat', () =>
 
 // SBALITELNÉ SKUPINY (hlášení tadeas-001). Dvanáct oddílů pod sebou se na
 // telefonu scrollovalo donekonečna, takže se všechno kromě Vzhledu schovalo.
-await kontrola('Nastavení má sedm skupin', () => page.locator('#panelNastaveni .sbalka').count(), 7)
+await kontrola('Nastavení má osm skupin', () => page.locator('#panelNastaveni .sbalka').count(), 8)
 await kontrola('a všechny startují zavřené', () =>
-  page.locator('#panelNastaveni .sbalka-telo[hidden]').count(), 7)
+  page.locator('#panelNastaveni .sbalka-telo[hidden]').count(), 8)
 await kontrola('Vzhled zůstává vidět bez rozbalování', () =>
   page.locator('#panelNastaveni .motivbtn').first().isVisible(), true)
 // TOHLE JE TA PODSTATNÁ. Sbalená skupina se jen SKRÝVÁ – kdyby se odstranila
@@ -328,6 +348,12 @@ await kontrola('dvě skupiny otevřené naráz', () =>
   page.locator('#panelNastaveni .sbalka-telo:not([hidden])').count(), 2)
 // Hustota kreseb patří k mapě, ne na konec obrazovky jako dřív.
 await kontrola('kresby jsou uvnitř skupiny Mapa', () => page.locator('#nastMapa #kresbySeg').count(), 1)
+
+// POČASÍ MÁ VLASTNÍ SKUPINU s přepínačem, intervalem a smazáním schránky.
+await rozbal('pocasi')
+await kontrola('skupina Počasí má přepínač', () => page.locator('#pocasiSeg button').count(), 2)
+await kontrola('a tři intervaly stahování', () => page.locator('#pocasiIntervalSeg button').count(), 3)
+await kontrola('a mazání uložených předpovědí', () => page.locator('#pocasiSmaz').count(), 1)
 // Malovaná mapa Evropy má několik megabajtů, takže není v instalaci a stahuje
 // se odsud. Test ji nestahuje – ověřuje jen, že se nabízí a hlásí správný stav.
 await kontrola('Nastavení nabízí stažení mapy', () => page.locator('#mapaStahni').isVisible(), true)
@@ -350,6 +376,22 @@ await kontrola('bez mapy jsou kresby nedostupné', () =>
 // a pro jednosouborovou variantu, kam se dlaždice zabalit nedají.
 await kontrola('bez mapy se kreslí záložní podklad', () => page.locator('.maplibregl-canvas').count(), 0)
 await kontrola('v panelu Filtry už zálohy nejsou', () => page.locator('#filters #expBtn').count(), 0)
+
+// VYPNUTÉ POČASÍ NEMÁ JEN ZMIZET Z OBRAZOVKY, ono nesmí sáhnout na síť –
+// na roamingu je to jediná jistota. Stojí to až tady schválně: přepnutí
+// vyžaduje odskok na Domů a zpátky, což by kontrolám mapy výš rozbilo stav.
+await rozbal('pocasi')
+await page.click('#pocasiSeg button:not(.on)')
+await page.waitForTimeout(400)
+await page.click('#tabs button[data-tab="home"]')
+await page.waitForTimeout(700)
+await kontrola('vypnuté počasí zmizí z Domů', () => page.locator('#homePocasi').count(), 0)
+await kontrola('a pořád nic nestahuje', () => page.evaluate(() => window.__pocasiDotazu), 0)
+await page.click('#nastaveniOpen')
+await page.waitForTimeout(500)
+await rozbal('pocasi')
+await page.click('#pocasiSeg button:not(.on)')
+await page.waitForTimeout(400)
 
 // Debug poznámkovač. Sestavená appka nemá VANDRBUCH_BETA, takže je přepínač
 // vypnutý a kolečko v hlavičce schované – přesně jak to má být na produkci.

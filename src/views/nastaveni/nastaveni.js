@@ -28,6 +28,7 @@ import { napojSbalky, segment } from '../../components/vzory.js'
 import { toast } from '../../components/toast.js'
 import { vyberZeSeznamu, zadej } from '../../components/dialog.js'
 import { srovnejDebugTlacitko } from '../../components/debugZapis.js'
+import { pocetPocasi, zahodVsechnoPocasi } from '../../core/pocasiDb.js'
 import { jsouVektory, obnovKresbyVMape } from '../../map/podklad.js'
 import { srovnejStavMapy } from './mapaKeStazeni.js'
 
@@ -118,6 +119,48 @@ export async function renderNastaveni() {
     </div>`
   )
 
+  // POČASÍ – vlastní skupina, protože má vlastní volby a vlastní schránku.
+  // Vypnuté počasí NESÁHNE NA SÍŤ VŮBEC, ne že se jen neukáže: na roamingu je
+  // to jediný způsob, jak si být jistý, že se nic nestahuje.
+  doPrihradky(
+    'nastPocasi',
+    `<div class="sechd">${IC('i-sun')}Předpověď u tvé polohy</div>
+    <div class="meta">Na Domů pod výpravou: nejbližší hodiny a týden dopředu. Data z Open-Meteo, bez účtu a bez klíče. Appka si o polohu sama neřekne – použije tu, kterou už zná.</div>
+    ${segment([{ id: 'zap', popisek: 'Zapnuté' }, { id: 'vyp', popisek: 'Vypnuté' }], prefs.pocasi ? 'zap' : 'vyp', 'pocasiSeg')}
+
+    <div class="sechd">${IC('i-clock')}Jak často stahovat</div>
+    <div class="meta">Do konce téhle doby se bere uložená předpověď a na síť se nesahá.</div>
+    ${segment(
+      [
+        { id: '30', popisek: '30 minut' },
+        { id: '60', popisek: 'Hodinu' },
+        { id: '180', popisek: '3 hodiny' },
+      ],
+      String(Number(prefs.pocasiInterval) || 60),
+      'pocasiIntervalSeg'
+    )}
+
+    <div class="sechd">${IC('i-globe')}Jen na wifi</div>
+    <div class="meta">Na mobilních datech se předpověď stáhne až na vyžádání. <b>Pozná to jen Android</b> – Safari o typu připojení nic neřekne, takže na iPhonu se volba chová jako vypnutá.</div>
+    ${segment([{ id: 'zap', popisek: 'Jen wifi' }, { id: 'vyp', popisek: 'Kdykoli' }], prefs.pocasiJenWifi ? 'zap' : 'vyp', 'pocasiWifiSeg')}
+
+    <div class="sechd">${IC('i-sliders')}Jednotky</div>
+    ${segment(
+      [
+        { id: 'celsius', popisek: '°C a mm' },
+        { id: 'fahrenheit', popisek: '°F a palce' },
+      ],
+      prefs.pocasiJednotky === 'fahrenheit' ? 'fahrenheit' : 'celsius',
+      'pocasiJednotkySeg'
+    )}
+
+    <div class="sechd">${IC('i-trash')}Uložené předpovědi</div>
+    <div class="meta" id="pocasiInfo">Počítám…</div>
+    <div class="btnrow">
+      <button class="btn small" id="pocasiSmaz">Smazat uložené počasí</button>
+    </div>`
+  )
+
   // PLÁNOVÁNÍ A TRASY – tři oddíly, takže si nadpisy uvnitř nechávají.
   doPrihradky(
     'nastPlan',
@@ -195,6 +238,62 @@ export async function renderNastaveni() {
     <div class="sechd">${IC('i-globe')}Zdroje dat</div>
     <div class="meta">Podklad malované mapy: <b>OpenStreetMap</b> přes Protomaps (ODbL) · obrysy zemí <b>Natural Earth</b> (public domain) · stínování terénu z výškopisu <b>elevation-tiles-prod</b> (SRTM, GMTED) · online dlaždice <b>OpenStreetMap</b>.</div>`
   )
+
+  // Počasí. Přepnutí se propíše i na Domů – bez toho by se vypnuté počasí
+  // schovalo až po přepnutí záložky sem a zpátky.
+  for (const b of document.querySelectorAll('#pocasiSeg button')) {
+    b.onclick = () => {
+      prefs.pocasi = b.dataset.seg === 'zap'
+      savePrefs()
+      renderNastaveni()
+      emit('prekresleno')
+      toast(prefs.pocasi ? 'Počasí je na Domů' : 'Počasí vypnuté – appka na síť kvůli němu nesáhne')
+    }
+  }
+  for (const b of document.querySelectorAll('#pocasiIntervalSeg button')) {
+    b.onclick = () => {
+      prefs.pocasiInterval = Number(b.dataset.seg) || 60
+      savePrefs()
+      renderNastaveni()
+    }
+  }
+  for (const b of document.querySelectorAll('#pocasiWifiSeg button')) {
+    b.onclick = () => {
+      prefs.pocasiJenWifi = b.dataset.seg === 'zap'
+      savePrefs()
+      renderNastaveni()
+    }
+  }
+  // ZMĚNA JEDNOTEK VYPRÁZDNÍ SCHRÁNKU. Klíč sice jednotku nese, takže by se
+  // stará předpověď neukázala se špatným popiskem – ale zůstala by tam ležet
+  // navždycky a nikdo by si ji už nevyzvedl.
+  for (const b of document.querySelectorAll('#pocasiJednotkySeg button')) {
+    b.onclick = async () => {
+      if (prefs.pocasiJednotky === b.dataset.seg) return
+      prefs.pocasiJednotky = b.dataset.seg
+      savePrefs()
+      await zahodVsechnoPocasi()
+      renderNastaveni()
+      emit('prekresleno')
+    }
+  }
+  const smazPocasi = document.getElementById('pocasiSmaz')
+  if (smazPocasi)
+    smazPocasi.onclick = async () => {
+      await zahodVsechnoPocasi()
+      toast('Uložené počasí smazané')
+      renderNastaveni()
+      emit('prekresleno')
+    }
+
+  // Kolik předpovědí leží ve schránce. Async, takže se dopisuje až doběhne.
+  pocetPocasi().then((n) => {
+    const el = document.getElementById('pocasiInfo')
+    if (!el) return
+    el.textContent = n
+      ? `Uložených předpovědí: ${n}. Berou se, dokud jsou čerstvé, a bez signálu i potom.`
+      : 'Zatím nic uloženého.'
+  })
 
   // PŘEPÍNÁNÍ SKUPIN. Hlavičky jsou staticky v `index.html` a překreslením
   // přihrádek se neztratí, ale navěsit se musí – při prvním otevření obrazovky

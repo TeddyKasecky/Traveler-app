@@ -19,7 +19,7 @@
 
 import { S, store, prefs, savePrefs } from '../../core/store.js'
 import { esc } from '../../core/html.js'
-import { dkm, fmtKm } from '../../core/geo.js'
+import { dkm, fmtKm, zjistiPolohu } from '../../core/geo.js'
 import { aktivujZalozku } from '../../core/router.js'
 import { prubehVypravy, otevriItinerar, otevriNaCeste } from '../plan/plan.js'
 import { jedeSe } from '../plan/cestaData.js'
@@ -30,6 +30,7 @@ import { obrazekMista } from '../../data/kategorieFoto.js'
 import { PHOTOS } from '../../core/store.js'
 import { heroPas, sekce, fotomrizka, radek, cislaRada } from '../../components/vzory.js'
 import { vypravaKarta, napojVypravu } from '../../components/vypravaKarta.js'
+import { pocasiHtml, pocasiProBod } from '../../components/pocasi.js'
 import { goTo } from '../../map/map.js'
 import heroObr from '../../assets/hero/domu.webp'
 
@@ -187,6 +188,10 @@ export function renderHome() {
     }) +
     vypravaKarta() +
     pruhVypravy() +
+    // POČASÍ HNED POD VÝPRAVOU, jak si to vyžádalo hlášení `pc-tadeas-001`:
+    // „rozpis hodin a rozpis dní pod rozpisem plánu na cestě". Obsah se doplní
+    // až po načtení – `renderHome()` je synchronní, kdežto předpověď je síť.
+    (prefs.pocasi ? sekce('Počasí u tebe') + '<div id="homePocasi"></div>' : '') +
     (blizko
       ? sekce('Nejblíž odsud', { pozn: fmtKm(blizko.km) }) +
         (() => {
@@ -276,6 +281,41 @@ export function renderHome() {
   for (const r of el.querySelectorAll('.radek[data-id]')) {
     r.onclick = () => goTo(S.byId[r.dataset.id])
   }
+
+  naplnPocasi()
+}
+
+/**
+ * Doplní předpověď do připraveného místa.
+ *
+ * SAMO SI O POLOHU NEŘEKNE. Bere tu, kterou appka už zná; kdo ji nedal,
+ * dostane tlačítko. Systémový dotaz na polohu hned po otevření Domů by byl
+ * přepadení – a `on('poloha')` v `main.js` Domů stejně překreslí, takže se
+ * počasí objeví samo ve chvíli, kdy si o polohu řekne někdo jiný.
+ */
+async function naplnPocasi() {
+  const kam = document.getElementById('homePocasi')
+  if (!kam) return
+
+  if (!S.userPos) {
+    kam.innerHTML = `<div class="btnrow" style="margin:0">
+      <button class="btn" id="homePocasiPoloha">${IC('i-compass')}Ukázat počasí u mě</button>
+    </div>`
+    document.getElementById('homePocasiPoloha').onclick = () => zjistiPolohu()
+    return
+  }
+
+  kam.innerHTML = `<div class="meta">Načítám předpověď…</div>`
+  const p = await pocasiProBod(S.userPos)
+
+  // Mezitím se mohlo překreslit (přišla poloha, přepnula se záložka). Zápis
+  // do odpojeného prvku by zmizel do prázdna – a hůř, přepsal by novější.
+  const porad = document.getElementById('homePocasi')
+  if (!porad || porad !== kam) return
+
+  kam.innerHTML = p
+    ? pocasiHtml(p)
+    : `<div class="meta">Předpověď se nepodařilo načíst. Zkusím to zase, až bude signál.</div>`
 }
 
 /** Vymění pozdrav za políčko a uloží oslovení. */

@@ -117,40 +117,66 @@ export function stihameTo(odkud, kam, dnu) {
 }
 
 /**
- * Předpověď počasí z Open-Meteo pro jeden bod a rozsah dnů.
+ * Předpověď počasí z Open-Meteo pro jeden bod.
  *
  * OPEN-METEO ZÁMĚRNĚ: nepotřebuje API klíč ani registraci, takže v kódu
- * statické aplikace bez serveru není co prozradit. Druhé (a poslední) síťové
- * volání za běhu vedle Nominatimu – bez signálu prostě selže a dashboard
- * funguje dál, jen bez počasí.
+ * statické aplikace bez serveru není co prozradit. Vedle Nominatimu
+ * a přepočtu trasy je to třetí síťové volání za běhu – bez signálu prostě
+ * selže a obrazovka funguje dál, jen bez počasí.
+ *
+ * VRACÍ HODINY I DNY JEDNÍM DOTAZEM. Rozdělit to na dva by znamenalo dvojí
+ * čekání a dvojí možnost, že jedno projde a druhé ne – a půlka předpovědi
+ * je horší než žádná, protože není poznat, že chybí.
  *
  * @param {{lat:number, lon:number}} bod
- * @param {string} od  'YYYY-MM-DD'
- * @param {string} do  'YYYY-MM-DD'
- * @returns {Promise<Array<{datum:string, kodPocasi:number, maxC:number, minC:number, srazkyMm:number}>>}
+ * @param {{hodin?:number, dnu?:number, fahrenheity?:boolean}} [o]
+ * @returns {Promise<{hodiny:Array<{cas:string, kodPocasi:number, teplota:number, srazkyMm:number}>,
+ *   dny:Array<{datum:string, kodPocasi:number, maxC:number, minC:number,
+ *   destProcent:number, vychod:string, zapad:string}>}>}
  */
-export async function nactiPocasi(bod, od, doDne) {
+export async function nactiPocasi(bod, { hodin = 24, dnu = 7, fahrenheity = false } = {}) {
   const params = new URLSearchParams({
     latitude: String(bod.lat.toFixed(3)),
     longitude: String(bod.lon.toFixed(3)),
-    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum',
+    hourly: 'temperature_2m,precipitation,weather_code',
+    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset',
     timezone: 'auto',
-    start_date: od,
-    end_date: doDne,
+    forecast_days: String(dnu),
+    forecast_hours: String(hodin),
   })
+  // Jednotky řídí předvolby. Do klíče schránky patří taky – uložená předpověď
+  // ve stupních Celsia se nesmí ukázat s popiskem ve Fahrenheitech.
+  if (fahrenheity) {
+    params.set('temperature_unit', 'fahrenheit')
+    params.set('precipitation_unit', 'inch')
+  }
+
   const odpoved = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`)
   if (!odpoved.ok) throw new Error('Počasí se nepodařilo načíst')
   const data = await odpoved.json()
+  const h = data && data.hourly
   const d = data && data.daily
-  if (!d || !Array.isArray(d.time)) throw new Error('Počasí přišlo v nečekaném tvaru')
+  if (!h || !Array.isArray(h.time) || !d || !Array.isArray(d.time)) {
+    throw new Error('Počasí přišlo v nečekaném tvaru')
+  }
 
-  return d.time.map((datum, i) => ({
-    datum,
-    kodPocasi: d.weather_code[i],
-    maxC: d.temperature_2m_max[i],
-    minC: d.temperature_2m_min[i],
-    srazkyMm: d.precipitation_sum[i],
-  }))
+  return {
+    hodiny: h.time.map((cas, i) => ({
+      cas,
+      kodPocasi: h.weather_code[i],
+      teplota: h.temperature_2m[i],
+      srazkyMm: h.precipitation[i],
+    })),
+    dny: d.time.map((datum, i) => ({
+      datum,
+      kodPocasi: d.weather_code[i],
+      maxC: d.temperature_2m_max[i],
+      minC: d.temperature_2m_min[i],
+      destProcent: d.precipitation_probability_max ? d.precipitation_probability_max[i] : null,
+      vychod: d.sunrise ? d.sunrise[i] : '',
+      zapad: d.sunset ? d.sunset[i] : '',
+    })),
+  }
 }
 
 /**
@@ -160,12 +186,18 @@ export async function nactiPocasi(bod, od, doDne) {
  * @returns {{ikona:string, popis:string}}
  */
 export function pocasiPodleKodu(kod) {
-  // Sprite nemá mraky ani mlhu – oblačno bere `i-leaf` (neutrální tvar bez
-  // významu počasí), zbytek má vlastní ikonu. Novou do spritu nepřidávám,
-  // dokud se neukáže, že to na obrazovce vadí.
+  // Do srpna 2026 sprite mrak ani mlhu neměl a oblačno bralo `i-leaf` – LIST.
+  // V Evropě je oblačno nejčastější stav, takže na obrazovce byly listy skoro
+  // pořád. Čtyři nové symboly jsou odvozené z `i-rain` (mrak už obsahoval)
+  // a z `i-sun`, takže sednou do sady tvarem i tloušťkou tahu.
+  //
+  // Rozlišení podle WMO. Jemnější dělení nemá smysl: posádka se rozhoduje
+  // „prší / nebude pršet", ne podle desetiny srážek.
   if (kod === 0) return { ikona: 'i-sun', popis: 'jasno' }
-  if (kod <= 3) return { ikona: 'i-leaf', popis: 'oblačno' }
-  if (kod <= 48) return { ikona: 'i-leaf', popis: 'mlha' }
+  if (kod <= 2) return { ikona: 'i-polojasno', popis: 'polojasno' }
+  if (kod === 3) return { ikona: 'i-mrak', popis: 'zataženo' }
+  if (kod <= 48) return { ikona: 'i-mlha', popis: 'mlha' }
+  if (kod <= 57) return { ikona: 'i-mrholeni', popis: 'mrholení' }
   if (kod <= 67) return { ikona: 'i-rain', popis: 'déšť' }
   if (kod <= 77) return { ikona: 'i-snow', popis: 'sníh' }
   if (kod <= 82) return { ikona: 'i-rain', popis: 'přeháňky' }

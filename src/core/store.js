@@ -396,6 +396,27 @@ export const prefs = nacti(PREFK, {
   razeniVyprav: 'abecedne',
   /** Názvy sbalených složek v knihovně výprav. Doplněno ze stejného důvodu. */
   sbaleneSlozky: [],
+
+  /**
+   * Počasí u tvé polohy na Domů. Vypnuté znamená, že appka na Open-Meteo
+   * NESÁHNE VŮBEC – ne že se jen neukáže. Na roamingu je to jediný způsob,
+   * jak si být jistý, že se nic nestahuje.
+   */
+  pocasi: true,
+  /**
+   * Jak dlouho platí stažená předpověď, v minutách. Do konce se bere ze
+   * schránky v IndexedDB (`core/pocasiDb.js`) a na síť se nesahá.
+   * Volby v Nastavení: 30 · 60 · 180.
+   */
+  pocasiInterval: 60,
+  /**
+   * Stahovat jen na wifi. POZNÁ TO JEN ANDROID – `navigator.connection`
+   * v Safari neexistuje, takže na iPhonu se volba chová jako vypnutá.
+   * Je to napsané i u přepínače v Nastavení, ať to nevypadá jako chyba.
+   */
+  pocasiJenWifi: false,
+  /** `celsius` nebo `fahrenheit`. Jednotka je i v klíči schránky. */
+  pocasiJednotky: 'celsius',
 })
 
 /**

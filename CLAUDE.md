@@ -36,7 +36,8 @@ záměrně**; `check-css` proto zmizelo a nahradilo ho `check-tokeny`.
   `vandrbuch:prefs`, `vandrbuch:data` (import CSV) a sklad `fotky` v IndexedDB
   (`src/core/storage.js`, `src/core/fotoDb.js`), sklady `trasy`, `cesty` a `debug`
   v IndexedDB (`src/core/trasyDb.js`, `cestyDb.js`, `debugDb.js`; databáze
-  `vandrbuch-trasy`, `vandrbuch-cesty` a `vandrbuch-debug`). Jsou v nich všechna uživatelská data
+  `vandrbuch-trasy`, `vandrbuch-cesty`, `vandrbuch-debug` a `vandrbuch-pocasi`).
+  Jsou v nich všechna uživatelská data
   a nikde jinde neexistují — změna klíče je tichá ztráta dat. Starý `vandrbuch:photos`
   se při prvním otevření sám přestěhuje do IndexedDB a vyprázdní.
 - **Nikdy nezahazuj výsledek ukládání.** `save()`, `savePrefs()`, `ulozFotku()` vracejí
@@ -80,8 +81,8 @@ npm run check-worker     # že Worker nepustí dál, co nemá, 48 bodů
 npm run debug-uklid      # duplicity a zavřené záznamy ze složky debug/ ven
 npm run debug-zavri      # uzavře záznam: -- <id> <hotovo|zahozeno> "důvod"
 
-npm run smoke            # proklikání v prohlížeči, 402 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 362 kontrol
+npm run smoke            # proklikání v prohlížeči, 410 kontrol
+npm run smoke:single     # totéž pro single-file variantu, 370 kontrol
 npm run check-regrese    # PWA, zálohy, fotky, poloha, service worker, 26 bodů
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
 npm run check-dny        # dny, výpravy, body trasy, tažení a úpravy cesty, 203 bodů
@@ -155,7 +156,7 @@ _Odvozeno ze skutečného kódu — žádný linter to nevynucuje._
 - Parametry typované JSDoc anotacemi (`@param {Record<string, any>} p`), ne TypeScriptem.
 - CSS: barvy a rozměry výhradně přes proměnné z `tokens.css`, nikdy natvrdo. Nová barva
   patří do sémantické vrstvy **a do obou tmavých bloků** — viz [VZHLED.md](VZHLED.md).
-- Ikony jsou symboly v `src/icons/sprite.svg` (66 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
+- Ikony jsou symboly v `src/icons/sprite.svg` (70 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
 
 Podrobná pravidla podle oblasti (auto-scoped podle cesty):
 [.claude/rules/database.md](.claude/rules/database.md) ·
@@ -457,8 +458,8 @@ protože se z košíku do nich tahá.
   plnohodnotné body itineráře, ne jen poznámka s GPS: kotví se polem `po`
   (id zastávky, hned ZA kterou stojí; `po: null` + `den: d` = začátek dne d;
   obojí null = konec plánu, historické chování) a táhnou se stejně jako
-  zastávky. Poloha čtyřmi cestami – vložený text, adresa přes Nominatim
-  (jediné síťové volání za běhu, jen online), ruční GPS, ťuknutí do mapy.
+  zastávky. Poloha čtyřmi cestami – vložený text, adresa přes Nominatim,
+  ruční GPS, ťuknutí do mapy.
   `map/planLine.js` je řadí podle `po`/`den` a kreslí znakem podle druhu.
 - **Datová logika bloků je v `views/plan/body.js`**, ne v `bloky.js` – ten
   neimportuje `IC`/`icons/sprite.js` (čte `sprite.svg?raw`, Vite syntaxe, kterou
@@ -492,6 +493,37 @@ protože se z košíku do nich tahá.
 - **Testovací úklid ve smoke**: localStorage se nesmí čistit přepsáním –
   aplikace při odchodu ze stránky dopisuje store z paměti (pagehide → save())
   a přepsaný záznam vrátí. Uklízí se přes UI, nebo až po reloadu.
+
+## Počasí (srpen 2026)
+
+**Předpověď u tvé polohy na Domů**, hned pod kartou výpravy: 24 hodin ve
+vodorovném pruhu a 7 dní pod ním. Data z **Open-Meteo — bez účtu a bez API
+klíče**, což je jediný důvod, proč to jde ve statické appce z veřejného
+repozitáře. Je to **třetí síťové volání za běhu** vedle Nominatimu a přepočtu
+trasy přes Mapy.com.
+
+- **Appka si o polohu sama neřekne.** Použije tu, kterou už zná z „Nejblíž
+  odsud"; bez ní je místo předpovědi tlačítko „Ukázat počasí u mě". Systémový
+  dotaz při otevření Domů by byl přepadení.
+- **Vypnuté počasí nesáhne na síť vůbec** (`prefs.pocasi`), ne že se jen
+  neukáže. Na roamingu je to jediná jistota a hlídá to `smoke` počítáním
+  dotazů na Open-Meteo.
+- **Stažené leží v IndexedDB** (`src/core/pocasiDb.js`, databáze
+  `vandrbuch-pocasi`) — je to dotažené z API, takže do `vandrbuch:v1` ani do
+  zálohy nepatří. Klíč nese souřadnice **i jednotky**: uložená předpověď ve
+  stupních Celsia se nesmí ukázat s popiskem ve Fahrenheitech.
+- **Čerstvost je nastavitelná** (30 minut · hodina · 3 hodiny, výchozí hodina).
+  Bez signálu se ukáže poslední stažená i s tím, kdy se stáhla — prázdno nikdy.
+- Volba **„jen na wifi" pozná jen Android**; `navigator.connection` v Safari
+  neexistuje, takže se tam chová jako vypnutá. Je to napsané u přepínače.
+- Kódy počasí překládá `pocasiPodleKodu()` ve `views/plan/termin.js`. Do srpna
+  2026 vracela za oblačno **list** (`i-leaf`), protože sprite mrak neměl —
+  přibyly `i-mrak`, `i-polojasno`, `i-mlha` a `i-mrholeni`, odvozené z `i-rain`
+  a `i-sun`, aby seděly do sady.
+
+Zbytek hlášení `pc-tadeas-001` (dny v Itineráři, detail místa, karta Na cestě
+a klimatické normály) je zapsaný v [NAPADY.md](NAPADY.md) jako N19 a N20
+i s tím, co je už rozhodnuté.
 
 ## Známé vlastnosti (neopravovat bez vyžádání)
 

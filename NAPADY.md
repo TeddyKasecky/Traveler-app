@@ -385,3 +385,25 @@ plná paměť, chyba v `ulozDebug`), hlásila by appka záznam pořád jako neod
 a člověk by ho posílal donekonečna. **Není to nález, je to podezření.** Kdyby se
 to opakovalo, začni u toho, jestli se po odeslání zapíše `otiskExportu`
 a `exportovanoDo` do IndexedDB, a jestli se výsledek toho zápisu nezahazuje.
+
+**N19 — Počasí i u dnů v Itineráři, u míst a na kartě Na cestě**
+Hlášení `pc-tadeas-001` chtělo počasí na čtyřech místech. První etapa (srpen
+2026) udělala jen **předpověď u tvé polohy na Domů**; datová vrstva
+(`components/pocasi.js`, `core/pocasiDb.js`) je psaná tak, aby ji zbylé tři
+obrazovky jen použily. Co je z rozpravy už rozhodnuté, ať se příště nezačíná
+od dotazů:
+
+- **Dny v Itineráři** — počasí u každého dne. Souřadnice **z každé zastávky
+  zvlášť**, ne z první nebo z těžiště; Open-Meteo umí víc bodů v jednom
+  dotazu (`latitude=a,b,c`), takže dvacet zastávek není dvacet volání.
+  Datum dne dá hotová `datumDne()` v `views/plan/termin.js`.
+- **Karta Na cestě** — nejbližší hodiny u dalšího cíle („za dvě hodiny tam
+  začne pršet").
+- **Detail místa** — předpověď pro jeho souřadnice.
+
+**N20 — Klimatický normál za obzorem předpovědi**
+Předpověď dosahuje 16 dní dopředu, takže výprava plánovaná na příští léto
+počasí mít nemůže. Open-Meteo má i historická data zdarma, takže by šlo
+ukázat dlouhodobý průměr: „v půlce srpna tam bývá 24 °C". **Odlišit
+popiskem, ne barvou** — normál není předpověď a nesmí se s ní splést.
+Rozhodnuto v téže rozpravě jako N19.
