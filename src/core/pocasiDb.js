@@ -22,6 +22,20 @@
 const DB = 'vandrbuch-pocasi'
 const SKLAD = 'pocasi'
 
+/**
+ * Tvar uloženého záznamu. **Zvedni při každé změně toho, co se ukládá.**
+ *
+ * PROČ TO NENÍ „unést chybějící pole": když v srpnu 2026 přibyla do hodin
+ * pravděpodobnost srážek, vykreslení se naučilo chybějící údaj vynechat –
+ * a tím se ztráta držela tak dlouho, dokud záznam nevypršel. Na telefonu,
+ * kde je interval nastavený na tři hodiny, to znamenalo tři hodiny appky,
+ * která vypadá rozbitě, a nikde nebylo poznat proč.
+ *
+ * Se starým číslem se záznam prostě zahodí a stáhne znovu. Je to předpověď,
+ * ne uživatelská data – zahodit ji nic nestojí.
+ */
+export const VERZE_ZAZNAMU = 2
+
 /** @type {Promise<IDBDatabase>|null} */
 let spojeni = null
 
@@ -83,7 +97,10 @@ export async function nactiPocasiZeSchranky(klic) {
   try {
     const db = await otevri()
     const r = await transakce(db, 'readonly', (s) => s.get(klic))
-    return r.result || null
+    const z = r.result
+    // Starý tvar = jako by tam nic nebylo. Volající pak stáhne znovu.
+    if (!z || z.verze !== VERZE_ZAZNAMU) return null
+    return z
   } catch {
     return null
   }
@@ -105,7 +122,7 @@ export async function ulozPocasi(klic, data, ted = Date.now()) {
   if (!klic || !data) return false
   try {
     const db = await otevri()
-    await transakce(db, 'readwrite', (s) => s.put({ ...data, stazeno: ted }, klic))
+    await transakce(db, 'readwrite', (s) => s.put({ ...data, stazeno: ted, verze: VERZE_ZAZNAMU }, klic))
     return true
   } catch {
     return false

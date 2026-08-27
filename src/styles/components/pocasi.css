@@ -6,11 +6,16 @@
  * ČAS JE ČÁRA. Dvacet čtyři hodin pod sebou by byl sloupec přes tři obrazovky
  * a čtení „co bude odpoledne" by bylo horší, ne lepší. */
 
+/* BEZ ZACHYTÁVÁNÍ NA DLAŽDICE. `scroll-snap-type` tu chvíli bylo a dělalo
+ * škodu: na úplném začátku pruhu je nejbližší záchytný bod až první dlaždice
+ * s hodinou, takže se pruh sám posunul a schoval popisek „dnes" i kus první
+ * hodiny. Zachytávání navíc dává smysl u karet, které se prohlížejí po jedné –
+ * tohle je souvislá časová osa, kde je volný posun správně. */
 .pocasi-pruh{display:flex;gap:4px;overflow-x:auto;margin:0 -14px 12px;padding:2px 14px 4px;
-  scrollbar-width:none;scroll-snap-type:x proximity}
+  scrollbar-width:none}
 .pocasi-pruh::-webkit-scrollbar{display:none}
 
-.pocasi-hod{flex:0 0 auto;scroll-snap-align:start;display:flex;flex-direction:column;
+.pocasi-hod{flex:0 0 auto;display:flex;flex-direction:column;
   align-items:center;gap:3px;min-width:52px;padding:9px 6px;
   background:var(--plocha);border:var(--line);border-radius:var(--r-s)}
 /* ZÍTŘEJŠÍ HODINY NA TMAVŠÍ PLOŠE. Pruh sahá 24 hodin dopředu a bez rozlišení
