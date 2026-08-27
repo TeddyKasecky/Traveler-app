@@ -104,7 +104,7 @@ export async function renderNastaveni() {
   doPrihradky(
     'nastMapa',
     `<div class="sechd">${IC('i-strom')}Kresby krajiny</div>
-    <div class="meta" style="margin:0 2px 10px">Stromy a hory kreslené do mapy. Stojí na skutečných lesích a skutečných hřebenech.${kresbyJdou ? '' : ' <b>Napřed je potřeba stáhnout malovanou mapu.</b>'}</div>
+    <div class="meta">Stromy a hory kreslené do mapy. Stojí na skutečných lesích a skutečných hřebenech.${kresbyJdou ? '' : ' <b>Napřed je potřeba stáhnout malovanou mapu.</b>'}</div>
     <div class="volbakresby${kresbyJdou ? '' : ' nejde'}">
       ${segment(
         [
@@ -122,7 +122,7 @@ export async function renderNastaveni() {
   doPrihradky(
     'nastPlan',
     `<div class="sechd">${IC('i-route')}Řazení výprav</div>
-    <div class="meta" style="margin:0 2px 10px">Jak řadit výpravy v knihovně a ve složkách. Řazení se nemění tím, kterou výpravu si otevřeš.</div>
+    <div class="meta">Jak řadit výpravy v knihovně a ve složkách. Řazení se nemění tím, kterou výpravu si otevřeš.</div>
     ${segment(
       [
         { id: 'abecedne', popisek: 'Abecedně' },
@@ -135,7 +135,7 @@ export async function renderNastaveni() {
     )}
 
     <div class="sechd">${IC('i-route')}Typ dopravy pro přepočet trasy</div>
-    <div class="meta" style="margin:0 2px 10px">Čím se počítá skutečná trasa (tlačítko Přepočítat v Itineráři).</div>
+    <div class="meta">Čím se počítá skutečná trasa (tlačítko Přepočítat v Itineráři).</div>
     ${segment(
       [
         { id: 'car_fast', popisek: 'Auto' },
@@ -147,32 +147,40 @@ export async function renderNastaveni() {
     )}
 
     <div class="sechd">${IC('i-nastaveni')}Vlastní API klíč Mapy.com</div>
-    <div class="meta" style="margin:0 2px 10px">Zatím appka používá jeden sdílený klíč pro všechny. Možnost nastavit si vlastní přijde později.</div>
+    <div class="meta">Zatím appka používá jeden sdílený klíč pro všechny. Možnost nastavit si vlastní přijde později.</div>
     <div class="volbaapiklic nejde">
       <input type="text" placeholder="Zatím není k dispozici" disabled>
       <button class="btn small" disabled>Uložit</button>
     </div>`
   )
 
-  // ZBYLÉ ČTYŘI SKUPINY MAJÍ JEDEN ODDÍL, takže se nadpis uvnitř vynechává –
-  // jinak by na obrazovce stál dvakrát pod sebou, jednou v hlavičce skupiny
-  // a hned zas v těle.
-  doPrihradky('nastMisto', `<div class="meta" id="mistoInfo" style="margin:0 2px 10px">Počítá se…</div>`)
+  // KAŽDÁ SKUPINA ZAČÍNÁ NADPISEM, i ta s jediným oddílem. Do srpna 2026 ho
+  // jednotématické neměly, aby neopakovaly hlavičku – jenže vedle skupin, které
+  // ho měly, to nevypadalo jako záměr, ale jako chybějící nadpis. Vyřešilo se to
+  // opačně: hlavička říká „kam to patří" (Výpravy, Úložiště, Vývoj) a nadpis
+  // uvnitř „co to je" (Karta výpravy, Místo v telefonu, Debug poznámkovač).
+  doPrihradky(
+    'nastMisto',
+    `<div class="sechd">${IC('i-globe')}Místo v telefonu</div>
+    <div class="meta" id="mistoInfo">Počítá se…</div>`
+  )
 
   doPrihradky(
     'nastKarta',
-    `<div class="meta" style="margin:0 2px 10px">Karta „Naplánovat výlet" se ukáže při prvním otevření Mapy, pak je sbalená do bubliny vpravo dole.</div>
-    <div class="btnrow" style="margin:0">
+    `<div class="sechd">${IC('i-van')}Karta výpravy</div>
+    <div class="meta">Karta „Naplánovat výlet" se ukáže při prvním otevření Mapy, pak je sbalená do bubliny vpravo dole.</div>
+    <div class="btnrow">
       <button class="btn small" id="vypravaZnovu">Ukázat ji znovu</button>
     </div>`
   )
 
   doPrihradky(
     'nastPoznamkovac',
-    `<div class="meta" style="margin:0 2px 10px">Zápis nápadu, bugu nebo poznámky za běhu appky, i s technickým kontextem. Přepínač řídí <b>jen</b> to, jestli je v hlavičce vidět kolečko – zachytávání chyb běží vždycky.</div>
+    `<div class="sechd">${IC('i-brouk')}Debug poznámkovač</div>
+    <div class="meta">Zápis nápadu, bugu nebo poznámky za běhu appky, i s technickým kontextem. Přepínač řídí <b>jen</b> to, jestli je v hlavičce vidět kolečko – zachytávání chyb běží vždycky.</div>
     ${segment([{ id: 'zap', popisek: 'Zapnutý' }, { id: 'vyp', popisek: 'Vypnutý' }], prefs.debugRezim ? 'zap' : 'vyp', 'debugSeg')}
-    <div class="meta" style="margin:8px 2px 10px">Píše jako: <b id="debugAutorInfo">${esc(prefs.debugAutor || 'zeptáme se při prvním zápisu')}</b></div>
-    <div class="btnrow" style="margin:0">
+    <div class="meta">Píše jako: <b id="debugAutorInfo">${esc(prefs.debugAutor || 'zeptáme se při prvním zápisu')}</b></div>
+    <div class="btnrow">
       <button class="btn small" id="debugAutorZmen">Změnit přezdívku</button>
       <button class="btn small" id="debugHesloZmen">Heslo odesílání</button>
       <button class="btn small" id="debugOtevri">Otevřít poznámkovač${zaznamu ? ` (${zaznamu})` : ''}</button>
@@ -181,8 +189,11 @@ export async function renderNastaveni() {
 
   doPrihradky(
     'nastOAplikaci',
-    `<div class="meta" style="margin:0 2px 4px">Vandrbuch je statická aplikace bez serveru. Poznámky, hodnocení a fotky nikam neodcházejí – jsou jen v tomhle telefonu.</div>
-    <div class="meta" style="margin:0 2px 10px">Podklad malované mapy: <b>OpenStreetMap</b> přes Protomaps (ODbL) · obrysy zemí <b>Natural Earth</b> (public domain) · stínování terénu z výškopisu <b>elevation-tiles-prod</b> (SRTM, GMTED) · online dlaždice <b>OpenStreetMap</b>.</div>`
+    `<div class="sechd">${IC('i-book')}Co je Vandrbuch</div>
+    <div class="meta">Statická aplikace bez serveru. Poznámky, hodnocení a fotky nikam neodcházejí – jsou jen v tomhle telefonu.</div>
+
+    <div class="sechd">${IC('i-globe')}Zdroje dat</div>
+    <div class="meta">Podklad malované mapy: <b>OpenStreetMap</b> přes Protomaps (ODbL) · obrysy zemí <b>Natural Earth</b> (public domain) · stínování terénu z výškopisu <b>elevation-tiles-prod</b> (SRTM, GMTED) · online dlaždice <b>OpenStreetMap</b>.</div>`
   )
 
   // PŘEPÍNÁNÍ SKUPIN. Hlavičky jsou staticky v `index.html` a překreslením

@@ -205,7 +205,7 @@
         <!-- Malovaná mapa Evropy. Má několik megabajtů, takže není součástí
              instalace a stahuje se odsud na vyžádání do IndexedDB. -->
         <div class="sechd"><svg class="ic"><use href="#i-map"/></svg>Offline mapa</div>
-        <div class="meta" style="margin:0 2px 10px">Čím se kreslí mapa bez signálu. Online mapa z OpenStreetMap se přepíná pilulkou přímo v mapě.</div>
+        <div class="meta">Čím se kreslí mapa bez signálu. Online mapa z OpenStreetMap se přepíná pilulkou přímo v mapě.</div>
         <div class="volbarow" id="offlineVolba">
           <button class="volba" data-offline="zjednodusena">
             <b>Zjednodušená</b><span>Obrysy zemí, města a stínování terénu. Je v aplikaci, funguje hned.</span>
@@ -215,7 +215,7 @@
           </button>
         </div>
         <div class="mapastav" id="mapaStav"></div>
-        <div class="btnrow" style="margin:0">
+        <div class="btnrow">
           <button class="btn primary" id="mapaStahni"><svg class="ic"><use href="#i-save"/></svg>Stáhnout mapu</button>
           <button class="btn small" id="mapaSmaz" hidden>Smazat</button>
         </div>
@@ -237,16 +237,16 @@
       </button>
       <div class="sbalka-telo" data-sbalka-telo="zalohy" hidden>
         <div class="sechd"><svg class="ic"><use href="#i-save"/></svg>Zálohy</div>
-        <div class="meta" style="margin:0 2px 10px">Poznámky, hodnocení i fotky jsou jen v tomhle telefonu. Záloha je jediná cesta, jak si je přenést jinam.</div>
-        <div class="btnrow" style="margin:0">
+        <div class="meta">Poznámky, hodnocení i fotky jsou jen v tomhle telefonu. Záloha je jediná cesta, jak si je přenést jinam.</div>
+        <div class="btnrow">
           <button class="btn primary" id="expBtn"><svg class="ic"><use href="#i-save"/></svg>Stáhnout zálohu</button>
           <label class="btn" style="cursor:pointer"><svg class="ic"><use href="#i-up"/></svg>Obnovit ze zálohy<input id="impIn" type="file" accept=".json" hidden></label>
         </div>
-        <div class="meta" id="zalohaInfo" style="margin-top:7px"></div>
+        <div class="meta" id="zalohaInfo"></div>
 
         <div class="sechd"><svg class="ic"><use href="#i-book"/></svg>Vlastní data míst</div>
-        <div class="meta" style="margin:0 2px 10px">CSV se sloupci z „vse-dohromady-v3" nahradí vestavěných 580 míst. Poznámky a hodnocení zůstanou.</div>
-        <div class="btnrow" style="margin:0">
+        <div class="meta">CSV se sloupci z „vse-dohromady-v3" nahradí vestavěných 580 míst. Poznámky a hodnocení zůstanou.</div>
+        <div class="btnrow">
           <label class="btn small" style="cursor:pointer"><svg class="ic"><use href="#i-book"/></svg>Načíst CSV<input id="csvIn" type="file" accept=".csv" hidden></label>
           <button class="btn small" id="dataReset">Vrátit vestavěná data</button>
         </div>
@@ -255,21 +255,21 @@
 
     <div class="sbalka">
       <button class="sbalka-hlava" data-sbalka="karta" aria-expanded="false">
-        <svg class="ic"><use href="#i-van"/></svg><span>Karta výpravy</span><svg class="ic"><use href="#i-sipka"/></svg>
+        <svg class="ic"><use href="#i-van"/></svg><span>Výpravy</span><svg class="ic"><use href="#i-sipka"/></svg>
       </button>
       <div class="sbalka-telo" data-sbalka-telo="karta" hidden><div id="nastKarta"></div></div>
     </div>
 
     <div class="sbalka">
       <button class="sbalka-hlava" data-sbalka="misto" aria-expanded="false">
-        <svg class="ic"><use href="#i-globe"/></svg><span>Místo v telefonu</span><svg class="ic"><use href="#i-sipka"/></svg>
+        <svg class="ic"><use href="#i-globe"/></svg><span>Úložiště</span><svg class="ic"><use href="#i-sipka"/></svg>
       </button>
       <div class="sbalka-telo" data-sbalka-telo="misto" hidden><div id="nastMisto"></div></div>
     </div>
 
     <div class="sbalka">
       <button class="sbalka-hlava" data-sbalka="poznamkovac" aria-expanded="false">
-        <svg class="ic"><use href="#i-brouk"/></svg><span>Poznámkovač</span><svg class="ic"><use href="#i-sipka"/></svg>
+        <svg class="ic"><use href="#i-brouk"/></svg><span>Vývoj</span><svg class="ic"><use href="#i-sipka"/></svg>
       </button>
       <div class="sbalka-telo" data-sbalka-telo="poznamkovac" hidden><div id="nastPoznamkovac"></div></div>
     </div>

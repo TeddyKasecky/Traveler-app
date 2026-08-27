@@ -50,7 +50,8 @@ function achievementyProfilu() {
   pripisProfilove()
   const ziskanych = PROFILOVE.filter((a) => store.achievementy[a.id]).length
   return `
-    <div class="meta" style="margin:0 2px 10px">Získáno <b>${ziskanych}</b> z ${PROFILOVE.length}.</div>
+    <div class="sechd">${IC('i-spark')}Achievementy</div>
+    <div class="meta">Získáno <b>${ziskanych}</b> z ${PROFILOVE.length}.</div>
     <div class="achv-mriz profil">${PROFILOVE.map((a) => {
       const ma = !!store.achievementy[a.id]
       let prubeh = ''
@@ -113,14 +114,15 @@ export function renderProfil() {
     </div>
     <div class="meta" style="margin:6px 2px 0">Použije se v pozdravu na Domů. Nikam se neposílá.</div>
 
-    ${sbalka('achievementy', 'Achievementy', achievementyProfilu(), { ikona: 'i-spark' })}
+    ${sbalka('achievementy', 'Odznaky', achievementyProfilu(), { ikona: 'i-spark' })}
     ${sbalka(
       'auto',
-      'Čím jezdíme',
-      `<div class="meta" style="margin:0 2px 10px">Vybrané auto jezdí po mapě na místě tvé polohy.</div>${vyberAutaHtml()}`,
+      'Auto',
+      `<div class="sechd">${IC('i-van')}Čím jezdíme</div>
+      <div class="meta">Vybrané auto jezdí po mapě na místě tvé polohy.</div>${vyberAutaHtml()}`,
       { ikona: 'i-van' }
     )}
-    ${sbalka('pozice', 'Uložené pozice', pozicHtml(), { ikona: 'i-dum' })}
+    ${sbalka('pozice', 'Místa', pozicHtml(), { ikona: 'i-dum' })}
   `
 
   // Jméno se ukládá při odchodu z políčka, ne při každém písmenu: savePrefs()
@@ -131,6 +133,10 @@ export function renderProfil() {
   // JMÉNO A „CO MÁŠ ZA SEBOU" ZŮSTÁVAJÍ VIDĚT, zbytek je ve sbalitelných
   // skupinách – hlášení `tadeas-001`. Mřížka 96 aut a dvacet achievementů
   // dělaly z Profilu obrazovku, která se scrollovala donekonečna.
+  //
+  // Hlavička skupiny říká „kam to patří" (Odznaky, Auto, Místa), nadpis uvnitř
+  // „co to je" (Achievementy, Čím jezdíme, Uložené pozice). Kdyby se jmenovaly
+  // stejně, stál by tentýž nápis dvakrát pod sebou – viz `sbalka()` ve vzory.js.
   napojSbalky(wrap, otevreneSkupiny)
 
   napojVyberAuta(wrap, () => {

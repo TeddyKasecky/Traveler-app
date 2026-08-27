@@ -30,9 +30,25 @@
  * v knihovně Výprav, jen bez výchozího otočení: skupina začíná zavřená. */
 .sbalka-hlava.on svg.ic:last-child{transform:rotate(90deg)}
 
-.sbalka-telo{padding:0 14px 14px;border-top:var(--line)}
-/* První nadpis uvnitř nemá odsazovat od linky dvakrát. */
-.sbalka-telo .sechd:first-child{margin-top:12px}
+/* ROZESTUPY UVNITŘ SKUPINY URČUJE TOHLE, NE `style=""` V HTML. Do srpna 2026
+ * si je psal každý oddíl sám a bylo jich dvaadvacet ručně dopsaných – text pak
+ * seděl podle toho, čím skupina začínala: nahoře 13 px u nadpisu, ale jen 1 px
+ * u prózy, takže sedla natěsno na dělicí linku. Dole vycházelo 14 až 24 px.
+ * Inline okraj přebije jakékoli pravidlo v CSS, takže se to jinak srovnat
+ * nedalo než jeho odstraněním z HTML. */
+.sbalka-telo{padding:13px 14px 14px;border-top:var(--line)}
+/* První nadpis dostane horní mezeru z odsazení těla; těch svých dvacet pixelů
+ * má oddělovat oddíly mezi sebou, ne odstrkávat první od hlavičky. */
+.sbalka-telo .sechd:first-child{margin-top:0}
+.sbalka-telo .meta{margin:0 2px 10px}
+/* Text hned pod přepínačem potřebuje odsadit – přepínač je vysoký blok
+ * a bez mezery se na něj text nalepí. */
+.sbalka-telo .segment + .meta{margin-top:8px}
+.sbalka-telo .btnrow{margin:0 0 10px}
+/* Spodní mezeru dělá odsazení těla, ne okraj posledního prvku. `> div >` je
+ * kvůli přihrádkám (`#nastMapa` a spol.), kterými se plní živý obsah. */
+.sbalka-telo > :last-child,
+.sbalka-telo > div > :last-child{margin-bottom:0}
 
 /* Odznak s počtem na sbalené hlavičce. Bez něj visí smyčka „zapiš →
  * vyexportuj → commitni" na tom, že si člověk vzpomene panel rozbalit –

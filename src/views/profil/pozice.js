@@ -19,6 +19,7 @@ import { pocetOdkazuNaPozici } from '../plan/routing.js'
 export function pozicHtml() {
   const seznam = ulozenePozice()
   return `
+    <div class="sechd">${IC('i-dum')}Uložené pozice</div>
     ${
       seznam.length
         ? seznam
@@ -33,7 +34,7 @@ export function pozicHtml() {
               })
             )
             .join('')
-        : `<div class="meta" style="margin:0 2px 10px">Zatím žádná – přidej třeba Domov nebo Práci.</div>`
+        : `<div class="meta">Zatím žádná – přidej třeba Domov nebo Práci.</div>`
     }
     <div class="pradek"><button class="btn small" id="pozicePridat">${IC('i-plus')}Přidat pozici</button></div>`
 }
