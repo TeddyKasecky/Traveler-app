@@ -13,7 +13,16 @@
 /* Karta je opsaná z `.dz-karta` v poznámkovači, jen bez vnitřního odsazení –
  * to si řeší hlavička a tělo každé zvlášť. */
 .sbalka{background:var(--card);border:var(--line);border-radius:var(--r-s);
-  margin:0 0 12px;overflow:hidden}
+  margin:20px 0 12px;overflow:hidden}
+/* DVACET NAHOŘE PLATÍ JEN PRO PRVNÍ SKUPINU. Ta navazuje na obsah, který
+ * skupina není (přepínač vzhledu v Nastavení, pole se jménem v Profilu),
+ * a dvacet je rytmus, kterým se tady oddělují oddíly – stejně jako `.sechd`.
+ * Do srpna 2026 měla `.sbalka` okraj jen dole, takže první karta seděla
+ * NATĚSNO na tom, co bylo nad ní.
+ *
+ * Mezi kartami zůstává dvanáct: jsou to rovnocenné sousedy, ne nový oddíl.
+ * (Okraje sousedů se slučují, takže se 12 zdola a 12 shora sečte na 12.) */
+.sbalka + .sbalka{margin-top:12px}
 
 .sbalka-hlava{display:flex;align-items:center;gap:10px;width:100%;padding:14px;
   border:0;background:none;color:var(--ink);cursor:pointer;

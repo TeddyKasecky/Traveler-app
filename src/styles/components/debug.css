@@ -293,7 +293,7 @@
  * samotný seznam poznámek, přitom se na ně sahá jednou za čas – a čtyři
  * tlačítka pod sebou opticky matou v tom, co je vlastně hlavní akce. */
 /* Vzhled sbalitelného panelu se v srpnu 2026 přestěhoval do
- * `components/sbalka.css`, protože ho dostalo i Nastavení a Profil. Tady
- * zůstalo jen to, co platí pro poznámkovač: panel EXPORT je karta bez
- * vnějšího odsazení, aby navazoval na seznam nad sebou. */
-.sbalka.dz-export{margin-top:0}
+ * `components/sbalka.css`, protože ho dostalo i Nastavení a Profil.
+ * Poznámkovač si k němu nic nepřidává: panel EXPORT je první skupina na
+ * obrazovce a odsazuje se stejně jako první skupina v Nastavení a v Profilu.
+ * Vlastní `margin-top:0` tu chvíli byl a dělal z jednoho pravidla dvě. */
