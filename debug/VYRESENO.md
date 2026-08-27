@@ -8,3 +8,5 @@ stav zpátky. Řádky skládá `npm run debug-zavri`, ne ruka: ručně napsaný
 - `tadeas-002` · 2026-08-27 · hotovo · výběr bodu z mapy vrací zpátky, po potvrzení i po zrušení
 - `tadeas-f32-008` · 2026-08-27 · zahozeno · zkouška odesílání, ne hlášení
 - `tadeas-001` · 2026-08-27 · hotovo · Nastavení i Profil poskládané do sbalitelných skupin
+- `tadeas-f32-009` · 2026-08-27 · hotovo · Nastavení → Domů: tabulka sedmi sekcí, šipky nahoru/dolů a oko na vypnutí. Pořadí i zhasnuté jdou do zálohy. Zhasnutá sekce se ani nepočítá.
+- `pc-tadeas-001` · 2026-08-27 · hotovo · Počasí u tebe je na Domů: 24 hodin, 7 dní, nejbližší město, nastavitelná čerstvost. Zbytek (Itinerář, detail místa, Na cestě, klimatické normály) žije v NAPADY.md jako N19 a N20 a v tadeas-f32-010.
