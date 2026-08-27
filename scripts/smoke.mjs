@@ -130,6 +130,22 @@ const kontrola = async (popis, fn, ocekavano) => {
   console.log(`  ${ok ? 'ok   ' : 'CHYBA'} ${popis.padEnd(42)} ${hodnota}`)
 }
 
+/**
+ * Zavře detail místa tlačítkem zpět a počká, až opravdu zmizí.
+ *
+ * PROČ NE JEDNO `goBack()`: detail i dialog nad ním se oba registrují jako
+ * překryv s vlastním krokem v historii, takže po zavřeném dialogu je potřeba
+ * krok navíc. Do srpna 2026 to nevadilo, protože klik v dialogu detail zavíral
+ * sám (chyba tadeas-003) – testy níž na tom tiše stály.
+ */
+const zavriDetail = async () => {
+  for (let i = 0; i < 3; i++) {
+    if ((await page.locator('#sheet.show').count()) === 0) return
+    await page.goBack()
+    await page.waitForTimeout(400)
+  }
+}
+
 // 57 z původní aplikace + `i-filtr` (trychtýř podle listu „SADA PIKTOGRAMŮ",
 // viz VZHLED.md) + `i-zalozka` + `i-slozka` + `i-zamek` (ukončené cesty
 // v knihovně, srpen 2026) + `i-dum` (uložené pozice v profilu, srpen 2026)
@@ -224,6 +240,28 @@ await kontrola('Profil má adresu', () => page.evaluate(() => location.hash), '#
 await kontrola('Profil má čísla', () => page.locator('#profilInner .pstat').count(), 6)
 await kontrola('Profil už nemá nastavení', () =>
   page.locator('#panelProfil #expBtn, #panelProfil .motivbtn, #panelProfil #csvIn').count(), 0)
+
+// VÝBĚR BODU Z MAPY MUSÍ VRÁTIT TAM, ODKUD SE PŘIŠLO (hlášení tadeas-002).
+// `vyberBod()` se přepne na mapu; do srpna 2026 si nepamatovalo, odkud, takže
+// člověk po výběru i po zrušení zůstal stát na mapě a musel se proklikat zpět.
+// Testuje se z Profilu, protože je to nejkratší cesta k té službě – z plánu
+// vede přes výpravu, den a průvodce bodem, ale kód je tentýž.
+await page.click('#pozicePridat')
+await page.waitForTimeout(300)
+await page.fill('#dialogVstup', 'Zkušební pozice')
+await page.click('#dialogAno')
+await page.waitForTimeout(300)
+// Druhá volba v „Kde to je?" je „Vybrat na mapě".
+await page.click('#dialog.show .dialog-volba[data-i="1"]')
+await page.waitForTimeout(500)
+await kontrola('výběr bodu přepnul na mapu', () => page.evaluate(() => document.body.dataset.tab), 'map')
+await kontrola('a svítí lišta výběru', () => page.locator('.vyberbod-listka').count(), 1)
+await page.click('.vyberbod-listka [data-act="zrusit"]')
+await page.waitForTimeout(500)
+await kontrola('zrušení vrátilo zpátky do Profilu', () =>
+  page.evaluate(() => document.getElementById('panelProfil').classList.contains('show')), true)
+await kontrola('a lišta zmizela', () => page.locator('.vyberbod-listka').count(), 0)
+
 await page.goBack()
 await page.waitForTimeout(400)
 
@@ -887,6 +925,24 @@ await kontrola('detail má poznámku', () => page.locator('#noteBox').count(), 1
 // Pátá ikona je košík výpravy (srpen 2026) – „chci vidět, zatím nevím kdy",
 // na rozdíl od plánu, který je závazek s pořadím a dnem.
 await kontrola('detail má ikonovou řadu', () => page.locator('#sheet .ikonrada .ikonbtn').count(), 5)
+
+// ZRUŠENÍ DIALOGU NAD DETAILEM NESMÍ ZAVŘÍT DETAIL (hlášení tadeas-003).
+// Detail se zavírá klikem mimo panel a klik uvnitř dialogu je technicky „mimo“,
+// takže „Do košíku“ → Zrušit člověka vyhodilo na mapu. Dvakrát: tlačítkem
+// Zrušit a klikem na závěs – ten dialog zavírá taky a do `#dialog` nepatří.
+await page.evaluate(() => document.getElementById('dKosik').click())
+await page.waitForTimeout(400)
+await kontrola('výběr výpravy se otevřel nad detailem', () => page.locator('#dialog.show').count(), 1)
+await page.click('#dialogNe')
+await page.waitForTimeout(400)
+await kontrola('a po Zrušit detail zůstal otevřený', () => page.locator('#sheet.show').count(), 1)
+
+await page.evaluate(() => document.getElementById('dKosik').click())
+await page.waitForTimeout(400)
+await page.evaluate(() => document.getElementById('backdrop').click())
+await page.waitForTimeout(400)
+await kontrola('ani klik na závěs detail nezavře', () => page.locator('#sheet.show').count(), 1)
+await kontrola('a dialog je pryč', () => page.locator('#dialog.show').count(), 0)
 await page.evaluate(() => document.getElementById('dVice').click())
 await page.waitForTimeout(300)
 await kontrola('„…" nabízí vedlejší akce', () =>
@@ -1020,8 +1076,12 @@ await kontrola('místo se uložilo do košíku', () =>
     return Object.values(s.kosik || {}).some((x) => x.length === 1)
   })
 )
-await page.goBack()
-await page.waitForTimeout(500)
+// I POTVRZENÍ nechává detail otevřený, ze stejného důvodu jako zrušení výš.
+// Do srpna 2026 ho zavíralo a tenhle test na tom tiše stál: `goBack()` níž
+// zavíral už jen zbytek, protože detail spadl sám (hlášení tadeas-003).
+await kontrola('detail zůstal otevřený i po potvrzení', () => page.locator('#sheet.show').count(), 1)
+await zavriDetail()
+await kontrola('a zpět ho zavře', () => page.locator('#sheet.show').count(), 0)
 await page.click('#tabs button[data-tab="plan"]')
 await page.waitForTimeout(300)
 // Košík je plovoucí plát nad obrazovkou, ne karta segmentu – tahá se z něj

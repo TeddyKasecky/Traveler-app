@@ -91,9 +91,15 @@ export function zapisAtomicky(cesta, obsah) {
 /**
  * Která `id` už jsou uzavřená ve `VYRESENO.md`.
  *
- * Řádek, který neodpovídá tvaru, se **hlásí**, ne přeskakuje: parser rejstříku
- * ho tiše ignoruje a záznam by z appky beze stopy zmizel. Právě proto řádky
- * skládá `debug-zavri.mjs` a nepíšou se rukou.
+ * Řádek, který **vypadá jako záznam, ale tvar nemá**, se hlásí, ne přeskakuje:
+ * parser rejstříku ho tiše ignoruje a záznam by z appky beze stopy zmizel.
+ * Právě proto řádky skládá `debug-zavri.mjs` a nepíšou se rukou.
+ *
+ * ZÁZNAM SE POZNÁ PODLE ODRÁŽKY. Všechno ostatní je próza a přeskakuje se –
+ * hlavička souboru je čtyři řádky vysvětlení a do srpna 2026 se hlásila jako
+ * čtyři vadné záznamy. Přišlo se na to teprve tím, že `VYRESENO.md` do té doby
+ * ani jednou nevznikl: `debug-zavri.mjs` tu hlavičku píše a vlastní kontrola ji
+ * pak neuměla přečíst.
  *
  * @param {string} [slozka]
  * @returns {{uzavrene: Map<string, string>, vadneRadky: string[]}}
@@ -106,7 +112,7 @@ export function prectiVyreseno(slozka = VYCHOZI_SLOZKA) {
 
   for (const radek of fs.readFileSync(cesta, 'utf8').split('\n')) {
     const t = radek.trim()
-    if (!t || t.startsWith('#') || t.startsWith('<!--')) continue
+    if (!t.startsWith('- ')) continue
     const m = /^-\s+`([^`]+)`\s+·\s+(\d{4}-\d{2}-\d{2})\s+·\s+(\S+)\s*(?:·\s*(.*))?$/.exec(t)
     if (!m) {
       vadneRadky.push(t)

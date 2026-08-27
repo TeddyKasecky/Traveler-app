@@ -62,6 +62,23 @@ export function initSheet() {
 
   document.addEventListener('click', (e) => {
     if (!jeOtevreny()) return
+
+    // KLIK V DIALOGU NEBO NA ZÁVĚSU NENÍ „mimo detail“. Dialog je modální a leží
+    // výš, takže mu ten klik patří – jenže technicky je mimo `#sheet`, takže ho
+    // tahle obsluha zavírala: „Do plánu“ nebo „Do košíku“ v detailu otevřelo
+    // výběr výpravy, Zrušit dialog zavřel a člověk místo návratu do detailu
+    // skončil na mapě, která se pod ním odkryla (hlášení tadeas-003).
+    //
+    // PTÁ SE TO NA CÍL KLIKU, NE NA STAV `jeOtevrenyDialog()`. Ten už je totiž
+    // v tuhle chvíli `false`: obsluha tlačítka v dialogu doběhne první a stav
+    // vynuluje, kdežto tenhle odběr na `document` se vyhodnocuje až po ní.
+    // Přesně na stejné pořadí doplatila kontrola odpojeného cíle níž.
+    //
+    // `#backdrop` je tu proto, že dialog se zavírá i klikem vedle karty a ten
+    // do `#dialog` nepatří. Obsah dialogu v DOM po zavření zůstává (maže ho až
+    // otevření dalšího), takže `closest()` cíl najde i po zavření.
+    if (e.target.closest('#dialog') || e.target.id === 'backdrop') return
+
     // Odpojený cíl znamená, že klik obsloužil někdo uvnitř aplikace a při tom
     // překreslil – „mimo panel“ to není.
     //

@@ -196,12 +196,12 @@ Poprvé je potřeba jednou `npm install`.
 
 | Příkaz | Co ověří |
 |---|---|
-| `npm run smoke` | proklikání v prohlížeči, 379 kontrol |
+| `npm run smoke` | proklikání v prohlížeči, 389 kontrol |
 | `npm run smoke:single` | totéž pro variantu z disku, 339 kontrol |
 | `npm run check-uloziste` | že se poznámky neztratí, když dojde místo, 36 kontrol |
 | `npm run check-regrese` | PWA, zálohy, fotky, poloha, service worker — 26 bodů |
 | `npm run check-dny` | dny, výpravy, body trasy a úpravy cesty, 203 bodů |
-| `npm run check-debug` | poznámkovač od zápisu po stav z repozitáře, 196 bodů |
+| `npm run check-debug` | poznámkovač od zápisu po stav z repozitáře, 199 bodů |
 | `npm run check-filters` | 134 kombinací filtrů proti druhé implementaci |
 | `npm run check-worker` | že server nepustí dál, co nemá, 48 bodů |
 | `npm run check-projekce` | sledování polohy na trase, 13 bodů |

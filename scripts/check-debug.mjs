@@ -628,6 +628,25 @@ t('řádek má dohodnutý tvar', zavreni.radek === '- `tadeas-002` · 2026-03-04
 t('a je ve VYRESENO.md', precti('VYRESENO.md').includes(zavreni.radek))
 t('VYRESENO.md se dá přečíst zpátky', prectiVyreseno(HRISTE).uzavrene.get('tadeas-002') === '2026-03-04')
 
+// VLASTNÍ HLAVIČKA MUSÍ PROJÍT. `zavriZaznam()` píše nad řádky čtyři řádky
+// vysvětlení a do srpna 2026 je tatáž kontrola hlásila jako čtyři vadné
+// záznamy – vyplavalo to teprve prvním skutečným zavřením, protože do té doby
+// `VYRESENO.md` v repozitáři vůbec nevznikl.
+t('próza v hlavičce se nehlásí jako vadný řádek', prectiVyreseno(HRISTE).vadneRadky.length === 0)
+
+// Zároveň to nesmí přestat hlídat to, kvůli čemu kontrola vznikla: ručně
+// napsaná odrážka se špatným tvarem musí být vidět, jinak záznam z rejstříku
+// beze stopy zmizí.
+{
+  const cesta = path.join(HRISTE, 'VYRESENO.md')
+  const puvodni = fs.readFileSync(cesta, 'utf8')
+  fs.writeFileSync(cesta, `${puvodni}- tadeas-009 hotovo bez zpětných uvozovek\n`, 'utf8')
+  const v = prectiVyreseno(HRISTE)
+  t('ale rozbitá odrážka se hlásí dál', v.vadneRadky.length === 1)
+  t('a zbytek souboru se přitom přečte', v.uzavrene.get('tadeas-002') === '2026-03-04')
+  fs.writeFileSync(cesta, puvodni, 'utf8')
+}
+
 t('dvakrát zavřít nejde', zavriZaznam('tadeas-002', 'hotovo', '', { slozka: HRISTE }).ok === false)
 t('a nezapíše se podruhé', (precti('VYRESENO.md').match(/tadeas-002/g) || []).length === 1)
 t('neznámé id neudělá nic', zavriZaznam('nikdo-001', 'hotovo', '', { slozka: HRISTE }).ok === false)

@@ -297,6 +297,11 @@ export function prepniVKosiku(id) {
  * Zapne režim výběru míst: ťuknutí na špendlík přidává do košíku místo
  * otevírání detailu, dole svítí lišta s počtem a „Vytvořit plán".
  *
+ * NEVRACÍ SE ZPÁTKY NA PŘEDCHOZÍ ZÁLOŽKU, na rozdíl od `vyberBod()` níž.
+ * Není to přehlédnutí: tenhle režim se spouští z tlačítka „+“ na mapě, takže
+ * se není kam vracet, a končí založením výpravy – po něm se stejně přechází
+ * jinam. `vyberBod()` se naopak volá z plánu a z profilu.
+ *
  * @param {(ids: string[]) => void} cb  dostane vybraná id v pořadí ťukání
  */
 export function zapniVyberMist(cb) {
@@ -338,8 +343,8 @@ export function vypniVyberMist() {
 
 /* ================= výběr bodu ================= */
 
-/** @type {{marker: L.CircleMarker|null, listka: HTMLElement|null, cb: Function|null, klik: Function|null}} */
-const vyberBodu = { marker: null, listka: null, cb: null, klik: null }
+/** @type {{marker: L.CircleMarker|null, listka: HTMLElement|null, cb: Function|null, klik: Function|null, zpet: string|null}} */
+const vyberBodu = { marker: null, listka: null, cb: null, klik: null, zpet: null }
 
 /**
  * Výběr bodu ťuknutím do mapy – pro vlastní místa v plánu.
@@ -349,11 +354,18 @@ const vyberBodu = { marker: null, listka: null, cb: null, klik: null }
  * viditelná lišta – člověk potřebuje vidět mapu se špendlíkem, když se
  * rozhoduje.
  *
+ * VRACÍ ZPÁTKY TAM, ODKUD SE PŘIŠLO, a to po potvrzení i po zrušení. Do srpna
+ * 2026 se jen přepnulo na mapu a člověk na ní zůstal stát – vybral bod pro
+ * vlastní pozici v plánu a musel se do plánu proklikat sám (hlášení
+ * tadeas-002). Volá se ze čtyř míst (košík, plán ×2, profil) a ani jedno
+ * z nich mapa není.
+ *
  * @param {(lat: number, lon: number) => void} cb
  */
 export function vyberBod(cb) {
   zrusVyberBodu()
   vyberBodu.cb = cb
+  vyberBodu.zpet = S.activeTab
   aktivujZalozku('map')
 
   const listka = document.createElement('div')
@@ -385,7 +397,11 @@ export function vyberBod(cb) {
     const poloha = vyberBodu.marker ? vyberBodu.marker.getLatLng() : null
     const hotovo = act.dataset.act === 'potvrdit' && poloha
     const zavolej = vyberBodu.cb
+    const zpet = vyberBodu.zpet
     zrusVyberBodu()
+    // Zpátky DŘÍV, než se zavolá `cb`. Ten překresluje obrazovku, na kterou se
+    // vracíme (přidává bod do plánu), takže po přepnutí by kreslil naslepo.
+    if (zpet && zpet !== 'map') aktivujZalozku(zpet)
     if (hotovo && zavolej) zavolej(+poloha.lat.toFixed(5), +poloha.lng.toFixed(5))
   }
 }
@@ -396,6 +412,7 @@ function zrusVyberBodu() {
   if (vyberBodu.marker) vyberBodu.marker.remove()
   if (vyberBodu.listka) vyberBodu.listka.remove()
   vyberBodu.marker = vyberBodu.listka = vyberBodu.cb = vyberBodu.klik = null
+  vyberBodu.zpet = null
 }
 
 /**

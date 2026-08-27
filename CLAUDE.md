@@ -75,12 +75,12 @@ npm run preview          # prohlédnutí sestaveného webu
 npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 36 kontrol
-npm run check-debug      # debug poznámkovač: identita, otisk, rejstřík, složka debug/, 196 bodů
+npm run check-debug      # debug poznámkovač: identita, otisk, rejstřík, složka debug/, 199 bodů
 npm run check-worker     # že Worker nepustí dál, co nemá, 48 bodů
 npm run debug-uklid      # duplicity a zavřené záznamy ze složky debug/ ven
 npm run debug-zavri      # uzavře záznam: -- <id> <hotovo|zahozeno> "důvod"
 
-npm run smoke            # proklikání v prohlížeči, 379 kontrol
+npm run smoke            # proklikání v prohlížeči, 389 kontrol
 npm run smoke:single     # totéž pro single-file variantu, 339 kontrol
 npm run check-regrese    # PWA, zálohy, fotky, poloha, service worker, 26 bodů
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
