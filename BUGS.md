@@ -173,3 +173,50 @@ Ověřeno `npm run check-dny` (5 nových bodů, 187/187): trasa cesty
 s noclehem má tři body a nocleh stojí za svou zastávkou; s prázdným
 seznamem bodů zůstanou jen zastávky; bod odložený do košíku (`vKosiku`)
 se do trasy nepočítá.
+
+---
+
+## Rozdělaný vícenásobný filtr a nálady (srpen 2026)
+
+**Stav: rozpracované na větvi `tadeas/work`, NENÍ na `main`.** Ze čtyř hlášení,
+která se dělala v jedné dávce, jsou dvě hotová a nasazená (`tadeas-f32-018`
+dlaždice v Itineráři, `tadeas-f32-015` řazení od nejbližšího), zbylá dvě ne.
+
+### `tadeas-f32-014` — vícenásobný filtr v Seznamu (napsané, NEDOVĚŘENÉ)
+
+Kód hotový: `F.reg`, `F.zeme` a `F.typ` jsou množiny jako `F.kat`, čtyři
+`<select>` nahradila mřížka 2×2 tlačítek otevírajících `vyberVice()`,
+přibylo rušítko filtrů (`#listZrusFiltry`, ikona `i-filtr-ne`) a hledání
+v dialogu od třinácti položek výš.
+
+Ověřeno: `check-filters` 134 kombinací sedí proti **nedotčené** opsané funkci
+z původní aplikace, plus nové kombinace se dvěma a třemi hodnotami měřené
+proti sjednocení jednohodnotových běhů. Obojí prověřeno dvěma mutacemi jádra
+(chybějící `.size`, porovnání špatného pole) — kontrola je hlasitě chytila.
+`npm run smoke` 480/480. V prohlížeči: Rakousko 77 míst, Rakousko + Itálie
+217, oblastí se nabídne 24 místo 117 a „tyr" je zúží na jednu.
+
+**CO ZBÝVÁ, a je to jediné, co brání nasazení:** `npm run smoke:single`
+skončil návratovým kódem 4 a **důvod jsem nestihl přečíst**. Jednosouborová
+varianta se staví jinak (`import.meta.env.SINGLE_FILE`), takže to může být
+cokoli od chybějící ikony po dialog. **Nepouštět na `main`, dokud tohle
+neprojde.** Pak ještě `check-debug`, `check-regrese`, `check-dny`,
+`check-tokeny`, `check-ikony` a snímky obrazovek — čeká se rozdíl na
+`4-seznam-svetly` a `7-filtry-svetly`, ostatních šest musí zůstat na nule.
+
+Pozor na jednu past, která je už opravená, ale stálo to hledání: `F` se čte
+i dynamicky přes `F[klic]`, což grep na `F.zeme` nenajde. Tak se skoro
+propašovalo „země [object Set]" do kontextu **každého** debug záznamu
+(`core/debugKontext.js`) — množina je vždycky pravdivá a `${Set}` vypíše
+`[object Set]`. Opraveno, ale `check-debug` na to pořád nemá bod; ten měl
+podle plánu přibýt a nepřibyl.
+
+### `tadeas-f32-011` — nálady (NEZAČATO)
+
+Nesaháno vůbec. Podle domluvy celé: `HOME_MOODS` z šesti na šestnáct
+(nepovinné pole `f` pro filtry mimo kategorie — `free`, `kids`, `wow`),
+výběr v Profilu jako čtvrtá sbalitelná skupina nad `prefs.nalady`
+s výchozími dnešními šesti, a pilulky v Objevuj zalomit místo posouvání
+do strany. „Se psem" schválně vynechat — filtr vrací pět míst (N6).
+`smoke` má natvrdo `#panelProfil .sbalka` = 3, po přidání skupiny se to
+musí zvednout na 4.

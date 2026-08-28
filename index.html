@@ -113,12 +113,20 @@
       <div class="hledani">
         <div class="hledani-pole"><svg class="ic"><use href="#i-hledat"/></svg><input id="q" type="search" placeholder="Hledat místo…" autocomplete="off"></div>
         <button class="ikonbtn" id="listFiltry" title="Filtry"><svg class="ic"><use href="#i-filtr"/></svg></button>
+        <!-- Zrušit všechny filtry. Šedé a NEAKTIVNÍ, dokud není co rušit –
+             tlačítko, které vypadá zmáčknutelně a nic nedělá, je horší než
+             tlačítko, které se zmáčknout nedá. Stav řídí `filterPanel.js`. -->
+        <button class="ikonbtn zrusfiltr" id="listZrusFiltry" title="Zrušit filtry" disabled><svg class="ic"><use href="#i-filtr-ne"/></svg></button>
       </div>
+      <!-- MŘÍŽKA 2×2, ne posouvací pruh: čtvrtý filtr byl za okrajem a nikdo
+           o něm nevěděl (hlášení f32-014). Tlačítka místo <select>, protože
+           oblast, země i typ se od srpna 2026 zaškrtávají po víc naráz –
+           kartu otevírá `vyberVice()` z components/dialog.js. -->
       <div class="filtrpilulky">
-        <select id="fReg"><option value="">Oblast</option></select>
-        <select id="fZeme"><option value="">Země</option></select>
-        <select id="fTyp"><option value="">Typ</option></select>
-        <select id="fStav"><option value="">Stav</option><option value="wish">Nenavštívená</option><option value="visited">Navštíveno</option></select>
+        <button id="fReg">Oblast</button>
+        <button id="fZeme">Země</button>
+        <button id="fTyp">Typ</button>
+        <button id="fStav">Stav</button>
       </div>
       <div id="listAktivni"></div>
       <div class="vysledky">

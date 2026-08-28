@@ -160,9 +160,12 @@ export function renderList() {
   // Řádek aktivních filtrů. V předloze je jen když něco filtruje.
   const aktivni = [
     F.coll && COLL.find((c) => c.k === F.coll)?.n,
-    F.reg,
-    F.zeme,
-    F.typ,
+    // Oblast, země a typ jsou množiny – rozbalí se do řádku po jedné, ať je
+    // vidět, co přesně filtruje. `...` schválně: dvě země mají být dvě slova,
+    // ne „Rakousko,Itálie".
+    ...F.reg,
+    ...F.zeme,
+    ...F.typ,
     F.stav === 'wish' ? 'Nenavštívená' : F.stav === 'visited' ? 'Navštíveno' : '',
     ...[...F.kat],
   ].filter(Boolean)

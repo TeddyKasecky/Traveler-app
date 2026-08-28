@@ -166,6 +166,14 @@ export async function vyberVice({
          </button>
          ${polozky.length ? '<div class="dialog-del">nebo do jiné výpravy</div>' : ''}`
       : ''}
+    ${
+      // HLEDÁNÍ SE UKÁŽE, AŽ KDYŽ MÁ CO DĚLAT. Oblastí je 117 a rolovat k
+      // „Tyrolsku" přes celý seznam by bylo horší než systémový select, který
+      // se tímhle nahrazoval; u pěti výprav by naopak pole navíc jen šumělo.
+      polozky.length > 12
+        ? `<div class="dialog-hledat"><input id="dialogHledat" type="search" placeholder="Hledat…" autocomplete="off"></div>`
+        : ''
+    }
     <div class="dialog-seznam" id="dialogVice"></div>
     <div class="btnrow">
       <button class="btn" id="dialogNe">Zrušit</button>
@@ -173,8 +181,14 @@ export async function vyberVice({
     </div>`)
 
   const box = document.getElementById('dialogVice')
+  const hledat = document.getElementById('dialogHledat')
   const kresli = () => {
-    box.innerHTML = polozky
+    // Hledá se bez ohledu na velikost písmen; diakritiku tu neřeším, protože
+    // v seznamu jsou vlastní jména, která si člověk opisuje z obrazovky.
+    const q = (hledat?.value || '').trim().toLowerCase()
+    const videt = q ? polozky.filter((p) => p.popisek.toLowerCase().includes(q)) : polozky
+    box.innerHTML = videt.length
+      ? videt
       .map(
         (p) => `<button class="dialog-volba zaskrt${stav.has(p.id) ? ' on' : ''}" data-id="${p.id}"
           role="checkbox" aria-checked="${stav.has(p.id)}">
@@ -183,6 +197,7 @@ export async function vyberVice({
         </button>`
       )
       .join('')
+      : '<div class="dialog-prazdno">Nic takového tu není.</div>'
     for (const b of box.querySelectorAll('[data-id]')) {
       b.onclick = () => {
         const id = b.dataset.id
@@ -192,6 +207,9 @@ export async function vyberVice({
     }
   }
   kresli()
+  // Překreslení nesmí sáhnout na pole hledání – je mimo `#dialogVice`, takže
+  // v něm zůstane napsaný text i zaměření.
+  if (hledat) hledat.oninput = kresli
 
   if (hlavni) {
     // Rychlá volba zavírá hned – je to zkratka, ne položka seznamu. Vrací

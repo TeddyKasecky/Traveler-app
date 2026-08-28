@@ -21,6 +21,7 @@ import { obrazekMista } from '../../data/kategorieFoto.js'
 import { PHOTOS } from '../../core/store.js'
 import { IC } from '../../icons/sprite.js'
 import { hash } from '../../components/postcard.js'
+import { srovnejPocty } from '../../components/filterPanel.js'
 import { heroPas, sekce, dlazdice, pilulky, fotomrizka, radek } from '../../components/vzory.js'
 import { toast } from '../../components/toast.js'
 import { goTo, draw, priblizNaFiltr } from '../../map/map.js'
@@ -212,12 +213,16 @@ export function renderDisc() {
   }
   for (const b of el.querySelectorAll('[data-reg]')) {
     b.onclick = () => {
-      F.reg = b.dataset.reg
-      document.getElementById('fReg').value = F.reg
+      // Zkratka NAHRAZUJE výběr, nepřidává se k němu: „ukaž mi Tyrolsko"
+      // znamená Tyrolsko, ne Tyrolsko k tomu, co bylo zaškrtnuté předtím.
+      const kam = b.dataset.reg
+      F.reg.clear()
+      F.reg.add(kam)
+      srovnejPocty()
       aktivujZalozku('map')
       draw()
       priblizNaFiltr(visible())
-      toast(`${F.reg}: ${visible().length} míst`)
+      toast(`${kam}: ${visible().length} míst`)
     }
   }
   const vse = document.getElementById('discVse')

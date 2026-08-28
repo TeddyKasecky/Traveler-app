@@ -21,12 +21,13 @@ import {
   ulozVlastniData,
 } from '../core/store.js'
 import { esc } from '../core/html.js'
-import { resetFiltru, visible } from '../core/filters.js'
+import { pocetAktivnich, resetFiltru, visible } from '../core/filters.js'
 import { registrujOverlay, aktivujZalozku } from '../core/router.js'
 import { mistaZCsv, zalohaData, obnovZalohu, stahniJson } from '../core/csv.js'
 import { stehujTrasy } from '../core/trasy.js'
 import { draw } from '../map/map.js'
 import { toast } from './toast.js'
+import { vyberVice, vyberZeSeznamu } from './dialog.js'
 import { otevriRazeni } from '../views/list/list.js'
 import { zavriDialog, potvrd, oznam } from './dialog.js'
 import { syncFiltersUI } from './chip.js'
@@ -69,10 +70,12 @@ const SEZNAMY = [
  * @returns {Map<string, number>}
  */
 function pocty(s) {
-  const puvodni = F[s.klic]
-  F[s.klic] = ''
+  // Vlastní filtr se na chvíli VYPRÁZDNÍ, ne nahradí – `filters.js` na tu
+  // množinu drží odkaz a nová instance by mu ho utrhla pod rukama.
+  const puvodni = [...F[s.klic]]
+  F[s.klic].clear()
   const zaklad = visible()
-  F[s.klic] = puvodni
+  for (const v of puvodni) F[s.klic].add(v)
 
   const m = new Map()
   for (const p of zaklad) {
@@ -83,47 +86,89 @@ function pocty(s) {
 }
 
 /**
- * Přepíše volby v rozbalovacích seznamech i s počty a zašedne prázdné.
+ * Popisek na tlačítku filtru: „Země", „Země · Rakousko" nebo „Země · 2".
  *
- * Bez tohohle nabízel Seznam po výběru země typy, které v ní vůbec nejsou,
- * a ťuknutí na ně vrátilo prázdný výsledek. Volá se po každém překreslení,
- * protože počty závisí na ostatních filtrech i na hledání.
+ * Jedna vybraná hodnota se vypíše celá, protože je to ta nejčastější odpověď
+ * a číslo „1" by nic neřeklo. Od dvou nahoru se počítá – na tlačítko široké
+ * půl obrazovky se dvě jména zemí nevejdou a ořízlo by se to uprostřed.
+ */
+function popisekTlacitka(s) {
+  const v = [...F[s.klic]]
+  if (!v.length) return s.popisek
+  return v.length === 1 ? `${s.popisek} · ${v[0]}` : `${s.popisek} · ${v.length}`
+}
+
+/**
+ * Otevře výběr hodnot jednoho filtru.
  *
- * Mění se jen `<option>`, ne samotný `<select>` — obsluha `onchange` visí
- * na něm a přežije to. Vybraná hodnota se musí vrátit ručně.
+ * NABÍZÍ JEN TO, CO NĚCO VRÁTÍ. Oblastí je 117 a se zvolenou zemí jich má
+ * smysl hrstka; zbytek by byl seznam, kterým se roluje k prázdným výsledkům.
+ * Počty vedle názvu jsou ze stejného výpočtu, který dřív plnil `<option>`.
+ */
+async function otevriVyber(s) {
+  const m = pocty(s)
+  const polozky = [...new Set(S.places.map((p) => p[s.pole]).filter(Boolean))]
+    // Zaškrtnutá hodnota zůstane v nabídce, i kdyby s ostatními filtry nic
+    // nevracela – jinak by nešla odškrtnout.
+    .filter((v) => m.get(v) || F[s.klic].has(v))
+    .sort((a, b) => a.localeCompare(b, 'cs'))
+    .map((v) => ({ id: v, popisek: v, meta: String(m.get(v) || 0) }))
+
+  const v = await vyberVice({
+    nadpis: s.popisek,
+    ikona: 'i-filtr',
+    polozky,
+    vybrane: [...F[s.klic]],
+  })
+  if (!v) return
+  F[s.klic].clear()
+  for (const x of v) F[s.klic].add(x)
+  draw()
+}
+
+/** Výběr stavu. Jednohodnotový: „Nenavštívená" a „Navštíveno" se doplňují. */
+async function otevriStav() {
+  const v = await vyberZeSeznamu({
+    nadpis: 'Stav',
+    polozky: [
+      { id: '', popisek: 'Všechna místa', on: !F.stav },
+      { id: 'wish', popisek: 'Nenavštívená', on: F.stav === 'wish' },
+      { id: 'visited', popisek: 'Navštíveno', on: F.stav === 'visited' },
+    ],
+  })
+  if (v === null) return
+  F.stav = v
+  draw()
+}
+
+/**
+ * Srovná popisky čtyř tlačítek filtru a stav rušítka.
+ *
+ * Do srpna 2026 to přepisovalo `<option>` v `<select>`. Dnes se hodnoty
+ * nabízejí až v kartě, takže tady zbývá jen text tlačítka – zato se volá
+ * po každém překreslení, protože závisí na ostatních filtrech i na hledání.
  */
 export function srovnejPocty() {
   for (const s of SEZNAMY) {
     const el = document.getElementById(s.id)
     if (!el) continue
-    const m = pocty(s)
-    const hodnoty = [...new Set(S.places.map((p) => p[s.pole]).filter(Boolean))].sort((a, b) =>
-      a.localeCompare(b, 'cs')
-    )
-    el.innerHTML =
-      `<option value="">${s.popisek}</option>` +
-      hodnoty
-        .map((x) => {
-          const n = m.get(x) || 0
-          return `<option${n ? '' : ' disabled'}>${esc(x)}${n ? ` (${n})` : ' (0)'}</option>`
-        })
-        .join('')
-    // Text volby nese počet, takže se hledá podle hodnoty bez něj.
-    const chci = F[s.klic]
-    el.selectedIndex = chci ? [...el.options].findIndex((o) => bezPoctu(o.text) === chci) : 0
-    if (el.selectedIndex < 0) el.selectedIndex = 0
-
-    // Z VYBRANÉ volby se počet zase odřízne. Pilulka je úzká (8,5 rem
-    // s ellipsis) a text zavřené pilulky je právě vybraná volba – „Bádensko-
-    // Württembersko (24)" by se ořízlo uprostřed názvu. Číslo navíc nic
-    // nepřidává: po výběru stojí hned pod pilulkami „17 míst nalezeno".
-    const vybrana = el.options[el.selectedIndex]
-    if (vybrana && el.selectedIndex > 0) vybrana.text = bezPoctu(vybrana.text)
+    el.textContent = popisekTlacitka(s)
+    el.classList.toggle('on', F[s.klic].size > 0)
+  }
+  const stav = document.getElementById('fStav')
+  if (stav) {
+    stav.textContent = F.stav === 'wish' ? 'Stav · Nenavštívená' : F.stav === 'visited' ? 'Stav · Navštíveno' : 'Stav'
+    stav.classList.toggle('on', !!F.stav)
+  }
+  // Rušítko svítí jen když je co rušit – jinak je šedé A NEAKTIVNÍ.
+  const zrus = document.getElementById('listZrusFiltry')
+  if (zrus) {
+    const kolik = pocetAktivnich()
+    zrus.disabled = kolik === 0
+    zrus.classList.toggle('ma', kolik > 0)
+    zrus.title = kolik ? `Zrušit filtry (${kolik})` : 'Žádný filtr není zapnutý'
   }
 }
-
-/** Vytáhne z textu volby („Vodopády (37)") samotnou hodnotu. */
-const bezPoctu = (t) => t.replace(/\s\(\d+\)$/, '')
 
 /**
  * Naplní rozbalovací seznamy hodnotami, které se v datech opravdu vyskytují.
@@ -134,18 +179,19 @@ export function fillSelects() {
 
   // Pilulky na Seznamu překreslují hned, protože jsou vidět rovnou nad výsledky.
   // Přepínače v panelu Filtry se dál potvrzují tlačítkem „Ukázat výsledky".
-  //
-  // `bezPoctu` je nutné: volby nemají atribut `value`, takže `e.target.value`
-  // vrací jejich text — a ten od srpna 2026 nese i počet („Vodopády (37)").
-  // `#fStav` má hodnoty napsané v atributu, tam se nic neodřízne.
-  const hned = (klic) => (e) => {
-    F[klic] = bezPoctu(e.target.value)
+  for (const s of SEZNAMY) {
+    const el = document.getElementById(s.id)
+    if (el) el.onclick = () => otevriVyber(s)
+  }
+  document.getElementById('fStav').onclick = otevriStav
+  // Rušítko volá `resetFiltru()`, tedy totéž, co tlačítko uvnitř panelu
+  // Filtry – jen se na něj nemusí chodit.
+  document.getElementById('listZrusFiltry').onclick = () => {
+    resetFiltru()
+    const q = document.getElementById('q')
+    if (q) q.value = ''
     draw()
   }
-  document.getElementById('fReg').onchange = hned('reg')
-  document.getElementById('fZeme').onchange = hned('zeme')
-  document.getElementById('fTyp').onchange = hned('typ')
-  document.getElementById('fStav').onchange = hned('stav')
   // Řazení je od srpna 2026 tlačítko s vlastní kartou, ne systémový select
   // – nabídku i překreslení si řídí `views/list/list.js` samo.
   document.getElementById('fRazeni').onclick = otevriRazeni

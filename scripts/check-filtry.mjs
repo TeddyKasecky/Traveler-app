@@ -130,15 +130,31 @@ pridej('hledání + kategorie', (f) => { f.q = 'vodopád'; f.kat.add('Vodopády'
 /* ---------- porovnání ---------- */
 
 /**
+ * Naplní množinu jednou hodnotou, nebo ji vyprázdní. Čistí se na místě –
+ * nová instance by utrhla odkaz, na kterém `filters.js` stojí.
+ */
+function mnozina(cil, hodnota) {
+  cil.clear()
+  if (Array.isArray(hodnota)) for (const h of hodnota) cil.add(h)
+  else if (hodnota) cil.add(hodnota)
+}
+
+/**
  * Nastaví globální F podle testovacího objektu.
  * Pozor: `Object.assign(F, t)` nestačí – přepsalo by F.kat referencí na tentýž
  * Set, takže by se pak čistil i testovací objekt a obě strany by testovaly nic.
  */
 function nastavF(t) {
   F.q = t.q
-  F.reg = t.reg
-  F.zeme = t.zeme
-  F.typ = t.typ
+  // OBLAST, ZEMĚ A TYP JSOU OD SRPNA 2026 MNOŽINY, ale testovací objekt i
+  // `visiblePuvodni()` níž zůstávají JEDNOHODNOTOVÉ – a to je celý smysl.
+  // Opsaná funkce z původní aplikace je jediný nezávislý soudce, kterého tu
+  // máme; kdyby se přepsala spolu s naší, mohly by být obě shodně špatně
+  // a kontrola by měřila sama sebe. Adaptér je proto jen tady, na jednom
+  // řádku na pole, a všech 134 kombinací platí dál v plné síle.
+  mnozina(F.reg, t.reg)
+  mnozina(F.zeme, t.zeme)
+  mnozina(F.typ, t.typ)
   F.free = t.free
   F.kids = t.kids
   F.dogs = t.dogs
@@ -172,6 +188,80 @@ for (const { popis, uprav, sDiakritikou } of kombinace) {
 }
 
 console.log(`Otestováno ${kombinace.length} kombinací filtrů: ${selhalo ? `${selhalo} ROZDÍLŮ` : 'všechny sedí'}\n`)
+
+/* ---------- vícenásobný výběr proti témuž soudci ---------- */
+
+/**
+ * Zaškrtnout víc zemí naráz umí appka od srpna 2026 (`tadeas-f32-014`).
+ * Původní aplikace to neuměla, takže na to nemá co opsat — a nová vlastnost
+ * by tím zůstala úplně bez nezávislé kontroly.
+ *
+ * NEZŮSTÁVÁ, protože platí jednoduchá věc:
+ *
+ *   výsledek pro {Rakousko, Itálie}  =  výsledek pro {Rakousko} ∪ pro {Itálie}
+ *
+ * a obě poloviny umí spočítat **nedotčená** `visiblePuvodni()`. Sjednocení se
+ * navíc porovnává jako MNOŽINA, ne jako pořadí: `visible()` prochází místa
+ * v pořadí dat, kdežto slepené jednotlivé běhy by šly po skupinách.
+ */
+console.log('Vícenásobný výběr – proti sjednocení jednohodnotových běhů:')
+
+const sjednoceni = (klic, hodnoty) => {
+  const ven = new Set()
+  for (const h of hodnoty) {
+    const t = vychozi()
+    t[klic] = h
+    for (const p of visiblePuvodni(S.places, t, store)) ven.add(p.id)
+  }
+  return ven
+}
+
+const viceKombinaci = [
+  ['dvě země', 'zeme', ['Rakousko', 'Itálie']],
+  ['tři země', 'zeme', ['Rakousko', 'Itálie', 'Švýcarsko']],
+  ['dva typy', 'typ', [...new Set(S.places.map((p) => p.t).filter(Boolean))].slice(0, 2)],
+  ['dvě oblasti', 'reg', [...new Set(S.places.map((p) => p.r).filter(Boolean))].slice(0, 2)],
+]
+
+let viceSelhalo = 0
+for (const [popis, klic, hodnoty] of viceKombinaci) {
+  const t = vychozi()
+  nastavF(t)
+  mnozina(F[klic], hodnoty)
+
+  const nase = new Set(visible().map((p) => p.id))
+  const ceka = sjednoceni(klic, hodnoty)
+  const sedi = nase.size === ceka.size && [...ceka].every((id) => nase.has(id))
+  if (!sedi) viceSelhalo++
+  console.log(`  ${sedi ? 'ok  ' : 'CHYBA'} ${popis.padEnd(12)} ${nase.size} míst (sjednocení ${ceka.size})`)
+}
+
+// Jedna hodnota v množině se musí chovat přesně jako dřív jedna hodnota
+// v řetězci – bez toho by se dalo rozbít staré chování a nová kontrola
+// by to pochválila.
+{
+  const t = vychozi()
+  t.zeme = 'Rakousko'
+  nastavF(t)
+  const nase = visible().map((p) => p.id)
+  const puvodni = visiblePuvodni(S.places, t, store).map((p) => p.id)
+  const sedi = nase.length === puvodni.length && nase.every((id, i) => id === puvodni[i])
+  if (!sedi) viceSelhalo++
+  console.log(`  ${sedi ? 'ok  ' : 'CHYBA'} ${'jedna v množině'.padEnd(12)} ${nase.length} míst`)
+}
+
+// Prázdná množina znamená „neomezuj", ne „nic neprojde". Tohle je ta chyba,
+// která by se udělala nejsnáz – `if (F.zeme)` je u množiny vždycky pravda.
+{
+  const t = vychozi()
+  nastavF(t)
+  const sedi = visible().length === S.places.length
+  if (!sedi) viceSelhalo++
+  console.log(`  ${sedi ? 'ok  ' : 'CHYBA'} ${'prázdná neomezuje'.padEnd(12)} ${visible().length} míst`)
+}
+
+selhalo += viceSelhalo
+console.log('')
 
 /* ---------- referenční počty z INVENTURY ---------- */
 

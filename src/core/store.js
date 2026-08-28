@@ -469,9 +469,9 @@ export const savePrefs = () => zapis(PREFK, prefs)
 export const F = {
   kat: new Set(),
   q: '',
-  reg: '',
-  zeme: '',
-  typ: '',
+  reg: new Set(),
+  zeme: new Set(),
+  typ: new Set(),
   free: false,
   kids: false,
   dogs: false,

@@ -13,6 +13,15 @@
   padding:11px 12px;font:inherit;margin-bottom:14px}
 #dialog .btnrow{margin:0;justify-content:flex-end}
 #dialog .dialog-seznam{display:flex;flex-direction:column;gap:7px;max-height:46svh;overflow:auto;margin:0 0 12px}
+
+/* HLEDÁNÍ NAD DLOUHÝM SEZNAMEM. Oblastí je 117 a rolovat k „Tyrolsku" přes
+ * celý seznam by bylo horší než systémový select, který se tímhle nahrazoval.
+ * Ukazuje se až od třinácti položek, u kratších by jen šumělo. */
+#dialog .dialog-hledat{margin:0 0 10px}
+#dialog .dialog-hledat input{width:100%;font:inherit;font-size:.85rem;
+  padding:10px 13px;border:var(--line);border-radius:var(--r-s);
+  background:var(--plocha);color:var(--ink)}
+#dialog .dialog-prazdno{padding:14px 4px;color:var(--text3);font-size:.82rem;text-align:center}
 #dialog .dialog-volba{display:flex;gap:10px;align-items:center;text-align:left;background:var(--plocha2);
   border:var(--line);border-radius:var(--r-s);padding:11px 13px;font:inherit;font-weight:700;
   transition:transform .16s var(--pop)}

@@ -195,7 +195,7 @@ const zavriDetail = async () => {
 //   srpen 2026 – brouk se znovu použít nedal, dvě sousední kolečka s toutéž
 //   ikonou by nešlo rozeznat).
 // Číslo se mění jen s vědomým přidáním do sprite.svg.
-await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 72)
+await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 73)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
 // Nad mapou jsou čtyři rychlé pilulky „moje věci" (Vše, Uložená, Musíme!,
@@ -205,11 +205,14 @@ await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText()
 // druhá kontrola. Bez ní by se dalo pět chybějících kategorií přehlédnout.
 await kontrola('rychlé filtry nad mapou', () => page.locator('#chips .pilulka').count(), 4)
 await kontrola('všech deset kategorií ve filtru', () => page.locator('#katRow .toggle.kat').count(), 10)
-await kontrola('naplněné oblasti ve filtru', () => page.locator('#fReg option').count(), 118)
-// Volby nesou počet a prázdné jsou zašedlé – bez toho nabízel Seznam po výběru
-// země typy, které v ní vůbec nejsou, a ťuknutí na ně vrátilo prázdno.
-await kontrola('volby ve filtru nesou počet', () =>
-  page.locator('#fTyp option').nth(1).innerText().then((t) => /\(\d+\)$/.test(t)), true)
+// Filtry v Seznamu jsou od srpna 2026 čtyři TLAČÍTKA v mřížce 2×2, ne
+// `<select>` v posouvacím pruhu (hlášení `tadeas-f32-014`) – čtvrtý byl za
+// okrajem a nikdo o něm nevěděl. Obě kontroly níž měřily `<option>`; jejich
+// smysl ale platí dál, jen se ptají jinde.
+await kontrola('čtyři filtry v mřížce', () => page.locator('.filtrpilulky button').count(), 4)
+// Že jsou ve dvou řádcích a nepřetékají, se měří až u otevřeného Seznamu na
+// konci souboru – schovaný panel má všechny rozměry nulové, takže by tady obě
+// kontroly prošly, i kdyby se mřížka rozbila.
 await kontrola('mapa má dlaždicovou vrstvu', () => page.locator('.leaflet-tile-pane').count(), 1)
 // Do stránky se vkládají jen špendlíky ve výřezu – 580 kusů naráz stálo skoro
 // vteřinu přepočtu stylů při každém posunu mapy. Že se tím žádné místo neztratí,
@@ -2483,6 +2486,83 @@ await page.click('#tabs button[data-tab="map"]')
 await page.waitForTimeout(900)
 await kontrola('podruhé už výřez nevrací', async () => Math.abs((await odStredu()) - poTahu) < 20, true)
 await page.context().clearPermissions()
+
+// VÍCENÁSOBNÝ FILTR V SEZNAMU (hlášení `tadeas-f32-014`). Do srpna 2026 nesla
+// oblast, země i typ jednu hodnotu, takže „Rakousko i Itálie" nešlo říct.
+// Že to počítá správně, hlídá `check-filters` proti nedotčené opsané funkci
+// z původní aplikace; tady se ověřuje, že se k tomu člověk vůbec doklikáme.
+await page.click('#tabs button[data-tab="list"]')
+await page.waitForTimeout(900)
+const nalezeno = async () => Number((await page.locator('#listPocet').innerText()).replace(/\D/g, ''))
+
+// ROZVRŽENÍ SE MĚŘÍ AŽ TADY, na viditelném Seznamu. Schovaný panel má nulové
+// rozměry, takže „nepřetéká" by na něm platilo vždycky.
+await kontrola('filtry jsou ve dvou řádcích', () =>
+  page.evaluate(() =>
+    new Set([...document.querySelectorAll('.filtrpilulky button')].map((e) =>
+      Math.round(e.getBoundingClientRect().top))).size), 2)
+// Posouvání do strany není z obrazovky poznat – vypadá stejně jako když se
+// prostě nic dalšího nenabízí. Právě proto byl čtvrtý filtr neviditelný.
+await kontrola('a nepřetékají', () =>
+  page.evaluate(() => {
+    const e = document.querySelector('.filtrpilulky')
+    return e.clientWidth > 0 && e.scrollWidth <= e.clientWidth + 1
+  }), true)
+
+await kontrola('bez filtru je rušítko neaktivní', () => page.locator('#listZrusFiltry').isDisabled(), true)
+const vsechnaMista = await nalezeno()
+
+await page.click('#fZeme')
+await page.waitForTimeout(400)
+// Karta nabízí POČET u každé volby – bez něj se dá zaškrtnout něco, co
+// s ostatními filtry nevrátí nic, a vypadá to jako porouchaný filtr.
+await kontrola('volby nesou počet', () =>
+  page.locator('#dialogVice .dialog-volba span').first().innerText().then((x) => /^\d+$/.test(x.trim())), true)
+await page.click('#dialogVice .dialog-volba:has-text("Rakousko")')
+await page.click('#dialogAno')
+await page.waitForTimeout(800)
+const jednaZeme = await nalezeno()
+await kontrola('jedna země zúží seznam', () => jednaZeme < vsechnaMista, true)
+await kontrola('a tlačítko ji vypíše', () =>
+  page.locator('#fZeme').innerText().then((x) => x.includes('Rakousko')), true)
+
+await page.click('#fZeme')
+await page.waitForTimeout(400)
+await page.click('#dialogVice .dialog-volba:has-text("Itálie")')
+await page.click('#dialogAno')
+await page.waitForTimeout(800)
+const dveZeme = await nalezeno()
+// TOHLE JE TA PODSTATNÁ: víc zaškrtnutých musí dát VÍC míst, ne míň. Kdyby se
+// množiny někde vyhodnotily jako „a zároveň", vyšla by nula a vypadalo by to
+// jako prázdná databáze.
+await kontrola('dvě země vrátí víc než jedna', () => dveZeme > jednaZeme, true)
+await kontrola('a míň než všechna', () => dveZeme < vsechnaMista, true)
+await kontrola('tlačítko ukáže počet vybraných', () =>
+  page.locator('#fZeme').innerText().then((x) => x.includes('2')), true)
+await kontrola('oba filtry jsou v řádku pod nimi', () =>
+  page.locator('#listAktivni').innerText().then((x) => x.includes('Rakousko') && x.includes('Itálie')), true)
+
+// STO SEDMNÁCT OBLASTÍ BY BYL ŠPATNÝ SEZNAM. Nabízejí se jen ty, které s
+// ostatními filtry něco vrátí, a od třinácti položek je nad seznamem hledání.
+await page.click('#fReg')
+await page.waitForTimeout(400)
+const oblastiVse = await page.locator('#dialogVice .dialog-volba').count()
+await kontrola('oblastí se nabídne jen hrstka', () => oblastiVse < 40, true)
+await kontrola('a je nad nimi hledání', () => page.locator('#dialogHledat').count(), 1)
+await page.fill('#dialogHledat', 'tyr')
+await page.waitForTimeout(300)
+await kontrola('hledání seznam zkrátí', () =>
+  page.locator('#dialogVice .dialog-volba').count().then((n) => n > 0 && n < oblastiVse), true)
+await page.click('#dialogNe')
+await page.waitForTimeout(300)
+
+// Rušítko dělá totéž co tlačítko schované v panelu Filtry, jen se na něj
+// nemusí chodit.
+await kontrola('se zapnutým filtrem rušítko svítí', () => page.locator('#listZrusFiltry.ma').count(), 1)
+await page.click('#listZrusFiltry')
+await page.waitForTimeout(800)
+await kontrola('rušítko vrátí všechna místa', nalezeno, vsechnaMista)
+await kontrola('a zase zšedne', () => page.locator('#listZrusFiltry').isDisabled(), true)
 
 /* ---------- shrnutí ---------- */
 

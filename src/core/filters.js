@@ -25,9 +25,14 @@ export function visible() {
   const q = bezDiakritiky(F.q)
   return S.places.filter((p) => {
     if (F.kat.size && !F.kat.has(p.k)) return false
-    if (F.reg && p.r !== F.reg) return false
-    if (F.zeme && p.z !== F.zeme) return false
-    if (F.typ && p.t !== F.typ) return false
+    // OBLAST, ZEMĚ A TYP JSOU MNOŽINY (hlášení `tadeas-f32-014`). Do srpna
+    // 2026 nesly jednu hodnotu, takže „Rakousko i Itálie" nešlo říct a musely
+    // se procházet po jedné. Prázdná množina znamená „neomezuj" – tedy přesně
+    // to, co dřív znamenal prázdný řetězec, jen se to teď ptá na `.size`.
+    // Vzor je `F.kat`, které množinou bylo odjakživa.
+    if (F.reg.size && !F.reg.has(p.r)) return false
+    if (F.zeme.size && !F.zeme.has(p.z)) return false
+    if (F.typ.size && !F.typ.has(p.t)) return false
     if (F.coll && !(p.col || []).includes(F.coll)) return false
     if (F.free && !p.c.startsWith('Zdarma')) return false
     if (F.kids && p.ch !== 'Ano') return false
@@ -57,7 +62,10 @@ export function visible() {
  */
 export function pocetAktivnich() {
   return (
-    [F.reg, F.zeme, F.typ, F.coll].filter(Boolean).length +
+    // Množina se počítá za JEDEN filtr, ať je v ní hodnot kolik chce –
+    // odznak říká „kolik věcí filtruju", ne „kolik hodnot jsem zaškrtl".
+    [F.reg, F.zeme, F.typ].filter((s) => s.size).length +
+    (F.coll ? 1 : 0) +
     ['free', 'kids', 'dogs', 'wow', 'fire'].filter((k) => F[k]).length +
     // `ulozene` je nové, žádné dědictví nedrží – počítá se. `vPlanu` bylo
     // nahrazeno módem mapy „Na cestě“ (S.mapaMod, components/chip.js).
@@ -68,7 +76,12 @@ export function pocetAktivnich() {
 
 /** Vynuluje filtry včetně hledání (N4). */
 export function resetFiltru() {
-  F.reg = F.zeme = F.typ = F.coll = F.q = ''
+  // Množiny se ČISTÍ, nenahrazují: `filterPanel.js` i `check-filtry.mjs` na ně
+  // drží odkaz a nová instance by jim ho utrhla pod rukama.
+  F.reg.clear()
+  F.zeme.clear()
+  F.typ.clear()
+  F.coll = F.q = ''
   F.free = F.kids = F.dogs = F.wow = F.fire = false
   F.ulozene = false
   F.stav = ''

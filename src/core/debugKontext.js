@@ -48,10 +48,19 @@ function filtryNaText() {
   const kusy = []
   if (F.q) kusy.push(`hledání „${F.q}"`)
   if (F.kat.size) kusy.push(`kategorie ${[...F.kat].join('+')}`)
+  // OBLAST, ZEMĚ A TYP JSOU OD SRPNA 2026 MNOŽINY (`tadeas-f32-014`) a musí se
+  // rozbalit stejně jako kategorie. Množina je totiž VŽDYCKY pravdivá, takže
+  // by se vypsala i prázdná – a `${Set}` dá „[object Set]". V kontextu každého
+  // hlášení by pak stálo „země [object Set]" a nikdo by se nedozvěděl, podle
+  // čeho se filtrovalo.
   for (const [k, popis] of [
     ['reg', 'oblast'],
     ['zeme', 'země'],
     ['typ', 'typ'],
+  ]) {
+    if (F[k].size) kusy.push(`${popis} ${[...F[k]].join('+')}`)
+  }
+  for (const [k, popis] of [
     ['coll', 'kolekce'],
     ['stav', 'stav'],
   ]) {
