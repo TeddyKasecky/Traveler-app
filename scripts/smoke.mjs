@@ -64,6 +64,16 @@ const page = await b.newPage({ viewport: { width: 390, height: 844 }, colorSchem
 // přes `page.route`, protože ten by dotaz odchytil a tím i změnil chování.
 await page.addInitScript(() => {
   window.__pocasiDotazu = 0
+  // POČÍTADLO DOTAZŮ NA POLOHU. Od srpna 2026 se appka ptá sama při startu
+  // (`prefs.polohaPriStartu`) a jinak než počítáním se nedokáže, že vypnutá
+  // volba se opravdu neptá – odmítnutý dotaz vypadá zvenčí stejně jako žádný.
+  // Nuluje se každým načtením, takže měří vždycky jedno spuštění.
+  window.__polohaDotazu = 0
+  const puvodniGeo = navigator.geolocation.getCurrentPosition.bind(navigator.geolocation)
+  navigator.geolocation.getCurrentPosition = function (...a) {
+    window.__polohaDotazu++
+    return puvodniGeo(...a)
+  }
   const puvodni = window.fetch
   window.fetch = function (...a) {
     const url = String((a[0] && a[0].url) || a[0] || '')
@@ -218,9 +228,18 @@ await page.waitForTimeout(200)
 await kontrola('na posledním kroku je Jedeme', () => page.locator('#introGo').innerText(), 'Jedeme')
 await kontrola('poslední krok nemá Dál', () => page.locator('#introDal').count(), 0)
 
+// NAPOPRVÉ SE APPKA NEPTÁ NA POLOHU, DOKUD SVÍTÍ UVÍTÁNÍ. Systémový dotaz nad
+// uvítací obrazovkou je přepadení – přesně to, kvůli čemu se appka do srpna
+// 2026 neptala vůbec. Od druhého spuštění (`store.seen`) se ptá hned.
+await kontrola('při uvítání se na polohu neptá', () =>
+  page.evaluate(() => window.__polohaDotazu), 0)
+
 // zavřít uvítání
 await page.click('#introGo')
 await kontrola('uvítání zavřené', () => page.locator('#intro.show').count(), 0)
+await page.waitForTimeout(400)
+await kontrola('po zavření uvítání se zeptá', () =>
+  page.evaluate(() => window.__polohaDotazu), 1)
 
 // Domů
 await kontrola('Domů je aktivní', () => page.locator('#panelHome.show').count(), 1)
@@ -235,8 +254,11 @@ await kontrola('na Domů se karta sbalit nedá', () => page.locator('#homeInner 
 await kontrola('mřížka „Možná dnes"', () => page.locator('#homeInner .fotomrizka .fotokarta').count(), 6)
 
 // POČASÍ U TVÉ POLOHY (hlášení pc-tadeas-001). Kontrola běží bez povolené
-// polohy, a to je schválně: appka si o ni SAMA ŘÍCT NESMÍ. Místo předpovědi
-// má nabídnout tlačítko a na Open-Meteo nesáhnout.
+// polohy, a to je schválně. Od srpna 2026 si appka o polohu při startu ŘÍKÁ
+// sama (`prefs.polohaPriStartu`), ale prohlížeč ji tady odmítne – takže se
+// měří ten podstatný případ: bez polohy má být místo předpovědi tlačítko
+// a na Open-Meteo se nesmí sáhnout. Že se dotaz opravdu poslal, ověřuje
+// kontrola u uvítání výš; co se stane, když se povolí, je na konci souboru.
 await kontrola('Domů má sekci počasí', () => page.locator('#homePocasi').count(), 1)
 await kontrola('bez polohy nabídne tlačítko', () => page.locator('#homePocasiPoloha').count(), 1)
 await kontrola('a nic nestahuje', () => page.evaluate(() => window.__pocasiDotazu), 0)
@@ -2392,6 +2414,75 @@ await kontrola('předěl dne v pruhu stojí', () =>
   page.locator('.pocasi-predel').count().then((n) => n >= 1), true)
 await kontrola('a týdenní předpověď má sedm dní', () => page.locator('.pocasi-den').count(), 7)
 await page.unroute('**/api.open-meteo.com/**')
+
+// POLOHA PŘI STARTU (Nastavení → Mapa). Do srpna 2026 si o ni appka neřekla
+// nikdy sama, takže na Domů nebylo počasí a v mapě dodávka, dokud na to člověk
+// neťukl – a po každém spuštění znovu.
+//
+// STOJÍ TO ÚPLNĚ NA KONCI, protože se tu polohu povoluje. `S.userPos` v paměti
+// zůstane i po `clearPermissions()` a spousta kontrol výš měří právě stav BEZ
+// polohy. Reloady tady už taky nikomu nevadí.
+await page.click('#nastaveniOpen')
+await page.waitForTimeout(500)
+await rozbal('mapa')
+await kontrola('volba polohy je ve skupině Mapa', () => page.locator('#nastMapa #polohaSeg button').count(), 2)
+await kontrola('a startuje zapnutá', () =>
+  page.locator('#polohaSeg button.on').innerText().then((x) => x.trim()), 'Zapnuté')
+
+// VYPNUTÁ SE NESMÍ ZEPTAT VŮBEC, ne že se jen neukáže výsledek. Odmítnutý
+// dotaz vypadá zvenčí stejně jako žádný, takže se to pozná jedině počítáním.
+await page.click('#polohaSeg button[data-seg="vyp"]')
+await page.waitForTimeout(300)
+await page.reload({ waitUntil: 'load' })
+await page.waitForTimeout(2000)
+await kontrola('vypnutá se na polohu nezeptá', () => page.evaluate(() => window.__polohaDotazu), 0)
+
+// A zpátky zapnout, tentokrát s povolenou polohou.
+await page.click('#nastaveniOpen')
+await page.waitForTimeout(500)
+await rozbal('mapa')
+await page.click('#polohaSeg button[data-seg="zap"]')
+await page.waitForTimeout(300)
+await page.context().grantPermissions(['geolocation'])
+await page.context().setGeolocation({ latitude: 47.26, longitude: 11.39 })
+await page.reload({ waitUntil: 'load' })
+await page.waitForTimeout(2500)
+await kontrola('zapnutá se zeptá hned po startu', () =>
+  page.evaluate(() => window.__polohaDotazu).then((n) => n >= 1), true)
+await kontrola('a dodávka je v mapě', () => page.locator('#map .poloha').count(), 1)
+// Na Domů tím zmizí tlačítko „Ukázat počasí u mě" – přesně to, kvůli čemu
+// tahle volba vznikla.
+await page.click('#tabs button[data-tab="home"]')
+await page.waitForTimeout(700)
+await kontrola('a Domů už o polohu neprosí', () => page.locator('#homePocasiPoloha').count(), 0)
+
+// MAPA SE VYCENTRUJE, ALE JEN JEDNOU ZA SPUŠTĚNÍ. Měří se vzdáleností dodávky
+// od středu výřezu: vycentrovaná mapa ji má uprostřed.
+const odStredu = async () => {
+  const m = await page.locator('#map').boundingBox()
+  const v = await page.locator('#map .poloha').boundingBox()
+  if (!m || !v) return 9999
+  return Math.hypot(v.x + v.width / 2 - (m.x + m.width / 2), v.y + v.height / 2 - (m.y + m.height / 2))
+}
+await page.click('#tabs button[data-tab="map"]')
+await page.waitForTimeout(900)
+await kontrola('Mapa se na polohu vycentruje', async () => (await odStredu()) < 60, true)
+
+// Odtáhnout výřez a odskočit jinam: po návratu má zůstat tam, kam se posunul.
+// Kdo si prohlíží Alpy a mrkne na Seznam, nemá se vrátit domů.
+const m = await page.locator('#map').boundingBox()
+await page.mouse.move(m.x + m.width / 2, m.y + m.height / 2)
+await page.mouse.down()
+await page.mouse.move(m.x + m.width / 2 - 150, m.y + m.height / 2 - 120, { steps: 10 })
+await page.mouse.up()
+await page.waitForTimeout(600)
+const poTahu = await odStredu()
+await page.click('#tabs button[data-tab="home"]')
+await page.waitForTimeout(500)
+await page.click('#tabs button[data-tab="map"]')
+await page.waitForTimeout(900)
+await kontrola('podruhé už výřez nevrací', async () => Math.abs((await odStredu()) - poTahu) < 20, true)
+await page.context().clearPermissions()
 
 /* ---------- shrnutí ---------- */
 

@@ -398,6 +398,20 @@ export const prefs = nacti(PREFK, {
   sbaleneSlozky: [],
 
   /**
+   * Zeptat se na polohu hned při startu?
+   *
+   * Do srpna 2026 si o ni appka NEŘEKLA NIKDY SAMA – bylo to psané pro cizího
+   * návštěvníka veřejné bety, pro kterého je systémový dotaz přepadení. Pro
+   * toho, kdo appku používá na cestách, platí opak: povolení se dá jednou a od
+   * té chvíle je dotaz neviditelný, kdežto ťukat na „Ukázat počasí u mě" se
+   * musí pokaždé. Vypnuté vrací dnešní chování, takže se o nic nepřichází.
+   *
+   * Napoprvé se čeká, až se zavře úvodní průvodce (`uvodZavren`) – dotaz nad
+   * uvítací obrazovkou by byl přesně to přepadení.
+   */
+  polohaPriStartu: true,
+
+  /**
    * Počasí u tvé polohy na Domů. Vypnuté znamená, že appka na Open-Meteo
    * NESÁHNE VŮBEC – ne že se jen neukáže. Na roamingu je to jediný způsob,
    * jak si být jistý, že se nic nestahuje.

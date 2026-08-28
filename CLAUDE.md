@@ -527,9 +527,18 @@ klíče**, což je jediný důvod, proč to jde ve statické appce z veřejného
 repozitáře. Je to **třetí síťové volání za běhu** vedle Nominatimu a přepočtu
 trasy přes Mapy.com.
 
-- **Appka si o polohu sama neřekne.** Použije tu, kterou už zná z „Nejblíž
-  odsud"; bez ní je místo předpovědi tlačítko „Ukázat počasí u mě". Systémový
-  dotaz při otevření Domů by byl přepadení.
+- **Appka si o polohu řekne sama hned při startu** (`prefs.polohaPriStartu`,
+  výchozí zapnuto, přepínač v Nastavení → Mapa). Do srpna 2026 se neptala
+  nikdy: bylo to psané pro cizího návštěvníka veřejné bety, pro kterého je
+  systémový dotaz přepadení. Pro toho, kdo appku používá na cestách, platí
+  opak — povolení se dá jednou a od té chvíle je dotaz neviditelný, kdežto
+  ťukat na „Ukázat počasí u mě" se muselo po každém spuštění. **Napoprvé se
+  čeká, až se zavře úvodní průvodce** (`uvodZavren`); dotaz nad uvítací
+  obrazovkou by to přepadení byl. Je to **tiché v obou směrech**
+  (`zjistiPolohuTise()` v `core/geo.js`): při odmítnutí se nic nestane a na
+  Domů zůstane tlačítko „Ukázat počasí u mě", které si o polohu řekne samo
+  a s vysvětlením. Vypnutá volba se **nezeptá vůbec** — hlídá to `smoke`
+  počítáním volání `getCurrentPosition`.
 - **Vypnuté počasí nesáhne na síť vůbec** (`prefs.pocasi`), ne že se jen
   neukáže. Na roamingu je to jediná jistota a hlídá to `smoke` počítáním
   dotazů na Open-Meteo.
@@ -651,6 +660,11 @@ v `prefs.domuPoradi` a `prefs.domuSkryte`, takže jdou do zálohy.
   v pravém horním rohu jako `L.Control`. Odemčení je jen v paměti a `main.js`
   ho při odchodu ze záložky Plán ruší přes `zamkniMapy()` — po načtení je
   vždycky zamčeno (`tadeas-f32-020`).
+- **Mapa se na tvoji polohu vycentruje jen jednou za spuštění**
+  (`vycentrujPoprve()` v `map/map.js`). Do srpna 2026 se střed nastavil jedině
+  tehdy, když poloha dorazila zrovna ve chvíli, kdy byla Mapa otevřená — což
+  se s dotazem při startu skoro nikdy netrefí. Podruhé už nedělá nic: kdo si
+  prohlíží Alpy a odskočí na Seznam, nemá se po návratu ocitnout doma.
 - **318 míst nemá `img`** a zobrazuje se u nich akvarel podle kategorie
   (`src/assets/kategorie/`); kreslená pohlednice z `postcard.js` zůstává pod ním jako
   záchrana, když se obrázek nenačte. Je to záměr, ne nedodělek — fotky nedoplňuj náhodně.

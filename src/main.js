@@ -9,16 +9,16 @@
 import './styles/index.css'
 
 import { zapniSberChyb } from './core/chyby.js'
-import { S, on, emit, save, pripravFotky } from './core/store.js'
+import { S, on, emit, save, pripravFotky, prefs, store } from './core/store.js'
 import { pripravTrasy } from './core/trasy.js'
 import { pripravCesty } from './core/cesty.js'
 import { pripravDebug } from './core/debug.js'
 import { spustRouter, aktivujZalozku } from './core/router.js'
-import { zjistiPolohu } from './core/geo.js'
+import { zjistiPolohu, zjistiPolohuTise } from './core/geo.js'
 import { initMotiv } from './core/motiv.js'
 import { vlozSprite } from './icons/sprite.js'
 
-import { initMapa, draw, goTo, zobrazPolohu, prepniPodklad, mapa, vybiraSeMista, prepniVKosiku } from './map/map.js'
+import { initMapa, draw, goTo, zobrazPolohu, prepniPodklad, mapa, vybiraSeMista, prepniVKosiku, vycentrujPoprve } from './map/map.js'
 import { prebarviPodklad } from './map/podklad.js'
 import { initChipy, obnovChipy, initModMapy, obnovModMapy } from './components/chip.js'
 import { initFilterPanel, fillSelects, srovnejPocty, stahniZalohu } from './components/filterPanel.js'
@@ -247,7 +247,10 @@ on('cestyNacteny', () => {
 /** Po nalezení polohy: puntík, posun mapy, překreslení otevřené obrazovky. */
 on('poloha', () => {
   zobrazPolohu()
-  if (S.activeTab === 'map') mapa.setView([S.userPos.lat, S.userPos.lon], 9)
+  // Vycentruje JEN JEDNOU za spuštění a jen když je Mapa vidět – zbytek
+  // obstará `zalozkaZmenena`, protože poloha může dorazit i dřív, než se
+  // na Mapu vůbec přepne. Výklad je u `vycentrujPoprve()` v map/map.js.
+  if (S.activeTab === 'map') vycentrujPoprve()
   if (S.activeTab === 'list') renderList()
   if (S.activeTab === 'disc') renderDisc()
   if (S.activeTab === 'home') renderHome()
@@ -297,6 +300,9 @@ on('debugZmena', () => {
  * ty samy poznají, jestli je otevřená zrovna karta Na cestě.
  */
 on('zalozkaZmenena', (t) => {
+  // Poloha často dorazí dřív, než se na Mapu přepne – teprve tady je na co
+  // centrovat a je to vidět. Podruhé už `vycentrujPoprve()` nedělá nic.
+  if (t === 'map') vycentrujPoprve()
   if (t === 'plan') return
   zastavSledovani()
   // Zámek mini-map se odchodem z obrazovky vrací do zamčeného stavu – tak to
@@ -360,3 +366,22 @@ pripravCesty().then(() => pripravTrasy())
 // ze starého klíče `vandrbuch:debug`. Poznámkovač se po načtení překreslí
 // přes `debugZmena`, stejně jako po zápisu.
 pripravDebug().then(() => emit('debugZmena'))
+
+/**
+ * Dotaz na polohu hned při startu (`prefs.polohaPriStartu`, výchozí zapnuto).
+ *
+ * PROČ TO PŘIBYLO: bez polohy není na Domů počasí ani „Nejblíž odsud" a v mapě
+ * není dodávka – a vyžádat si ji šlo jedině ťuknutím, které se muselo opakovat
+ * po každém spuštění. Povolení se přitom dá jednou a pak je dotaz neviditelný.
+ *
+ * NAPOPRVÉ SE ČEKÁ NA ÚVODNÍ PRŮVODCE. Systémový dotaz nad uvítací obrazovkou
+ * je přepadení – přesně to, kvůli čemu se appka do srpna 2026 neptala vůbec.
+ * `store.seen` je nastavené od druhého spuštění dál, takže se čeká jen jednou
+ * za život instalace.
+ *
+ * Je to tiché v obou směrech, viz `zjistiPolohuTise()` v `core/geo.js`.
+ */
+if (prefs.polohaPriStartu) {
+  if (store.seen) zjistiPolohuTise()
+  else on('uvodZavren', () => zjistiPolohuTise())
+}

@@ -18,8 +18,9 @@
  * telefon, jestli je karta výpravy schovaná a zdroje dat.
  */
 
-import { emit, prefs, savePrefs } from '../../core/store.js'
+import { emit, prefs, savePrefs, S } from '../../core/store.js'
 import { zmerUloziste } from '../../core/storage.js'
+import { zjistiPolohuTise } from '../../core/geo.js'
 import { esc, sklonuj } from '../../core/html.js'
 import { debugData, mojeZaznamy, prefixId, prejmenujNeodeslane, sanitizujAutora, ulozDebug } from '../../core/debug.js'
 import { aktivujZalozku } from '../../core/router.js'
@@ -112,7 +113,11 @@ export async function renderNastaveni() {
   // MAPA – k offline mapě v `index.html` patří i hustota kreseb.
   doPrihradky(
     'nastMapa',
-    `<div class="sechd">${IC('i-strom')}Kresby krajiny</div>
+    `<div class="sechd">${IC('i-pinme')}Poloha při startu</div>
+    <div class="meta">Appka se na polohu zeptá hned po zapnutí, takže na Domů rovnou svítí počasí a v mapě je vidět, kde jsi. Prohlížeč se ptá jednou, pak už je to neviditelné. Vypnuté znamená, že si o polohu řekneš sám – ťuknutím na kolečko v mapě nebo na „Ukázat počasí u mě".</div>
+    ${segment([{ id: 'zap', popisek: 'Zapnuté' }, { id: 'vyp', popisek: 'Vypnuté' }], prefs.polohaPriStartu ? 'zap' : 'vyp', 'polohaSeg')}
+
+    <div class="sechd">${IC('i-strom')}Kresby krajiny</div>
     <div class="meta">Stromy a hory kreslené do mapy. Stojí na skutečných lesích a skutečných hřebenech.${kresbyJdou ? '' : ' <b>Napřed je potřeba stáhnout malovanou mapu.</b>'}</div>
     <div class="volbakresby${kresbyJdou ? '' : ' nejde'}">
       ${segment(
@@ -324,6 +329,19 @@ export async function renderNastaveni() {
       vratVychoziSekce()
       renderNastaveni()
       toast('Domů je zase jako na začátku')
+    }
+
+  // Poloha při startu. Zapnutí se hned projeví: appka si o polohu řekne bez
+  // čekání na příští spuštění, jinak by to vypadalo, že přepínač nic nedělá.
+  const polohaSeg = document.getElementById('polohaSeg')
+  if (polohaSeg)
+    for (const b of polohaSeg.querySelectorAll('button')) {
+      b.onclick = () => {
+        prefs.polohaPriStartu = b.dataset.seg === 'zap'
+        savePrefs()
+        renderNastaveni()
+        if (prefs.polohaPriStartu && !S.userPos) zjistiPolohuTise()
+      }
     }
 
   // Počasí. Přepnutí se propíše i na Domů – bez toho by se vypnuté počasí

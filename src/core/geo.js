@@ -91,6 +91,30 @@ export function zjistiPolohu() {
 }
 
 /**
+ * Tichý dotaz na polohu při startu appky.
+ *
+ * MLČÍ V OBOU SMĚRECH, a to schválně. Při úspěchu se prostě objeví počasí na
+ * Domů a dodávka v mapě; při odmítnutí se nestane nic a na Domů zůstane
+ * tlačítko „Ukázat počasí u mě", které si o polohu řekne samo a s vysvětlením.
+ * Toast o nezdaru něčeho, co si člověk nevyžádal, je obtěžování – a `zjistiPolohu()`
+ * hlásí i „Hledám polohu…", což by při každém spuštění vyskakovalo do prázdna.
+ *
+ * Řídí to `prefs.polohaPriStartu`; vypnuté vrací appku na chování do srpna
+ * 2026, kdy si o polohu neřekla nikdy sama.
+ *
+ * @returns {Promise<boolean>}  povedlo se?
+ */
+export function zjistiPolohuTise() {
+  return zjistiPolohuJednorazove()
+    .then((p) => {
+      S.userPos = p
+      emit('poloha')
+      return true
+    })
+    .catch(() => false)
+}
+
+/**
  * Jednorázové zjištění polohy jako Promise, bez vlastních toastů – volající
  * (výběr start/cíl, sběr bodů pro přepočet trasy) si hlášku dá podle svého
  * kontextu. NENÍ TOTÉŽ jako watchPosition ve views/plan/cesta-zivot.js –

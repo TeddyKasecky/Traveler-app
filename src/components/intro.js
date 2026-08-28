@@ -14,7 +14,7 @@
  * a každý bajt tam stojí o třetinu víc, protože se inlinuje jako data URI.
  */
 
-import { store, save } from '../core/store.js'
+import { store, save, emit } from '../core/store.js'
 import { IC } from '../icons/sprite.js'
 
 import obrObjevuj from '../assets/onboarding/objevuj.webp'
@@ -53,6 +53,10 @@ function zavri() {
   document.getElementById('intro').classList.remove('show')
   store.seen = true
   save()
+  // Teprve teď se smí appka zeptat na polohu (`prefs.polohaPriStartu`).
+  // Přes událost proto, že `components/` nemá volat `core/geo.js` ani vědět
+  // o startu – stejný důvod, proč se takhle oznamuje `zalozkaZmenena`.
+  emit('uvodZavren')
 }
 
 function vykresli() {

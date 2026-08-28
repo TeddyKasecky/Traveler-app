@@ -246,6 +246,32 @@ export function priblizNaFiltr(mista) {
  *
  * Volá se i po změně auta v Profilu – proto se značka staví vždycky znovu.
  */
+/**
+ * Bylo už v tomhle spuštění na polohu vycentrováno?
+ *
+ * Jen v paměti, ne v předvolbách – je to „jednou za spuštění", ne nastavení.
+ */
+let vycentrovano = false
+
+/**
+ * Přiblíží mapu na tvoji polohu, ale JEN JEDNOU ZA SPUŠTĚNÍ.
+ *
+ * Do srpna 2026 se střed nastavil jedině tehdy, když poloha dorazila zrovna
+ * ve chvíli, kdy byla Mapa otevřená – jinak zůstal výchozí pohled na Evropu
+ * v přiblížení 5, kde je dodávka malý bod a hledá se chvíli. Když se appka
+ * o polohu řekne sama při startu, tenhle případ nastane skoro vždycky.
+ *
+ * TO „JEN JEDNOU" JE PODSTATA. Kdo si prohlíží Alpy a odskočí na Seznam, nemá
+ * se po návratu ocitnout zpátky doma – po prvním vycentrování si výřez drží
+ * sám. Volá se ze dvou míst (příchod polohy i přepnutí na Mapu), protože
+ * poloha může dorazit před i po otevření mapy.
+ */
+export function vycentrujPoprve() {
+  if (vycentrovano || !S.userPos) return
+  vycentrovano = true
+  mapa.setView([S.userPos.lat, S.userPos.lon], 9)
+}
+
 export function zobrazPolohu() {
   if (!S.userPos) return
   if (markerPolohy) markerPolohy.remove()
