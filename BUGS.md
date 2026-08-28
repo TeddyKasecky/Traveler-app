@@ -220,3 +220,32 @@ s výchozími dnešními šesti, a pilulky v Objevuj zalomit místo posouvání
 do strany. „Se psem" schválně vynechat — filtr vrací pět míst (N6).
 `smoke` má natvrdo `#panelProfil .sbalka` = 3, po přidání skupiny se to
 musí zvednout na 4.
+
+---
+
+## Jednosouborová varianta má jít pryč (srpen 2026, k rozhodnutí)
+
+**Nasazuje se jedině `dist/`.** `wrangler.jsonc` míří na `./dist`, Cloudflare
+staví z GitHubu a `dist-single/` nebylo v gitu nikdy. Jediný důvod, proč
+existuje, je zapsaný v `src/data/kategorieFoto.js`: *„ten soubor se nosí na
+flashce a posílá mailem"* — tedy cesta, kterou dnes nahradila beta na
+`traveler-app-beta.teddykasecky.workers.dev` a offline režim PWA.
+
+Co to stojí:
+
+- **osm zdrojáků** větví přes `import.meta.env.SINGLE_FILE` (`intro.js`,
+  `kategorieFoto.js`, `podklad.js` 2×, `vektory.js`, `register.js`,
+  `debugExportUI.js`),
+- **`smoke.mjs` má celou druhou větev** (`--single`, dnes 417 kontrol),
+  kterou je nutné projet u každé změny,
+- `kategorieFoto.js` kvůli tomu drží **dvě sady ilustrací** (malé a velké),
+- **79 zmínek v dokumentaci**.
+
+Konkrétní cena: rozdělaný vícenásobný filtr výš neblokuje nic jiného než
+`smoke:single` — tedy kontrola varianty, která nemá kam být nasazená.
+
+Návrh: `build:single` a `smoke:single` zrušit, větve `SINGLE_FILE` vyhodit
+(zůstane vždy ta „normální" cesta), `kategorieFoto.js` sjednotit na jednu
+sadu a projít dokumentaci. **Je to na rozhodnutí, ne na tichý úklid** —
+smazáním se ztratí možnost poslat appku mailem někomu, kdo si ji nechce
+instalovat.
