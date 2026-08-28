@@ -123,6 +123,17 @@
   max-width:100%;margin-left:0;margin-right:0}
 .dzf .pilulka{flex:0 0 auto}
 
+/* Kdy a proč se záznam zavřel – v rozbaleném, nad spodní lištou. Do srpna 2026
+ * byl důvod jen v `title=`, tedy jako bublina, kterou na telefonu nikdo neuvidí.
+ * Mechový proužek vlevo ho odděluje od vlastního textu záznamu: tohle napsal
+ * ten, kdo věc zavíral, ne autor hlášení. */
+.dzr-zavreno{margin:0 0 10px;padding:9px 11px;border-left:3px solid var(--akcent);
+  background:var(--plocha2);border-radius:0 var(--r-s) var(--r-s) 0}
+.dzr-zavreno b{display:flex;align-items:center;gap:5px;font-size:.72rem;font-weight:800;
+  color:var(--ink2)}
+.dzr-zavreno svg.ic{font-size:13px;color:var(--akcent);stroke:var(--akcent)}
+.dzr-zavreno p{margin:4px 0 0;font-size:.76rem;line-height:1.45;color:var(--ink2)}
+
 /* ---------- štítky ---------- */
 
 .dz-id{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;color:var(--ink2);flex:0 0 auto}
@@ -138,6 +149,10 @@
 .dz-znacka.stav.hotovo{background:var(--moss);color:var(--na-akcentu);border-color:transparent}
 .dz-znacka.vysoka{background:var(--upozorneni);color:var(--na-upozorneni);border-color:transparent}
 .dz-znacka.zahozeno{opacity:.6}
+/* Zahozené má i v „Moje" vypadat ztlumeně jako v „Od ostatních", kde mu
+ * ztlumení dělá `.repo`. Bez tohohle by zahozený štítek vypadal jako živý
+ * a od hotového by ho odlišila jen ikona. */
+.dz-znacka.stav.zahozeno{background:var(--plocha2);border-style:dashed}
 .dz-znacka.odeslano svg.ic{font-size:11px}
 
 /* Štítek z repozitáře je vizuálně oddělený od mého vlastního stavu –

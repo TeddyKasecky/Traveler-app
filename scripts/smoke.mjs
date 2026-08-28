@@ -818,8 +818,32 @@ await page.waitForTimeout(800)
 await kontrola('změna stavu se uložila', async () => (await debugZaznamy()).zaznamy[0].stav, 'hotovo')
 await kontrola('id se úpravou nezměnilo', async () => (await debugZaznamy()).zaznamy[0].id, PRVNI_ID)
 await kontrola('seznam se sám překreslil', () => page.locator('.dzr:not(.cizi) .dz-znacka.stav.hotovo').count(), 1)
-// Úprava rozbalení nezruší – sbalit ručně, ať další sekce začíná v čistém stavu.
+
+// ZAVŘENÝ ZÁZNAM SE SMRSKNE na nadpis a štítek – jako odbytý řádek v „Od
+// ostatních". Tam to nebylo rozhodnutí, ale náhoda: rejstřík u vyřešených
+// nenese text ani prioritu. Tady se to dělá schválně, ať odbytá věc nezabírá
+// v seznamu stejně místa jako ta, která se řeší.
+//
+// Řádek je zrovna ROZBALENÝ (úprava rozbalení nezruší), takže se napřed sbalí –
+// `.dzr-text` se v otevřeném řádku schovává i tak a měřilo by se něco jiného.
 await page.click('.dzr:not(.cizi) .dzr-telo')
+await page.waitForTimeout(300)
+await kontrola('zavřený řádek je označený', () => page.locator('.dzr:not(.cizi).zavreny').count(), 1)
+await kontrola('a nemá úryvek textu', () => page.locator('.dzr:not(.cizi) .dzr-text').count(), 0)
+await kontrola('ani štítek priority', () =>
+  page.locator('.dzr:not(.cizi) .dz-znacka.stredni, .dzr:not(.cizi) .dz-znacka.nizka, .dzr:not(.cizi) .dz-znacka.vysoka').count(), 0)
+// Bez uzavření v repozitáři appka datum nezná a nesmí si ho vymyslet.
+await kontrola('vlastní „hotovo" je bez data', () =>
+  page.locator('.dzr:not(.cizi) .dz-znacka.stav.hotovo').innerText().then((t) => t.includes('·')), false)
+// Schování je jen v řádku – ťuknutím se text musí vrátit, jinak by to vypadalo
+// jako ztráta zápisu.
+await page.click('.dzr:not(.cizi) .dzr-telo')
+await page.waitForTimeout(300)
+await kontrola('rozbalení text vrátí', () =>
+  page.locator('.dzr:not(.cizi) .dzr-detail').innerText().then((t) => t.includes('kontrolní skript')), true)
+// A zase sbalit: další sekce začíná v čistém stavu a sama si řádek rozbalí.
+await page.click('.dzr:not(.cizi) .dzr-telo')
+await page.waitForTimeout(300)
 await page.waitForTimeout(250)
 
 // EXPORT JE SBALENÝ POD JEDNÍM PANELEM i se zálohou (srpen 2026). Dohromady
@@ -1056,6 +1080,56 @@ if (!SINGLE) {
   await page.fill('#dz-nadpis', 'Zkušební záznam ze smoke')
   await page.click('#dzUloz')
   await page.waitForTimeout(700)
+  await page.click('.dzr:not(.cizi) .dzr-telo')
+  await page.waitForTimeout(300)
+
+  // ZAVŘENO V REPOZITÁŘI: štítek dostane datum a přibude řádek s důvodem.
+  // Datum jde jedině odsud – vlastní „hotovo" ve formuláři žádné nemá – takže
+  // se rejstřík podstrčí stejně jako výš a stránka se načte znovu.
+  const rejVyreseno = JSON.parse(fs.readFileSync(REJSTRIK_CESTA, 'utf8'))
+  rejVyreseno.zaznamy = rejVyreseno.zaznamy.filter((z) => z.id !== zaznam.id)
+  rejVyreseno.zaznamy.push({
+    id: zaznam.id,
+    autor: zaznam.autor,
+    stav: 'hotovo',
+    vyresenoDne: '2026-08-14',
+    poznamka: 'zavřeno kontrolním skriptem',
+    zdroj: 'vyreseno',
+  })
+  fs.writeFileSync(REJSTRIK_CESTA, JSON.stringify(rejVyreseno, null, 2))
+  await page.reload({ waitUntil: 'load' })
+  await page.waitForTimeout(2000)
+
+  await kontrola('zavřený v repu má rámeček vyřešeného', () => page.locator('.dzr.st-vyreseno').count(), 1)
+  await kontrola('a štítek nese datum uzavření', () =>
+    page.locator('.dzr:not(.cizi) .dz-znacka.stav.hotovo').innerText().then((t) => t.includes('14. 8.')), true)
+  await kontrola('řádek je pořád smrsklý', () => page.locator('.dzr:not(.cizi) .dzr-text').count(), 0)
+  // Důvod zavření se do teď ukládal a ukazoval jedině v `title=`, tedy jako
+  // bublina, kterou na telefonu nikdo neuvidí.
+  await page.click('.dzr:not(.cizi) .dzr-telo')
+  await page.waitForTimeout(300)
+  await kontrola('a po rozbalení je vidět, proč se zavřel', () =>
+    page.locator('.dzr-zavreno').innerText().then((t) => t.includes('kontrolním skriptem')), true)
+
+  // A TEĎ TA PODSTATNÁ. Uzavřené záznamy z rejstříku po 180 dnech vypadnou.
+  // `stitekZRepa()` se do srpna 2026 ptala jen rejstříku, takže v ten okamžik
+  // začala o vyřešeném záznamu tvrdit „zmizelo z repozitáře" – zatímco rámeček
+  // řádku vedle dál říkal „vyřešené", protože `stadiumZaznamu()` se ptá
+  // vlastní paměti. Dvě místa o téže věci, dvě různé odpovědi.
+  const rejBezNej = JSON.parse(fs.readFileSync(REJSTRIK_CESTA, 'utf8'))
+  rejBezNej.zaznamy = rejBezNej.zaznamy.filter((z) => z.id !== zaznam.id)
+  fs.writeFileSync(REJSTRIK_CESTA, JSON.stringify(rejBezNej, null, 2))
+  await page.reload({ waitUntil: 'load' })
+  await page.waitForTimeout(2000)
+
+  await kontrola('po vypadnutí z rejstříku zůstane vyřešený', () => page.locator('.dzr.st-vyreseno').count(), 1)
+  await kontrola('a datum si appka pamatuje sama', () =>
+    page.locator('.dzr:not(.cizi) .dz-znacka.stav.hotovo').innerText().then((t) => t.includes('14. 8.')), true)
+  await page.click('.dzr:not(.cizi) .dzr-telo')
+  await page.waitForTimeout(300)
+  await kontrola('a netvrdí, že zmizel z repozitáře', () => page.locator('.dz-znacka.repo.chybi').count(), 0)
+  await kontrola('ale že je vyřešený', () =>
+    page.locator('.dzr-detail .dz-znacka.repo.hotovo').innerText().then((t) => t.includes('vyřešeno')), true)
   await page.click('.dzr:not(.cizi) .dzr-telo')
   await page.waitForTimeout(300)
 }

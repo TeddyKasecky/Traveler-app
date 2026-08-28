@@ -254,14 +254,35 @@ const STADIA = [
  * něj nikdy nepřepisuje sám. Od srpna 2026 stojí až v rozbaleném záznamu,
  * ne v řádku – v seznamu se rozhoduje podle stavu a priority.
  */
-function stitekZRepa(z) {
+/**
+ * Co appka ví o uzavření záznamu – z vlastní paměti, jinak z rejstříku.
+ *
+ * POŘADÍ NENÍ NÁHODNÉ. Uzavřené záznamy z rejstříku po 180 dnech vypadnou
+ * (`PLATNOST_UZAVRENYCH` ve `scripts/debug-rejstrik.mjs`), takže vlastní paměť
+ * `z.zavreno` je ta trvalá odpověď a rejstřík jen záloha pro první vykreslení,
+ * než ji `dorovnejOtisky()` naplní. Stejně se ptá `stadiumZaznamu()` – a právě
+ * proto, že se `stitekZRepa()` ptala jinak, uměla o vyřešeném záznamu tvrdit
+ * „zmizelo z repozitáře", zatímco rámeček řádku vedle říkal „vyřešené".
+ *
+ * @returns {{stav: string, dne: string, poznamka: string}|null}
+ */
+function uzavreni(z) {
+  if (z.zavreno) return z.zavreno
   const r = stavZRepa(z.id)
-  if (r && r.zdroj === 'vyreseno') {
-    const kdy = r.vyresenoDne ? ` · ${denZIso(r.vyresenoDne)}` : ''
-    return r.stav === 'zahozeno'
-      ? `<span class="dz-znacka repo zahozeno" title="${esc(r.poznamka || '')}">${IC('i-x')}zahozeno v repu${kdy}</span>`
-      : `<span class="dz-znacka repo hotovo" title="${esc(r.poznamka || '')}">${IC('i-check')}vyřešeno${kdy}</span>`
+  return r && r.zdroj === 'vyreseno'
+    ? { stav: r.stav, dne: r.vyresenoDne || '', poznamka: r.poznamka || '' }
+    : null
+}
+
+function stitekZRepa(z) {
+  const zavr = uzavreni(z)
+  if (zavr) {
+    const kdy = zavr.dne ? ` · ${denZIso(zavr.dne)}` : ''
+    return zavr.stav === 'zahozeno'
+      ? `<span class="dz-znacka repo zahozeno">${IC('i-x')}zahozeno v repu${kdy}</span>`
+      : `<span class="dz-znacka repo hotovo">${IC('i-check')}vyřešeno${kdy}</span>`
   }
+  const r = stavZRepa(z.id)
   if (r) {
     return r.stav === 'resim'
       ? `<span class="dz-znacka repo">${IC('i-clock')}řeší se</span>`
@@ -288,7 +309,21 @@ function radekZaznamu(z) {
   const zaskrtnuty = vybrane.has(z.id)
   const otevreny = rozbalene.has(z.id)
 
-  return `<div class="dzr st-${stadiumZaznamu(z)}${zaskrtnuty ? ' vybrany' : ''}${otevreny ? ' otevreny' : ''}" data-id="${z.id}">
+  // ZAVŘENÝ ZÁZNAM SE SMRSKNE na nadpis a štítek – stejně, jak vypadá odbytý
+  // řádek v „Od ostatních". Tam to nebylo rozhodnutí, ale náhoda: rejstřík
+  // u vyřešených nenese text ani prioritu, takže cizí řádek nemá co kreslit.
+  // Moje půlka data má, tak je kreslila – a odbytá věc pak zabírala v seznamu
+  // stejně místa jako ta, která se řeší.
+  //
+  // Repozitář přebíjí můj vlastní `stav`: když jsem si napsal „řeším" a někdo
+  // to mezitím zavřel, platí to druhé. Je to jediná z těch dvou odpovědí,
+  // která má datum, a rámeček řádku už stejně říká „vyřešené". Vlastní `stav`
+  // se dál edituje ve formuláři a jde do `.md`, jen se v řádku nekreslí.
+  const zavr = uzavreni(z)
+  const jeZavreny = !!zavr || z.stav === 'hotovo' || z.stav === 'zahozeno'
+  const stav = zavr ? zavr.stav : z.stav
+
+  return `<div class="dzr st-${stadiumZaznamu(z)}${zaskrtnuty ? ' vybrany' : ''}${otevreny ? ' otevreny' : ''}${jeZavreny ? ' zavreny' : ''}" data-id="${z.id}">
     <div class="dzr-radek">
       <button class="dzr-check" role="checkbox" aria-checked="${zaskrtnuty}" data-check="${z.id}"
         aria-label="Vybrat ${z.id}">${zaskrtnuty ? IC('i-check') : ''}</button>
@@ -297,14 +332,39 @@ function radekZaznamu(z) {
           ${IC(t.ikona)}
           <b>${esc(z.nadpis)}</b>
         </div>
-        ${z.text ? `<div class="dzr-text">${esc(zkratka(z.text))}</div>` : ''}
+        ${z.text && !jeZavreny ? `<div class="dzr-text">${esc(zkratka(z.text))}</div>` : ''}
         <div class="dzr-meta">
-          <span class="dz-znacka stav ${z.stav}">${esc(stavPopisek(z.stav))}</span>
-          <span class="dz-znacka ${z.priorita}">${esc(prioPopisek(z.priorita))}</span>
+          ${
+            // Třída `.stav` zůstává, i když štítek vypadá jako ten z repozitáře:
+            // `.dz-znacka.stav.hotovo` a `.dz-znacka.repo.hotovo` mají tutéž
+            // mechovou výplň, takže „stejný štítek jako v ostatních" je otázka
+            // ikony a data, ne nové barvy.
+            jeZavreny
+              ? `<span class="dz-znacka stav ${stav}">${IC(stav === 'zahozeno' ? 'i-x' : 'i-check')}${esc(stavPopisek(stav))}${zavr && zavr.dne ? ` · ${denZIso(zavr.dne)}` : ''}</span>`
+              : `<span class="dz-znacka stav ${z.stav}">${esc(stavPopisek(z.stav))}</span>
+                 <span class="dz-znacka ${z.priorita}">${esc(prioPopisek(z.priorita))}</span>`
+          }
         </div>
       </button>
     </div>
     ${otevreny ? rozbalenyZaznam(z) : ''}
+  </div>`
+}
+
+/**
+ * Kdy a proč se záznam zavřel. Prázdno, dokud zavřený není.
+ *
+ * Datum se vypisuje, jen když ho appka opravdu zná – zavřít si záznam můžu
+ * i sám ve formuláři a to žádné datum nemá. Vymyslet ho z času úpravy by
+ * vypadalo stejně jako datum z repozitáře a tvrdilo by něco jiného.
+ */
+function duvodZavreni(z) {
+  const zavr = uzavreni(z)
+  if (!zavr) return ''
+  const kdy = zavr.dne ? ` ${denZIso(zavr.dne)}` : ''
+  return `<div class="dzr-zavreno">
+    <b>${IC(zavr.stav === 'zahozeno' ? 'i-x' : 'i-check')}Zavřeno${kdy} – ${esc(stavPopisek(zavr.stav))}</b>
+    ${zavr.poznamka ? `<p>„${esc(zavr.poznamka)}“</p>` : ''}
   </div>`
 }
 
@@ -325,6 +385,13 @@ function rozbalenyZaznam(z) {
     ${z.typ === 'napad' ? kus('K čemu to je', z.motivace) + kus('Hotovo když', z.hotovoKdyz) : ''}
     ${kus('Návrh řešení', z.navrh)}
     ${moduly ? `<div class="dzr-kus"><b>Čeho se to týká</b><p>${esc(moduly)}</p></div>` : ''}
+    ${
+      // PROČ SE TO ZAVŘELO. Důvod z `debug-zavri` si appka ukládá do
+      // `z.zavreno.poznamka` už dávno, ale ukazovala ho jedině v `title=` –
+      // tedy jako bublinu, kterou na dotykovém telefonu nikdo neuvidí, a to
+      // je jediné zařízení, na kterém se poznámkovač používá.
+      duvodZavreni(z)
+    }
     <div class="dzr-meta dzr-spodek">
       <span class="dz-id">${esc(z.id)}</span>
       <span class="dzr-datum">zapsáno ${datum(z.vytvoreno)}</span>

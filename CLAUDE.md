@@ -258,6 +258,20 @@ i celá řada — seznam pak zůstane prázdný a napíše proč. **Mazání se 
 až za blok Export**, protože nejnebezpečnější tlačítko obrazovky nemá být první,
 na co palec sáhne.
 
+**Zavřený záznam se v „Moje" smrskne** na nadpis a štítek `✓ hotovo · 14. 8.`,
+stejně jako odbytý řádek v „Od ostatních" — úryvek textu ani štítek priority se
+nekreslí. Tam to nebylo rozhodnutí, ale náhoda: rejstřík u vyřešených nenese
+text ani prioritu, takže cizí řádek nemá co kreslit. Tady se to dělá schválně.
+Zavřené je to, co má `stav` hotovo/zahozeno **nebo** co zavřel repozitář;
+**repozitář přebíjí vlastní stav**, protože je to jediná z těch dvou odpovědí,
+která má datum. Ťuknutí řádek rozbalí a text je zase celý vidět. V rozbaleném
+navíc stojí **proč se to zavřelo** — `zavreno.poznamka` se ukládala odjakživa,
+ale ukazovala se jen v `title=`, tedy jako bublina, kterou na telefonu nikdo
+neuvidí. Datum i důvod čte `uzavreni()` **z vlastní paměti napřed** a z rejstříku
+až jako ze zálohy: uzavřené záznamy z rejstříku po 180 dnech vypadnou a
+`stitekZRepa()`, která se do té doby ptala jen jeho, pak o vyřešeném záznamu
+tvrdila „zmizelo z repozitáře", zatímco rámeček vedle říkal „vyřešené".
+
 Exportují se do jednoho `.md` souboru na export (`debug/RRRR-MM-DD-HHMM-<autor>.md`),
 který se commitne a pushne — tím se dostane k oběma lidem i k AI, která si repo čte.
 `id` záznamu (`tadeas-014`) **se nikdy nemění a nerecykluje**, stejně jako `id` místa.
