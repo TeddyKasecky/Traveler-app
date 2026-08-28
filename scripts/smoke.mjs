@@ -185,7 +185,7 @@ const zavriDetail = async () => {
 //   srpen 2026 – brouk se znovu použít nedal, dvě sousední kolečka s toutéž
 //   ikonou by nešlo rozeznat).
 // Číslo se mění jen s vědomým přidáním do sprite.svg.
-await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 71)
+await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 72)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
 // Nad mapou jsou čtyři rychlé pilulky „moje věci" (Vše, Uložená, Musíme!,
@@ -1692,6 +1692,30 @@ await kontrola('cesta se rozjela', () =>
 // Itinerář, jen z otisku cesty) a štítek, ze kterého je poznat, že appka
 // JEDE – dřív to byl obyčejný nadpis, co se v pauze jen zešedil.
 await kontrola('Na cestě má mini-mapu', () => page.locator('#cestaMapa').count(), 1)
+
+// ZÁMEK MINI-MAPY (hlášení `tadeas-f32-020`). Leaflet dává kontejneru třídu
+// `leaflet-grab`, jen když je posun zapnutý – na tom se zamčeno pozná, aniž
+// by se muselo tahat prstem.
+await page.waitForTimeout(600)
+await kontrola('mapa má v rohu zámek', () => page.locator('#cestaMapa .dashmapa-zamek').count(), 1)
+await kontrola('a startuje zamčená', () => page.locator('#cestaMapa.leaflet-grab').count(), 0)
+await page.click('#cestaMapa .dashmapa-zamek')
+await page.waitForTimeout(250)
+await kontrola('ťuknutí ji odemkne', () => page.locator('#cestaMapa.leaflet-grab').count(), 1)
+await kontrola('a zámek to dá najevo', () => page.locator('.dashmapa-zamek.odemceno').count(), 1)
+await page.click('#cestaMapa .dashmapa-zamek')
+await page.waitForTimeout(250)
+await kontrola('druhé ťuknutí zase zamkne', () => page.locator('#cestaMapa.leaflet-grab').count(), 0)
+// Odemčení je JEN V PAMĚTI a odchodem z obrazovky padá – hlášení chce, aby
+// byl zámek po návratu zase zamčený.
+await page.click('#cestaMapa .dashmapa-zamek')
+await page.waitForTimeout(250)
+await page.click('#tabs button[data-tab="home"]')
+await page.waitForTimeout(500)
+await page.click('#tabs button[data-tab="plan"]')
+await page.waitForTimeout(900)
+await kontrola('návrat na obrazovku ji zase zamkne', () => page.locator('#cestaMapa.leaflet-grab').count(), 0)
+
 // `innerText` vrací text po `text-transform: uppercase`, tedy „NA CESTĚ · 1. DEN“.
 await kontrola('štítek říká, že jedeme a kolikátý je den', () =>
   page.locator('.cesta-stitek').innerText().then((t) => /^NA CESTĚ · \d+\. DEN$/i.test(t)))
@@ -1748,6 +1772,60 @@ await page.click('.vkarta.jede')
 await page.waitForTimeout(600)
 await kontrola('ťuknutí vede na kartu Na cestě', () =>
   page.locator('#planSegment button.on').innerText().then((t) => t.startsWith('Na cestě')))
+
+// PROBLIKÁVÁNÍ MINI-MAPY (hlášení `tadeas-f32-016`). Na kartě Na cestě běží
+// živé sledování polohy a to do srpna 2026 každé dvě sekundy překreslilo CELÝ
+// Plán – mini-mapa se tím zbourala a postavila znovu, `fitBounds()` vrátil
+// výřez zpátky a posunout si ji nešlo.
+//
+// MĚŘÍ SE `_leaflet_id`, protože to je jediné, co o přestavbě mluví jistě:
+// Leaflet ho novému kontejneru přidělí znovu. Pohled na obrazovku by tu
+// nestačil, blikne to na jedno překreslení.
+//
+// STOJÍ TO AŽ TADY, za kontrolami „Co dál?" výš. Ty měří stav BEZ polohy,
+// a `S.zivaPoloha` v paměti zůstane i po `clearPermissions()` – to řídí jen
+// budoucí dotazy, ne to, co si appka už pamatuje. Cesta v tomhle místě pořád
+// jede a karta Na cestě je otevřená, takže je to poslední vhodné místo.
+//
+// Poloha se povoluje až tady a karta se přepne tam a zpátky: `spustSledovani()`
+// je idempotentní, takže watch zaregistrovaný ještě bez povolení by se sám
+// znovu nepřihlásil.
+// A POLOHOU SE MUSÍ POHNOUT. `watchPosition` hlásí ZMĚNU, ne stav – na stojící
+// souřadnici pošle jednu zprávu a pak mlčí. Ta jediná navíc dorazí dřív, než
+// se mini-mapa po `rAF + 180 ms` postaví, takže by se neprojevila nikde.
+await page.context().grantPermissions(['geolocation'])
+await page.context().setGeolocation({ latitude: 47.26, longitude: 11.39 })
+await page.click('#planSegment button:not(.on)')
+await page.waitForTimeout(400)
+await page.click('#planSegment button[data-seg="cesta"]')
+await page.waitForTimeout(1800)
+await page.context().setGeolocation({ latitude: 47.28, longitude: 11.42 })
+await page.waitForTimeout(2600)
+
+const mapaId = () => page.evaluate(() => document.getElementById('cestaMapa')?._leaflet_id || 0)
+const kdeJa = async () => (await page.locator('#cestaMapa .kos-ja').first().boundingBox()) || { x: 0, y: 0 }
+
+// Značku „Tady jsi" vyrobí až první došlá poloha – při vykreslení karty appka
+// ještě žádnou neznala. Že vůbec vznikla, je zároveň důkaz, že obnovovací
+// cesta běží: nikdo jiný ji od té chvíle nekreslí.
+await page.locator('#cestaMapa .kos-ja').first().waitFor({ timeout: 8000 })
+await kontrola('poloha se na mapě objeví', () => page.locator('#cestaMapa .kos-ja').count(), 1)
+
+const idPred = await mapaId()
+const jaPred = await kdeJa()
+await page.context().setGeolocation({ latitude: 47.31, longitude: 11.47 })
+await page.waitForTimeout(2600)
+await page.context().setGeolocation({ latitude: 47.36, longitude: 11.55 })
+await page.waitForTimeout(2600)
+
+await kontrola('mapa se za jízdy nepřestavuje', mapaId, idPred)
+// A zároveň se opravdu obnovuje – kdyby oprava aktualizaci jen vypnula,
+// značka „Tady jsi" by zůstala stát a kontrola výš by prošla taky.
+await kontrola('ale značka polohy se posune', async () => {
+  const jaPo = await kdeJa()
+  return Math.hypot(jaPo.x - jaPred.x, jaPo.y - jaPred.y) > 5
+}, true)
+await page.context().clearPermissions()
 
 await page.click('#cestaKonec')
 await page.waitForTimeout(300)

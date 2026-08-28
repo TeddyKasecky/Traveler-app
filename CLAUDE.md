@@ -156,7 +156,7 @@ _Odvozeno ze skutečného kódu — žádný linter to nevynucuje._
 - Parametry typované JSDoc anotacemi (`@param {Record<string, any>} p`), ne TypeScriptem.
 - CSS: barvy a rozměry výhradně přes proměnné z `tokens.css`, nikdy natvrdo. Nová barva
   patří do sémantické vrstvy **a do obou tmavých bloků** — viz [VZHLED.md](VZHLED.md).
-- Ikony jsou symboly v `src/icons/sprite.svg` (71 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
+- Ikony jsou symboly v `src/icons/sprite.svg` (72 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
 
 Podrobná pravidla podle oblasti (auto-scoped podle cesty):
 [.claude/rules/database.md](.claude/rules/database.md) ·
@@ -637,6 +637,20 @@ v `prefs.domuPoradi` a `prefs.domuSkryte`, takže jdou do zálohy.
   a souřadnice lesů a hor — přes 4 MB, které jsou k ničemu každému, kdo si mapu
   nestáhne. Neztratí se: service worker od srpna 2026 **ukládá i to, co se stáhne
   až za běhu**. Filtr je v `vite.config.js` podle jména souboru a hlídá ho `smoke`.
+- **Mini-mapa se za jízdy nepřestavuje a má zámek.** Živé sledování polohy
+  hlásí `zivaProjekce` každé dvě sekundy a `main.js` na to do srpna 2026 volal
+  `renderPlan()` — přestavěla se tím celá obrazovka, mini-mapa se zbourala
+  a `fitBounds()` vrátil výřez zpátky, takže blikala a posunout si ji nešlo
+  (hlášení `tadeas-f32-016`). Mění se přitom jen dva údaje, a ty obnovuje
+  `obnovZiveSledovani()` v `plan.js` → `obnovZiveUdaje()` v `cesta.js`:
+  řádek „podle polohy zbývá" a značka polohy přes `posunZnackuPolohy()`
+  v `dashMapa.js`. **Žádný `fitBounds` při obnově** — výřez se hnout nesmí.
+  Změřeno přes `_leaflet_id` kontejneru: 3316 → 5563 za pět sekund před
+  opravou, beze změny po ní. **Mapa je navíc zamčená** (`dragging` a spol.
+  vypnuté), aby na telefonu nekradla tah místo rolování; odemyká ji zámek
+  v pravém horním rohu jako `L.Control`. Odemčení je jen v paměti a `main.js`
+  ho při odchodu ze záložky Plán ruší přes `zamkniMapy()` — po načtení je
+  vždycky zamčeno (`tadeas-f32-020`).
 - **318 míst nemá `img`** a zobrazuje se u nich akvarel podle kategorie
   (`src/assets/kategorie/`); kreslená pohlednice z `postcard.js` zůstává pod ním jako
   záchrana, když se obrázek nenačte. Je to záměr, ne nedodělek — fotky nedoplňuj náhodně.

@@ -42,10 +42,11 @@ import { openDetail } from './views/detail/detail.js'
 import { renderHome } from './views/home/home.js'
 import { renderDisc } from './views/discover/discover.js'
 import { renderList } from './views/list/list.js'
-import { renderPlan, zavriNavigaci, jeOtevrenaNavigace } from './views/plan/plan.js'
+import { renderPlan, obnovZiveSledovani, zavriNavigaci, jeOtevrenaNavigace } from './views/plan/plan.js'
 import { renderMapaDole, initMapaDole } from './views/mapa/mapa.js'
 import { renderProfil } from './views/profil/profil.js'
 import { zastavSledovani } from './views/plan/cesta-zivot.js'
+import { zamkniMapy } from './views/plan/dashMapa.js'
 
 import { registrujServiceWorker, resetujAppku } from './pwa/register.js'
 
@@ -257,13 +258,22 @@ on('poloha', () => {
 
 /**
  * Živé sledování polohy na trase se posunulo (views/plan/cesta-zivot.js,
- * throttlovaně). Překreslí kartu Na cestě (číslo "zbývá") i mapu (značka
- * aktuální projektované polohy) – jen když je appka opravdu na Plánu, jinak
- * by šlo o zbytečnou práci na neviditelné obrazovce.
+ * throttlovaně, tedy nejvýš jednou za dvě sekundy).
+ *
+ * OBNOVÍ SE JEN TY DVA ÚDAJE, KTERÉ SE MĚNÍ, ne celá obrazovka. Do srpna
+ * 2026 se tu volalo `renderPlan()`, takže se každé dvě sekundy přestavěl
+ * celý Plán – a s ním se zbourala a znovu postavila mini-mapa, která si
+ * `fitBounds()` vracela výřez zpátky. Blikalo to a posunout si mapu nešlo
+ * (hlášení `tadeas-f32-016`).
+ *
+ * `draw()` se omezuje na Mapu. Sledování běží jedině na kartě Na cestě uvnitř
+ * Plánu, takže tady velkou mapu nikdo nevidí – překreslovat na ní špendlíky
+ * každé dvě sekundy je čistá ztráta, a zrovna ta je změřená jako drahá
+ * (`.claude/rules/kod.md`).
  */
 on('zivaProjekce', () => {
-  if (S.activeTab === 'plan') renderPlan()
-  draw()
+  if (S.activeTab === 'plan') obnovZiveSledovani()
+  if (S.activeTab === 'map') draw()
 })
 
 /**
@@ -287,7 +297,12 @@ on('debugZmena', () => {
  * ty samy poznají, jestli je otevřená zrovna karta Na cestě.
  */
 on('zalozkaZmenena', (t) => {
-  if (t !== 'plan') zastavSledovani()
+  if (t === 'plan') return
+  zastavSledovani()
+  // Zámek mini-map se odchodem z obrazovky vrací do zamčeného stavu – tak to
+  // chce hlášení `tadeas-f32-020` („defaultně zamknutý"). Odemčení je proto
+  // jen v paměti a nikde se neukládá.
+  zamkniMapy()
 })
 
 /* ---------- rozepsaná poznámka se nesmí ztratit ---------- */

@@ -44,7 +44,7 @@ import {
 } from './vypravy.js'
 import {
   cestaHtml, napojCestu, jedeSe, vyjed, zamcenaCestaHtml, napojZamcenouCestu, vychoziBod,
-  zavriMapuCesty,
+  zavriMapuCesty, obnovZiveUdaje,
 } from './cesta.js'
 import { zastavSledovani } from './cesta-zivot.js'
 import {
@@ -153,6 +153,18 @@ function fmtCas(hrs) {
 export { sklonuj }
 
 /* ================= vykreslení ================= */
+
+/**
+ * Živé sledování polohy se pohnulo – obnovit, co se tím mění.
+ *
+ * ROZCESTNÍK, ne překreslení. `main.js` na událost `zivaProjekce` volal do
+ * srpna 2026 `renderPlan()`, tedy přestavbu celé obrazovky každé dvě sekundy
+ * (hlášení `tadeas-f32-016`). Mění se přitom jen dva údaje na kartě Na cestě
+ * a jinde na Plánu nic – sledování na jiné kartě ani neběží.
+ */
+export function obnovZiveSledovani() {
+  if (dil === 'cesta') obnovZiveUdaje()
+}
 
 export function renderPlan() {
   const wrap = document.getElementById('planWrap')

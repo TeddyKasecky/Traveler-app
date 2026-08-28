@@ -538,6 +538,24 @@
 .kos-ja{width:14px;height:14px;border-radius:50%;background:var(--sky);
   border:3px solid var(--plocha);box-shadow:var(--stin-2);margin:2px}
 
+/* ZÁMEK MINI-MAPY (hlášení tadeas-f32-020). Mapa zabírá kus karty a se
+ * zapnutým posunem krade na telefonu tah, takže přes ni nejde rolovat
+ * stránku. Zamčená je proto výchozí stav a tenhle knoflík ji odemyká.
+ *
+ * Kreslí ho Leaflet jako `L.Control` do pravého horního rohu, takže sedí
+ * uvnitř mapy a zaniká s ní. `!important` u okrajů není zlozvyk: Leaflet dává
+ * `.leaflet-control` vlastní `margin` přímo v knihovním CSS. */
+.dashmapa-zamek{display:flex;align-items:center;justify-content:center;
+  width:30px;height:30px;padding:0;margin:8px 8px 0 0 !important;
+  background:var(--card);border:var(--line);border-radius:var(--r-s);
+  box-shadow:var(--stin-1);color:var(--ink2);cursor:pointer}
+.dashmapa-zamek svg.ic{font-size:15px;color:var(--ink2);stroke:var(--ink2)}
+.dashmapa-zamek:active{transform:var(--stisk)}
+/* Odemčeno je ten výjimečný stav, tak ať je vidět – jinak není poznat, proč
+ * mapa najednou reaguje na prst. */
+.dashmapa-zamek.odemceno{background:var(--akcent);border-color:transparent}
+.dashmapa-zamek.odemceno svg.ic{color:var(--na-akcentu);stroke:var(--na-akcentu)}
+
 .kotva-pruh{display:flex;align-items:center;gap:10px;background:var(--plocha);border:var(--line);
   border-left:3px solid var(--rust);border-radius:var(--r-s);box-shadow:var(--stin-1);
   padding:10px 12px;margin:0 0 10px}

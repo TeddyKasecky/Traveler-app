@@ -25,7 +25,7 @@ import { planoveAchievementy, pripisPlanove, pripisProfilove } from './achieveme
 import { detailCestyHtml } from './archiv.js'
 import { bloky, blok } from './bloky.js'
 import { serazenePolozky, serazenaTrasa, vsechnyBody, souradniceBodu, DRUHY } from './body.js'
-import { vykresliDashMapu, zavriDashMapu } from './dashMapa.js'
+import { posunZnackuPolohy, vykresliDashMapu, zavriDashMapu } from './dashMapa.js'
 import { kotvy, pridejDoKosiku } from './kosik.js'
 import { coDalHtml, napojCoDal, tipyOdsud } from './kosikView.js'
 import { spustSledovani, zastavSledovani, aktualniProjekce } from './cesta-zivot.js'
@@ -131,9 +131,13 @@ export function cestaHtml() {
     <div class="cesta-pruh"><span style="width:${podil}%"></span></div>
     ${mista.length > 1 ? `<div class="meta cesta-zbyva">${hotovo === mista.length ? 'Projeli jsme celou trasu' : `v plánu je ještě ${fmtKm(zbyva)}`}</div>` : ''}
     ${
-      proj
-        ? `<div class="meta cesta-ziva">${IC('i-compass')}Podle polohy je do konce trasy ${fmtKm(proj.zbyvaKm)}</div>`
-        : ''
+      // KRESLÍ SE VŽDYCKY, prázdný se jen schová. Za jízdy se tenhle jediný
+      // řádek mění každé dvě sekundy a `obnovZiveUdaje()` do něj píše bez
+      // překreslování obrazovky – kdyby tu podle `proj` chvíli byl a chvíli
+      // ne, nebylo by do čeho psát. Stejný vzor jako `#homePocasi` na Domů.
+      `<div class="meta cesta-ziva" id="cestaZiva"${proj ? '' : ' hidden'}>${
+        proj ? `${IC('i-compass')}Podle polohy je do konce trasy ${fmtKm(proj.zbyvaKm)}` : ''
+      }</div>`
     }
 
     <!-- Mapa až pod čísly: „jak nám to jede" je první otázka, „kde to je"
@@ -480,6 +484,28 @@ function vykresliMapuCesty(wrap) {
     zvyraznit: dalsiCil ? dalsiCil.id : '',
     prazdno: 'Cesta zatím nemá zastávku s polohou.',
   })
+}
+
+/**
+ * Obnoví jen to, co se za jízdy mění: řádek „podle polohy zbývá" a značku
+ * s mojí polohou na mini-mapě.
+ *
+ * PROČ TAKHLE A NE `renderPlan()` (hlášení `tadeas-f32-016`): na kartě Na
+ * cestě běží živé sledování polohy, které každé dvě sekundy hlásí `zivaProjekce`.
+ * Ta do srpna 2026 překreslila CELÝ Plán, takže se mini-mapa zbourala
+ * a postavila znovu – blikala a `fitBounds` vracel výřez zpátky, takže si ji
+ * nešlo posunout. Přitom se za tu dobu mění tyhle dva údaje a nic víc.
+ */
+export function obnovZiveUdaje() {
+  const c = store.cesta
+  if (!c) return
+  const radek = document.getElementById('cestaZiva')
+  const proj = aktualniProjekce(store.aktivniPrepocet)
+  if (radek) {
+    radek.innerHTML = proj ? `${IC('i-compass')}Podle polohy je do konce trasy ${fmtKm(proj.zbyvaKm)}` : ''
+    radek.hidden = !proj
+  }
+  posunZnackuPolohy(document.getElementById('cestaMapa'), vychoziBod())
 }
 
 /** Uklidí mini-mapu karty Na cestě. */
