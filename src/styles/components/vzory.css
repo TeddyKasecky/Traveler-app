@@ -261,11 +261,15 @@
   font-weight:700;color:var(--akcent)}
 
 .vysledky{display:flex;align-items:center;gap:10px;margin:0 2px 12px;font-size:.78rem;font-weight:700;color:var(--text2)}
-.razeni{margin-left:auto;display:flex;gap:5px;align-items:center;color:var(--text3);font-weight:600}
-.razeni select{appearance:none;-webkit-appearance:none;font:inherit;font-size:.78rem;font-weight:700;
-  color:var(--text);background:none;border:0;padding:0 14px 0 0;
-  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
-  background-position:calc(100% - 4px) 55%,calc(100% - 0px) 55%;background-size:4px 4px,4px 4px;background-repeat:no-repeat}
+/* Řazení je od srpna 2026 TLAČÍTKO, ne systémový `<select>` – jeho rozbalovací
+ * nabídku kreslí operační systém, nastylovat se nedá a v appce vypadala cizí.
+ * Karta je `vyberZeSeznamu()` z dialog.js, tedy tatáž, jakou má zbytek appky.
+ * Trojúhelníček kreslený pozadím nahradila šipka ze spritu. */
+.razeni{margin-left:auto;display:flex;gap:5px;align-items:center;color:var(--text3);
+  font-weight:600;font-size:.78rem;background:none;border:0;padding:0;cursor:pointer}
+.razeni b{color:var(--text);font-weight:700}
+.razeni svg.ic{font-size:12px;color:var(--text3);transform:rotate(90deg)}
+.razeni:active{opacity:.6}
 
 .tecka{color:var(--text3);margin:0 1px}
 .hvezdy{color:var(--zvyrazneni);letter-spacing:1px}

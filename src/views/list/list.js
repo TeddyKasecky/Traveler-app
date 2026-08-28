@@ -22,6 +22,7 @@ import { obrazekMista } from '../../data/kategorieFoto.js'
 import { IC } from '../../icons/sprite.js'
 import { radek, heroPas, stavPill, ikonBtn } from '../../components/vzory.js'
 import { goTo, draw } from '../../map/map.js'
+import { vyberZeSeznamu } from '../../components/dialog.js'
 import { PHOTOS } from '../../core/store.js'
 import heroObr from '../../assets/hero/seznam.webp'
 
@@ -43,12 +44,39 @@ let posledniSada = ''
  * @param {Record<string, any>[]} mista
  * @returns {{p: Record<string, any>, d: number|null}[]}
  */
+/**
+ * Čím se dá řadit. Pořadí je pořadí v nabídce.
+ *
+ * `potrebujePolohu` zašedne volbu, dokud appka neví, kde jsi – řadit podle
+ * vzdálenosti od neznámého bodu nejde a tichý přeskok zpátky na abecedu by
+ * vypadal jako porouchané tlačítko.
+ */
+export const RAZENI = [
+  { id: 'dopor', popisek: 'Doporučené' },
+  { id: 'blizko', popisek: 'Od nejbližšího', potrebujePolohu: true },
+  { id: 'daleko', popisek: 'Od nejvzdálenějšího', potrebujePolohu: true },
+  { id: 'abc', popisek: 'Podle abecedy' },
+  { id: 'hodnoceni', popisek: 'Podle hodnocení' },
+  { id: 'doba', popisek: 'Podle doby' },
+]
+
+/**
+ * Zvolené řazení. V paměti, ne v DOM – tlačítko od srpna 2026 hodnotu nenese,
+ * jen ji vypisuje.
+ */
+let razeni = 'dopor'
+
 function serad(mista) {
-  const jak = document.getElementById('fRazeni')?.value || 'dopor'
+  const jak = razeni
   const sD = mista.map((p) => ({ p, d: S.userPos ? dkm(S.userPos, p) : null }))
 
   if (jak === 'abc') return sD.sort((a, b) => a.p.n.localeCompare(b.p.n, 'cs'))
   if (jak === 'hodnoceni') return sD.sort((a, b) => (store.rating[b.p.id] || 0) - (store.rating[a.p.id] || 0))
+  // Bez polohy se `d` nedá spočítat; volba je v nabídce zašedlá, ale kdyby se
+  // sem přesto dostala (stará předvolba), spadne to na abecedu místo na NaN.
+  if ((jak === 'blizko' || jak === 'daleko') && S.userPos) {
+    return sD.sort((a, b) => (jak === 'blizko' ? a.d - b.d : b.d - a.d))
+  }
   if (jak === 'doba') {
     // `d` je volný text („2-3 h“, „0,5-1 h“). Řadí se podle prvního čísla,
     // co v něm je – přesnější to z těch dat udělat nejde.
@@ -56,6 +84,35 @@ function serad(mista) {
     return sD.sort((a, b) => cislo(a.p.d) - cislo(b.p.d))
   }
   return S.userPos ? sD.sort((a, b) => a.d - b.d) : sD.sort((a, b) => a.p.n.localeCompare(b.p.n, 'cs'))
+}
+
+/**
+ * Otevře nabídku řazení. Věší se na `#fRazeni` při startu (`filterPanel.js`),
+ * proto je to export a ne obsluha uvnitř `renderList()` – tlačítko je staticky
+ * v `index.html` a překreslení seznamu by obsluhu smazalo.
+ */
+export async function otevriRazeni() {
+  const v = await vyberZeSeznamu({
+    nadpis: 'Seřadit',
+    polozky: RAZENI.map((r) => ({
+      id: r.id,
+      popisek: r.popisek,
+      on: r.id === razeni,
+      disabled: r.potrebujePolohu && !S.userPos,
+      meta: r.potrebujePolohu && !S.userPos ? 'potřebuje polohu' : '',
+    })),
+  })
+  if (!v) return
+  razeni = v
+  renderList()
+}
+
+/** Popisek na tlačítku – jediné místo, kde se zvolené řazení vypisuje. */
+function srovnejTlacitkoRazeni() {
+  const b = document.getElementById('fRazeni')
+  if (!b) return
+  const r = RAZENI.find((x) => x.id === razeni) || RAZENI[0]
+  b.innerHTML = `Seřadit: <b>${esc(r.popisek)}</b>${IC('i-sipka')}`
 }
 
 /**
@@ -90,6 +147,7 @@ export function renderList() {
     })
   }
 
+  srovnejTlacitkoRazeni()
   const serazene = serad(visible())
 
   // Nová sada (jiný filtr/hledání) vrací rozbalení zpátky na STROP – jinak

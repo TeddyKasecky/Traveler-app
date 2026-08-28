@@ -123,14 +123,11 @@
       <div id="listAktivni"></div>
       <div class="vysledky">
         <span id="listPocet"></span>
-        <label class="razeni">Seřadit:
-          <select id="fRazeni">
-            <option value="dopor">Doporučené</option>
-            <option value="abc">Podle abecedy</option>
-            <option value="hodnoceni">Podle hodnocení</option>
-            <option value="doba">Podle doby</option>
-          </select>
-        </label>
+        <!-- Tlačítko, ne <select>: rozbalovací nabídku systémového selectu
+             kreslí operační systém a nastylovat se nedá, takže v appce
+             vypadala cizí. Volby jsou v `views/list/list.js`, kartu otevírá
+             `vyberZeSeznamu()` z `components/dialog.js` (hlášení f32-015). -->
+        <button class="razeni" id="fRazeni">Seřadit: <b>Doporučené</b><svg class="ic"><use href="#i-sipka"/></svg></button>
       </div>
       <div id="listKarty"></div>
     </div>

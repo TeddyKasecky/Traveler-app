@@ -27,6 +27,7 @@ import { mistaZCsv, zalohaData, obnovZalohu, stahniJson } from '../core/csv.js'
 import { stehujTrasy } from '../core/trasy.js'
 import { draw } from '../map/map.js'
 import { toast } from './toast.js'
+import { otevriRazeni } from '../views/list/list.js'
 import { zavriDialog, potvrd, oznam } from './dialog.js'
 import { syncFiltersUI } from './chip.js'
 import { nastavMotiv, zvolenyMotiv } from '../core/motiv.js'
@@ -145,7 +146,9 @@ export function fillSelects() {
   document.getElementById('fZeme').onchange = hned('zeme')
   document.getElementById('fTyp').onchange = hned('typ')
   document.getElementById('fStav').onchange = hned('stav')
-  document.getElementById('fRazeni').onchange = () => draw()
+  // Řazení je od srpna 2026 tlačítko s vlastní kartou, ne systémový select
+  // – nabídku i překreslení si řídí `views/list/list.js` samo.
+  document.getElementById('fRazeni').onclick = otevriRazeni
 }
 
 /** Zvýrazní tlačítko, které odpovídá uložené volbě vzhledu. */
