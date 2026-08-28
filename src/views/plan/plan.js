@@ -834,15 +834,21 @@ function itinerar(items, dny) {
     <button class="pridatzastavku dokosiku" id="planDoKosiku">${IC('i-batoh')}Košík výpravy${
       kosik().length ? ` (${kosik().length})` : ''
     }</button>
-    ${pridatBlokHtml()}
+    ${
+      // „Přidat den" už NENÍ podmíněné dvěma zastávkami – den se musí dát
+      // založit i do prázdné výpravy, jinak nejde začít od kostry („jedeme na
+      // deset dní, plnit budu cestou"). Od srpna 2026 stojí mezi ostatními
+      // dlaždicemi, ne o kus níž ve vlastní řadě (`tadeas-f32-018`).
+      pridatBlokHtml(`<button class="btn small" id="planDen">${IC('i-kalendar')}Přidat den</button>`)
+    }
     ${rozpocet ? `<div class="meta" style="margin:6px 2px">${IC('i-euro')}Rozpočet plánu celkem: <b>${rozpocet.toLocaleString('cs-CZ')} €</b></div>` : ''}` +
-    // „Přidat den" už NENÍ podmíněné dvěma zastávkami – den se musí dát
-    // založit i do prázdné výpravy, jinak nejde začít od kostry („jedeme na
-    // deset dní, plnit budu cestou").
-    `<div class="btnrow" style="margin-top:10px">
-      <button class="btn small" id="planDen">${IC('i-kalendar')}Přidat den</button>
-      ${vicDnu ? `<button class="btn small" id="planBezDnu">Zrušit dny</button>` : ''}
+    // „Zrušit dny" mezi přidávání nepatří – je to opak, a navíc se ukazuje
+    // jen když je co rušit.
+    (vicDnu
+      ? `<div class="btnrow" style="margin-top:10px">
+      <button class="btn small" id="planBezDnu">Zrušit dny</button>
     </div>`
+      : '')
   )
 }
 

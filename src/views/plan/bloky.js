@@ -65,14 +65,28 @@ export function blokyDneHtml(den) {
     .join('')
 }
 
-/** Nabídka „přidat blok“. */
-export function pridatBlokHtml() {
+/**
+ * Nabídka „co ještě přidám do plánu“ – jedna skupina pod jedním nadpisem.
+ *
+ * DEN PATŘÍ MEZI OSTATNÍ (hlášení `tadeas-f32-018`). Do srpna 2026 stálo
+ * „Přidat den" samo v `.btnrow` o kus níž, oddělené rozpočtem a seznamem –
+ * přitom je to táž otázka jako poznámka nebo seznam: co do plánu ještě dát.
+ * Volající ho posílá sem, protože jen on ví, jestli je co přidávat.
+ *
+ * Tlačítka jsou **každé široké podle svého popisku** a řádky se plní zleva.
+ * Do teď dědila `.btn{flex:1;min-width:120px}` ze `sheet.css`, takže se
+ * roztahovala na stejnou šířku a „Odkaz" zabíral tolik co „Zaškrtávací seznam“.
+ *
+ * @param {string} [navic]  HTML dalších tlačítek do téže skupiny
+ */
+export function pridatBlokHtml(navic = '') {
   // Bez „Vlastní místo": bod trasy se přidává tlačítkem „+ Přidat bod" ve dni.
-  return `<div class="blok-pridat">
+  return `<div class="sechd">${IC('i-plus')}Přidat do plánu</div>
+  <div class="blok-pridat">
     ${Object.entries(TYPY)
       .filter(([typ]) => typ !== 'misto')
       .map(([typ, t]) => `<button class="btn small" data-blok-novy="${typ}">${IC(t.ikona)}${t.popisek}</button>`)
-      .join('')}
+      .join('')}${navic}
   </div>`
 }
 

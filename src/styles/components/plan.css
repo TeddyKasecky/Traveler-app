@@ -261,7 +261,12 @@
   padding:7px 9px;font:inherit;font-size:.82rem;color:var(--text)}
 .blok-odkaz{display:inline-flex;gap:6px;align-items:center;font-size:.8rem;font-weight:700;color:var(--akcent)}
 .blok-odkaz svg.ic{font-size:13px}
+/* KAŽDÉ TLAČÍTKO ŠIROKÉ PODLE SVÉHO POPISKU (hlášení tadeas-f32-018).
+ * `.btn` ze sheet.css má `flex:1;min-width:120px`, takže se dlaždice
+ * roztahovaly na stejnou šířku a „Odkaz" zabíral tolik co „Zaškrtávací
+ * seznam". Tady se řádky plní zleva a zalamují, kde dojde místo. */
 .blok-pridat{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
+.blok-pridat .btn{flex:0 0 auto;min-width:0}
 
 /* ---------- tažení a sbalování ---------- */
 /* Tažená karta jede za prstem, sousedi uhýbají přes transform s přechodem –
