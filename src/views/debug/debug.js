@@ -56,7 +56,20 @@ import {
 } from '../../core/debug.js'
 
 /**
- * Aktivní filtry. Prázdná hodnota = neuplatní se.
+ * Zhasnuté volby filtru. **Prázdná množina = svítí všechno a nic se neomezuje.**
+ *
+ * PILULKA JE VYPÍNAČ, NE PŘEPÍNAČ (hlášení `tadeas-f32-019`). Do srpna 2026 se
+ * z každé řady vybírala právě jedna věc a řada začínala pilulkou „Vše“, takže
+ * nešlo říct „nápady a bugy, ale ne poznámky“ – jen „jedno z toho“. Dnes svítí
+ * všechny, zhasnutá schová své záznamy, a pilulka „Vše“ tím ztratila smysl:
+ * všechno rozsvícené JE výchozí stav.
+ *
+ * PAMATUJÍ SE ZHASNUTÉ, NE ROZSVÍCENÉ, a to ze dvou důvodů. Jednak by se
+ * výchozí stav musel naplnit z číselníků, takže „nic nevybráno“ a „vše
+ * vybráno“ by byly dva různé zápisy téhož. A hlavně: kdyby do číselníku někdy
+ * přibyl nový typ nebo stadium, bylo by rovnou zhasnuté a nikdo by nepoznal
+ * proč. Takhle je nová hodnota automaticky vidět – stejné pravidlo jako
+ * u pořadí sekcí na Domů, kde nová sekce padá na konec, ne pryč.
  *
  * FILTRUJE SE PODLE STADIA, NE PODLE `stav` (srpen 2026). Vlastní `stav`
  * záznamu se dál edituje ve formuláři a jde do `.md`, ale procházet podle něj
@@ -66,8 +79,11 @@ import {
  * Filtr podle části appky zmizel úplně. Moduly nejsou vidět ani v řádku, takže
  * filtrovat podle nich byla střelba naslepo; dvanáct pilulek na dva řádky byl
  * přitom největší kus panelu.
+ *
+ * Zůstává jen v paměti – do `prefs` filtr nepatří, je to okamžitá volba.
+ * @type {{typ: Set<string>, stadium: Set<string>, priorita: Set<string>}}
  */
-const F = { typ: '', stadium: '', priorita: '' }
+const F = { typ: new Set(), stadium: new Set(), priorita: new Set() }
 
 /** Zaškrtnuté záznamy pro hromadné akce. Set, ne pole – testuje se členství. */
 const vybrane = new Set()
@@ -392,13 +408,15 @@ function rozbalenyCizi(z) {
 
 /* ================= filtr ================= */
 
-/** Filtr jako řada pilulek. `vse` je první a znamená „bez omezení". */
-function filtrRada(klic, polozky, popisekVse) {
+/**
+ * Filtr jako řada vypínačů. Svítící pilulka = tyhle záznamy se ukazují.
+ *
+ * Pilulka „Vše“ tu schválně není: kdyby zůstala, byly by na totéž dvě cesty
+ * (zhasnout jednu × rozsvítit vše) a jedna z nich by lhala o stavu ostatních.
+ */
+function filtrRada(klic, polozky) {
   return pilulky(
-    [
-      { id: '', popisek: popisekVse, on: !F[klic] },
-      ...polozky.map((p) => ({ id: p.id, popisek: p.popisek, on: F[klic] === p.id })),
-    ],
+    polozky.map((p) => ({ id: p.id, popisek: p.popisek, on: !F[klic].has(p.id) })),
     // Společná třída `dzf` nese zalamování. Do srpna 2026 vyjmenovávalo CSS
     // jednotlivé řady ručně a na přejmenovanou `stadium` se zapomnělo –
     // spadla na vodorovné posouvání z `.pilulky`. Se společnou třídou se na
@@ -407,8 +425,36 @@ function filtrRada(klic, polozky, popisekVse) {
   )
 }
 
-/** Kolik filtrů je zapnutých – do popisku sbaleného panelu. */
-const kolikFiltru = () => Object.values(F).filter(Boolean).length
+/** Kolik voleb je zhasnutých – do popisku sbaleného panelu. */
+const kolikZhasnutych = () => Object.values(F).reduce((n, s) => n + s.size, 0)
+
+/** Kolik voleb která řada má. Podle toho se pozná zhasnutá celá řada. */
+const POCET_VOLEB = { typ: TYPY.length, stadium: STADIA.length, priorita: PRIORITY.length }
+
+/**
+ * Je některá řada zhasnutá úplně celá?
+ *
+ * Pak neprojde ani jeden záznam, ať jsou ostatní řady jakékoli – a prázdný
+ * seznam to musí říct, jinak vypadá appka rozbitě. Je to stav na jedno
+ * ťuknutí zpátky, takže se nezakazuje, jen vysvětluje.
+ */
+const zhasnutaCelaRada = () => Object.entries(F).some(([k, s]) => s.size >= POCET_VOLEB[k])
+
+/** Svítí ve stadiích právě tohle jedno? */
+const jenStadium = (id) => F.stadium.size === STADIA.length - 1 && !F.stadium.has(id)
+
+/**
+ * Nechá svítit jediné stadium, nebo zase rozsvítí všechna.
+ *
+ * Tohle je s vypínači překlad původního „ukaž jen vyřešené“ z dlaždice
+ * s čísly. Bez něj by ta dlaždice přestala k čemukoli být: zapnout jednu věc
+ * dnes znamená zhasnout všechny ostatní.
+ */
+function izolujStadium(id) {
+  const uzJen = jenStadium(id)
+  F.stadium.clear()
+  if (!uzJen) for (const s of STADIA) if (s.id !== id) F.stadium.add(s.id)
+}
 
 /**
  * Panel filtrů, sbalený.
@@ -418,21 +464,25 @@ const kolikFiltru = () => Object.values(F).filter(Boolean).length
  * záznamu. Filtr podle modulu zůstal – jen není vidět, dokud ho někdo nechce.
  */
 function filtrHtml(pocet) {
-  const n = kolikFiltru()
+  // Počet ZHASNUTÝCH, ne zapnutých – od srpna 2026 svítí ve výchozím stavu
+  // všechno, takže „(3)“ by na sbaleném panelu jinak strašilo pořád.
+  const n = kolikZhasnutych()
   return `<div class="dz-karta dzf-karta">
     <button class="dzf-prepinac${filtrOtevreny ? ' on' : ''}" id="dzfPrepinac">
-      ${IC('i-filtr')}<span>Filtr${n ? ` (${n})` : ''}</span>
+      ${IC('i-filtr')}<span>Filtr${n ? ` (${n} zhasnuté)` : ''}</span>
       <i>${pocet} ${sklonuj(pocet, 'záznam', 'záznamy', 'záznamů')}</i>
       ${IC('i-sipka')}
     </button>
     ${
       filtrOtevreny
         ? `<div class="dzf-telo">
-            ${filtrRada('typ', TYPY, 'Vše')}
-            ${filtrRada('stadium', STADIA, 'Každé stadium')}
-            ${filtrRada('priorita', PRIORITY, 'Každá priorita')}
+            ${filtrRada('typ', TYPY)}
+            ${filtrRada('stadium', STADIA)}
+            ${filtrRada('priorita', PRIORITY)}
             <div class="dz-napoveda">
-              <b>Stadium je cesta záznamu do repozitáře</b>, ne tvůj stav. Vlastní stav
+              <b>Svítící pilulka se ukazuje</b>, zhasnutá schová své záznamy. Když
+              zhasne celá řada, neprojde nic.
+              <br><b>Stadium je cesta záznamu do repozitáře</b>, ne tvůj stav. Vlastní stav
               si dál nastavuješ ve formuláři a jde do exportu – jen se podle něj
               neprochází, protože o tom, co je opravdu vyřešené, rozhoduje repozitář.
             </div>
@@ -493,10 +543,16 @@ export function renderDebug() {
   else dorovnejOtisky()
 
   const vse = debugData.zaznamy
-  // `filtrujZaznamy` umí jen to, co je ve `store` uložené. Stadium je odvozené
-  // z rejstříku a otisku, takže se filtruje až tady.
-  let videt = filtrujZaznamy({ typ: F.typ, priorita: F.priorita })
-  if (F.stadium) videt = videt.filter((z) => stadiumZaznamu(z) === F.stadium)
+  // `filtrujZaznamy()` se volá BEZ ARGUMENTŮ, jen kvůli řazení. Umí totiž
+  // porovnat právě jednu hodnotu na pole, kdežto tady se zhasíná víc naráz –
+  // a měnit ji kvůli tomu by rozbilo sedm kontrol v `check-debug.mjs`, které
+  // hlídají její vlastní chování. Omezení je proto tady, na jednom místě:
+  // stadium se stejně muselo filtrovat zvlášť, protože je odvozené
+  // z rejstříku a otisku a ve `store` uložené není.
+  const videt = filtrujZaznamy()
+    .filter((z) => !F.typ.has(z.typ))
+    .filter((z) => !F.priorita.has(z.priorita))
+    .filter((z) => !F.stadium.has(stadiumZaznamu(z)))
   // Výběr se musí očistit o to, co je zrovna odfiltrované nebo smazané –
   // jinak by „smazat vybrané" sáhlo i na záznamy, které nejsou vidět.
   for (const id of [...vybrane]) if (!videt.some((z) => z.id === id)) vybrane.delete(id)
@@ -543,7 +599,18 @@ export function renderDebug() {
   if (castka === 'moje' && exportOtevreny) napojExport(vybrane, renderDebug)
 }
 
-/** Půlka „Moje": filtr, hromadné akce, seznam, zápis a export. */
+/**
+ * Půlka „Moje": filtr, seznam, zápis, export a až na konci úklid.
+ *
+ * ÚKLID AŽ ZA KONCEM (hlášení `tadeas-f32-019`). Do srpna 2026 seděly obě řady
+ * s mazáním hned pod filtrem, tedy NAD seznamem – nejnebezpečnější tlačítko
+ * obrazovky bylo první, na co palec sáhl. Odsud se na ně musí dorolovat přes
+ * celý seznam i přes Export, což je u nevratné akce správná cena.
+ *
+ * „Vybrat vše z filtru" jde s mazáním: vybrat a smazat je jeden úkon a rozdělit
+ * ho přes celou obrazovku by znamenalo rolovat sem a tam. Linka nad pruhem je
+ * to, co ono „za koncem" dělá viditelným – bez ní by to splynulo s Exportem.
+ */
 function mojeCast(videt, vse) {
   const odbytych = vse.filter((z) => stadiumZaznamu(z) === 'vyreseno').length
   // Kolik čeká na odeslání. Musí to počítat totéž, co pak export opravdu
@@ -551,19 +618,6 @@ function mojeCast(videt, vse) {
   const ceka = kOdeslani().length
   return `
     ${filtrHtml(videt.length)}
-
-    <div class="dzr-lista">
-      <button class="btn small" id="dzVse">${vybrane.size >= videt.length && videt.length ? 'Zrušit výběr' : 'Vybrat vše z filtru'}</button>
-      <button class="btn small nebezpecne" id="dzSmaz"${vybrane.size ? '' : ' disabled'}>Smazat vybrané${vybrane.size ? ` (${vybrane.size})` : ''}</button>
-    </div>
-    ${
-      // Odbyté se hromadí a nikdy nemizí. Rejstřík je po půl roce přestane
-      // nasazovat, takže je rozumné je z telefonu časem uklidit – appka si
-      // uzavření pamatuje sama, takže se tím o nic nepřijde.
-      odbytych
-        ? `<div class="dzr-lista"><button class="btn small" id="dzSmazOdbyte">${IC('i-check')}Smazat odbyté (${odbytych})</button></div>`
-        : ''
-    }
 
     ${
       videt.length
@@ -578,9 +632,14 @@ function mojeCast(videt, vse) {
         ? `<div class="dzr-seznam">${videt.map(radekZaznamu).join('')}</div>`
         : `<div class="dzr-prazdno">${IC('i-brouk')}<div>${
             vse.length
-              ? F.stadium === 'vyreseno'
-                ? 'Nic tvého zatím repozitář neuzavřel.'
-                : 'Tomuhle filtru nic neodpovídá.'
+              ? // Zhasnutá celá řada je nejčastější „proč nic nevidím" a jako
+                // jediná neříká nic o datech – proto se ptá první a vysvětlí,
+                // co s tím. Bez té věty vypadá appka rozbitě.
+                zhasnutaCelaRada()
+                ? 'Celá jedna řada filtru je zhasnutá, takže neprojde nic. Rozsviť v ní aspoň jednu volbu.'
+                : jenStadium('vyreseno')
+                  ? 'Nic tvého zatím repozitář neuzavřel.'
+                  : 'Tomuhle filtru nic neodpovídá.'
               : 'Zatím nic. Zapiš první poznámku kolečkem v hlavičce.'
           }</div></div>`
     }
@@ -599,6 +658,19 @@ function mojeCast(videt, vse) {
         }${IC('i-sipka')}
       </button>
       ${exportOtevreny ? `<div class="sbalka-telo">${exportHtml(vybrane)}</div>` : ''}
+    </div>
+
+    <div class="dz-uklid">
+      <button class="btn small" id="dzVse">${vybrane.size >= videt.length && videt.length ? 'Zrušit výběr' : 'Vybrat vše z filtru'}</button>
+      <button class="btn small nebezpecne" id="dzSmaz"${vybrane.size ? '' : ' disabled'}>Smazat vybrané${vybrane.size ? ` (${vybrane.size})` : ''}</button>
+      ${
+        // Odbyté se hromadí a nikdy nemizí. Rejstřík je po půl roce přestane
+        // nasazovat, takže je rozumné je z telefonu časem uklidit – appka si
+        // uzavření pamatuje sama, takže se tím o nic nepřijde.
+        odbytych
+          ? `<button class="btn small nebezpecne" id="dzSmazOdbyte">${IC('i-check')}Smazat odbyté (${odbytych})</button>`
+          : ''
+      }
     </div>`
 }
 
@@ -666,7 +738,7 @@ function napoj(videt, cizi) {
   for (const b of document.querySelectorAll('[data-cislo]')) {
     b.onclick = () => {
       if (b.dataset.cislo !== 'vyresene') return
-      F.stadium = F.stadium === 'vyreseno' ? '' : 'vyreseno'
+      izolujStadium('vyreseno')
       castka = 'moje'
       renderDebug()
     }
@@ -747,10 +819,13 @@ function napoj(videt, cizi) {
       renderDebug()
     }
 
-  for (const [klic] of Object.entries(F)) {
+  // Pilulka se PŘEPÍNÁ, nenastavuje. Zhasnutá je v množině, svítící v ní není.
+  for (const [klic, zhasnute] of Object.entries(F)) {
     for (const b of document.querySelectorAll(`.dzf-${klic} .pilulka`)) {
       b.onclick = () => {
-        F[klic] = b.dataset.id
+        const id = b.dataset.id
+        if (zhasnute.has(id)) zhasnute.delete(id)
+        else zhasnute.add(id)
         renderDebug()
       }
     }

@@ -247,6 +247,17 @@ otisk. Dorovnává se jen to, co s rejstříkem **sedí**: doplnit otisk už roz
 záznamu by zmrazilo upravenou podobu jako „odeslanou" a změna by zmizela nadobro.
 Úprava odeslaného záznamu se ptá, ale jen když se otisk opravdu rozejde.
 
+**Pilulka filtru je vypínač, ne přepínač** (`tadeas-f32-019`). Do srpna 2026 se
+z každé řady vybírala právě jedna věc a řada začínala pilulkou „Vše", takže
+nešlo říct „nápady a bugy, ale ne poznámky". Dnes svítí všechny a zhasnutá
+schová své záznamy; pilulka „Vše" tím ztratila smysl, protože všechno
+rozsvícené **je** výchozí stav. `F` ve `views/debug/debug.js` proto drží
+**zhasnuté** volby: prázdná množina znamená „svítí všechno" a nový typ nebo
+stadium se tak objeví samo od sebe, místo aby bylo tiše zhasnuté. Zhasnout jde
+i celá řada — seznam pak zůstane prázdný a napíše proč. **Mazání se přestěhovalo
+až za blok Export**, protože nejnebezpečnější tlačítko obrazovky nemá být první,
+na co palec sáhne.
+
 Exportují se do jednoho `.md` souboru na export (`debug/RRRR-MM-DD-HHMM-<autor>.md`),
 který se commitne a pushne — tím se dostane k oběma lidem i k AI, která si repo čte.
 `id` záznamu (`tadeas-014`) **se nikdy nemění a nerecykluje**, stejně jako `id` místa.

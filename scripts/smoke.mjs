@@ -639,7 +639,16 @@ await kontrola('řádek nenese id', () => page.locator('.dzr:not(.cizi) .dz-id')
 await kontrola('čerstvý záznam je jen tady', () => page.locator('.dzr.st-jentady').count(), 1)
 // Šest stadií, ne pět: legenda je klíč k barvám, takže musí vysvětlit i hliněný
 // rámeček „zmizelo z repozitáře", i když se snad nikdy neukáže.
-await kontrola('legenda je pod tlačítky', () => page.locator('.dzr-lista + .dzr-legenda .dzl').count(), 6)
+//
+// Do srpna 2026 se měřilo `.dzr-lista + .dzr-legenda`, tedy „legenda je pod
+// tlačítky" – jenže řady s mazáním se odstěhovaly až za konec obrazovky
+// (`tadeas-f32-019`) a kontrola tím začala hlídat sousedství, které nikoho
+// nezajímá. Podstatné je, že legenda vysvětluje barvy DŘÍV, než na ně čtenář
+// narazí v seznamu.
+await kontrola('legenda vysvětluje všech šest stadií', () =>
+  page.locator('.dzr-legenda .dzl').count(), 6)
+await kontrola('a stojí těsně nad seznamem', () =>
+  page.locator('.dzr-legenda + .dzr-seznam').count(), 1)
 
 // Ťuknutí ROZBALÍ, neotevře úpravu. Teprve tlačítko uvnitř otevře formulář.
 await page.click('.dzr:not(.cizi) .dzr-telo')
@@ -711,7 +720,20 @@ await kontrola('a rozbalí se', () => page.locator('.dzf-typ').count(), 1)
 // v řádku) a řada „stav" ustoupila stadiím, podle kterých se seznam prochází.
 await kontrola('filtr podle části appky je pryč', () => page.locator('.dzf-modul').count(), 0)
 await kontrola('a stavy taky', () => page.locator('.dzf-stav').count(), 0)
-await kontrola('stadium jde filtrovat', () => page.locator('.dzf-stadium .pilulka').count(), 7)
+// PILULKA JE VYPÍNAČ, NE PŘEPÍNAČ (hlášení `tadeas-f32-019`). Do srpna 2026 se
+// z každé řady vybírala jedna věc a řada začínala pilulkou „Vše"; dnes svítí
+// všechny a zhasnutá schová své záznamy. Šest stadií, ne sedm – ta sedmá byla
+// právě „Každé stadium", která ztratila smysl.
+await kontrola('stadium jde filtrovat', () => page.locator('.dzf-stadium .pilulka').count(), 6)
+await kontrola('a všechna startují rozsvícená', () =>
+  page.locator('.dzf-stadium .pilulka.on').count(), 6)
+// Kdyby pilulka „Vše" kdekoli zůstala, byly by na totéž dvě cesty a jedna
+// z nich by lhala o stavu ostatních. Měří se to na všechny řady naráz.
+await kontrola('pilulka „Vše" nikde nezůstala', () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('.dzf .pilulka')].some((p) =>
+      /^(Vše|Každé stadium|Každá priorita)$/.test(p.textContent.trim()))
+  ), false)
 // ŘADY SE ZALAMUJÍ, NEPOSOUVAJÍ. `.pilulky` má vodorovné posouvání a stačilo
 // zapomenout přejmenovanou třídu ve výčtu, aby se řada stadií tiše začala
 // posouvat. Měří se to na obsah proti šířce, protože posouvání jinak není
@@ -728,31 +750,60 @@ await kontrola('stadia se zalomila na dva řádky', () =>
     return new Set([...r.children].map((p) => Math.round(p.getBoundingClientRect().top))).size
   }).then((n) => n >= 2), true)
 
-// Zapsaný záznam nikam neodešel, takže „na mainu" musí seznam vyprázdnit
-// a „jen tady" ho vrátit.
-await page.click('.dzf-stadium .pilulka:has-text("na mainu")')
-await page.waitForTimeout(250)
-await kontrola('filtr podle stadia zabral', () => page.locator('.dzr:not(.cizi)').count(), 0)
+// Zapsaný záznam nikam neodešel, takže je ve stadiu „jen tady". ZHASNUTÍ toho
+// stadia ho musí schovat a druhé ťuknutí vrátit – opačně, než to bylo do srpna
+// 2026, kdy ťuknutí znamenalo „ukaž jen tyhle".
 await page.click('.dzf-stadium .pilulka:has-text("jen tady")')
 await page.waitForTimeout(250)
-await kontrola('a správné stadium záznam najde', () => page.locator('.dzr:not(.cizi)').count(), 1)
-await page.click('.dzf-stadium .pilulka:has-text("Každé stadium")')
+await kontrola('zhasnuté stadium záznam schová', () => page.locator('.dzr:not(.cizi)').count(), 0)
+await kontrola('počet zhasnutých je vidět i sbaleně', () =>
+  page.locator('#dzfPrepinac').innerText().then((t) => t.includes('(1 zhasnuté)')), true)
+await page.click('.dzf-stadium .pilulka:has-text("jen tady")')
+await page.waitForTimeout(250)
+await kontrola('rozsvícení ho vrátí', () => page.locator('.dzr:not(.cizi)').count(), 1)
+
+// Zhasnutí JINÉHO stadia záznamem nehne – tohle je celý rozdíl proti výběru
+// jedné věci a bez téhle kontroly by prošla i stará jednovýběrová logika.
+await page.click('.dzf-stadium .pilulka:has-text("na mainu")')
+await page.waitForTimeout(250)
+await kontrola('zhasnutí cizího stadia záznam nechá', () => page.locator('.dzr:not(.cizi)').count(), 1)
+await page.click('.dzf-stadium .pilulka:has-text("na mainu")')
 await page.waitForTimeout(250)
 
-// Filtr, kterému nic neodpovídá, musí vysvětlit proč – prázdná obrazovka
-// bez věty vypadá jako rozbitá appka.
-await page.click('.dzf-typ .pilulka:has-text("Nápad")')
-await page.waitForTimeout(250)
-await kontrola('filtr podle typu zabral', () => page.locator('.dzr:not(.cizi)').count(), 0)
-await kontrola('prázdný filtr to vysvětlí', () =>
-  page.locator('.dzr-prazdno').innerText().then((t) => /filtru nic neodpov/i.test(t)), true)
-await kontrola('počet zapnutých filtrů je vidět', () =>
-  page.locator('#dzfPrepinac').innerText().then((t) => t.includes('(1)')), true)
-await page.click('.dzf-typ .pilulka:has-text("Vše")')
-await page.waitForTimeout(250)
-await kontrola('zrušení filtru záznam vrátí', () => page.locator('.dzr:not(.cizi)').count(), 1)
+// CELÁ ZHASNUTÁ ŘADA je stav, do kterého se člověk dostane třemi ťuknutími,
+// a prázdná obrazovka bez vysvětlení vypadá jako rozbitá appka.
+for (const typ of ['Nápad', 'Bug', 'Poznámka']) {
+  await page.click(`.dzf-typ .pilulka:has-text("${typ}")`)
+  await page.waitForTimeout(150)
+}
+await kontrola('zhasnutá celá řada vyprázdní seznam', () => page.locator('.dzr:not(.cizi)').count(), 0)
+await kontrola('a řekne, co s tím', () =>
+  page.locator('.dzr-prazdno').innerText().then((t) => /celá jedna řada/i.test(t)), true)
+for (const typ of ['Nápad', 'Bug', 'Poznámka']) {
+  await page.click(`.dzf-typ .pilulka:has-text("${typ}")`)
+  await page.waitForTimeout(150)
+}
+await kontrola('rozsvícení řady záznam vrátí', () => page.locator('.dzr:not(.cizi)').count(), 1)
+await kontrola('a sbalený panel už nic nehlásí', () =>
+  page.locator('#dzfPrepinac').innerText().then((t) => t.includes('zhasnuté')), false)
 await page.click('#dzfPrepinac')
 await page.waitForTimeout(250)
+
+// MAZÁNÍ AŽ ZA KONCEM. Měří se POZICÍ, ne pořadím v DOM: o „za koncem"
+// rozhoduje to, co je na obrazovce níž, a pořadí uzlů by prošlo i tehdy, kdyby
+// pruh vyplaval nahoru kvůli stylu.
+await kontrola('mazání je až pod blokem Export', () =>
+  page.evaluate(() => {
+    const u = document.querySelector('#dzSmaz')
+    const e = document.querySelector('.dz-export')
+    return !!u && !!e && u.getBoundingClientRect().top > e.getBoundingClientRect().bottom
+  }), true)
+await kontrola('a nad seznamem už není', () =>
+  page.evaluate(() => {
+    const u = document.querySelector('#dzSmaz')
+    const s = document.querySelector('.dzr-seznam')
+    return !!u && !!s && u.getBoundingClientRect().top > s.getBoundingClientRect().top
+  }), true)
 
 // Úprava vede přes rozbalený záznam – TÝŽ formulář jako zápis, jen se stavem.
 await page.click('.dzr:not(.cizi) .dzr-telo')

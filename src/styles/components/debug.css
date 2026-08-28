@@ -149,6 +149,16 @@
 
 /* ---------- seznam ---------- */
 
+/* ÚKLID AŽ ZA KONCEM (hlášení `tadeas-f32-019`). Mazání sedělo nad seznamem,
+ * takže nejnebezpečnější tlačítko obrazovky bylo první, na co palec sáhl.
+ * HORNÍ LINKA TU NENÍ JAKO OZDOBA: bez ní pruh splyne s blokem Export nad ním
+ * a „za koncem" přestane být za koncem. Zalamuje se, protože tři tlačítka
+ * s počty se na 390px na jeden řádek nevejdou. */
+.dz-uklid{display:flex;flex-wrap:wrap;gap:8px;margin:26px 0 0;padding-top:16px;
+  border-top:var(--line)}
+.dz-uklid .btn{flex:1 1 auto}
+.dz-uklid .btn[disabled]{opacity:.45}
+
 .dzr-lista{display:flex;gap:8px;margin:0 0 10px}
 .dzr-lista .btn{flex:1 1 0}
 .dzr-lista .btn[disabled]{opacity:.45}
