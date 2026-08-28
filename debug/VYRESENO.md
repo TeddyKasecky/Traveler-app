@@ -11,3 +11,5 @@ stav zpátky. Řádky skládá `npm run debug-zavri`, ne ruka: ručně napsaný
 - `tadeas-f32-009` · 2026-08-27 · hotovo · Nastavení → Domů: tabulka sedmi sekcí, šipky nahoru/dolů a oko na vypnutí. Pořadí i zhasnuté jdou do zálohy. Zhasnutá sekce se ani nepočítá.
 - `pc-tadeas-001` · 2026-08-27 · hotovo · Počasí u tebe je na Domů: 24 hodin, 7 dní, nejbližší město, nastavitelná čerstvost. Zbytek (Itinerář, detail místa, Na cestě, klimatické normály) žije v NAPADY.md jako N19 a N20 a v tadeas-f32-010.
 - `tadeas-f32-019` · 2026-08-28 · hotovo · Pilulky filtru jsou vypínače: všechny svítí, zhasnutá schová své záznamy, tlačítka na vše zmizela. Mazání se přestěhovalo až za blok Export.
+- `tadeas-f32-016` · 2026-08-28 · hotovo · Mini-mapa se za jízdy přestala přestavovat: živá projekce už nepřekresluje celý Plán, obnovuje jen řádek se zbývající vzdáleností a značku polohy.
+- `tadeas-f32-020` · 2026-08-28 · hotovo · Mini-mapa je zamčená a nekrade tah; odemyká ji zámek v pravém horním rohu. Odemčení drží jen do odchodu z obrazovky.
