@@ -13,3 +13,6 @@ stav zpátky. Řádky skládá `npm run debug-zavri`, ne ruka: ručně napsaný
 - `tadeas-f32-019` · 2026-08-28 · hotovo · Pilulky filtru jsou vypínače: všechny svítí, zhasnutá schová své záznamy, tlačítka na vše zmizela. Mazání se přestěhovalo až za blok Export.
 - `tadeas-f32-016` · 2026-08-28 · hotovo · Mini-mapa se za jízdy přestala přestavovat: živá projekce už nepřekresluje celý Plán, obnovuje jen řádek se zbývající vzdáleností a značku polohy.
 - `tadeas-f32-020` · 2026-08-28 · hotovo · Mini-mapa je zamčená a nekrade tah; odemyká ji zámek v pravém horním rohu. Odemčení drží jen do odchodu z obrazovky.
+- `tadeas-f32-018` · 2026-08-31 · hotovo · Dlaždice v Itineráři mají nadpis, Přidat den je mezi nimi a každá je široká podle svého popisku.
+- `tadeas-f32-015` · 2026-08-31 · hotovo · Přibylo řazení od nejbližšího a od nejvzdálenějšího; nabídka je ve vzhledu appky místo systémového selectu.
+- `tadeas-f32-014` · 2026-08-31 · hotovo · Filtry v Seznamu jsou mřížka 2x2 s vícenásobným výběrem, u dlouhých seznamů s hledáním, a vedle ikony filtru je rušítko.
