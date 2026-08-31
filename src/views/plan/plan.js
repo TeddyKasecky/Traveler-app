@@ -898,8 +898,19 @@ async function pridejBodPruvodce(den = 0, po = null) {
     })),
   })
   if (druh === null) return
-  const nazev = await zadej({ nadpis: 'Název bodu', vychozi: DRUHY[druh].popisek, placeholder: 'třeba Kemp u splavu' })
-  if (nazev === null) return
+
+  // NA JMÉNO SE PTÁ JEN U VLASTNÍHO BODU (srpen 2026, `NAVIGACE.md` Z03).
+  // U start/nocleh/cíl byla předvolba `DRUHY[druh].popisek` použitelné slovo
+  // („Start", „Nocleh", „Cíl“), takže se dialog ptal na něco, co appka právě
+  // dostala předchozím dotykem – jediný ze sedmi dotyků, který nezjišťoval
+  // nic. U vlastního je předvolbou „Vlastní místo", což nikdo nenechá.
+  // Jméno jde stejně kdykoli změnit v kartě bodu a nikde neslouží jako
+  // identita – body se kotví přes `id`, ne přes název.
+  let nazev = DRUHY[druh].popisek
+  if (druh === 'vlastni') {
+    nazev = await zadej({ nadpis: 'Název bodu', vychozi: DRUHY[druh].popisek, placeholder: 'třeba Kemp u splavu' })
+    if (nazev === null) return
+  }
 
   const jeStartCil = druh === 'start' || druh === 'cil'
 

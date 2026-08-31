@@ -1705,8 +1705,10 @@ await page.waitForTimeout(400)
 await kontrola('průvodce nabízí čtyři druhy bodu', () => page.locator('#dialog .dialog-volba').count(), 4)
 await page.click('.dialog-volba[data-i="0"]') // start
 await page.waitForTimeout(400)
-await page.click('#dialogAno') // ponechat výchozí název „Start“
-await page.waitForTimeout(400)
+// NA JMÉNO SE U START/NOCLEH/CÍL UŽ NEPTÁ (srpen 2026, `NAVIGACE.md` Z03).
+// Předvolba byla použitelné slovo („Start"), takže se dialog ptal na něco,
+// co appka právě dostala předchozím dotykem. Po druhu jde rovnou poloha.
+await kontrola('u startu se na jméno neptá', () => page.locator('#dialogVstup').count(), 0)
 // Start/cíl mají navíc Uloženou pozici a Aktuální polohu (srpen 2026) –
 // u prostředních bodů (nocleh/vlastní) jich zůstávají čtyři.
 await kontrola('krok polohy pro start nabízí šest cest', () => page.locator('#dialog .dialog-volba').count(), 6)
@@ -1733,6 +1735,17 @@ await page.waitForTimeout(300)
 await page.click('#dialogAno')
 await page.waitForTimeout(400)
 await kontrola('bod jde smazat', () => page.locator('.zastavka.bod').count(), 0)
+// U VLASTNÍHO BODU SE NA JMÉNO PTÁT MUSÍ – tam je předvolbou „Vlastní místo",
+// což nikdo nenechá. Zkratka platí jen tam, kde má appka odpověď.
+await page.click('#planPridatBod')
+await page.waitForTimeout(400)
+await page.click('.dialog-volba[data-i="3"]') // vlastní
+await page.waitForTimeout(400)
+await kontrola('u vlastního bodu se na jméno ptá', () => page.locator('#dialogVstup').count(), 1)
+await kontrola('a předvyplní druh bodu', () => page.locator('#dialogVstup').inputValue(), 'Vlastní místo')
+await page.click('#dialogNe')
+await page.waitForTimeout(400)
+await kontrola('zrušený průvodce bod nezaloží', () => page.locator('.zastavka.bod').count(), 0)
 
 // Aktuální cesta: vyjet → odznačit → ukončit → archiv. Bez GPS, jen
 // odznačování; čas se počítá ze začátku a pauz, nikde se netiká.
