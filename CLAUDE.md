@@ -497,6 +497,25 @@ protože se z košíku do nich tahá.
   vrací zastávky i body s typem a dnem; `serazenaTrasa()` je jen její
   mapování na souřadnice pro routing. Třetí parametr je **seznam bodů**, ne
   přepínač: karta Na cestě potřebuje bloky pod názvem cesty.
+- **Plát „Přidat zastávku" se po přidání NEZAVÍRÁ** (srpen 2026, `NAVIGACE.md`
+  Z02). Do té doby zmizel hned po prvním výběru, takže pět zastávek znamenalo
+  pětkrát projít tutéž cestu. Přidané místo ze seznamu **nemizí, jen zšedne**
+  a dostane pilulku „Přidáno" – kdyby se odfiltrovalo, seznam by se pod prstem
+  posunul o řádek a druhé ťuknutí by trefilo něco jiného. Do počtu „míst mimo
+  plán" se přidaná nepočítají a vedle stojí „2 přidaná". Druhé ťuknutí na
+  přidané nedělá nic: pilulka říká „Přidáno", ne „Odebrat".
+- **Na jméno bodu se ptá jen u vlastního** (srpen 2026, `NAVIGACE.md` Z03).
+  U start/nocleh/cíl byla předvolba použitelné slovo, takže se dialog ptal na
+  něco, co appka právě dostala předchozím dotykem. U vlastního je předvolbou
+  „Vlastní místo", což nikdo nenechá. Jméno jde kdykoli změnit v kartě bodu
+  a nikde neslouží jako identita – body se kotví přes `id`.
+- **Kolik bodů má která výprava, se dá přečíst v Nastavení → Vývoj**
+  (`bodyNaVypravu()` ve `views/plan/body.js`). Je to **čisté čtení
+  `store.bloky`** – žádný nový klíč, žádná migrace, nic do zálohy. Bydlí to
+  v `body.js`, aby byl filtr týž jako u `vsechnyBody()`. **Medián se počítá
+  jen z výprav, které aspoň jeden bod mají**, a vedle něj stojí jejich počet;
+  ze všech výprav by ho pár prázdných stáhlo na nulu přesně tam, kde se ptáme,
+  jestli bodů není moc.
 - **Košík umí i vlastní body.** Blok typu `misto` smí mít `vKosiku: 1` a jeho
   `id` být ve `store.kosik`; pozná se tím, že ho `S.byId` nezná. Do trasy
   nepatří (`vsechnyBody()` ho filtruje), dokud se nepřesune do dne.

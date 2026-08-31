@@ -831,6 +831,10 @@ o zakládání místa bez polohy je pod čarou.
 
 ### R01 · Přidávání do plánu: o jeden dotyk míň a plát, který nezavírá
 
+> **Hotové** (srpen 2026), ve dvou commitech: nejdřív plát, pak dialog.
+> Změřeno v prohlížeči — tři zastávky za sebou bez zavření plátu, nocleh
+> na čtyři dotyky místo pěti. `smoke` 492/492.
+
 **Řeší Z02 a Z03 dohromady**, protože je to jedna cesta: „chci do plánu přidat
 další věc". Dvě změny, obě na ní.
 
@@ -894,6 +898,9 @@ bodu"**. Zopakuj s „Vlastní místo" → **tam se na jméno zeptat musí**.
 ---
 
 ### R02 · Změřit, kolik bodů má výprava — bez sbírání nových dat
+
+> **Hotové** (srpen 2026). Řádek v Nastavení → Vývoj; medián se počítá jen
+> z výprav, které aspoň jeden bod mají, a vedle něj stojí jejich počet.
 
 **Řeší Z07** (a je to jediné číslo ze §6b, které jde získat hned).
 
