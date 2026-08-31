@@ -19,7 +19,7 @@
  */
 
 import { store, S, save } from '../../core/store.js'
-import { BEZ_NAZVU } from './vypravy.js'
+import { BEZ_NAZVU, seznamVyprav } from './vypravy.js'
 import { pozice } from '../../core/pozice.js'
 
 /** Klíč aktivní výpravy v `store.bloky`. */
@@ -84,6 +84,31 @@ export const DRUHY = {
  * ne zastávka. Staré bloky pole nemají, takže se chovají přesně jako dřív.
  */
 export const vsechnyBody = (nazev = null) => bloky(nazev).filter((b) => b.typ === 'misto' && !b.vKosiku)
+
+/**
+ * Kolik bodů trasy má která výprava. ČISTÉ ČTENÍ – nikam se nic nezapisuje.
+ *
+ * PROČ TADY A NE V NASTAVENÍ: filtr musí být přesně týž jako u `vsechnyBody()`
+ * (typ `misto`, bez odložených v košíku). Kdyby si ho Nastavení spočítalo samo,
+ * do měsíce by se obě čísla rozešla – stejný důvod, proč je registr sekcí Domů
+ * jeden a čtou ho dva.
+ *
+ * MEDIÁN JEN Z VÝPRAV, KTERÉ ASPOŇ JEDEN BOD MAJÍ, a vedle něj jejich počet.
+ * Ze všech výprav by ho pár prázdných stáhlo na nulu i ve chvíli, kdy se body
+ * zakládají – tedy přesně tam, kde se ptáme, jestli jich není moc. Prázdná
+ * výprava je v seznamu dál vidět jako nula; jen do mediánu nemluví.
+ * @returns {{polozky: Array<{nazev: string, pocet: number}>, median: number, sBodem: number}}
+ */
+export function bodyNaVypravu() {
+  const polozky = seznamVyprav().map((v) => ({ nazev: v.nazev, pocet: vsechnyBody(v.nazev).length }))
+  const s = polozky.filter((p) => p.pocet > 0).map((p) => p.pocet).sort((a, b) => a - b)
+  const median = !s.length
+    ? 0
+    : s.length % 2
+      ? s[(s.length - 1) / 2]
+      : Math.round((s[s.length / 2 - 1] + s[s.length / 2]) / 2)
+  return { polozky, median, sBodem: s.length }
+}
 
 /**
  * Vlastní body odložené v košíku aktivní výpravy.

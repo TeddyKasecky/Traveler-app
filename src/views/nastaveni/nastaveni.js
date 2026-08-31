@@ -28,6 +28,7 @@ import { IC } from '../../icons/sprite.js'
 import { napojSbalky, segment } from '../../components/vzory.js'
 import { toast } from '../../components/toast.js'
 import { vyberZeSeznamu, zadej } from '../../components/dialog.js'
+import { bodyNaVypravu } from '../plan/body.js'
 import { srovnejDebugTlacitko } from '../../components/debugZapis.js'
 import { pocetPocasi, zahodVsechnoPocasi } from '../../core/pocasiDb.js'
 import {
@@ -92,6 +93,28 @@ const otevreneSkupiny = new Set()
 function doPrihradky(id, html) {
   const el = document.getElementById(id)
   if (el) el.innerHTML = html
+}
+
+/**
+ * Kolik bodů trasy má která výprava – jen se to vypíše.
+ *
+ * PROČ TO TU JE: `NAVIGACE.md` vede jako Z07 otázku, jestli je sedm dotyků
+ * k založení vlastního bodu moc. Rozhodnout to jde jedině tím, kolik bodů
+ * na výpravu vlastně vzniká, a to už `store.bloky` dávno ví – chybělo jen
+ * místo, kde se to přečte. **Nic nového se proto nesbírá ani neukládá.**
+ *
+ * Medián je jen z výprav, které aspoň jeden bod mají, a vedle něj stojí
+ * jejich počet – bez toho by se nepoznalo, jestli „medián 1“ znamená jednu
+ * výpravu s jedním bodem, nebo dvacet.
+ */
+function bodyNaVypravuHtml() {
+  const { polozky, median, sBodem } = bodyNaVypravu()
+  if (!polozky.length) return 'Zatím tu není žádná výprava.'
+  const vypis = polozky.map((p) => `${esc(p.nazev)} <b>${p.pocet}</b>`).join(' · ')
+  const souhrn = sBodem
+    ? `medián <b>${median}</b> z ${sBodem} ${sklonuj(sBodem, 'výpravy', 'výprav', 'výprav')} s aspoň jedním bodem`
+    : 'žádná výprava zatím bod nemá'
+  return `${vypis}<br>${souhrn}`
 }
 
 export async function renderNastaveni() {
@@ -279,7 +302,9 @@ export async function renderNastaveni() {
       <button class="btn small" id="debugAutorZmen">Změnit přezdívku</button>
       <button class="btn small" id="debugHesloZmen">Heslo odesílání</button>
       <button class="btn small" id="debugOtevri">Otevřít poznámkovač${zaznamu ? ` (${zaznamu})` : ''}</button>
-    </div>`
+    </div>
+    <div class="sechd">${IC('i-pinme')}Body na výpravu</div>
+    <div class="meta">${bodyNaVypravuHtml()}</div>`
   )
 
   doPrihradky(
