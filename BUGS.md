@@ -285,6 +285,104 @@ Pro srovnání: **„Smazat cestu" v zamčeném Itineráři to dělá správně*
 (`cesta.js:406`) — drobečky zmizí a appka se vrátí do knihovny „V plánu".
 Dvě sousední mazací akce ve stejné obrazovce se tedy chovají opačně.
 
-Nálezem to je, opravou zatím ne — čeká na rozhodnutí, jestli se má po smazání
-padat do knihovny (jako u cesty), nebo zůstat a jasně říct, že tu nic není.
+**Opraveno** (commit `2f7efa4`): `plan.js` v obsluze `#planSmaz` nastaví
+`dil = 'vypravy'` před `draw()`, tedy přesně to, co u ukončené cesty dělá
+`poSmazani`. Ověřeno v prohlížeči — drobečky po smazání zmizí a knihovna
+napíše „Zatím tu není žádná výprava". `smoke` 481/481, `check-dny` 203/203.
 Vedeno v `NAVIGACE.md` jako Z01.
+
+**Oprava odhalila B7**, který je o testech, ne o Plánu — viz níž.
+
+---
+
+## B7 — smoke tuhle chybu nehlídalo, ale kódovalo
+
+Když jsem opravil B6, `smoke` spadlo. Ne proto, že by oprava něco rozbila:
+úklid po smazání výpravy sahal rovnou na `#planVice`, tedy na tlačítko, které
+existuje **jen v Itineráři**. Test se tím spolehl na to, že člověk po smazání
+v Itineráři zůstane — a to je právě ta vada.
+
+```js
+// scripts/smoke.mjs, před opravou (dnes ř. 1958–1962)
+await page.evaluate(() => document.getElementById('planVice').click())
+await page.evaluate(() => document.getElementById('planSmaz').click())
+await page.click('#dialogAno')
+// …a hned nato zase #planVice, bez jediné kontroly, kde vlastně jsme
+```
+
+481 kontrol tedy neprošlo **navzdory** vadě, ale **díky** ní. Prošly by i po
+opravě druhým směrem — kdyby se appka po smazání začala chovat jakkoli jinak,
+jen když by v tom stavu zůstalo tlačítko „…".
+
+### Proč to nechytila ani prázdná pojistka
+
+Zkusil jsem mutaci: vyhodit ze `smoke` řádek, který nabídku „…" otevírá, aby
+se na `#planClear` klikalo do zavřené nabídky. Test spadl — ale takhle:
+
+```
+page.evaluate: TypeError: Cannot read properties of null (reading 'click')
+```
+
+To není kontrola, to je pád. Nikde nezazní, co se čekalo. **Chytne se tím jen
+„prvek chybí", nikdy „prvek je tam, ale jsme ve špatném stavu"** — a B6 byl
+přesně ten druhý případ: `#planVice` v Itineráři smazané výpravy pořád byl.
+
+### Kde jinde v tom souboru je totéž
+
+Změřeno, ne odhadnuto.
+
+**a) Klik, který obchází prst.** `smoke.mjs` má **15** míst ve tvaru
+`page.evaluate(() => document.getElementById('x').click())` proti **214**
+poctivým `page.click(…)`. Ta první forma zavolá obsluhu napřímo a přeskočí
+všechno, co Playwright jinak ověřuje: že je prvek vidět, povolený, nezakrytý
+a stojí v klidu.
+
+Nahradil jsem všech 15 poctivým `page.click()` a nechal doběhnout celý smoke:
+
+| Výsledek | Kolik | Které |
+|---|---|---|
+| poctivý klik projde | **12** | `dKosik` ×3, `dVice` ×2, `planVice` ×2, `planSmaz`, `planClear`, `addClose`, `podkladBtn` ×2 |
+| poctivý klik selže | **3** | `backdrop` ×1, `dPorovnat` ×2 |
+
+U dvanácti je tedy `evaluate` jen zbytečná forma, která zadarmo zahazuje čtyři
+kontroly. Zbylé tři jsou zajímavé:
+
+**`#dPorovnat` je 0 × 0 pixelů a leží v `#dViceMenu`**, tedy v zavřené nabídce
+„…" v detailu místa. Změřeno:
+
+```
+ramecek: { x: 0, y: 0, w: 0, h: 0 }     naVrchu: "top"     jeToOno: false
+element is not visible
+```
+
+Obě kontroly porovnání („jedno místo porovnání neotevře", „druhé místo otevře
+porovnání") tedy klikají na tlačítko, na které se v tu chvíli **nedá dosáhnout
+prstem**. Ověřují, že obsluha funguje; neověřují, že se k ní člověk dostane.
+Kdyby se nabídka „…" rozbila a Porovnat byl navždycky nedostupný, obě kontroly
+projdou dál.
+
+**`#backdrop`** selže jinak a je to obhajitelné: střed závěsu je pod kartou
+dialogu, takže `page.click` narazí na `#dialogHlavni`. Člověk ťuká vedle karty,
+ne doprostřed. Poctivá podoba je klik do rohu (`{ position: { x: 10, y: 10 } }`),
+ne `evaluate`.
+
+**b) Potvrzení bez následné kontroly.** Z 25 klepnutí na `#dialogAno` nemá
+**4** do pěti řádků žádnou `kontrola(…)` (ř. 1506, 1608, 1962, 2540). Prošel
+jsem je ručně: 2540 je zkontrolované jen o kousek dál, 1506 a 1608 chrání
+jenom to, že další prvek musí existovat — tedy zase pád, ne kontrola. 1962 byl
+B6 a ten už kontrolu má.
+
+### Co z toho plyne
+
+Ne „testy jsou k ničemu" — 481 kontrol drží spoustu věcí. Plyne z toho tohle:
+
+- **Po nevratné akci a po každém přechodu obrazovky patří jedna `kontrola`,
+  kde vlastně jsme**, dřív než se klikne dál. Bez ní test popisuje jen sled
+  kliknutí, ne chování.
+- **`page.click()` je výchozí; `evaluate().click()` potřebuje důvod v komentáři.**
+  Ve dvanácti z patnácti míst žádný důvod není a `page.click()` tam projde.
+  U `#dPorovnat` důvod je — jen je to důvod, který nález schovává.
+
+Neopravuju to teď: je to zásah do 15 míst testu a patří k němu rozhodnutí,
+jestli se u porovnání má napřed otevírat nabídka „…" (což by kontrola
+zpřísnila) nebo ne. Zapsáno, aby se na to nezapomnělo.
