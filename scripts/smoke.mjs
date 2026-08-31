@@ -1338,6 +1338,32 @@ await kontrola('zastávka přibyla do plánu', () =>
   page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).plan.length),
   1
 )
+// PLÁT SE PO PŘIDÁNÍ NEZAVÍRÁ (srpen 2026, `NAVIGACE.md` Z02). Do té doby
+// zmizel hned, takže pět zastávek stálo pětkrát tutéž cestu. Přidané místo
+// ze seznamu nemizí – jen zšedne, aby se pod prstem neposunul zbytek.
+await kontrola('vybírátko po přidání zůstane otevřené', () =>
+  page.locator('#vyberMista.show').count(), 1)
+await kontrola('přidané místo zšedlo', () => page.locator('.vmradek.vmpridane').count(), 1)
+await kontrola('a má pilulku Přidáno', () =>
+  page.locator('.vmradek.vmpridane .stavpill.je').count(), 1)
+await kontrola('hlavička hlásí počet přidaných', () =>
+  page.locator('#vmPridano').innerText(), '1 přidané')
+// Druhé ťuknutí na už přidané nesmí udělat nic – pilulka říká „Přidáno“,
+// ne „Odebrat“, takže by vyhození z plánu bylo překvapení.
+await page.locator('.vmradek.vmpridane').first().click()
+await page.waitForTimeout(300)
+await kontrola('druhé ťuknutí na přidané nic nepřidá', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).plan.length), 1)
+// Že jde rovnou přidat další, se pozná podle toho, že nepřidané řádky
+// v otevřeném plátu zůstaly. DRUHÁ ZASTÁVKA SE TU SCHVÁLNĚ NEPŘIDÁVÁ:
+// košík níž si schovává druhé místo ze Seznamu a plát řadí stejně, takže
+// by mu ho tenhle krok vyfoukl a přesun by se odmítl hláškou „už
+// v itineráři je". Přidávání víc míst za sebou je změřené zvlášť.
+await kontrola('a další místa jdou přidat dál', () =>
+  page.locator('.vmradek:not(.vmpridane)').count().then((n) => n > 0))
+await page.click('#vmClose')
+await page.waitForTimeout(400)
+await kontrola('Zavřít plát zavře', () => page.locator('#vyberMista.show').count(), 0)
 await kontrola('počítadlo nad záložkou Plán', () => page.locator('#planCount').innerText(), '1')
 // Vyjíždí se z otevřeného plánu, jako se v navigaci spouští otevřená trasa.
 await kontrola('Itinerář nabízí Vyjet', () => page.locator('#planVyjet').count(), 1)
@@ -1433,6 +1459,10 @@ await page.click('#planPridat')
 await page.waitForTimeout(500)
 await page.locator('#vmBody .radek').nth(1).click()
 await page.waitForTimeout(600)
+// Plát po přidání zůstává otevřený, takže se musí zavřít, než se sáhne na
+// Itinerář pod ním.
+await page.click('#vmClose')
+await page.waitForTimeout(400)
 await page.click('#planDen')
 await page.waitForTimeout(500)
 await kontrola('Přidat den přidá prázdný den', () =>

@@ -12,6 +12,15 @@
  *
  * Panel se chová jako `#addPlace`: stejné třídy, stejné otevírání, registruje
  * se jako overlay, takže ho tlačítko zpět zavře dřív, než přepne záložku.
+ *
+ * PO PŘIDÁNÍ SE NEZAVÍRÁ (srpen 2026, `NAVIGACE.md` Z02). Do té doby zmizel
+ * hned po prvním výběru, takže přidat pět zastávek znamenalo pětkrát projít
+ * tutéž cestu – deset dotyků místo šesti. Zavírá se tlačítkem, které tu bylo
+ * odjakživa (`vmClose`), nebo systémovým zpět.
+ *
+ * Přidané místo ze seznamu NEZMIZÍ, jen zšedne a přebarví pilulku na
+ * „Přidáno". Kdyby se odfiltrovalo, seznam by se pod prstem posunul o řádek
+ * nahoru a druhé ťuknutí by trefilo něco jiného, než na co se člověk díval.
  */
 
 import { S, store } from '../core/store.js'
@@ -34,6 +43,13 @@ const telo = () => document.getElementById('vmBody')
 /** Co se má stát s vybraným místem. Nastaví ho `otevriVyber()`. */
 let vyber = null
 
+/**
+ * Co se přidalo za tohohle otevření. Jen v paměti – po zavření se zapomene,
+ * protože pak už je to prostě součást plánu jako všechno ostatní.
+ * @type {Set<string>}
+ */
+let pridaneTed = new Set()
+
 export const jeOtevreny = () => el().classList.contains('show')
 
 export function zavriVyber() {
@@ -47,6 +63,7 @@ export function zavriVyber() {
  */
 export function otevriVyber(naVybrane) {
   vyber = naVybrane
+  pridaneTed = new Set()
   el().classList.add('show')
   document.getElementById('backdrop').classList.add('show')
   vykresli('')
@@ -58,19 +75,26 @@ function vykresli(dotaz) {
   const q = bezDiakritiky(dotaz)
   const vPlanu = new Set(store.plan)
 
-  let mista = S.places.filter((p) => !vPlanu.has(p.id))
+  // Právě přidané zůstává v seznamu, i když už v plánu je – viz hlavička souboru.
+  let mista = S.places.filter((p) => !vPlanu.has(p.id) || pridaneTed.has(p.id))
   if (q) mista = mista.filter((p) => sedi(p, q))
+
+  // Do počtu „mimo plán" se přidané NEPOČÍTAJÍ – v plánu už jsou.
+  const mimoPlan = mista.filter((p) => !vPlanu.has(p.id)).length
 
   mista = S.userPos
     ? mista.map((p) => ({ p, d: dkm(S.userPos, p) })).sort((a, b) => a.d - b.d)
     : mista.map((p) => ({ p, d: null })).sort((a, b) => a.p.n.localeCompare(b.p.n, 'cs'))
 
   const seznam = mista.slice(0, STROP)
+  const n = pridaneTed.size
 
   telo().innerHTML =
     `<div class="vmhead">
       <h2>${IC('i-plus')}Přidat zastávku</h2>
-      <div class="meta">${mista.length} ${mista.length === 1 ? 'místo' : mista.length < 5 ? 'místa' : 'míst'} mimo plán</div>
+      <div class="meta">${mimoPlan} ${mimoPlan === 1 ? 'místo' : mimoPlan < 5 ? 'místa' : 'míst'} mimo plán${
+        n ? ` <span class="tecka">·</span> <b id="vmPridano">${n} ${n === 1 ? 'přidané' : n < 5 ? 'přidaná' : 'přidaných'}</b>` : ''
+      }</div>
     </div>
     <div class="hledani">
       <div class="hledani-pole">${IC('i-hledat')}<input id="vmQ" type="search" placeholder="Hledat místo…" autocomplete="off" value="${esc(dotaz)}"></div>
@@ -80,6 +104,7 @@ function vykresli(dotaz) {
           .map(({ p, d }) => {
             const k = KAT[p.k] || {}
             const obr = obrazekMista(p, PHOTOS)
+            const jePridane = pridaneTed.has(p.id)
             return radek({
               id: p.id,
               obrazek: obr.src,
@@ -88,8 +113,10 @@ function vykresli(dotaz) {
               nadpis: p.n,
               podnadpis: p.r && p.r !== p.z ? `${p.r}, ${p.z}` : p.z,
               meta: `${IC(k.i)}${esc(p.t)}${d != null ? `<span class="tecka">·</span>${IC('i-nav')}${fmtKm(d)}` : ''}`,
-              vpravo: `<span class="stavpill chci">${IC('i-plus')}Přidat</span>`,
-              tridy: 'vmradek',
+              vpravo: jePridane
+                ? `<span class="stavpill je">${IC('i-check')}Přidáno</span>`
+                : `<span class="stavpill chci">${IC('i-plus')}Přidat</span>`,
+              tridy: jePridane ? 'vmradek vmpridane' : 'vmradek',
               styl: `--pc:${k.c}`,
             })
           })
@@ -112,8 +139,13 @@ function vykresli(dotaz) {
   for (const r of telo().querySelectorAll('.radek[data-id]')) {
     r.onclick = () => {
       const p = S.byId[r.dataset.id]
-      zavriVyber()
-      if (p && vyber) vyber(p)
+      // Druhé ťuknutí na už přidané nedělá nic. Vyhodit ho z plánu by bylo
+      // překvapení: pilulka říká „Přidáno", ne „Odebrat".
+      if (!p || !vyber || pridaneTed.has(p.id)) return
+      pridaneTed.add(p.id)
+      vyber(p)
+      // Až po volání – teprve tím je místo v `store.plan` a hlavička to ví.
+      vykresli(dotaz)
     }
   }
 }

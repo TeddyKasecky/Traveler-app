@@ -142,6 +142,13 @@
   display:flex;gap:9px;align-items:center}
 .vmhead h2 svg.ic{font-size:19px;color:var(--akcent)}
 .vmhead .meta{margin-top:2px}
+.vmhead #vmPridano{color:var(--akcent)}
+/* Přidané místo zůstává v seznamu, jen ustoupí – viz hlavička vyberMista.js.
+   Ztlumuje se jen obsah řádku, ne pilulka „Přidáno": ta je tu jediná odpověď
+   na „co se právě stalo" a vybledlá by to neřekla. */
+.vmradek.vmpridane .radek-text,
+.vmradek.vmpridane .radek-obr{opacity:.45}
+.vmradek.vmpridane{cursor:default}
 
 /* ---------- Aktuální cesta ----------
  *
