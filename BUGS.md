@@ -255,3 +255,36 @@ Návrh: `build:single` a `smoke:single` zrušit, větve `SINGLE_FILE` vyhodit
 sadu a projít dokumentaci. **Je to na rozhodnutí, ne na tichý úklid** —
 smazáním se ztratí možnost poslat appku mailem někomu, kdo si ji nechce
 instalovat.
+
+---
+
+## B6 — smazání výpravy nechá člověka v Itineráři, který už neexistuje
+
+**Doloženo pokusem v prohlížeči, ne čtením kódu.** Ve zdroji to poznat nejde:
+`plan.js:1700` výpravu smaže, ale `dil` nechává na `'itinerar'`, a co se stane
+s obrazovkou, se dá zjistit jedině tím, že si to člověk zkusí.
+
+Postup: plán o třech zastávkách, otevřít Itinerář ťuknutím na výpravu
+v knihovně, „…" → Smazat výpravu → potvrdit.
+
+Co se stane:
+
+| | před | po |
+|---|---|---|
+| drobečky `#planZpet` | ano | **ano** |
+| zastávek v `#planWrap` | 3 | **0** |
+| nadpis | `ITINERÁŘ Testovací` | **`ITINERÁŘ Náš plán`** |
+
+Člověk tedy zůstane stát v Itineráři výpravy, kterou právě smazal. Prázdný
+stav se navíc **převlékne za „Náš plán"** — to je fantomová prázdná bezejmenná
+výprava, kterou `CLAUDE.md` popisuje v sekci „Plán, cesty a bloky". Je to
+zamýšlený mechanismus, ale tady vypadá, jako by se smazáním jedné výpravy
+objevila jiná.
+
+Pro srovnání: **„Smazat cestu" v zamčeném Itineráři to dělá správně**
+(`cesta.js:406`) — drobečky zmizí a appka se vrátí do knihovny „V plánu".
+Dvě sousední mazací akce ve stejné obrazovce se tedy chovají opačně.
+
+Nálezem to je, opravou zatím ne — čeká na rozhodnutí, jestli se má po smazání
+padat do knihovny (jako u cesty), nebo zůstat a jasně říct, že tu nic není.
+Vedeno v `NAVIGACE.md` jako Z01.

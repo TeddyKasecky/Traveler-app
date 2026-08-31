@@ -1960,7 +1960,15 @@ await page.waitForTimeout(300)
 await page.evaluate(() => document.getElementById('planSmaz').click())
 await page.waitForTimeout(300)
 await page.click('#dialogAno')
-await page.waitForTimeout(500)
+await page.waitForTimeout(600)
+
+// SMAZÁNÍ VÝPRAVY VRACÍ DO KNIHOVNY, ne do prázdného Itineráře (`BUGS.md` B6).
+// Do srpna 2026 se `dil` nechával na `itinerar`, takže tenhle úklid mohl rovnou
+// pokračovat – jenže člověk zůstal stát v Itineráři výpravy, kterou právě
+// smazal. Teď se musí do Itineráře té zbylé napřed vrátit.
+await kontrola('smazání výpravy vrátí do knihovny', () => page.locator('#planZpet').count(), 0)
+await page.locator('#planWrap .radek, #planWrap [data-vyprava]').first().click()
+await page.waitForTimeout(700)
 
 // uklidit po sobě, ať další kontroly počítají s prázdným plánem
 await page.evaluate(() => document.getElementById('planVice').click())

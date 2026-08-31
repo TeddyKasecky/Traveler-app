@@ -1706,6 +1706,14 @@ function prepniMenu() {
     })
     if (!dal) return
     smaz(-1)
+    // ZPÁTKY DO KNIHOVNY, stejně jako po smazání ukončené cesty (`cesta.js:406`
+    // a její `poSmazani` výš na řádku 251). Do srpna 2026 se `dil` nechával na
+    // `itinerar`, takže člověk zůstal stát v Itineráři výpravy, kterou právě
+    // smazal: drobečky zůstaly, zastávek nula a prázdný stav se převlékl za
+    // fantomovou „Náš plán" – vypadalo to, jako by se místo smazané objevila
+    // jiná. Ze zdroje to poznat nešlo, odhalil to až pokus v prohlížeči
+    // (`NAVIGACE.md` Z01, `BUGS.md` B6).
+    dil = 'vypravy'
     draw()
     toast('Výprava smazána')
   }
