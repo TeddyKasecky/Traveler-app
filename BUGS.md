@@ -196,13 +196,19 @@ proti sjednocení jednohodnotových běhů. Obojí prověřeno dvěma mutacemi j
 `npm run smoke` 480/480. V prohlížeči: Rakousko 77 míst, Rakousko + Itálie
 217, oblastí se nabídne 24 místo 117 a „tyr" je zúží na jednu.
 
-**CO ZBÝVÁ, a je to jediné, co brání nasazení:** `npm run smoke:single`
-skončil návratovým kódem 4 a **důvod jsem nestihl přečíst**. Jednosouborová
-varianta se staví jinak (`import.meta.env.SINGLE_FILE`), takže to může být
-cokoli od chybějící ikony po dialog. **Nepouštět na `main`, dokud tohle
-neprojde.** Pak ještě `check-debug`, `check-regrese`, `check-dny`,
-`check-tokeny`, `check-ikony` a snímky obrazovek — čeká se rozdíl na
-`4-seznam-svetly` a `7-filtry-svetly`, ostatních šest musí zůstat na nule.
+**Dověřeno a nasazeno.** Návratový kód 4, kvůli kterému to tu leželo jako
+blokované, **nebyl skutečné selhání** — přišel z řetězeného příkazu, ne ze
+smoke. Samotné `smoke:single` dává 432/432. Doběhlo i `check-debug` 199/199,
+`check-regrese` 26/26, `check-dny` 203/203, `check-uloziste` 36/36,
+`check-tokeny` 7/7, `check-ikony` 8/8 a `smoke` 480/480.
+
+Snímky proti `main`: jediný rozdíl je `4-seznam-svetly` (7 %), protože mřížka
+2×2 je vyšší než původní posouvací pruh a obsah pod ní se posunul. Ostatních
+sedm obrazovek na nule — `7-filtry-svetly` se nehnul, panel Filtry se neměnil.
+
+**Poučení:** řetězit `build && smoke && build && for …` do jednoho příkazu se
+nevyplácí. Návratový kód pak nepatří tomu, co si člověk myslí, a vypadá to
+jako selhání kontroly.
 
 Pozor na jednu past, která je už opravená, ale stálo to hledání: `F` se čte
 i dynamicky přes `F[klic]`, což grep na `F.zeme` nenajde. Tak se skoro
