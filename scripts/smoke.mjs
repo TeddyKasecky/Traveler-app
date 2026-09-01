@@ -257,6 +257,13 @@ await kontrola('mřížka „Možná dnes"', () => page.locator('#homeInner .fot
 await kontrola('Domů má sekci počasí', () => page.locator('#homePocasi').count(), 1)
 await kontrola('bez polohy nabídne tlačítko', () => page.locator('#homePocasiPoloha').count(), 1)
 await kontrola('a nic nestahuje', () => page.evaluate(() => window.__pocasiDotazu), 0)
+// PŘEPÍNAČ „u tebe / na cestě" (`tadeas-f32-010`). Bez rozjeté cesty i bez
+// termínu se neví, který den výpravy je které datum, takže je půlka zašedlá
+// a NEAKTIVNÍ – stejný vzor jako u dlaždic rychlé inspirace.
+await kontrola('počasí má přepínač u tebe / na cestě', () =>
+  page.locator('#homePocasiRezim button[data-rezim]').count(), 2)
+await kontrola('bez termínu je „na cestě" neaktivní', () =>
+  page.locator('#homePocasiRezim [data-rezim="nacest"]').isDisabled(), true)
 // Místo, odkud se předpověď bere, se doplňuje do pravého slotu nadpisu
 // (`poznId` v `sekce()`). Bez polohy zůstane prázdné, ale MUSÍ TAM BÝT –
 // kdyby `sekce()` slot nevykreslila, nemělo by se kam zapsat a lokace by
@@ -411,7 +418,9 @@ await page.click('[data-sekce-dolu="vyprava"]')
 await page.waitForTimeout(150)
 await page.click('#tabs button[data-tab="home"]')
 await page.waitForTimeout(500)
-await kontrola('posun šipkou přeskládá Domů', prvniSekce, 'Počasí u tebe')
+// Nadpis je od září 2026 jen „Počasí" – přepíná se mezi „u tebe" a „na
+// cestě" (`tadeas-f32-010`), takže pevné „u tebe" by lhalo.
+await kontrola('posun šipkou přeskládá Domů', prvniSekce, 'Počasí')
 
 // Zhasnuté oko sekci z Domů odstraní a odznak u skupiny to přizná.
 await page.click('#nastaveniOpen')

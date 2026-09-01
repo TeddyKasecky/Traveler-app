@@ -84,3 +84,37 @@
 @media (max-width:380px){
   .pocasi-slunce{display:none}
 }
+
+/* ---------- přepínač u tebe / na cestě (`tadeas-f32-010`) ----------
+ *
+ * Lomítko, ne segment: hlášení ho tak navrhlo a vejde se pod nadpis, kde by
+ * segment přes celou šířku zabral řádek navíc. Nezvolená půlka je ztlumená,
+ * ne skrytá – jinak by nebylo poznat, že se dá přepnout.
+ *
+ * `nejde` = bez termínu i bez rozjeté cesty se neví, který den výpravy je
+ * které datum. Stejná třída i význam jako u dlaždic rychlé inspirace. */
+.pocasi-prepinac{display:flex;align-items:center;gap:6px;margin:-4px 2px 10px;
+  font-size:.78rem;font-weight:700;color:var(--text3)}
+.pocasi-prepinac button{background:none;border:0;padding:2px 0;font:inherit;color:var(--text3)}
+.pocasi-prepinac button.on{color:var(--akcent)}
+.pocasi-prepinac button.nejde{opacity:.45}
+
+/* ---------- dny výpravy ----------
+ *
+ * Den se kopíruje pod sebe za každou zastávku, takže dva řádky mohou nést
+ * totéž datum. Že patří k sobě, drží SPOLEČNÉ PODBARVENÍ přes celou skupinu –
+ * rámeček kolem každého řádku by je naopak roztrhl. Datum se píše jen
+ * u prvního řádku dne, u dalších zůstává prázdné místo, aby sloupce seděly. */
+.pocasi-cesta{display:flex;flex-direction:column;gap:8px}
+.pocasi-cesta-den{border-radius:var(--r);overflow:hidden}
+.pocasi-cesta-den.vic{background:var(--plocha2)}
+.pocasi-cesta-radek{display:flex;align-items:center;gap:9px;padding:9px 12px;
+  background:var(--plocha);border:var(--line);border-radius:var(--r);box-shadow:var(--stin-1)}
+/* Ve skupině se řádky slepí: uvnitř žádné vlastní pozadí ani stín, jen linka. */
+.pocasi-cesta-den.vic .pocasi-cesta-radek{background:transparent;border:0;box-shadow:none;border-radius:0}
+.pocasi-cesta-den.vic .pocasi-cesta-radek + .pocasi-cesta-radek{border-top:var(--line)}
+.pocasi-cesta-kdy{flex:0 0 3.4rem;font-size:.74rem;font-weight:800;color:var(--text2)}
+.pocasi-cesta-kde{flex:1;min-width:0;font-size:.8rem;font-weight:700;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pocasi-cesta-radek svg.ic{flex:0 0 auto;font-size:19px;color:var(--akcent)}
+.pocasi-bez{font-size:.74rem;color:var(--text3)}

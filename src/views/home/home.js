@@ -27,7 +27,15 @@ import { IC } from '../../icons/sprite.js'
 import { openWizard } from '../../components/wizard.js'
 import { heroPas } from '../../components/vzory.js'
 import { napojVypravu } from '../../components/vypravaKarta.js'
-import { napojPocasi, nejblizsiMesto, pocasiHtml, pocasiProBod } from '../../components/pocasi.js'
+import {
+  dnyCesty,
+  napojPocasi,
+  nejblizsiMesto,
+  pocasiCestaHtml,
+  pocasiHtml,
+  pocasiProBod,
+  pocasiProCestu,
+} from '../../components/pocasi.js'
 import { goTo } from '../../map/map.js'
 import heroObr from '../../assets/hero/domu.webp'
 
@@ -105,6 +113,43 @@ export function renderHome() {
 async function naplnPocasi() {
   const kam = document.getElementById('homePocasi')
   if (!kam) return
+
+  // PŘEPÍNAČ JE LOMÍTKO, ne segment: hlášení ho tak samo navrhlo („tam bude
+  // lomítko a na co kliknu, to se znázorní") a vejde se vedle nadpisu, kde
+  // ho segment přes celou šířku vytlačil.
+  //
+  // „Na cestě" potřebuje vědět, který den výpravy je které datum. Za jízdy se
+  // to počítá od vyjetí, jinak z termínu; bez obojího je půlka ZAŠEDLÁ a řekne
+  // proč – stejný vzor jako u dlaždic rychlé inspirace.
+  const jdeCesta = dnyCesty().length > 0
+  const rezim = prefs.pocasiRezim === 'nacest' && jdeCesta ? 'nacest' : 'utebe'
+  kam.insertAdjacentHTML(
+    'beforebegin',
+    `<div class="pocasi-prepinac" id="homePocasiRezim">
+      <button class="${rezim === 'utebe' ? 'on' : ''}" data-rezim="utebe">u tebe</button>
+      <span>/</span>
+      <button class="${rezim === 'nacest' ? 'on' : ''}${jdeCesta ? '' : ' nejde'}" data-rezim="nacest"
+        ${jdeCesta ? '' : 'disabled title="Nevím, který den výpravy je které datum – chybí termín"'}>na cestě</button>
+    </div>`
+  )
+  for (const b of document.querySelectorAll('#homePocasiRezim button[data-rezim]')) {
+    b.onclick = () => {
+      prefs.pocasiRezim = b.dataset.rezim
+      savePrefs()
+      renderHome()
+    }
+  }
+
+  if (rezim === 'nacest') {
+    kam.innerHTML = `<div class="meta">Načítám předpověď…</div>`
+    const dny = await pocasiProCestu()
+    const porad = document.getElementById('homePocasi')
+    if (!porad || porad !== kam) return
+    kam.innerHTML = dny
+      ? pocasiCestaHtml(dny)
+      : `<div class="meta">Předpověď se nepodařilo načíst. Zkusím to zase, až bude signál.</div>`
+    return
+  }
 
   if (!S.userPos) {
     kam.innerHTML = `<div class="btnrow" style="margin:0">

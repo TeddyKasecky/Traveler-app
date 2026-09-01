@@ -15,12 +15,12 @@
  * při otevření Domů by byl přepadení.
  */
 
-import { prefs } from '../core/store.js'
+import { prefs, S, store } from '../core/store.js'
 import { esc } from '../core/html.js'
 import { dkm } from '../core/geo.js'
 import { IC } from '../icons/sprite.js'
 import { klicPocasi, nactiPocasiZeSchranky, ulozPocasi } from '../core/pocasiDb.js'
-import { nactiPocasi, pocasiPodleKodu } from '../views/plan/termin.js'
+import { nactiPocasi, nactiPocasiProBody, pocasiPodleKodu, termin } from '../views/plan/termin.js'
 
 /** Kolik hodin dopředu. Celý den včetně zítřejšího rána. */
 const HODIN = 24
@@ -168,6 +168,152 @@ function kdyStazeno(ms, ted = Date.now()) {
  * @param {{ted?:number}} [o]
  * @returns {string}
  */
+/**
+ * Kolik dní výpravy se ukáže v režimu „na cestě".
+ *
+ * Open-Meteo umí šestnáct, ale poslední třetina je věštění, po kterém se nikdo
+ * nerozhoduje. Čtrnáct pokryje běžnou dovolenou celou.
+ */
+const DNU_CESTY = 14
+
+/**
+ * Strop na počet různých bodů v jednom dotazu.
+ *
+ * Není to výkonnostní obava – změřeno, že 40 bodů na 14 dní je 29,7 kB
+ * a 196 ms. Je to pojistka proti nesmyslu: výprava s dvěma sty zastávkami
+ * by poslala dvousetkilometrovou adresu a stáhla čtvrt megabajtu, který
+ * by stejně nikdo nepřečetl.
+ */
+const STROP_BODU = 60
+
+/**
+ * Zastávky výpravy rozdělené po dnech, s datem každého dne.
+ *
+ * ZA JÍZDY Z ROZJETÉ CESTY, jinak z plánu. `CLAUDE.md` ty dvě věci záměrně
+ * rozlišuje: cesta je „jak to fakt je" a večer se v ní něco přidá z košíku,
+ * plán zůstává „jak jsme to chtěli". Počasí má odpovídat na „bude tam, kam
+ * opravdu mířím, pršet".
+ *
+ * DEN JEDNA JE DATUM ZAČÁTKU. U rozjeté cesty se počítá od vyjetí
+ * (`cesta.zacatek`), takže termín není potřeba; u plánu z `vypravaOd`.
+ * Bez obojího se vrací prázdno – nedá se říct, který den je které datum.
+ *
+ * @returns {Array<{den:number, datum:string, mista:Array<Record<string,any>>}>}
+ */
+export function dnyCesty() {
+  const c = store.cesta
+  const zastavky = c ? c.zastavky || [] : store.plan || []
+  const delky = ((c ? c.dny : store.planDny) || []).map(Number).filter((x) => Number.isFinite(x) && x >= 0)
+
+  // Datum prvního dne. U cesty z okamžiku vyjetí, u plánu z termínu.
+  const prvni = c
+    ? new Date(c.zacatek).toISOString().slice(0, 10)
+    : termin().od
+  if (!prvni || !zastavky.length) return []
+
+  // Rozdělení na dny stejným pravidlem jako `dnyPlanu()`: co se do délek
+  // nevejde, padá do posledního dne.
+  const skupiny = []
+  let i = 0
+  for (const d of delky) {
+    if (i > zastavky.length || (i === zastavky.length && d > 0)) break
+    skupiny.push(zastavky.slice(i, i + d))
+    i += d
+  }
+  if (i < zastavky.length || !skupiny.length) skupiny.push(zastavky.slice(i))
+
+  const [r, m, dd] = prvni.split('-').map(Number)
+  const zaklad = Date.UTC(r, m - 1, dd)
+  return skupiny.slice(0, DNU_CESTY).map((ids, k) => {
+    const den = new Date(zaklad + k * 86400000)
+    return {
+      den: k + 1,
+      datum: `${den.getUTCFullYear()}-${String(den.getUTCMonth() + 1).padStart(2, '0')}-${String(den.getUTCDate()).padStart(2, '0')}`,
+      mista: ids.map((id) => S.byId[id]).filter((p) => p && Number.isFinite(p.lat)),
+    }
+  })
+}
+
+/**
+ * Předpověď pro celou výpravu: každý den, každá jeho zastávka.
+ *
+ * ŘÁDEK ZA KAŽDOU ZASTÁVKU, blízké se neslučují – den se třemi zastávkami dá
+ * tři řádky se stejným datem. Že patří k sobě, ukáže podbarvení skupiny.
+ *
+ * DEN BEZ ZASTÁVEK SE ŘÍDÍ TVOJÍ POLOHOU. Někam ten den jedeš i tak a prázdný
+ * řádek by neřekl nic.
+ *
+ * JEDEN DOTAZ NA CELOU VÝPRAVU. Body, které schránka zná a jsou čerstvé, se
+ * do něj vůbec nedávají – druhé otevření tedy nestojí nic.
+ *
+ * @param {{ted?:number}} [o]
+ * @returns {Promise<Array<{den:number, datum:string, radky:Array<{nazev:string, den:Record<string,any>|null}>}>|null>}
+ */
+export async function pocasiProCestu({ ted = Date.now() } = {}) {
+  if (!prefs.pocasi) return null
+  const dny = dnyCesty()
+  if (!dny.length) return null
+
+  const fahrenheity = prefs.pocasiJednotky === 'fahrenheit'
+  const znacka = fahrenheity ? 'f' : 't'
+  const platnost = (Number(prefs.pocasiInterval) || 60) * 60000
+  // Na měřených datech se nestahuje samo – stejné pravidlo jako u počasí u tebe.
+  const jenZeSchranky = prefs.pocasiJenWifi && naDatech()
+  // Klíč bodu na tři desetinná místa – stejná přesnost, s jakou se posílá dotaz.
+  const klic = (b) => `${b.lat.toFixed(3)},${b.lon.toFixed(3)}`
+
+  /** @type {Map<string, {lat:number, lon:number, nazev:string}>} */
+  const potreba = new Map()
+  for (const d of dny) {
+    const body = d.mista.length ? d.mista : S.userPos ? [{ ...S.userPos, n: 'u tebe' }] : []
+    for (const b of body) if (!potreba.has(klic(b))) potreba.set(klic(b), b)
+  }
+  if (!potreba.size) return null
+
+  /** @type {Map<string, Record<string, any>>} */
+  const predpovedi = new Map()
+  const chybejici = []
+  for (const [k, b] of potreba) {
+    if (chybejici.length + predpovedi.size >= STROP_BODU) break
+    const ulozene = await nactiPocasiZeSchranky(klicPocasi(b, znacka))
+    if (ulozene && ted - ulozene.stazeno < platnost) predpovedi.set(k, ulozene)
+    else if (ulozene && jenZeSchranky) predpovedi.set(k, ulozene)
+    else if (!jenZeSchranky) chybejici.push([k, b])
+  }
+
+  if (chybejici.length) {
+    try {
+      const nove = await nactiPocasiProBody(
+        chybejici.map(([, b]) => b),
+        { hodin: 1, dnu: DNU_CESTY, fahrenheity }
+      )
+      for (let i = 0; i < chybejici.length; i++) {
+        const [k, b] = chybejici[i]
+        predpovedi.set(k, { ...nove[i], stazeno: ted })
+        await ulozPocasi(klicPocasi(b, znacka), nove[i], ted)
+      }
+    } catch {
+      // Bez signálu se ukáže, co schránka zná – prázdno nikdy. Řádky bez
+      // předpovědi to řeknou samy.
+    }
+  }
+
+  return dny.map((d) => {
+    const body = d.mista.length ? d.mista : S.userPos ? [{ ...S.userPos, n: 'u tebe' }] : []
+    return {
+      den: d.den,
+      datum: d.datum,
+      radky: body.map((b) => {
+        const p = predpovedi.get(klic(b))
+        return {
+          nazev: b.n || 'u tebe',
+          den: p ? (p.dny || []).find((x) => x.datum === d.datum) || null : null,
+        }
+      }),
+    }
+  })
+}
+
 export function pocasiHtml(p, { ted = Date.now() } = {}) {
   if (!p || !Array.isArray(p.hodiny) || !p.hodiny.length) return ''
 
@@ -246,6 +392,45 @@ export function pocasiHtml(p, { ted = Date.now() } = {}) {
   return `${stari}<div class="pocasi-pruh">${pruh}</div>
     <div class="pocasi-posuvnik"><i></i></div>
     <div class="pocasi-dny">${dny}</div>`
+}
+
+/**
+ * Dny výpravy s počasím tam, kde ten den máš být (`tadeas-f32-010`).
+ *
+ * DEN SE KOPÍRUJE POD SEBE ZA KAŽDOU ZASTÁVKU: tři zastávky = tři řádky se
+ * stejným datem, každý s počasím své oblasti. Blízké se neslučují – dva body
+ * v jednom údolí dají dva řádky, i když řeknou skoro totéž. Že patří k sobě,
+ * ukáže **společné podbarvení přes celou skupinu**, ne rámeček kolem každého;
+ * datum se proto píše jen u prvního řádku dne.
+ *
+ * @param {Array<{den:number, datum:string, radky:Array<{nazev:string, den:Record<string,any>|null}>}>} dny
+ */
+export function pocasiCestaHtml(dny, { ted = Date.now() } = {}) {
+  if (!Array.isArray(dny) || !dny.length) return ''
+
+  return `<div class="pocasi-cesta">${dny
+    .map((d) => {
+      const radky = d.radky
+        .map((r, i) => {
+          const p = r.den
+          // BEZ SLOVNÍHO POPISU počasí. Opakuje jen to, co říká ikona, a brál
+          // šířku jménu místa, které se tu aleš řeže na „Gletschersc…". Tady je
+          // identifikací místo, ne oblačnost – na rozdíl od dnů u tvé polohy,
+          // kde je na řádku místa dost. Popis zůstává v `title`.
+          const { ikona, popis } = p ? pocasiPodleKodu(p.kodPocasi) : { ikona: 'i-mlha', popis: '' }
+          const udaje = p
+            ? `<b class="pocasi-den-teplota">${stupne(p.maxC)}<i>${stupne(p.minC)}</i></b>`
+            : '<span class="pocasi-bez">Zatím bez předpovědi</span>'
+          return `<div class="pocasi-cesta-radek">
+            <span class="pocasi-cesta-kdy">${i === 0 ? esc(kratkyDen(d.datum, ted)) : ''}</span>
+            <span class="pocasi-cesta-kde">${esc(r.nazev)}</span>
+            <span title="${esc(popis)}">${IC(ikona)}</span>${udaje}
+          </div>`
+        })
+        .join('')
+      return `<div class="pocasi-cesta-den${d.radky.length > 1 ? ' vic' : ''}">${radky}</div>`
+    })
+    .join('')}</div>`
 }
 
 /**

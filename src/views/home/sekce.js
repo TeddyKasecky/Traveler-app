@@ -178,7 +178,9 @@ export const SEKCE_DOMU = [
   },
   {
     id: 'pocasi',
-    nazev: 'Počasí u tebe',
+    // JEN „Počasí". Od září 2026 se přepíná mezi „u tebe" a „na cestě"
+    // (`tadeas-f32-010`), takže pevné „u tebe" v nadpisu by lhalo.
+    nazev: 'Počasí',
     // Hlavní vypínač počasí je ve vlastní skupině Nastavení, protože řídí
     // i to, jestli se sahá na síť. Oko v tabulce Domů je jen o rozvržení.
     proc: () => (prefs.pocasi ? '' : 'vypnuté v Nastavení → Počasí'),
@@ -188,7 +190,7 @@ export const SEKCE_DOMU = [
     // Obsah se doplní až po načtení – tohle je synchronní, předpověď je síť.
     html: () =>
       prefs.pocasi
-        ? sekce('Počasí u tebe', { poznId: 'homePocasiKde' }) + '<div id="homePocasi"></div>'
+        ? sekce('Počasí', { poznId: 'homePocasiKde' }) + '<div id="homePocasi"></div>'
         : '',
   },
   {

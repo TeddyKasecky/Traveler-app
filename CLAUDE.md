@@ -586,6 +586,28 @@ trasy přes Mapy.com.
   přibyly `i-mrak`, `i-polojasno`, `i-mlha` a `i-mrholeni`, odvozené z `i-rain`
   a `i-sun`, aby seděly do sady.
 
+**Počasí „na cestě" je od září 2026** (`tadeas-f32-010`). Vedle nadpisu je
+lomítko „u tebe / na cestě" (`prefs.pocasiRezim`).
+
+- **Hodinový pruh se režimem NEMĚNÍ** — je vždycky u tvé polohy. Odpovídá na
+  „prší tady teď", což je otázka o tom, kde stojíš, ne kde budeš.
+- **Den se kopíruje pod sebe za každou zastávku**: tři zastávky = tři řádky
+  se stejným datem, každý s počasím své oblasti. Blízké se **neslučují**;
+  že patří k sobě, ukáže **společné podbarvení skupiny**, a datum se píše jen
+  u prvního řádku. Den bez zastávek se řídí tvojí polohou.
+- **Za jízdy se bere rozjetá cesta** (`store.cesta.zastavky`), jinak plán.
+  Ty dvě věci se záměrně liší a počasí má odpovídat na „bude tam, kam
+  opravdu mířím, pršet".
+- **Který den je dnes**: za jízdy `kolikatyDenCesty()` (počítá se od vyjetí,
+  takže termín není potřeba), jinak `kolikatyDenDnes()` z termínu. Bez obojího
+  je půlka přepínače zašedlá a řekne proč.
+- **Jeden dotaz na celou výpravu.** `nactiPocasiProBody()` posílá
+  `latitude=a,b,c` a dostane pole odpovědí; změřeno proti živému API, že
+  40 bodů na 14 dní je 29,7 kB a 196 ms. Body, které schránka zná a jsou
+  čerstvé, se do dotazu vůbec nedávají. Strop je 60 různých bodů.
+- Ukazuje se **nejvýš 14 dní** — Open-Meteo umí šestnáct, ale poslední třetina
+  je věštění.
+
 Zbytek hlášení `pc-tadeas-001` (dny v Itineráři, detail místa, karta Na cestě
 a klimatické normály) je zapsaný v [NAPADY.md](NAPADY.md) jako N19 a N20
 i s tím, co je už rozhodnuté.

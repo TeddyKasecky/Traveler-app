@@ -294,6 +294,12 @@ export const prefs = nacti(PREFK, {
    * to by se od „nikdy jsem si nevybral" nedalo odlišit.
    */
   nalady: undefined,
+  /**
+   * Který pohled na počasí je na Domů vidět (`tadeas-f32-010`):
+   * `'utebe'` (výchozí) nebo `'nacest'`. Drží se, aby se po návratu
+   * nepřepínalo pořád dokola.
+   */
+  pocasiRezim: 'utebe',
   /** Kdy se naposled stáhla záloha (ms). 0 = nikdy. */
   posledniZaloha: 0,
   /** Vzhled: 'system' (podle telefonu), 'svetly', 'tmavy'. Viz core/motiv.js. */

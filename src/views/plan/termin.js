@@ -134,10 +134,33 @@ export function stihameTo(odkud, kam, dnu) {
  *   dny:Array<{datum:string, kodPocasi:number, maxC:number, minC:number,
  *   destProcent:number, vychod:string, zapad:string}>}>}
  */
-export async function nactiPocasi(bod, { hodin = 24, dnu = 7, fahrenheity = false } = {}) {
+export async function nactiPocasi(bod, o = {}) {
+  const [jedna] = await nactiPocasiProBody([bod], o)
+  return jedna
+}
+
+/**
+ * Předpověď pro VÍC BODŮ NAJEDNOU. Vrací pole ve stejném pořadí jako vstup.
+ *
+ * PROČ JEDNÍM DOTAZEM: počasí na cestě (`tadeas-f32-010`) potřebuje předpověď
+ * pro každou zastávku každého dne. Čtrnáctidenní výprava se třemi zastávkami
+ * denně je čtyřicet bodů, a čtyřicet samostatných volání by bylo čtyřicet
+ * kulatých cest po síti na mobilním připojení.
+ *
+ * Open-Meteo umí `latitude=a,b,c` a vrátí POLE odpovědí. Změřeno proti živému
+ * API, ne odhadnuto: 40 bodů na 14 dní = HTTP 200, 29,7 kB, 196 ms.
+ *
+ * Pozor na tvar odpovědi: u JEDNOHO bodu vrací objekt, u víc bodů pole.
+ * Sjednocuje se to hned, aby se s tím rozdílem nemuselo počítat výš.
+ *
+ * @param {Array<{lat:number, lon:number}>} body
+ * @param {{hodin?:number, dnu?:number, fahrenheity?:boolean}} [o]
+ */
+export async function nactiPocasiProBody(body, { hodin = 24, dnu = 7, fahrenheity = false } = {}) {
+  if (!Array.isArray(body) || !body.length) return []
   const params = new URLSearchParams({
-    latitude: String(bod.lat.toFixed(3)),
-    longitude: String(bod.lon.toFixed(3)),
+    latitude: body.map((b) => b.lat.toFixed(3)).join(','),
+    longitude: body.map((b) => b.lon.toFixed(3)).join(','),
     hourly: 'temperature_2m,precipitation,precipitation_probability,weather_code',
     daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset',
     timezone: 'auto',
@@ -154,6 +177,17 @@ export async function nactiPocasi(bod, { hodin = 24, dnu = 7, fahrenheity = fals
   const odpoved = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`)
   if (!odpoved.ok) throw new Error('Počasí se nepodařilo načíst')
   const data = await odpoved.json()
+  // Jeden bod = objekt, víc bodů = pole. Sjednotit hned.
+  const kusy = Array.isArray(data) ? data : [data]
+  if (kusy.length !== body.length) throw new Error('Počasí přišlo pro jiný počet bodů')
+  return kusy.map(prelozKus)
+}
+
+/**
+ * Jedna odpověď Open-Meteo na náš tvar.
+ * @param {Record<string, any>} data
+ */
+function prelozKus(data) {
   const h = data && data.hourly
   const d = data && data.daily
   if (!h || !Array.isArray(h.time) || !d || !Array.isArray(d.time)) {
