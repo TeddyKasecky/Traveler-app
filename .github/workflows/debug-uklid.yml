@@ -1,0 +1,59 @@
+# Úklid složky debug/ po commitu (NAPADY.md N17)
+#
+# PROČ TO VŮBEC JE: poznámky do debug/ commituje Cloudflare Worker rovnou přes
+# GitHub API, takže OBCHÁZEJÍ pre-commit hook — a `debug-uklid --kontrola`, který
+# duplicity hlídá, se na ně nikdy nespustí. Worker sám odmítne export, který
+# nepřináší nic nového, ale na částečný překryv (nové i už odeslané záznamy
+# v jednom souboru) nedosáhne: `.md` skládá appka a Worker ho nesmí přeskládat,
+# jinak by formát existoval na dvou místech. Tenhle úklid to zamete po sobě
+# a pokryje i ručně uložený export.
+#
+# POJISTKA PROTI SMYČCE JE DVOJÍ. Push udělaný výchozím GITHUB_TOKEN nespouští
+# další běh (dokumentované chování GitHubu), a navíc se běh přeskočí, když ho
+# vyvolal bot. Bez toho by se úklid spouštěl donekonečna sám nad sebou.
+
+name: Úklid debug/
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'debug/**'
+
+# Jen zápis do repozitáře, nic víc.
+permissions:
+  contents: write
+
+jobs:
+  uklid:
+    # Vlastní commit nesmí spustit tentýž běh.
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Stejná verze jako build na Cloudflare – ze souboru, ne natvrdo.
+          node-version-file: .node-version
+
+      # ŽÁDNÉ `npm ci`. Ověřeno přejmenováním `node_modules`: `debug-uklid`
+      # jede jen na vestavěných modulech Node a sousedních skriptech, takže by
+      # instalace stahovala sharp i playwright kvůli úklidu textového souboru.
+      #
+      # `--bez-kontroly`: checkout je čerstvý z právě pushnutého commitu, takže
+      # dotaz na síť, jestli není složka pozadu, tu nemá co zjišťovat.
+      - name: Uklidit duplicity a uzavřené záznamy
+        run: npm run debug-uklid -- --bez-kontroly
+
+      - name: Commitnout, když se něco změnilo
+        run: |
+          if [ -z "$(git status --porcelain debug/)" ]; then
+            echo "Ve složce debug/ nebylo co uklidit."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add debug/
+          git commit -m 'debug: úklid složky po commitu'
+          git push

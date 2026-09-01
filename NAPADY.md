@@ -434,27 +434,40 @@ zůstává neřešená — pořád stojí za měření, kdyby strop rostl výš.
 
 Nápady k tomu, jak se na projektu pracuje, ne k tomu, co appka umí.
 
-**N17 — Worker nehlídá, jestli `id` ve složce `debug/` už je**
-Když se táž poznámka odešle dvakrát, vzniknou dva soubory s týmž záznamem —
+**N17 — Worker nehlídá, jestli `id` ve složce `debug/` už je — ~~HOTOVO~~**
+Když se táž poznámka odeslala dvakrát, vznikly dva soubory s týmž záznamem —
 stalo se to hned první den provozu (`tadeas-f32-008` v `2026-08-26-1835`
-i `-1836`). Appce to nevadí (rejstřík si vybere nejnovější), a právě proto se to
-tiše hromadí. `debug-cerstvost.mjs` duplicitu **odhalí**, ale nezabrání jí,
-a commity z Workeru navíc obcházejí pre-commit hook, takže se na ně
-`debug-uklid --kontrola` nikdy nespustí.
+i `-1836`). Appce to nevadilo (rejstřík si vybere nejnovější), a právě proto
+se to tiše hromadilo: commity z Workeru obcházejí pre-commit hook, takže se
+na ně `debug-uklid --kontrola` nikdy nespustil.
 
-**Pozor na past:** appka **schválně posílá znovu záznam, který se od odeslání
-změnil** (`views/debug/debugExportUI.js:71`). Pravidlo „id už ve složce je →
-odmítnout" by tenhle tok rozbilo. Porovnávat se proto musí **obsah sekcí**, ne
-`id`. Bajtové porovnání celého souboru nestačí taky — hlavička nese čas
-generování, takže dva odeslané exporty nikdy nejsou shodné.
+Uděláno v září 2026 **obojí**, protože každé pokrývá něco jiného.
 
-Dvě cesty, dají se i zkombinovat:
-- **Kontrola ve Workeru** — před zápisem se zeptat GitHubu, jestli některý soubor
-  ve složce ten záznam nenese, a odpovědět „už tam je". Přesnější: duplicita
-  vůbec nevznikne. Znamená to ale číst obsah složky při každém odeslání.
-- **GitHub Action** — po commitu do `debug/` pustit `debug-uklid` a výsledek
-  commitnout. Pokryje i to, na co Worker nedosáhne (třeba ručně uložený export),
-  ale uklízí až po sobě, ne před.
+**1 · Worker odmítne export, který nepřináší nic nového.** Před zápisem
+přečte složku a porovná **obsah sekcí**, ne `id` — appka totiž schválně
+posílá znovu záznam, který se od odeslání změnil, takže „id už tam je →
+odmítnout" by ten tok rozbilo a změněné znění by se do repozitáře nikdy
+nedostalo. Bajtové porovnání celých souborů nestačí taky: hlavička nese čas
+vygenerování. Odpovídá se **200 se jménem souboru**, ve kterém záznamy leží,
+ne chybou — jsou v repozitáři, takže je appka smí označit za odeslané
+a napíše „V repozitáři už to je".
+
+Nedostupný GitHub odesílání **neblokuje**: guard se přeskočí a zapisuje se.
+Horší než duplicita je ztracená poznámka.
+
+**2 · GitHub Action uklidí po commitu.** `.github/workflows/debug-uklid.yml`
+pustí `debug-uklid` na každý push do `debug/` a výsledek commitne. Pokryje
+to, na co Worker nedosáhne: **částečný překryv** (nové i už odeslané záznamy
+v jednom souboru — `.md` skládá appka a Worker ho nesmí přeskládat, jinak by
+formát existoval na dvou místech) a ručně uložený export.
+
+Dvě věci, které stojí za zapamatování:
+- **Formát `.md` hlídá round-trip.** `check-worker` krmí Workerův rozdělovač
+  skutečným výstupem `mdExport()`, takže se obě strany nemůžou rozejít.
+- **Změna, která se do `.md` nedostane, opravdu nic nového nepřináší.**
+  U nápadu se třeba `popis` nevypisuje. `otiskZaznamu()` počítá z téhož, co
+  jde do `.md`, takže appka takový záznam za změněný ani neoznačí — obě
+  strany se shodnou. Je to vlastní kontrolní bod v `check-worker`.
 
 **N18 — nepotvrzeno: ukládá se „odesláno" spolehlivě? — ~~PROVĚŘENO~~**
 Podezření znělo: kdyby se `otiskExportu` po úspěšném odeslání neuložil (plná

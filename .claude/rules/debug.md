@@ -175,6 +175,14 @@ repozitář je veřejný, takže by z něj šlo vyčíst.
 Co Worker nikdy neudělá: nepřepíše existující soubor, nic nemaže, nesáhne
 mimo `debug/` ani na jinou větev než `main`. Hlídá to `npm run check-worker`.
 
+**Od září 2026 odmítne export, který nepřináší nic nového** (`NAPADY.md` N17).
+Před zápisem přečte složku a porovná **obsah sekcí**, ne `id` — appka totiž
+schválně posílá znovu záznam, který se od odeslání změnil, takže „id už tam
+je → odmítnout" by ten tok rozbilo. Odpoví **200 se jménem souboru**, kde
+záznamy leží, takže je aplikace označí za odeslané a napíše „V repozitáři už
+to je". Nedostupný GitHub odesílání **neblokuje**: guard se přeskočí a zapíše
+se — horší než duplicita je ztracená poznámka.
+
 ## Úklid složky
 
 ```bash
@@ -187,7 +195,11 @@ odstraní. Vyhodí se i záznamy, které jsou už ve `VYRESENO.md`. Prázdný so
 se smaže.
 
 Kontrolu pouští **pre-commit hook**, kdykoli se ve složce `debug/` něco mění,
-a `npm run check-debug`. Duplicity totiž appce nevadí — rejstřík si vybere
+a `npm run check-debug`. Na commity z Workeru ale hook nedosáhne — ty jdou
+přes GitHub API — takže je od září 2026 uklízí **GitHub Action**
+(`.github/workflows/debug-uklid.yml`) na každý push do `debug/`. Pokryje
+i to, na co Worker nedosáhne: částečný překryv v jednom souboru a ručně
+uložený export. Duplicity totiž appce nevadí — rejstřík si vybere
 nejnovější — takže se bez kontroly tiše nahromadí: v srpnu 2026 skončilo pět
 záznamů ve dvanácti kopiích ve čtyřech souborech za dva dny.
 
