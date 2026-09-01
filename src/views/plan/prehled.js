@@ -137,8 +137,9 @@ export function cislaPlanuHtml() {
 
   const f = (n) => String(n)
 
-  return `<div class="sekce"><span class="sekce-text">Čísla výpravy</span></div>
-    ${srovnaniHtml}
+  // BEZ VLASTNÍHO NADPISU. Od září 2026 to celé bydlí ve sbalce
+  // (`tadeas-f32-017`) a nadpis nese její hlavička – jinak by tu stál dvakrát.
+  return `${srovnaniHtml}
     <div class="preh${b ? ' srovnani' : ''}">
       ${b ? `<div class="preh-hlavy"><span></span><b>${esc(store.vypravaNazev || BEZ_NAZVU)}</b><b class="druhy">${esc(druha.nazev)}</b></div>` : ''}
       ${skupina(

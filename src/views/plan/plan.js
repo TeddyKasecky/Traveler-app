@@ -29,7 +29,7 @@ import { obrazekMista } from '../../data/kategorieFoto.js'
 import { IC } from '../../icons/sprite.js'
 import { toast } from '../../components/toast.js'
 import { potvrd, zadej, vyberZeSeznamu, vyberDatum, vyberPocetDni } from '../../components/dialog.js'
-import { sekce, segment, ikonBtn } from '../../components/vzory.js'
+import { napojSbalky, sbalka, sekce, segment, ikonBtn } from '../../components/vzory.js'
 import { otevriVyber } from '../../components/vyberMista.js'
 import { goTo, draw, mapa, priblizNaFiltr, vyberBod } from '../../map/map.js'
 import { aktivujZalozku } from '../../core/router.js'
@@ -98,6 +98,15 @@ function otevriDilItinerar() {
 let rozbaleno = ''
 /** Sbalené dny (čísla od jedničky). Jen v paměti. */
 const sbaleneDny = new Set()
+
+/**
+ * Které sbalitelné skupiny Itineráře jsou otevřené. Jen v paměti, do předvoleb
+ * schválně ne – stejně jako v Nastavení: po zavření aplikace se všechno zase
+ * sbalí, takže se Itinerář vždycky otevře krátký. Přežít musí jen překreslení,
+ * kterých je při jednom otevření obrazovky několik.
+ * @type {Set<string>}
+ */
+const otevreneSkupiny = new Set()
 /**
  * Která složka má v knihovně rozbalené akce: 's' + název, nebo prázdné.
  * Výpravy vlastní nabídku nemají – ťuknutí je otevře a všechno ostatní se
@@ -302,6 +311,8 @@ export function renderPlan() {
       })
     } else {
       napojCislaPlanu(wrap, renderPlan)
+      // Obsluhy srovnávání se věší i na skrytý obsah, takže na pořadí nezáleží.
+      napojSbalky(wrap, otevreneSkupiny)
       // Překresluje se přes draw(), ne jen renderPlan(): vlastní místa mění
       // trasu i špendlíky na mapě a ta by jinak zůstala stará.
       napojBloky(wrap, draw, (cb) => vyberBod(cb))
@@ -739,7 +750,21 @@ function kartaItinerare(items, dny) {
     // Záznam zmizel (např. stará záloha bez něj) – bezpečně spadnout na živý itinerář.
     S.otevrenaCesta = null
   }
-  return hlava(items, dny) + akceItinerare(items) + itinerar(items, dny) + cislaPlanuHtml()
+  // ČÍSLA VÝPRAVY JSOU SBALENÁ (`tadeas-f32-017`). Jsou to čtyři skupiny
+  // statistik plus srovnání s jinou výpravou – nejdelší díl Itineráře, který
+  // odsouval konec seznamu zastávek hodně dolů. Výchozí stav je zavřeno; kdo
+  // čísla chce, otevře je. Sbalka je týž díl, jakým jsou skládané Nastavení
+  // i Profil, přesně jak si to hlášení přálo.
+  //
+  // „Odeslat do navigace" se toho NETÝKÁ – bydlí ve vlastní spodní liště
+  // (`lista()`), takže zůstává vidět pořád.
+  const cisla = cislaPlanuHtml()
+  return (
+    hlava(items, dny) +
+    akceItinerare(items) +
+    itinerar(items, dny) +
+    (cisla ? sbalka('cislaVypravy', 'Čísla výpravy', cisla, { ikona: 'i-sliders', otevreno: otevreneSkupiny.has('cislaVypravy') }) : '')
+  )
 }
 
 /**

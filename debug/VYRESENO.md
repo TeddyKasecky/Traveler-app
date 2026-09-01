@@ -17,3 +17,4 @@ stav zpátky. Řádky skládá `npm run debug-zavri`, ne ruka: ručně napsaný
 - `tadeas-f32-015` · 2026-08-31 · hotovo · Přibylo řazení od nejbližšího a od nejvzdálenějšího; nabídka je ve vzhledu appky místo systémového selectu.
 - `tadeas-f32-014` · 2026-08-31 · hotovo · Filtry v Seznamu jsou mřížka 2x2 s vícenásobným výběrem, u dlouhých seznamů s hledáním, a vedle ikony filtru je rušítko.
 - `tadeas-f32-013` · 2026-09-01 · hotovo · Rychlá inspirace je osm dlaždic 4x2. Tři ze čtyř původních byly vadné: Co je blízko nenastavovalo žádný filtr, Ještě jsme tam nebyli vracelo 575 z 580 míst a Co jsme si slíbili počítalo o jeden plamínek míň, než filtr schovává. Navíc se nevolalo syncFiltersUI, takže se nastavení neprojevilo v pilulkách, a nenulovaly se předchozí filtry.
+- `tadeas-f32-017` · 2026-09-01 · hotovo · Čísla výpravy jsou v Itineráři sbalená pod záložkou ve stylu Nastavení a Profilu, výchozí stav zavřeno. Odeslat do navigace zůstává vidět ve spodní liště.

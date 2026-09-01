@@ -1732,6 +1732,24 @@ await kontrola('GPX je mezi nimi', () => page.locator('#planGpx').count(), 1)
 await page.click('#backdrop', { position: { x: 190, y: 40 } })
 await page.waitForTimeout(400)
 
+// ČÍSLA VÝPRAVY JSOU OD ZÁŘÍ 2026 SBALENÁ (`tadeas-f32-017`). Byl to nejdelší
+// díl Itineráře a odsouval konec seznamu zastávek hodně dolů. Výchozí stav je
+// zavřeno; obsah v něm ale je, jen skrytý.
+await kontrola('čísla výpravy jsou ve sbalce', () =>
+  page.locator('[data-sbalka="cislaVypravy"]').count(), 1)
+await kontrola('a jsou zavřená', () =>
+  page.locator('[data-sbalka-telo="cislaVypravy"]').evaluate((e) => e.hidden), true)
+// Nadpis nese hlavička sbalky, ne obsah – jinak by tam stál dvakrát.
+await kontrola('nadpis není dvakrát', () =>
+  page.locator('[data-sbalka-telo="cislaVypravy"] .sekce-text').count(), 0)
+// „Odeslat do navigace“ je ve vlastní spodní liště, takže se ho sbalka netýká.
+await kontrola('Odeslat do navigace zůstává vidět', () =>
+  page.locator('#planDoNavigace').isVisible(), true)
+await page.click('[data-sbalka="cislaVypravy"]')
+await page.waitForTimeout(400)
+await kontrola('ťuknutí je otevře', () =>
+  page.locator('[data-sbalka-telo="cislaVypravy"]').evaluate((e) => e.hidden), false)
+
 // Čísla výpravy bydlí dole v Itineráři; srovnání je nadstavba a nabízí se
 // až od dvou výprav, což tady není – kontroluje se tedy základ.
 await kontrola('čísla výpravy jsou v Itineráři', () => page.locator('.preh-skupina').count(), 4)
