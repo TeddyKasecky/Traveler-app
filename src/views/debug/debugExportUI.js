@@ -223,7 +223,7 @@ async function posliDoRepa(nazev, text, heslo) {
     /* nečitelná odpověď – rozliší se níž, ať se nehlásí „chyba 200" */
   }
 
-  if (r.ok && telo && telo.nazev) return { ok: true, nazev: telo.nazev }
+  if (r.ok && telo && telo.nazev) return { ok: true, nazev: telo.nazev, nicNoveho: !!telo.nicNoveho }
   if (!telo) {
     // Odpověď, které appka nerozumí. Typicky když Worker vůbec neběží a místo
     // něj odpoví statický server stránkou.
@@ -311,9 +311,18 @@ export function napojExport(vybrane, prekresli) {
         await oznam({ nadpis: 'Odeslání se nepovedlo', text: v.chyba })
         return
       }
-      // Jméno z odpovědi, ne to naše: Worker ho mohl při kolizi posunout.
+      // Jméno z odpovědi, ne to naše: Worker ho mohl při kolizi posunout –
+      // a při `nicNoveho` je to jméno souboru, ve kterém záznamy UŽ leží.
       await poExportu(v.nazev, zaznamy, prekresli)
-      toast(`Odesláno do repozitáře (${zaznamy.length})`)
+      // NIC NOVÉHO NENÍ ÚSPĚCH, ne chyba. Worker odmítl zapsat druhý soubor
+      // s týmž obsahem (`NAPADY.md` N17), ale záznamy v repozitáři opravdu
+      // jsou, takže se označí za odeslané. Hláška to říká narovinu, jinak by
+      // druhé zmáčknutí vypadalo, že se nic nestalo.
+      toast(
+        v.nicNoveho
+          ? `V repozitáři už to je (${zaznamy.length})`
+          : `Odesláno do repozitáře (${zaznamy.length})`
+      )
     }
   }
 

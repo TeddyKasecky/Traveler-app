@@ -73,6 +73,64 @@ export const textSedi = (text) =>
   typeof text === 'string' && text.startsWith(HLAVICKA) && /\n## \S+ · /.test(text)
 
 /**
+ * Oddělovač záznamů v exportu. `mdExport()` skládá soubor jako
+ * `[hlavička, ...záznamy].join('\n---\n\n')`, takže tenhle řetězec je jediné,
+ * co Worker o formátu `.md` ví.
+ *
+ * Že to sedí, hlídá `check-worker` **skutečným výstupem `mdExport()`** – jinak
+ * by formát existoval na dvou místech a hlídané by bylo jen jedno. Samotné
+ * `---` v uživatelském textu se escapuje už v appce (`bezpecnyText()`).
+ */
+export const ODDELOVAC = '\n---\n\n'
+
+/**
+ * Rozloží export na jednotlivé záznamy. Hlavička se zahazuje.
+ *
+ * @param {unknown} text
+ * @returns {string[]}
+ */
+export function sekceExportu(text) {
+  if (typeof text !== 'string') return []
+  return text
+    .split(ODDELOVAC)
+    .slice(1)
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+/**
+ * Jsou všechny sekce exportu už ve složce? Vrací jméno souboru, kde leží,
+ * jinak `null`.
+ *
+ * PROČ SE POROVNÁVÁ OBSAH A NE `id`: appka **schválně posílá znovu záznam,
+ * který se od odeslání změnil** (`views/debug/debugExportUI.js`). Pravidlo
+ * „id už ve složce je → odmítnout" by tenhle tok rozbilo a změněné znění by
+ * se do repozitáře nikdy nedostalo. Změněný záznam má jinou sekci, takže
+ * projde.
+ *
+ * Bajtové porovnání celých souborů by nestačilo: hlavička nese čas
+ * vygenerování, takže dva odeslané exporty nejsou nikdy shodné.
+ *
+ * PROČ SE VRACÍ JMÉNO A NE `true`: aplikace si podle něj zapíše
+ * `exportovanoDo` a přestane záznam nabízet k odeslání. Kdyby dostala `null`,
+ * zůstal by navždycky „neodeslaný" a člověk by ho posílal donekonečna –
+ * přesně to, čeho se bál N18. Vrací se **poslední** vyhovující soubor:
+ * jména začínají datem a časem, takže poslední v abecedě je nejnovější,
+ * a podle téhož pravidla vybírá platný záznam i `postavRejstrik()`.
+ *
+ * @param {string[]} nove  sekce z příchozího exportu
+ * @param {Array<{nazev: string, sekce: string[]}>} soubory  co je ve složce
+ * @returns {string|null}
+ */
+export function kdeUzJsou(nove, soubory) {
+  if (!nove.length || !Array.isArray(soubory)) return null
+  const vsechny = new Set(soubory.flatMap((s) => s.sekce))
+  if (!nove.every((s) => vsechny.has(s))) return null
+  const nesouci = soubory.filter((s) => s.sekce.some((x) => nove.includes(x)))
+  return nesouci.length ? nesouci[nesouci.length - 1].nazev : null
+}
+
+/**
  * Jméno pro druhý a další pokus, když to původní ve složce už je – dva exporty
  * ve stejné minutě dostanou od `nazevExportu()` shodné jméno.
  *
@@ -161,6 +219,51 @@ async function existuje(nazev, token) {
 }
 
 /**
+ * Přečte celou složku `debug/` a vrátí sekce záznamů ze všech `.md`.
+ *
+ * Vrací `null`, když se to nedá zjistit – volající pak guard přeskočí
+ * a zapíše. **Nedostupný GitHub nesmí odeslání zablokovat**: horší než
+ * duplicita je ztracená poznámka.
+ *
+ * Cena je jeden výpis a jedno stažení na soubor. Složka je malá a zůstává
+ * malá, protože `debug-zavri` uzavřené záznamy odstraňuje.
+ *
+ * @returns {Promise<Array<{nazev: string, sekce: string[]}>|null>}
+ */
+async function sekceVeSlozce(token) {
+  try {
+    const r = await fetch(`https://api.github.com/repos/${REPO}/contents/${SLOZKA}?ref=${VETEV}`, {
+      headers: hlavickyGitHubu(token),
+    })
+    // Prázdná složka je 404 a je to v pořádku – jen tam zatím nic není.
+    if (r.status === 404) return []
+    if (!r.ok) return null
+
+    const seznam = await r.json()
+    if (!Array.isArray(seznam)) return null
+
+    const soubory = seznam.filter((s) => s && s.type === 'file' && s.name.endsWith('.md') && s.name !== 'VYRESENO.md')
+    const texty = await Promise.all(
+      soubory.map(async (s) => {
+        const o = await fetch(`https://api.github.com/repos/${REPO}/contents/${SLOZKA}/${encodeURIComponent(s.name)}?ref=${VETEV}`, {
+          // `raw` místo base64 v JSONu – ušetří to dekódování i paměť.
+          headers: { ...hlavickyGitHubu(token), accept: 'application/vnd.github.raw' },
+        })
+        return o.ok ? { nazev: s.name, text: await o.text() } : null
+      })
+    )
+    // Když se jediný soubor nepovede stáhnout, guard se neuplatní vůbec.
+    // Jinak by se sekce z nepřečteného souboru tvářily jako neexistující
+    // a duplicita by prošla právě tehdy, kdy si tím Worker není jistý.
+    if (texty.some((x) => x === null)) return null
+
+    return texty.map((s) => ({ nazev: s.nazev, sekce: sekceExportu(s.text) }))
+  } catch {
+    return null
+  }
+}
+
+/**
  * Zapíše soubor. **Bez `sha`**, takže GitHub odmítne přepis existujícího –
  * je to druhá pojistka k `existuje()` výš, pro případ, že mezi dotazem
  * a zápisem někdo stihl soubor založit.
@@ -218,7 +321,19 @@ async function prijmiPoznamky(request, env) {
     return odpoved(413, { chyba: 'Export je moc velký.' })
   }
 
-  // 4. Volné jméno. Dva exporty ve stejné minutě dostanou shodné jméno, takže
+  // 4. Nepřináší ten export nic nového? Pak se nic nezapisuje – jinak by
+  //    dvakrát zmáčknuté Odeslat udělalo dva soubory s týmž záznamem
+  //    (`NAPADY.md` N17). Odpovídá se 200, ne chybou: záznamy v repozitáři
+  //    OPRAVDU jsou, takže je aplikace smí označit za odeslané.
+  //
+  //    Když se složka nedá přečíst, guard se přeskočí a zapisuje se.
+  //    Nedostupný GitHub nesmí poznámku zahodit – horší než duplicita je
+  //    ztracená poznámka a duplicity umí uklidit `npm run debug-uklid`.
+  const uzTam = await sekceVeSlozce(env.GITHUB_TOKEN)
+  const uzJe = uzTam && kdeUzJsou(sekceExportu(text), uzTam)
+  if (uzJe) return odpoved(200, { ok: true, nicNoveho: true, nazev: uzJe })
+
+  // 5. Volné jméno. Dva exporty ve stejné minutě dostanou shodné jméno, takže
   //    se přidá pořadové číslo – nikdy se nic nepřepíše.
   for (let i = 0; i <= MAX_KOLIZI; i++) {
     const jmeno = i === 0 ? nazev : sPoradim(nazev, i + 1)

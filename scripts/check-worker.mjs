@@ -19,8 +19,27 @@ import { fileURLToPath } from 'node:url'
 // fileURLToPath, ne ruční ořezávání – cesta obsahuje diakritiku („Anička“).
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
-const { jmenoSedi, textSedi, sPoradim, shodneHeslo, naBase64, HLAVICKA, STROP_BAJTU, MAX_KOLIZI, REPO, VETEV, SLOZKA } =
-  await import(`file://${path.join(ROOT, 'worker', 'index.js').replace(/\\/g, '/')}`)
+const {
+  jmenoSedi,
+  textSedi,
+  sPoradim,
+  shodneHeslo,
+  naBase64,
+  sekceExportu,
+  kdeUzJsou,
+  HLAVICKA,
+  ODDELOVAC,
+  STROP_BAJTU,
+  MAX_KOLIZI,
+  REPO,
+  VETEV,
+  SLOZKA,
+} = await import(`file://${path.join(ROOT, 'worker', 'index.js').replace(/\\/g, '/')}`)
+
+// Skutečný `mdExport()` z appky – kvůli round-tripu níž. Bez něj by formát
+// `.md` existoval na dvou místech (appka ho skládá, Worker rozděluje)
+// a hlídané by bylo jen jedno.
+const { mdExport } = await import(`file://${path.join(ROOT, 'src', 'core', 'debugExport.js').replace(/\\/g, '/')}`)
 
 const zdrojWorkeru = (await import('node:fs')).readFileSync(path.join(ROOT, 'worker', 'index.js'), 'utf8')
 
@@ -146,6 +165,76 @@ t('nikde se nemaže', !/method: 'DELETE'/.test(zdroj))
 // Bez něj zápis do existujícího souboru odmítne sám – druhá pojistka
 // k dotazu na existenci. Hledá se klíč, ne slovo, aby to nechytalo komentář.
 t('zápis neposílá sha, takže nemůže přepsat', !/\bsha\s*:/.test(zdroj))
+
+console.log('')
+console.log('Duplicity ve složce (N17)')
+console.log('')
+
+// ROUND-TRIP PROTI SKUTEČNÉMU `mdExport()`. Worker o formátu `.md` ví jedinou
+// věc – oddělovač záznamů – a tohle je to, co drží obě strany u sebe. Kdyby
+// se formát v appce změnil, spadne to tady, ne až v provozu.
+const zaznam = (id, nadpis) => ({
+  id,
+  cislo: 1,
+  typ: 'napad',
+  nadpis,
+  popis: 'Popis.',
+  navrh: '',
+  stav: 'nove',
+  priorita: 'stredni',
+  moduly: [],
+  autor: 'tadeas',
+  vytvoreno: Date.parse('2026-09-01T10:00:00Z'),
+  upraveno: 0,
+  kontext: null,
+})
+
+const dvaZaznamy = [zaznam('tadeas-a7f-001', 'První'), zaznam('tadeas-a7f-002', 'Druhý')]
+const export1 = mdExport(dvaZaznamy, { autor: 'tadeas', cas: Date.parse('2026-09-01T10:00:00Z') })
+
+t('oddělovač sedí na to, co appka skládá', export1.includes(ODDELOVAC))
+t('export o dvou záznamech dá dvě sekce', sekceExportu(export1).length === 2)
+t('hlavička se do sekcí nepočítá', !sekceExportu(export1).some((s) => s.includes(HLAVICKA)))
+t('sekce nesou id záznamů', sekceExportu(export1).every((s, i) => s.includes(dvaZaznamy[i].id)))
+
+// TÝŽ EXPORT ODESLANÝ PODRUHÉ. Hlavička nese čas, takže soubory nejsou
+// bajtově shodné – proto se porovnávají sekce, ne celý text.
+const export2 = mdExport(dvaZaznamy, { autor: 'tadeas', cas: Date.parse('2026-09-01T10:31:00Z') })
+t('dva exporty téhož nejsou bajtově shodné', export1 !== export2)
+const jakoSlozka = (nazev, ex) => [{ nazev, sekce: sekceExportu(ex) }]
+t('ale jejich sekce ano', kdeUzJsou(sekceExportu(export2), jakoSlozka('a.md', export1)) === 'a.md')
+
+// TOHLE JE TA PAST: appka schválně posílá znovu záznam, který se změnil.
+// Kdyby se porovnávalo podle `id`, změněné znění by se do repozitáře
+// nikdy nedostalo.
+const zmeneny = [{ ...dvaZaznamy[0], nadpis: 'První po úpravě' }, dvaZaznamy[1]]
+const export3 = mdExport(zmeneny, { autor: 'tadeas', cas: Date.parse('2026-09-01T11:00:00Z') })
+t('změněný záznam PROJDE, i když má stejné id', kdeUzJsou(sekceExportu(export3), jakoSlozka('a.md', export1)) === null)
+
+// A NAOPAK: změna, která se do `.md` vůbec nedostane, opravdu nic nového
+// nepřináší. `popis` se u nápadu nevypisuje (nápad má „K čemu to je“
+// a „Hotovo když“), takže soubor by byl úplně stejný – a `otiskZaznamu()`
+// počítá zároveň z tolikého, co jde do `.md`, takže takový záznam appka za
+// změněný ani neoznačí. Obě strany se tedy shodnou.
+const neviditelna = [{ ...dvaZaznamy[0], popis: 'Popis po úpravě.' }, dvaZaznamy[1]]
+const export3b = mdExport(neviditelna, { autor: 'tadeas', cas: Date.parse('2026-09-01T11:30:00Z') })
+t('změna mimo `.md` se správně bere jako nic nového', kdeUzJsou(sekceExportu(export3b), jakoSlozka('a.md', export1)) === 'a.md')
+
+// Nový záznam vedle už odeslaných taky projde.
+const sNovym = [...dvaZaznamy, zaznam('tadeas-a7f-003', 'Třetí')]
+const export4 = mdExport(sNovym, { autor: 'tadeas', cas: Date.parse('2026-09-01T12:00:00Z') })
+t('export s jedním novým projde', kdeUzJsou(sekceExportu(export4), jakoSlozka('a.md', export1)) === null)
+
+t('prázdný seznam sekcí se nikdy neodmítne', kdeUzJsou([], jakoSlozka('a.md', export1)) === null)
+t('proti prázdné složce projde všechno', kdeUzJsou(sekceExportu(export1), []) === null)
+// Vrací se NEJNOVĚJŠÍ soubor – jména začínají datem, takže poslední v abecedě.
+t('vrací nejnovější soubor, který je nese', kdeUzJsou(sekceExportu(export1), [...jakoSlozka('2026-09-01-1000-t.md', export1), ...jakoSlozka('2026-09-02-1000-t.md', export1)]) === '2026-09-02-1000-t.md')
+t('sekceExportu snese i nesmysl', sekceExportu(null).length === 0 && sekceExportu(42).length === 0)
+
+// Nedostupný GitHub nesmí poznámku zahodit – guard se přeskočí a zapisuje se.
+t('při nečitelné složce se guard přeskočí', /uzTam && kdeUzJsou\(/.test(zdroj))
+t('nic nového vrací 200 se JMÉNEM souboru', /nicNoveho: true, nazev: uzJe/.test(zdroj))
+t('VYRESENO.md se do porovnání nepočítá', /!== 'VYRESENO\.md'/.test(zdroj))
 
 console.log(`\n${chyb ? cerveny(`${ok}/${ok + chyb}`) : zeleny(`${ok}/${ok + chyb}`)} kontrol prošlo`)
 process.exit(chyb ? 1 : 0)
