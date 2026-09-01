@@ -346,10 +346,16 @@ ta, kterou nabízejí čtyři obrazovky z pěti. Detail místa je přitom nejsp�
 nejotevíranější věc v celé appce, takže se těch 450 ms nesčítá jednou,
 ale stokrát.
 
-**Jaké měření by to rozhodlo:** poměr otevření detailu přes kartu proti
+**Jaké měření to rozhodne:** poměr otevření detailu přes kartu proti
 otevření přes špendlík. Když přes kartu chodí většina, platí většina daň za
-animaci, o kterou nestála. Nesbírá se to — nejlevnější je čítač v `goTo()`
-a v obsluze špendlíku, oba do `prefs` ve stejném tvaru jako `moodUse` (N9).
+animaci, o kterou nestála. **Sbírá se** jako `detailPresGoTo` (v `goTo()`,
+tedy ta pomalá cesta bez ohledu na volajícího) a `detailSpendlik`; vedle obou
+čísel se rovnou vypisuje podíl, kolik procent otevření těch 450 ms čeká.
+
+> **Čítač už běží** (září 2026). Čte se v **Nastavení → Vývoj → Kudy se
+> chodí**, sbírá ho `pocitej()` v `core/store.js` do `prefs.pocitadla`.
+> Rozhodni se podle naměřeného, ne podle odhadu — a „Vynulovat čítače" pod tím
+> dovolí začít znovu, když se v navigaci něco změní.
 
 **N22 — Itinerář má osmnáct různých ovládacích prvků naráz**
 Změřeno v prohlížeči na 390 × 844 na nerolovaném přehledu výpravy: **20 prvků
@@ -363,24 +369,41 @@ Otázka, na kterou zatím nemám odpověď: dělá Itinerář opravdu šestkrát
 práce než ostatní obrazovky, nebo je jen šestkrát nepřehlednější? Bez čísla
 je obojí stejně pravděpodobné.
 
-**Jaké měření by to rozhodlo:** kolik z těch osmnácti prvků se za jednu
+**Jaké měření to rozhodne:** kolik z těch osmnácti prvků se za jednu
 výpravu opravdu použije. Při pěti je zbylých třináct nepřehlednost, při
-patnácti je ta hustota zasloužená. Sebralo by se čítačem na `data-act`
-v `plan.js` — jedno místo, jeden objekt v `prefs`, opět tvar `moodUse`.
+patnácti je ta hustota zasloužená. **Sbírá se** jedním odposlouchávačem na
+`#planWrap`, který počítá `data-act`. Vedle pěti nejčastějších akcí se proto
+vypisuje **kolik různých se použilo** — to je přesně to číslo, kterým se
+tenhle bod rozhodne.
+
+> **Čítač už běží** (září 2026). Čte se v **Nastavení → Vývoj → Kudy se
+> chodí**, sbírá ho `pocitej()` v `core/store.js` do `prefs.pocitadla`.
+> Rozhodni se podle naměřeného, ne podle odhadu — a „Vynulovat čítače" pod tím
+> dovolí začít znovu, když se v navigaci něco změní.
 
 **N23 — Košík se možná otevírá v každém úkolu, ne občas**
 Plát košíku je na dva dotyky (Plán → kolečko vpravo dole) a v přehledu to
 vypadá nenápadně. Jenže jestli se na cestě otvírá pokaždé, když se přidává
 zastávka, je to nejpoužívanější překryv v appce a druhý dotyk je o jeden moc.
 
-**Jaké měření by to rozhodlo:** kolikrát za jednu cestu se otevře plát košíku
-proti tomu, kolikrát se otevře Itinerář. Čítač patří do `otevriKosikPlat()`
-(`src/components/kosikFab.js:75`).
+**Jaké měření to rozhodne:** kolikrát za jednu cestu se otevře plát košíku
+proti tomu, kolikrát se otevře Itinerář. **Sbírá se** jako `kosik`
+(`otevriKosikPlat()`) proti `itinerar`, který přičítá `otevriDilItinerar()` —
+jediná cesta, jak se Itinerář otevře. Vchody do něj jsou čtyři a všechny jdou
+přes ni schválně: čtyři nezávislá přiřazení by se rozešla a číslo by tiše
+lhalo.
+
+> **Čítač už běží** (září 2026). Čte se v **Nastavení → Vývoj → Kudy se
+> chodí**, sbírá ho `pocitej()` v `core/store.js` do `prefs.pocitadla`.
+> Rozhodni se podle naměřeného, ne podle odhadu — a „Vynulovat čítače" pod tím
+> dovolí začít znovu, když se v navigaci něco změní.
 
 **N9 — Nálady na Domů podle četnosti použití**
-`prefs.moodUse` počítá, kolikrát jsi kterou náladu použila. Nikdy se to nečte.
-Data se sbírají už teď, takže by šlo nálady řadit podle oblíbenosti — ale změnilo by to
-pořadí dlaždic, tedy vzhled.
+`prefs.moodUse` počítá, kolikrát jsi kterou náladu použila. **Od září 2026 se
+to konečně čte** — v Nastavení → Vývoj → Kudy se chodí, spolu s ostatními
+čítači. Řadit podle toho dlaždice zůstává nápad, ne rozhodnutí: změnilo by to
+pořadí na Domů, tedy vzhled. Teď se ale dá aspoň podívat, jestli by to vůbec
+něco změnilo.
 
 ---
 
