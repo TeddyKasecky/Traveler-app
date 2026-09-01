@@ -21,7 +21,7 @@
  * z gesta uživatele, a `parity` na tom stojí.
  */
 
-import { S, store, save, prefs, savePrefs, PHOTOS } from '../../core/store.js'
+import { S, store, save, prefs, savePrefs, PHOTOS, pocitej } from '../../core/store.js'
 import { esc, sklonuj } from '../../core/html.js'
 import { dkm, fmtKm } from '../../core/geo.js'
 import { KAT } from '../../data/categories.js'
@@ -81,6 +81,19 @@ const KMH = 62
  */
 let dil = ''
 const vychoziDil = () => (jedeSe() ? 'cesta' : 'vypravy')
+
+/**
+ * Přepne na Itinerář a započítá otevření.
+ *
+ * PROČ FUNKCE A NE PROSTÉ PŘIŘAZENÍ: Itinerář se otevírá ze čtyř míst
+ * (knihovna, archiv, nová výprava, `otevriItinerar()` zvenku) a N23 se ptá,
+ * kolikrát se otevře proti košíku. Čtyři nezávislá přiřazení by se do měsíce
+ * rozešla – jedno by čítač zapomnělo a číslo by tiše lhalo.
+ */
+function otevriDilItinerar() {
+  dil = 'itinerar'
+  pocitej('itinerar')
+}
 /** Která zastávka má rozbalené ovládání pod sebou. */
 let rozbaleno = ''
 /** Sbalené dny (čísla od jedničky). Jen v paměti. */
@@ -162,6 +175,36 @@ export { sklonuj }
  * (hlášení `tadeas-f32-016`). Mění se přitom jen dva údaje na kartě Na cestě
  * a jinde na Plánu nic – sledování na jiné kartě ani neběží.
  */
+/**
+ * Počítá, které prvky Itineráře se opravdu používají (`NAPADY.md` N22).
+ *
+ * VĚDOMÁ VÝJIMKA Z KONVENCE. `.claude/rules/kod.md` říká, že se obsluha věší
+ * jako `prvek.onclick`, ne `addEventListener`. Tady to nejde ze dvou důvodů:
+ * je to **pozorovatel**, ne obsluha – nic neobsluhuje a nesmí nikomu vzít
+ * kliknutí – a `onclick` na kontejneru by se pral s obsluhami, které si
+ * jednotlivá tlačítka věší sama. Druhá možnost byla připsat čítač do všech
+ * jedenácti obsluh `data-act`, což je jedenáct míst, kde se na něj dá
+ * zapomenout.
+ *
+ * Věší se JEDNOU na kontejner, který se nepřekresluje – `renderPlan()` mění
+ * jen jeho vnitřek, takže by opakované navěšení počítalo každé ťuknutí
+ * tolikrát, kolikrát se obrazovka překreslila.
+ */
+let pocitadloNavesene = false
+function napojPocitadloAkci(wrap) {
+  if (pocitadloNavesene) return
+  pocitadloNavesene = true
+  // ŽÁDNÉ `wrap.contains(b)`. Vypadá to jako rozumná pojistka, ale zahazuje
+  // právě ty akce, které překreslují obsah – ty vymění vnitřek `wrap` ještě
+  // než událost dobublá, takže je tlačítko v tu chvíli odpojené a kontrola ho
+  // vyhodí. Změřeno: „…" se nepočítalo, „nahoru" ano. Odposlouchávač visí na
+  // `wrap`, takže se sem stejně nic zvenku nedostane.
+  wrap.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]')
+    if (b) pocitej('akce', b.dataset.act)
+  })
+}
+
 export function obnovZiveSledovani() {
   if (dil === 'cesta') obnovZiveUdaje()
 }
@@ -169,6 +212,7 @@ export function obnovZiveSledovani() {
 export function renderPlan() {
   const wrap = document.getElementById('planWrap')
   if (!wrap) return
+  napojPocitadloAkci(wrap)
 
   const items = store.plan.map((id) => S.byId[id]).filter(Boolean)
   const dny = dnyPlanu()
@@ -238,7 +282,7 @@ export function renderPlan() {
     napojArchivRadky(wrap, (i) => {
       if (i === null) return renderPlan()
       S.otevrenaCesta = i
-      dil = 'itinerar'
+      otevriDilItinerar()
       draw()
       renderPlan()
     })
@@ -279,7 +323,7 @@ export function renderPlan() {
  * konkrétní plán a chce ho vidět, ne knihovnu.
  */
 export function otevriItinerar() {
-  dil = 'itinerar'
+  otevriDilItinerar()
   S.otevrenaCesta = null
   aktivujZalozku('plan')
   renderPlan()
@@ -459,7 +503,7 @@ function napojKnihovnu(wrap) {
       rozbalenoVKnihovne = ''
       S.otevrenaCesta = null
       if (i >= 0) prepniVypravu(i)
-      dil = 'itinerar'
+      otevriDilItinerar()
       // Překresluje se přes draw() → emit('prekresleno') → renderPlan().
       draw()
     }
@@ -1200,7 +1244,7 @@ function napoj(wrap, items) {
       if (nazev === null) return
       novaVyprava(nazev)
       // Rovnou do Itineráře: nová výprava je prázdná a tam se plní.
-      dil = 'itinerar'
+      otevriDilItinerar()
       draw()
       toast('Nová výprava založená')
     }

@@ -7,7 +7,7 @@
  */
 
 import L from 'leaflet'
-import { S, store, prefs, savePrefs, emit } from '../core/store.js'
+import { S, store, prefs, savePrefs, emit, pocitej } from '../core/store.js'
 import { visible, pocetAktivnich } from '../core/filters.js'
 import { aktivujZalozku } from '../core/router.js'
 import { pinIcon } from './markers.js'
@@ -204,7 +204,14 @@ function srovnejVyrez(tise = true) {
     majiByt.add(p.id)
     if (!naMape.has(p.id)) {
       const m = L.marker([p.lat, p.lon], { icon: pinIcon(p, i, tise) })
-        .on('click', () => emit('otevriDetail', { p }))
+        // ŠPENDLÍK JE TA RYCHLÁ CESTA do detailu – otevře ho hned. Čítač
+        // vedle toho v `goTo()` je ta pomalá s 450 ms; teprve jejich poměr
+        // řekne, jestli většina lidí platí za animaci, o kterou nestála
+        // (`NAPADY.md` N21).
+        .on('click', () => {
+          pocitej('detailSpendlik')
+          emit('otevriDetail', { p })
+        })
         .addTo(vrstva)
       naMape.set(p.id, m)
     }
@@ -224,6 +231,9 @@ function srovnejVyrez(tise = true) {
  * @param {Record<string, any>} p
  */
 export function goTo(p) {
+  // Tohle je ta pomalá cesta do detailu bez ohledu na volajícího – karta na
+  // Domů, řádek Seznamu, plát uložených i „Ukázat" u zastávky. Viz N21.
+  pocitej('detailPresGoTo')
   aktivujZalozku('map')
   S.hiId = p.id
   draw()

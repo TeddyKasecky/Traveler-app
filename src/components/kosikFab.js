@@ -19,6 +19,7 @@
  */
 
 import { registrujOverlay } from '../core/router.js'
+import { pocitej } from '../core/store.js'
 
 /** Co se má vykreslit do plátu, když se otevře. Nastavuje `nastavKosikFab()`. */
 let vykresli = null
@@ -75,6 +76,9 @@ function vratZPlatu() {
 export function otevriKosikPlat() {
   const p = plat()
   if (!p || !vykresli) return
+  // Proti čítači `itinerar` – teprve poměr řekne, jestli je košík nejvytíženější
+  // překryv appky, nebo věc na jednou za cestu (`NAPADY.md` N23).
+  pocitej('kosik')
   obsah().innerHTML = ''
   p.hidden = false
   // Obsah PŘED měřením: výška plátu závisí na tom, co v něm je, a kolečko

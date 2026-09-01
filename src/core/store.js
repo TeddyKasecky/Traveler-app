@@ -443,6 +443,17 @@ export const prefs = nacti(PREFK, {
   domuPoradi: [],
   /** Které sekce Domů jsou schované. Pole `id`, prázdné = všechno vidět. */
   domuSkryte: [],
+  /**
+   * Čítače používání – podklad pro N21, N22 a N23 v `NAPADY.md`.
+   *
+   * Všechny tři nálezy z auditu navigace čekají na totéž: na čísla, jak často
+   * se kudy chodí. Bez nich je hloubka i hustota jen tvrzení. Čte se to
+   * v Nastavení → Vývoj, nikde jinde.
+   *
+   * Deklarace tu musí být, jinak by zápis na čerstvém profilu spadl na
+   * `undefined[...]` – stejný důvod jako u `moodUse`.
+   */
+  pocitadla: {},
 })
 
 /**
@@ -456,12 +467,52 @@ export const prefs = nacti(PREFK, {
  *   bpOpen       panel bikeparku, který se při přestavbě neudělal
  *   mapaSbaleno  nahradilo `vypravaPredstavena` (srpen 2026)
  *
- * `moodUse` sem NEPATŘÍ, i když se taky nikdy nečte – sbírá se schválně
- * jako podklad pro N9 v `NAPADY.md`.
+ * `moodUse` ani `pocitadla` sem NEPATŘÍ, i když se v samotné appce nikde
+ * nečtou – sbírají se schválně jako podklad pro N9 a N21–N23 v `NAPADY.md`
+ * a čtou se v Nastavení → Vývoj.
  */
 for (const zapomenuty of ['bpOpen', 'mapaSbaleno']) delete prefs[zapomenuty]
 
 export const savePrefs = () => zapis(PREFK, prefs)
+
+/**
+ * Přičte jedničku k čítači používání.
+ *
+ * PROČ TO VŮBEC JE: N21, N22 i N23 v `NAPADY.md` se ptají „jak často se tudy
+ * chodí" a bez čísla se rozhodnout nedají. `moodUse` se takhle sbírá od
+ * začátku, tohle je jen totéž pro zbytek navigace.
+ *
+ * ZAPISUJE SE HNED, stejně jako `moodUse` – `prefs` jsou kilobajty, ne
+ * megabajty, takže to není ten `save()`, kterého se týká pravidlo o velkém
+ * úložišti. Odložený zápis by za to nestál: ztráta posledních pár ťuknutí
+ * při zavření appky by u hrubé četnosti nikomu nevadila, ale zbytečná
+ * složitost ano.
+ *
+ * `prefs` JDOU DO ZÁLOHY (`core/csv.js`), takže se čítače přenesou na jiný
+ * telefon a obnova je přepíše. U `moodUse` to platí odjakživa a pro hrubou
+ * četnost to nevadí – kdyby někdy vadilo, patří to do `zalohaData()`, ne sem.
+ *
+ * @param {string} klic  co se počítá
+ * @param {string|null} [podklic]  s ním se místo čísla drží mapa jméno → počet
+ */
+export function pocitej(klic, podklic = null) {
+  if (!prefs.pocitadla || typeof prefs.pocitadla !== 'object') prefs.pocitadla = {}
+  const c = prefs.pocitadla
+  if (podklic === null) {
+    c[klic] = (Number(c[klic]) || 0) + 1
+  } else {
+    if (!c[klic] || typeof c[klic] !== 'object') c[klic] = {}
+    c[klic][podklic] = (Number(c[klic][podklic]) || 0) + 1
+  }
+  savePrefs()
+}
+
+/** Vynuluje čítače i `moodUse`, ať se dá měřit znovu od nuly. */
+export function vynulujPocitadla() {
+  prefs.pocitadla = {}
+  prefs.moodUse = {}
+  return savePrefs()
+}
 
 /* ================= stav filtrů ================= */
 
