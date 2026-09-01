@@ -689,6 +689,15 @@ v `prefs.domuPoradi` a `prefs.domuSkryte`, takže jdou do zálohy.
   `ulozenePozice` a `aktivniPrepocet`**. Staré zálohy tyhle klíče nemají
   a obnova je přeskočí; rozjetou cestu v telefonu obnova nepřepíše a archiv
   slučuje podle času vyjetí.
+- **Rychlá inspirace v Objevuj je osm dlaždic ve mřížce 4×2** (`tadeas-f32-013`,
+  září 2026). Dlaždice, na kterou nejsou data, **nezmizí – zašedne, řekne proč
+  a je `disabled`**; schovaná by z mřížky udělala díru a na čerstvém profilu
+  by svítila jediná. Každá je jen filtr: kolik míst vrátí, se počítá jedním
+  způsobem (`visible()` po nastavení), protože dvojí počítání bylo přesně to,
+  čím se dřívější tři vady schovaly. **Inspirace filtry NAHRAZUJE, nepřičítá
+  se k nim** – stejně jako zkratka na oblast. Jediná výjimka je „Nejblíž
+  odsud": ta nefiltruje, ale přepíná **řazení** Seznamu, protože filtr na
+  vzdálenost v `F` neexistuje a kvůli jedné dlaždici se nezavádí.
 - **Badge u filtrů nepočítá filtr `fire`** („Musíme!") (N1). Nové filtry `ulozene`
   a `vPlanu` se do něj naopak počítají.
 - **Výplně ikon nejdou přes CSS.** Ikony se vkládají jako `<use>` a do stromu instance

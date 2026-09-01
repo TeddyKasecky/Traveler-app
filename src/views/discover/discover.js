@@ -13,7 +13,7 @@
 import { S, F, store, prefs } from '../../core/store.js'
 import { esc } from '../../core/html.js'
 import { dkm, zjistiPolohu } from '../../core/geo.js'
-import { visible } from '../../core/filters.js'
+import { resetFiltru, visible } from '../../core/filters.js'
 import { aktivujZalozku } from '../../core/router.js'
 import { COLL } from '../../data/collections.js'
 import { HOME_MOODS } from '../../data/moods.js'
@@ -22,7 +22,9 @@ import { PHOTOS } from '../../core/store.js'
 import { IC } from '../../icons/sprite.js'
 import { hash } from '../../components/postcard.js'
 import { srovnejPocty } from '../../components/filterPanel.js'
-import { heroPas, sekce, dlazdice, pilulky, fotomrizka, radek } from '../../components/vzory.js'
+import { syncFiltersUI } from '../../components/chip.js'
+import { nastavRazeni } from '../list/list.js'
+import { heroPas, sekce, dlazdice, pilulky, fotomrizka } from '../../components/vzory.js'
 import { toast } from '../../components/toast.js'
 import { goTo, draw, priblizNaFiltr } from '../../map/map.js'
 import { applyMood } from '../home/moods.js'
@@ -40,21 +42,41 @@ const DOPORUCENYCH = 9
 const MIN_V_OBLASTI = 2
 
 /**
- * Rychlá inspirace – hotové kombinace filtrů.
+ * Rychlá inspirace – hotové kombinace filtrů, osm dlaždic ve dvou řadách.
  *
- * Předloha má „Výhledy do 15 km", „Méně známá místa", „Podzimní kouzlo".
- * Tady jsou to skutečné filtry nad našimi daty, ne vymyšlené kategorie:
- * každá položka umí spočítat, kolik míst jí odpovídá, a nastavit se.
+ * DO ZÁŘÍ 2026 TO BYLY ČTYŘI PRUHY A TŘI Z NICH BYLY VADNÉ (`tadeas-f32-013`):
+ *
+ *   - „Co je blízko" nenastavovalo NIC (`nastav: () => {}`), takže Seznam
+ *     ukázal všech 580 míst, kdežto bublina hlásila počet těch do 60 km.
+ *     Prázdné to bylo proto, že filtr na vzdálenost v `F` neexistuje —
+ *     dnes proto ta dlaždice mění ŘAZENÍ, ne filtr, a slibuje to i názvem.
+ *   - „Ještě jsme tam nebyli" nastavovalo `F.stav = 'wish'`, což podle
+ *     `core/filters.js` znamená „cokoli kromě navštíveného", tedy 575 z 580.
+ *     Uložená srdcem jsou `F.ulozene`; ten rozdíl popisuje i `check-filtry.mjs`.
+ *   - „Co jsme si slíbili" počítalo `prio >= 2`, ale filtr schovává `prio < 3`,
+ *     takže dlaždice napočítala místa, která Seznam vzápětí schoval.
+ *
+ * PROTO TU UŽ NENÍ `vyber()`. Každá položka je jen filtr; kolik míst vrátí, se
+ * počítá jedním způsobem — `visible()` po nastavení. Dvojí počítání bylo přesně
+ * to, čím se ta nesrovnalost schovala.
+ *
+ * `podminka` vrací `false`, když na dlaždici nejsou data. Nezmizí — zašedne
+ * a řekne `duvod`. Poloprázdná mřížka vypadá rozbitě, kdežto dlaždice, která
+ * říká „zatím jsi nic nehodnotil", je návod.
  */
 const INSPIRACE = [
   {
     id: 'blizko',
-    nadpis: 'Co je blízko',
-    popis: 'Do hodiny cesty od dodávky',
+    nadpis: 'Nejblíž odsud',
+    popis: 'Seřadí seznam od nejbližšího',
     ikona: 'i-pinme',
-    /** Bez známé polohy nemá smysl – schová se. */
-    jde: () => !!S.userPos,
-    vyber: (mista) => mista.filter((p) => dkm(S.userPos, p) < 60),
+    podminka: () => !!S.userPos,
+    duvod: 'Nevím, kde jsi',
+    // JEDINÁ, KTERÁ NEFILTRUJE. Filtr na vzdálenost v `F` není a kvůli jedné
+    // dlaždici se nezavádí — muselo by přibýt pole do panelu Filtry, do
+    // odznaku, do `resetFiltru()` i do kontrol. Řazení „Od nejbližšího"
+    // přibylo s `tadeas-f32-015` a dělá přesně to, co dlaždice slibuje.
+    razeni: 'blizko',
     nastav: () => {},
   },
   {
@@ -62,11 +84,46 @@ const INSPIRACE = [
     nadpis: 'Zdarma a s dětmi',
     popis: 'Bez vstupného, zvládnou to všichni',
     ikona: 'i-kid',
-    jde: () => true,
-    vyber: (mista) => mista.filter((p) => (p.c || '').startsWith('Zdarma') && p.ch === 'Ano'),
+    podminka: () => true,
     nastav: () => {
       F.free = true
       F.kids = true
+    },
+  },
+  {
+    id: 'zdarma',
+    nadpis: 'Zadarmo',
+    popis: 'Nic se neplatí',
+    ikona: 'i-euro',
+    podminka: () => true,
+    nastav: () => {
+      F.free = true
+    },
+  },
+  {
+    id: 'mesta',
+    nadpis: 'Města a památky',
+    popis: 'Když prší nebo je chuť na kulturu',
+    // Táž ikona, jakou má kategorie v `data/categories.js`.
+    ikona: 'i-castle',
+    // MEZERA, KTEROU NÁLADY NEPOKRÝVAJÍ. Ty umí hory, vodu, kolo a ferraty
+    // s jeskyněmi; na devadesát devět měst a památek se přes ně nedá dostat.
+    podminka: () => true,
+    nastav: () => {
+      F.kat.add('Města a památky')
+    },
+  },
+  {
+    id: 'ulozene',
+    nadpis: 'Uložená na potom',
+    popis: 'Co sis označil záložkou',
+    // ZÁLOŽKA, NE SRDCE. `check-ikony` na to má vlastní kontrolu a `chip.js`
+    // kreslí rychlý filtr „Uložená" stejnou ikonou.
+    ikona: 'i-zalozka',
+    podminka: () => Object.values(store.stav).includes('wish'),
+    duvod: 'Zatím sis nic neuložil',
+    nastav: () => {
+      F.ulozene = true
     },
   },
   {
@@ -74,21 +131,35 @@ const INSPIRACE = [
     nadpis: 'Co jsme si slíbili',
     popis: 'Místa označená plamínky',
     ikona: 'i-fire',
-    jde: () => Object.values(store.prio).some((x) => x >= 2),
-    vyber: (mista) => mista.filter((p) => (store.prio[p.id] || 0) >= 2),
+    // TŘI PLAMÍNKY, ne dva: `core/filters.js` schovává všechno pod třemi.
+    // Dřív tu byla dvojka a dlaždice tím slibovala víc, než Seznam ukázal.
+    podminka: () => Object.values(store.prio).some((x) => x >= 3),
+    duvod: 'Zatím nic nemá tři plamínky',
     nastav: () => {
       F.fire = true
     },
   },
   {
-    id: 'nevideno',
-    nadpis: 'Ještě jsme tam nebyli',
-    popis: 'Z míst, která máte v seznamu přání',
-    ikona: 'i-boot',
-    jde: () => Object.values(store.stav).includes('wish'),
-    vyber: (mista) => mista.filter((p) => store.stav[p.id] === 'wish'),
+    id: 'nejlepsi',
+    nadpis: 'Nejlépe hodnocená',
+    popis: 'Čtyři hvězdy a víc',
+    ikona: 'i-star',
+    podminka: () => Object.values(store.rating).some((x) => x >= 4),
+    duvod: 'Zatím jsi nic nehodnotil',
     nastav: () => {
-      F.stav = 'wish'
+      F.wow = true
+    },
+  },
+  {
+    id: 'byli',
+    nadpis: 'Byli jsme tady',
+    popis: 'Co máte za sebou',
+    // Fajfka jako u rychlého filtru „Byli jsme" v `chip.js`.
+    ikona: 'i-check',
+    podminka: () => Object.values(store.stav).includes('visited'),
+    duvod: 'Zatím nikde',
+    nastav: () => {
+      F.stav = 'visited'
     },
   },
 ]
@@ -149,9 +220,11 @@ export function renderDisc() {
   })
 
   /* ---- rychlá inspirace ---- */
-  const inspirace = INSPIRACE.filter((i) => i.jde())
-    .map((i) => ({ i, n: i.vyber(S.places).length }))
-    .filter(({ n }) => n > 0)
+  // NIC SE NEODFILTROVÁVÁ. Do září 2026 se dlaždice bez dat schovala, takže
+  // na čerstvém profilu svítila jediná ze čtyř a sekce vypadala rozbitě.
+  // Dnes zůstane vidět, zašedne a řekne proč — mřížka 4×2 je tím vždycky
+  // plná a prázdná dlaždice je návod, ne díra.
+  const inspirace = INSPIRACE.map((i) => ({ i, jde: i.podminka() }))
 
   /* ---- oblasti ---- */
   const oblasti = {}
@@ -168,26 +241,24 @@ export function renderDisc() {
     }) +
     `<div class="list">` +
     sekce('Oblíbené kolekce') +
-    dlazdice(kolekce) +
+    `<div id="discKolekce">${dlazdice(kolekce)}</div>` +
     sekce('Jakou máte náladu?') +
     pilulky(nalady, 'nalady') +
     sekce('Doporučené pro vás', { akce: 'Zobrazit vše', akceId: 'discVse' }) +
     fotomrizka(karty) +
-    (inspirace.length
-      ? sekce('Rychlá inspirace') +
-        inspirace
-          .map(({ i, n }) =>
-            radek({
-              id: i.id,
-              nadpis: i.nadpis,
-              podnadpis: i.popis,
-              meta: `${IC(i.ikona)}${n} ${n === 1 ? 'místo' : n < 5 ? 'místa' : 'míst'}`,
-              vpravo: IC('i-sipka', 'font-size:17px;color:var(--text3)'),
-              tridy: 'inspirace',
-            })
-          )
-          .join('')
-      : '') +
+    sekce('Rychlá inspirace') +
+    // VLASTNÍ OBAL. Obsluha kolekcí níž bere `.dlazdice-kus[data-id]`, takže
+    // bez něj by ťuknutí na inspiraci spustilo kolekci téhož `id` — nebo nic.
+    `<div id="discInspirace">${dlazdice(
+      inspirace.map(({ i, jde }) => ({
+        id: i.id,
+        nadpis: i.nadpis,
+        // Zašedlá dlaždice říká DŮVOD místo slibu, který nemůže splnit.
+        popisek: jde ? i.popis : i.duvod,
+        ikona: i.ikona,
+        nejde: !jde,
+      }))
+    )}</div>` +
     sekce('Oblasti', { pozn: `${top.length} oblastí` }) +
     `<div class="reglist">${top
       .map(([r, n]) => `<button class="reg" data-reg="${esc(r)}">${esc(r)}<i>${n}</i></button>`)
@@ -199,17 +270,19 @@ export function renderDisc() {
     `<div style="height:20px"></div></div>`
 
   /* ---- obsluha ---- */
-  for (const b of el.querySelectorAll('.dlazdice-kus[data-id]')) {
+  // ZÚŽENO NA OBAL KOLEKCÍ. Dlaždice inspirace mají tutéž třídu, takže by se
+  // do téhle obsluhy jinak chytily taky (`tadeas-f32-013`).
+  for (const b of el.querySelectorAll('#discKolekce .dlazdice-kus[data-id]')) {
     b.onclick = () => nastavKolekci(b.dataset.id)
+  }
+  for (const b of el.querySelectorAll('#discInspirace .dlazdice-kus[data-id]')) {
+    b.onclick = () => spustInspiraci(b.dataset.id)
   }
   for (const b of el.querySelectorAll('.pilulka[data-id]')) {
     b.onclick = () => applyMood(HOME_MOODS.find((m) => m.id === b.dataset.id))
   }
   for (const k of el.querySelectorAll('.fotokarta[data-id]')) {
     k.onclick = () => goTo(S.byId[k.dataset.id])
-  }
-  for (const r of el.querySelectorAll('.radek.inspirace[data-id]')) {
-    r.onclick = () => spustInspiraci(r.dataset.id)
   }
   for (const b of el.querySelectorAll('[data-reg]')) {
     b.onclick = () => {
@@ -250,9 +323,23 @@ function nastavKolekci(klic) {
  */
 function spustInspiraci(id) {
   const i = INSPIRACE.find((x) => x.id === id)
-  if (!i) return
+  if (!i || !i.podminka()) return
+
+  // NAHRAZUJE VÝBĚR, NEPŘIDÁVÁ SE K NĚMU — stejně jako zkratka na oblast pár
+  // řádků níž. Bez toho se inspirace přičetla k tomu, co bylo zapnuté, a
+  // vyšlo nesouvisející nebo prázdno.
+  resetFiltru()
   i.nastav()
+  // BEZ TOHO SE TO „NEOBJEVÍ VE FILTRECH" (`tadeas-f32-013`): pilulky ani
+  // panel Filtry o nastavení nevědí. `applyMood()` i `filterPanel.js` to volají.
+  syncFiltersUI()
+  if (i.razeni) nastavRazeni(i.razeni)
+
   aktivujZalozku('list')
   draw()
-  toast(`${i.nadpis}: ${i.vyber(visible()).length} míst`)
+  // JEDNO ČÍSLO, NE DVĚ. Dřív se počítalo vlastním predikátem nad `visible()`,
+  // takže bublina hlásila něco jiného, než kolik Seznam ukázal — právě tím se
+  // ty tři vady schovaly.
+  const n = visible().length
+  toast(`${i.nadpis}: ${n} ${n === 1 ? 'místo' : n < 5 ? 'místa' : 'míst'}`)
 }

@@ -167,6 +167,13 @@
 .dlazdice-kus b{font-family:var(--f-disp);font-weight:700;font-size:.74rem;line-height:1.15;overflow-wrap:anywhere}
 .dlazdice-kus svg.ic{font-size:21px;color:var(--dc,var(--akcent))}
 .dlazdice-kus span{font-size:.58rem;font-weight:600;color:var(--text2);line-height:1.2}
+/* Dlaždice, na kterou nejsou data (rychlá inspirace). Zůstává vidět a řekne
+   proč – schovaná by z mřížky 4×2 udělala díru. Třída `nejde` má stejný
+   význam jako v `mapa.css`, `plan.css` a `profil.css`. `pointer-events` se
+   nevypínají: tlačítko nese `disabled`, takže je neaktivní i pro klávesnici
+   a čtečku, ne jen pro prst. */
+.dlazdice-kus.nejde{opacity:.5;box-shadow:none}
+.dlazdice-kus.nejde:active{transform:none}
 
 /* ---------- pilulky ---------- */
 .pilulky{display:flex;gap:8px;overflow-x:auto;margin:0 -14px;padding:2px 14px 4px;scrollbar-width:none}

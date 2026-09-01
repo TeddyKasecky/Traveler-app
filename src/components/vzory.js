@@ -159,7 +159,10 @@ export function fotomrizka(karty, tridy = '') {
 export function dlazdice(polozky) {
   return `<div class="dlazdice">${polozky
     .map(
-      (p) => `<button class="dlazdice-kus"${p.id ? ` data-id="${p.id}"` : ''}${p.barva ? ` style="--dc:${p.barva}"` : ''}>
+      // `nejde` = dlaždice, na kterou nejsou data. Zůstane vidět a řekne proč,
+      // ale je OPRAVDU neaktivní – tlačítko, které vypadá zmáčknutelně a nic
+      // nedělá, je horší než tlačítko, které se nedá zmáčknout.
+      (p) => `<button class="dlazdice-kus${p.nejde ? ' nejde' : ''}"${p.nejde ? ' disabled' : ''}${p.id ? ` data-id="${p.id}"` : ''}${p.barva ? ` style="--dc:${p.barva}"` : ''}>
         <b>${esc(p.nadpis)}</b>
         ${IC(p.ikona)}
         ${p.popisek ? `<span>${esc(p.popisek)}</span>` : ''}

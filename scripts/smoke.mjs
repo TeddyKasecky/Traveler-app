@@ -1159,18 +1159,101 @@ await kontrola('číslování se nevrátilo', async () => (await debugZaznamy())
 await page.goBack()
 await page.waitForTimeout(300)
 
+// Počet nalezených míst v Seznamu. `nalezeno()` níž dělá totéž, ale je
+// definované až u kontroly filtrů – tenhle blok je o pět set řádků výš.
+const nalezenoInsp = async () => Number((await page.locator('#listPocet').innerText()).replace(/\D/g, ''))
+
 // Objevuj
 await page.click('#tabs button[data-tab="disc"]')
 await page.waitForTimeout(300)
 // Objevuj má od přestavby rozvržení dlaždice `.dlazdice-kus` místo `.coll`
 // a nálady jako pilulky – přestěhovaly se sem z Domů, kde je předloha nemá.
 // 12 od N5 (srpen 2026) – kolekce „Se psem“ dřív v COLL chyběla.
-await kontrola('kolekce v Objevuj', () => page.locator('.dlazdice-kus').count(), 12)
+// ZÚŽENO NA `#discKolekce`: od září 2026 jsou dlaždice i u rychlé inspirace,
+// takže by široký výběr sečetl obojí a číslo by nic neznamenalo.
+await kontrola('kolekce v Objevuj', () => page.locator('#discKolekce .dlazdice-kus').count(), 12)
 await kontrola('nálady v Objevuj', () => page.locator('.nalady .pilulka').count(), 6)
 // Karusel má od přestavby Domů dvě obrazovky, takže se musí počítat jen ten
 // na Objevuj – bez `#discInner` by se sečetly oba a číslo by nic neznamenalo.
 await kontrola('mřížka doporučených', () => page.locator('#discInner .fotomrizka .fotokarta').count(), 9)
 await kontrola('oblasti v Objevuj', () => page.locator('.reg').count() )
+
+/* ---------- rychlá inspirace (`tadeas-f32-013`) ----------
+ *
+ * Do září 2026 to byly čtyři pruhy a TŘI Z NICH BYLY VADNÉ. Každá z těch vad
+ * má tady vlastní kontrolu, jinak se za měsíc vrátí:
+ *
+ *   A  „Co je blízko" nenastavovalo nic → Seznam ukázal 580, bublina počet do 60 km
+ *   B  „Ještě jsme tam nebyli" nastavovalo `stav:'wish'` = 575 z 580 míst
+ *   C  „Co jsme si slíbili" počítalo prio ≥ 2, ale filtr schovává prio < 3
+ *   D  nikde se nevolalo `syncFiltersUI()` → filtr se neprojevil v pilulkách
+ *   E  nenulovaly se předchozí filtry → inspirace se přičetla k tomu, co bylo
+ */
+await kontrola('osm dlaždic rychlé inspirace', () => page.locator('#discInspirace .dlazdice-kus').count(), 8)
+// Na čerstvém profilu nejsou uložená, plamínky, hodnocení ani navštívená
+// a smoke nemá povolenou polohu, takže pět dlaždic musí být zašedlých – a OPRAVDU
+// neaktivních, ne jen vybledlých.
+await kontrola('dlaždice bez dat jsou neaktivní', () =>
+  page.locator('#discInspirace .dlazdice-kus.nejde[disabled]').count(), 5)
+await kontrola('a říkají důvod místo slibu', () =>
+  page.locator('#discInspirace [data-id="nejlepsi"] span').innerText(), 'Zatím jsi nic nehodnotil')
+
+// VADA D: dvě zaškrtnutá pole se musí projevit v odznaku u tlačítka Filtry.
+await page.click('#discInspirace .dlazdice-kus[data-id="zdarma-deti"]')
+await page.waitForTimeout(700)
+// Číselný odznak na tlačítku Filtry není – počet nese rušítko vedle něj,
+// které se zároveň rozsvítí a zaktivní. To je v Seznamu ten viditelný důkaz,
+// že se filtr opravdu nastavil.
+await kontrola('inspirace nastaví dva filtry a rušítko je ukáže', () =>
+  page.locator('#listZrusFiltry').getAttribute('title'), 'Zrušit filtry (2)')
+await kontrola('a rušítko je aktivní', () => page.locator('#listZrusFiltry').isDisabled(), false)
+// VADY A a C: co hlásí bublina, to musí Seznam ukázat. Dřív se počítalo dvěma
+// různými způsoby, a právě tím se nesrovnalost schovala.
+{
+  const vBubline = Number((await page.locator('#toast').innerText()).replace(/\D/g, ''))
+  await kontrola('počet v bublině sedí na Seznam', () => nalezenoInsp(), vBubline)
+}
+
+// VADA E: zapnutý cizí filtr musí inspirace ZRUŠIT, ne se k němu přičíst.
+await page.click('#fZeme')
+await page.waitForTimeout(500)
+await page.click('#dialogVice .dialog-volba:has-text("Rakousko")')
+await page.click('#dialogAno')
+await page.waitForTimeout(700)
+await page.click('#tabs button[data-tab="disc"]')
+await page.waitForTimeout(500)
+await page.click('#discInspirace .dlazdice-kus[data-id="mesta"]')
+await page.waitForTimeout(800)
+await kontrola('inspirace zruší cizí filtr, nepřičte se k němu', () => nalezenoInsp(), 99)
+
+// VADA B: „Uložená na potom" musí vrátit uložená, ne „všechno kromě
+// navštíveného". Kdyby se vrátilo `stav:'wish'`, vyšlo by 575 z 580.
+await page.locator('#listInner .radek').first().click()
+await page.waitForTimeout(700)
+await page.click('#dWish')
+await page.waitForTimeout(400)
+await zavriDetail()
+await page.click('#tabs button[data-tab="disc"]')
+await page.waitForTimeout(600)
+await kontrola('uložením se dlaždice rozsvítí', () =>
+  page.locator('#discInspirace .dlazdice-kus[data-id="ulozene"].nejde').count(), 0)
+await page.click('#discInspirace .dlazdice-kus[data-id="ulozene"]')
+await page.waitForTimeout(800)
+await kontrola('uložená vrátí uložená, ne 575 míst', () => nalezenoInsp(), 1)
+
+// Uklidit po sobě: uložené místo zase odznačit a filtry vrátit na výchozí.
+await page.locator('#listInner .radek').first().click()
+await page.waitForTimeout(700)
+await page.click('#dWish')
+await page.waitForTimeout(400)
+await zavriDetail()
+// Zpátky na Seznam výslovně: `zavriDetail()` jde přes goBack, který vrátí tam,
+// odkud se detail otevřel – a to byl Objevuj, ne Seznam.
+await page.click('#tabs button[data-tab="list"]')
+await page.waitForTimeout(500)
+await page.click('#listZrusFiltry')
+await page.waitForTimeout(600)
+await kontrola('po úklidu jsou zase všechna místa', () => nalezenoInsp(), 580)
 
 // Výřez: po oddálení na celý svět musí být vidět všechna místa. Tohle je pojistka
 // proti tomu, aby vkládání jen viditelných špendlíků některé místo tiše ztratilo.

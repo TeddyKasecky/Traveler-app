@@ -66,6 +66,21 @@ export const RAZENI = [
  */
 let razeni = 'dopor'
 
+/**
+ * Nastaví řazení zvenku. Volá to rychlá inspirace „Nejblíž odsud"
+ * (`views/discover/discover.js`), která jako jediná nefiltruje, ale řadí.
+ *
+ * ODMÍTNE VOLBU, KTERÁ CHCE POLOHU, když poloha není – jinak by se seznam
+ * tiše seřadil podle `dkm()` s prázdným bodem a pořadí by bylo náhodné.
+ * @param {string} id  z `RAZENI`
+ */
+export function nastavRazeni(id) {
+  const r = RAZENI.find((x) => x.id === id)
+  if (!r || (r.potrebujePolohu && !S.userPos)) return false
+  razeni = id
+  return true
+}
+
 function serad(mista) {
   const jak = razeni
   const sD = mista.map((p) => ({ p, d: S.userPos ? dkm(S.userPos, p) : null }))
