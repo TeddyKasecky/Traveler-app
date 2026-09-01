@@ -7,7 +7,8 @@ výklad vzhledu ve [`VZHLED.md`](VZHLED.md).
 
 > **Pozor na jména kontrol ve starších záznamech níž.** V srpnu 2026 zmizely
 > `check-handlers`, `check-data` a `check-css:original` spolu s předlohou, proti které
-> porovnávaly, a `parity` se přejmenoval na `check-regrese`. Záznamy o proběhlých
+> porovnávaly, a `parity` se přejmenoval na `check-regrese`. V září 2026 zmizel
+> `smoke:single` spolu s celou jednosouborovou variantou. Záznamy o proběhlých
 > kontrolách se **nepřepisují** — byly pravdivé, když vznikly.
 
 ---

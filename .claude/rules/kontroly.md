@@ -26,7 +26,7 @@ bez vyžádání. Místo nich je 36 samostatných spustitelných `.mjs` skriptů
 | `check-form.mjs` | `npm run check-form` | že formulář vyrábí platná místa, 18/18 |
 | `check-ikony.mjs` | `npm run check-ikony` | jedna věc = jedno jméno = jedna ikona, 8 bodů |
 | `check-images.mjs` | `npm run check-images` | existenci odkazů na fotky — **chodí na síť** |
-| `smoke.mjs` | `npm run smoke` / `smoke:single` | proklikání v prohlížeči, 411 / 371 kontrol |
+| `smoke.mjs` | `npm run smoke` | proklikání v prohlížeči, 493 kontrol |
 | `check-regrese.mjs` | `npm run check-regrese` | PWA, zálohy, fotky, poloha, service worker — 26 bodů v prohlížeči |
 | `perf.mjs` | `npm run perf` | rychlost startu při zpomaleném procesoru |
 | `perf-mapa.mjs` | ručně | plynulost posunu a přiblížení **stažené** malované mapy |
@@ -66,7 +66,6 @@ tiše shodí kontrolu bezpečných okrajů.
 `smoke.mjs`, `check-regrese.mjs`, `screenshots.mjs` a `perf.mjs` řídí **skutečný prohlížeč**:
 `playwright-core` + Edge z `C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe`.
 Chromium se schválně nestahuje. Skripty proti `dist/` potřebují napřed `npm run build`,
-`smoke:single` potřebuje `npm run build:single`.
 
 ## Konvence nového skriptu
 
@@ -98,7 +97,7 @@ Chromium se schválně nestahuje. Skripty proti `dist/` potřebují napřed `npm
 | filtry, hledání | `npm run check-filters` |
 | obsluha tlačítek, nová obrazovka | `npm run smoke` |
 | formulář „Přidat místo" | `npm run check-form` |
-| build, service worker | `npm run build && npm run smoke`, `build:single && smoke:single` |
+| build, service worker | `npm run build && npm run smoke` |
 
 Před `git push` (= nasazení do produkce) projeď aspoň `npm run validate` a `npm run smoke`.
 

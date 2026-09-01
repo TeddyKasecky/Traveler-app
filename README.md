@@ -189,15 +189,13 @@ Poprvé je potřeba jednou `npm install`.
 | Příkaz | Co dělá |
 |---|---|
 | `npm run build` | web do `dist/` – tohle nasazuje Cloudflare |
-| `npm run build:single` | jeden soubor `dist-single/index.html` na disk, offline |
 | `npm run preview` | prohlédnutí sestaveného webu |
 
 ### Kontroly
 
 | Příkaz | Co ověří |
 |---|---|
-| `npm run smoke` | proklikání v prohlížeči, 411 kontrol |
-| `npm run smoke:single` | totéž pro variantu z disku, 371 kontrol |
+| `npm run smoke` | proklikání v prohlížeči, 493 kontrol |
 | `npm run check-uloziste` | že se poznámky neztratí, když dojde místo, 36 kontrol |
 | `npm run check-regrese` | PWA, zálohy, fotky, poloha, service worker — 26 bodů |
 | `npm run check-dny` | dny, výpravy, body trasy a úpravy cesty, 203 bodů |
@@ -284,15 +282,6 @@ Data: obrysy z Natural Earth (public domain, `src/data/basemap.json`), zbytek
 z OpenStreetMap přes Protomaps (ODbL) a výškopis z `elevation-tiles-prod`.
 Přegenerovat je jde skripty `make-basemap.mjs`, `make-mapa.mjs` a
 `make-relief.mjs`; běžně to není potřeba.
-
-### Dvě varianty jednoho zdroje
-
-`npm run build` dělá web pro hosting. `npm run build:single` dělá jeden soubor,
-který funguje i z flashky – všechno včetně fontů a ikon je v něm zabalené.
-Rozdíl je jen v tom, co se vkládá dovnitř a jestli vzniká service worker; kód je
-stejný a na variantu se ptá přes `import.meta.env.SINGLE_FILE`.
-
----
 
 ## 9. Na co si dát pozor
 

@@ -70,7 +70,6 @@ Vše ze složky `vandrbuch/`, kde leží `package.json`. Poprvé jednou `npm ins
 ```bash
 npm run dev              # vývojový server, dostupný i z mobilu na stejné wifi
 npm run build            # → dist/ ; tohle stejné buildy nasazuje Cloudflare (main → beta, production → ostrá appka)
-npm run build:single     # → dist-single/index.html ; jeden offline soubor
 npm run preview          # prohlédnutí sestaveného webu
 
 npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
@@ -81,8 +80,7 @@ npm run check-worker     # že Worker nepustí dál, co nemá, 48 bodů
 npm run debug-uklid      # duplicity a zavřené záznamy ze složky debug/ ven
 npm run debug-zavri      # uzavře záznam: -- <id> <hotovo|zahozeno> "důvod"
 
-npm run smoke            # proklikání v prohlížeči, 411 kontrol
-npm run smoke:single     # totéž pro single-file variantu, 371 kontrol
+npm run smoke            # proklikání v prohlížeči, 493 kontrol
 npm run check-regrese    # PWA, zálohy, fotky, poloha, service worker, 26 bodů
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
 npm run check-dny        # dny, výpravy, body trasy, tažení a úpravy cesty, 203 bodů
@@ -118,8 +116,7 @@ Runtime závislosti jsou **dvě** a obě vědomě:
   odsouhlasená v srpnu 2026: bez ní by v mapě nebyly lesy, louky ani pole,
   protože Natural Earth žádný pokryv krajiny nemá. Natahuje se **dynamickým
   importem**, takže skončí ve vlastním chunku a stáhne si ji jen ten, kdo si
-  mapu do telefonu opravdu stáhne. Do jednosouborové varianty se nebalí vůbec
-  (`import.meta.env.SINGLE_FILE` v `map/podklad.js`).
+  mapu do telefonu opravdu stáhne.
 
 | Kde | Co |
 |---|---|
@@ -636,8 +633,8 @@ v `prefs.domuPoradi` a `prefs.domuSkryte`, takže jdou do zálohy.
   `mapa-evropa.vbm`, prohlížeč umí WebGL a v Nastavení je zvolená malovaná, kreslí
   ji MapLibre z vektorových dlaždic (lesy, louky, pole, voda, silnice a kresby
   krajiny). Jinak nastoupí zjednodušená: plátno s obrysy z `basemap.json`, města
-  a reliéf. Funguje vždycky — bez WebGL, bez stažené mapy i v jednosouborové
-  variantě. Rozcestník je v `map/podklad.js`.
+  a reliéf. Funguje vždycky — bez WebGL i bez stažené mapy. Rozcestník je
+  v `map/podklad.js`.
 - **Kresby stromů a hor nejsou prvky stránky.** Do srpna 2026 to bylo sto deset
   Leafletových značek s CSS filtrem, které prohlížeč překresloval při každém posunu.
   Dnes je kreslí MapLibre jako symboly na GPU a **jen se staženou mapou**. Bez
@@ -655,7 +652,8 @@ v `prefs.domuPoradi` a `prefs.domuSkryte`, takže jdou do zálohy.
   výchozí husté). Mění jen cílovou rozteč, takže je to okamžité.
 - **Stínování terénu je jeden obrázek** (`src/assets/relief-evropa.webp`, ~1 MB)
   přes `L.ImageOverlay`, ne vrstva MapLibre — díky tomu ho má i zjednodušená mapa.
-  Do jednosouborové varianty se nebalí. Vyrábí ho `scripts/make-relief.mjs`.
+  Natahuje se dynamickým importem, ať nezdrží start. Vyrábí ho
+  `scripts/make-relief.mjs`.
 - **Balík mapy má značku `VBM2`.** Starší `VBM1` aplikace odmítne a Nastavení
   napíše, že je zastaralá. Bez toho by mapa tiše spadla na obrysy.
 - **Do předukládané cache nejde nic kolem stažené mapy.** Balík `.vbm` (3,7 MB) se

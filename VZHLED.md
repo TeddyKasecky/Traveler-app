@@ -101,8 +101,9 @@ na tmavém pozadí zmizela.
 kategorie nevypadají stejně. Kreslená pohlednice ze `src/components/postcard.js`
 **zůstává** — leží pod akvarelem a prosvitne, když se obrázek nenačte.
 
-Dvě velikosti: 320 px do karty seznamu, 720 px do hlavičky detailu. Do single-file
-varianty jde jen malá sada; ověřuje se počtem `data:image/webp` v `dist-single/index.html`.
+Dvě velikosti: 320 px do karty seznamu, 720 px do hlavičky detailu. Velká sada
+se **nepředukládá** do cache – ukazuje se až v otevřeném detailu místa bez
+vlastní fotky, tedy po ťuknutí (filtr je ve `vite.config.js`).
 
 Obrázky se vyrábějí ručně ze složky `grafika/`:
 
@@ -181,8 +182,8 @@ spočítaný z výškopisu `elevation-tiles-prod` skriptem `scripts/make-relief.
   spolu se vším ostatním; bez mrtvé zóny vypadalo Polabí jako zmačkaný papír.
 - V tmavém režimu se ztlumí na 62 % krytí (`.relief` v `podklad.css`) — krémové
   přisvícené svahy by jinak svítily.
-- **Do jednosouborové varianty se nebalí**, tam je `assetsInlineLimit` bez
-  omezení a megabajt by se vložil do HTML jako base64.
+- **Natahuje se dynamickým importem**, aby megabajtový obrázek nezdržel start –
+  mapa se nakreslí i bez něj a reliéf na ni doskočí.
 
 ## Kresby krajiny
 

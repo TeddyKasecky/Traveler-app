@@ -219,32 +219,38 @@ všech šest.
 
 ---
 
-## Jednosouborová varianta má jít pryč (srpen 2026, k rozhodnutí)
+## Jednosouborová varianta zrušena (září 2026) — ~~VYŘEŠENO~~
 
-**Nasazuje se jedině `dist/`.** `wrangler.jsonc` míří na `./dist`, Cloudflare
-staví z GitHubu a `dist-single/` nebylo v gitu nikdy. Jediný důvod, proč
-existuje, je zapsaný v `src/data/kategorieFoto.js`: *„ten soubor se nosí na
-flashce a posílá mailem"* — tedy cesta, kterou dnes nahradila beta na
-`traveler-app-beta.teddykasecky.workers.dev` a offline režim PWA.
+Vedlo se to tu jako „k rozhodnutí". Rozhodnuto: **pryč.**
 
-Co to stojí:
+Důvod: nasazuje se jedině `dist/` — `wrangler.jsonc` míří na `./dist`,
+Cloudflare staví z GitHubu a `dist-single/` nebylo v gitu nikdy. Jediný důvod,
+proč varianta vznikla, byl zapsaný v `kategorieFoto.js`: *„ten soubor se nosí
+na flashce a posílá mailem"* — cesta, kterou dnes nahradila veřejná beta
+a offline režim PWA.
 
-- **osm zdrojáků** větví přes `import.meta.env.SINGLE_FILE` (`intro.js`,
-  `kategorieFoto.js`, `podklad.js` 2×, `vektory.js`, `register.js`,
-  `debugExportUI.js`),
-- **`smoke.mjs` má celou druhou větev** (`--single`, dnes 417 kontrol),
-  kterou je nutné projet u každé změny,
-- `kategorieFoto.js` kvůli tomu drží **dvě sady ilustrací** (malé a velké),
-- **79 zmínek v dokumentaci**.
+Co to stálo: osm větví přes `import.meta.env.SINGLE_FILE` v sedmi souborech,
+celou druhou větev ve `smoke` (konstanta `SINGLE`, vlastní volba adresy a šest
+bloků `if (!SINGLE)`), závislost `vite-plugin-singlefile`, vlastní plugin ve
+`vite.config.js` a zmínky v devíti dokumentech.
 
-Konkrétní cena: rozdělaný vícenásobný filtr výš neblokuje nic jiného než
-`smoke:single` — tedy kontrola varianty, která nemá kam být nasazená.
+**Jedna věc z původního návrhu se neudělala, protože byla špatně.** Návrh psal
+„`kategorieFoto.js` sjednotit na jednu sadu". Sady jsou ale dvě **schválně**:
+malá (320 px) se kreslí na kartách hned, velká (720 px) až v otevřeném detailu
+místa bez vlastní fotky (`views/detail/detail.js:182`). Sjednocení by rozmazalo
+detail. Zrušil se jen obal `SINGLE_FILE ? null :` a záloha `VELKE || MALE`.
 
-Návrh: `build:single` a `smoke:single` zrušit, větve `SINGLE_FILE` vyhodit
-(zůstane vždy ta „normální" cesta), `kategorieFoto.js` sjednotit na jednu
-sadu a projít dokumentaci. **Je to na rozhodnutí, ne na tichý úklid** —
-smazáním se ztratí možnost poslat appku mailem někomu, kdo si ji nechce
-instalovat.
+Šest bloků `if (!SINGLE)` ve `smoke` hlídalo věci, které jsou jen v hostované
+variantě, takže podmínka zmizela a obsah zůstal. Jeden z nich měl `else` větev
+pro single-file — ta se zahodila celá.
+
+**Ověřeno, že je to pixelově neutrální.** Snímky obrazovek proti základně
+sestavené ze staré podoby kódu (dočasně vrácené závislosti): **0 px rozdílu na
+všech osmi obrazovkách**. `smoke` zůstalo na 493/493, protože ty bloky
+v hostované variantě stejně vždycky běžely.
+
+**Vytáhnout zpátky** jde `git revert 85ed5ea` (kód, build a smoke) plus commit
+s dokumentací hned za ním.
 
 ---
 

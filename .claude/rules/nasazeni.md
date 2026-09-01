@@ -13,18 +13,20 @@ paths:
 _Zjištěno auditem: `vite.config.js`, `wrangler.jsonc`, `.node-version`, `src/pwa/sw.js`,
 `README.md` kap. 2._
 
-## Dvě varianty z jednoho zdroje
+## Jeden build target
 
 | Příkaz | Výstup | K čemu |
 |---|---|---|
 | `npm run build` | `dist/` | hostovaný web, plná PWA se service workerem — **tohle nasazuje Cloudflare** |
-| `npm run build:single` | `dist-single/index.html` | jeden self-contained soubor, funguje z disku i z flashky |
 
-Zdrojový kód je stejný, na variantu se ptá přes `import.meta.env.SINGLE_FILE`. Rozdíl je jen
-v tom, co se inlinuje a jestli vzniká service worker. **Nepiš dvě větve kódu** — když něco
-platí jen pro jednu variantu, řeš to tímhle přepínačem, ne kopií souboru.
+Do září 2026 tu byla ještě jednosouborová varianta (`build:single`, `dist-single/`,
+konstanta `import.meta.env.SINGLE_FILE`). **Zrušila se** — nasazuje se jedině `dist/`,
+`dist-single/` nebylo v gitu nikdy a jediný důvod, proč vznikla (nosit appku na flashce
+a posílat mailem), nahradila veřejná beta a offline režim PWA. Stálo to osm větví
+v kódu, druhou větev ve `smoke` a dvě sady ilustrací. Vytáhnout zpátky jde
+`git revert` commitu, který ji odstranil.
 
-`base: './'` je nutné pro obě varianty (hosting v podadresáři i `file://`). Neměň na `/`.
+`base: './'` zůstává — hosting může běžet v podadresáři. Neměň na `/`.
 
 ## Service worker
 
@@ -109,12 +111,10 @@ poznat od produkce. Bez proměnné (produkce) manifest zůstává beze změny.
 Stejná proměnná zapíná i **červený štítek „BETA"** v hlavičce (`#betaZnacka`
 v `index.html`, obsluha v `main.js`) — na rozdíl od manifestu (post-processing
 `dist/` po buildu) je tohle zapečené do JS buildu přes
-`define: { 'import.meta.env.VANDRBUCH_BETA': ... }` ve `vite.config.js`,
-stejný vzor jako `SINGLE_FILE`. Beze proměnné appka zkompiluje `false` natvrdo
-a mrtvý kód zmizí úplně — na produkci tedy `VANDRBUCH_BETA` neexistuje
-v žádné podobě ve výsledném JS, ne jen že je vypnutá. Bezpečné i pro
-`build:single`: štítek se tam nikdy nezobrazí bez ohledu na proměnnou,
-protože offline soubor nemá „prostředí", ke kterému by se vztahoval.
+`define: { 'import.meta.env.VANDRBUCH_BETA': ... }` ve `vite.config.js`.
+Beze proměnné appka zkompiluje `false` natvrdo a mrtvý kód zmizí úplně — na
+produkci tedy `VANDRBUCH_BETA` neexistuje v žádné podobě ve výsledném JS, ne jen
+že je vypnutá.
 
 Bez `wrangler.jsonc` `wrangler deploy` neví, co nasadit, začne hledat konfiguraci
 sám a zakopne o `vite.config.js`. Stejný soubor (s `name: "traveler-app"`) slouží
