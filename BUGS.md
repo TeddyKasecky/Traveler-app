@@ -176,56 +176,46 @@ se do trasy nepočítá.
 
 ---
 
-## Rozdělaný vícenásobný filtr a nálady (srpen 2026)
+## Z dávky čtyř hlášení zbývají nálady (srpen 2026)
 
-**Stav: rozpracované na větvi `tadeas/work`, NENÍ na `main`.** Ze čtyř hlášení,
-která se dělala v jedné dávce, jsou dvě hotová a nasazená (`tadeas-f32-018`
-dlaždice v Itineráři, `tadeas-f32-015` řazení od nejbližšího), zbylá dvě ne.
+**Tři ze čtyř jsou hotové a na `main`**: `tadeas-f32-018` (dlaždice
+v Itineráři), `tadeas-f32-015` (řazení od nejbližšího) a `tadeas-f32-014`
+(vícenásobný filtr v Seznamu). Všechny tři jsou v `debug/VYRESENO.md`.
 
-### `tadeas-f32-014` — vícenásobný filtr v Seznamu (napsané, NEDOVĚŘENÉ)
-
-Kód hotový: `F.reg`, `F.zeme` a `F.typ` jsou množiny jako `F.kat`, čtyři
-`<select>` nahradila mřížka 2×2 tlačítek otevírajících `vyberVice()`,
-přibylo rušítko filtrů (`#listZrusFiltry`, ikona `i-filtr-ne`) a hledání
-v dialogu od třinácti položek výš.
-
-Ověřeno: `check-filters` 134 kombinací sedí proti **nedotčené** opsané funkci
-z původní aplikace, plus nové kombinace se dvěma a třemi hodnotami měřené
-proti sjednocení jednohodnotových běhů. Obojí prověřeno dvěma mutacemi jádra
-(chybějící `.size`, porovnání špatného pole) — kontrola je hlasitě chytila.
-`npm run smoke` 480/480. V prohlížeči: Rakousko 77 míst, Rakousko + Itálie
-217, oblastí se nabídne 24 místo 117 a „tyr" je zúží na jednu.
-
-**Dověřeno a nasazeno.** Návratový kód 4, kvůli kterému to tu leželo jako
-blokované, **nebyl skutečné selhání** — přišel z řetězeného příkazu, ne ze
-smoke. Samotné `smoke:single` dává 432/432. Doběhlo i `check-debug` 199/199,
-`check-regrese` 26/26, `check-dny` 203/203, `check-uloziste` 36/36,
-`check-tokeny` 7/7, `check-ikony` 8/8 a `smoke` 480/480.
-
-Snímky proti `main`: jediný rozdíl je `4-seznam-svetly` (7 %), protože mřížka
-2×2 je vyšší než původní posouvací pruh a obsah pod ní se posunul. Ostatních
-sedm obrazovek na nule — `7-filtry-svetly` se nehnul, panel Filtry se neměnil.
-
-**Poučení:** řetězit `build && smoke && build && for …` do jednoho příkazu se
-nevyplácí. Návratový kód pak nepatří tomu, co si člověk myslí, a vypadá to
-jako selhání kontroly.
-
-Pozor na jednu past, která je už opravená, ale stálo to hledání: `F` se čte
-i dynamicky přes `F[klic]`, což grep na `F.zeme` nenajde. Tak se skoro
-propašovalo „země [object Set]" do kontextu **každého** debug záznamu
-(`core/debugKontext.js`) — množina je vždycky pravdivá a `${Set}` vypíše
-`[object Set]`. Opraveno, ale `check-debug` na to pořád nemá bod; ten měl
-podle plánu přibýt a nepřibyl.
+Otevřené zůstávají **nálady**.
 
 ### `tadeas-f32-011` — nálady (NEZAČATO)
 
-Nesaháno vůbec. Podle domluvy celé: `HOME_MOODS` z šesti na šestnáct
-(nepovinné pole `f` pro filtry mimo kategorie — `free`, `kids`, `wow`),
-výběr v Profilu jako čtvrtá sbalitelná skupina nad `prefs.nalady`
-s výchozími dnešními šesti, a pilulky v Objevuj zalomit místo posouvání
-do strany. „Se psem" schválně vynechat — filtr vrací pět míst (N6).
-`smoke` má natvrdo `#panelProfil .sbalka` = 3, po přidání skupiny se to
-musí zvednout na 4.
+Nesaháno vůbec — `HOME_MOODS` v `src/data/moods.js` má pořád šest položek.
+Podle domluvy celé: `HOME_MOODS` z šesti na šestnáct (nepovinné pole `f`
+pro filtry mimo kategorie — `free`, `kids`, `wow`), výběr v Profilu jako
+čtvrtá sbalitelná skupina nad `prefs.nalady` s výchozími dnešními šesti,
+a pilulky v Objevuj zalomit místo posouvání do strany. „Se psem" schválně
+vynechat — filtr vrací pět míst (N6).
+
+Dvě věci, na které při tom narazíš:
+
+- **`smoke` čeká v Profilu tři skupiny na dvou místech** (ř. 314 a 316,
+  druhé počítá sbalená těla). Po přidání skupiny obojí na čtyři.
+- **`applyMood()` nahrazuje referenci** — `src/views/home/moods.js:41` dělá
+  `F.kat = new Set(m.kat)`, zatímco `.claude/rules/kod.md` říká, že se `F`
+  mění na místě a nikdy nenahrazuje (`resetFiltru()` proto používá
+  `.clear()`). Dokud nálada nastavuje jediné pole, projde to; až jich bude
+  nastavovat víc, je tohle místo, kde to praskne.
+
+### Poučení z té dávky, které stojí za zapamatování
+
+**Neřetěz `build && smoke && build && for …` do jednoho příkazu.** Návratový
+kód pak nepatří tomu, co si člověk myslí. Kvůli tomu tu `tadeas-f32-014`
+leželo jako blokované návratovým kódem 4, který nebyl skutečné selhání —
+přišel z řetězeného příkazu, ne ze smoke.
+
+**Na `F` se sahá i dynamicky přes `F[klic]`**, což grep na `F.zeme` nenajde.
+Tudy se skoro propašovalo „země [object Set]" do kontextu **každého** debug
+záznamu (`core/debugKontext.js`) — množina je vždycky pravdivá a `${Set}`
+vypíše `[object Set]`. Opraveno a od září 2026 to hlídá **šest bodů
+v `check-debug`**; síť je ověřená mutací, po vrácení chybné podoby padá
+všech šest.
 
 ---
 
