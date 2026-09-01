@@ -52,12 +52,14 @@ zobrazuje, žádný vykreslovací kód se měnit nemusel (`COLL.map()` je obecn�
 Pole `ps` je vyplněné jen u 8 z 580 míst (5× „Ano", 3× „Ne"). Filtr tedy vrací 5 míst,
 i když psi jsou vítaní na spoustě dalších. Doplnění je ruční práce nad daty.
 
-**N24 — Pět míst má v `col` stejnou kolekci dvakrát** (dřív vedeno jako „N6b")
+**N24 — Pět míst má v `col` stejnou kolekci dvakrát — ~~HOTOVO~~** (dřív vedeno jako „N6b")
 `polle-di-malbacco-…-863`, `cascata-di-giumaglio-…-500`, `cascata-cai-d-alto-…-594`
 a `jettegrytene-nissedal-norsko-358` mají dvakrát `koupacka`,
 `leiternweide-suspension-bridge-trail-274` má dvakrát `zdarma`.
-Na chování to nemá vliv (filtr používá `includes`), `npm run validate` to hlásí jako
-varování. Oprava = smazat duplicitu, ale je to zásah do dat, tak nechávám na tobě.
+Na chování to nemělo vliv (filtr používá `includes`), ale `validate` to hlásil při
+**každém** commitu do dat, takže to šumělo v každém výpisu. Smazáno v září 2026 —
+pět řádků, `validate` hlásí „V pořádku" bez varování, `check-filters` 134 kombinací
+a `smoke` 493/493 beze změny.
 
 **N7 — Hledání neprohledává krátký popis (`sh`) — ~~HOTOVO~~**
 `postavIndex()` v `src/core/search.js` teď zahrnuje i `sh` do indexovaného
