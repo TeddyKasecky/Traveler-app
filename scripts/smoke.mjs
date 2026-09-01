@@ -1,8 +1,7 @@
 /**
  * Kouřová zkouška v opravdovém prohlížeči.
  *
- *   npm run smoke                 spustí proti dist/ (hostovaná varianta)
- *   npm run smoke -- --single     spustí proti dist-single/index.html z disku
+ *   npm run smoke     spustí proti dist/
  *
  * Proklikává aplikaci a hlídá, jestli se něco nerozbilo: chyby v konzoli,
  * neodchycené výjimky, neúspěšné požadavky na vlastní soubory, počty míst,
@@ -14,11 +13,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import http from 'node:http'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const SINGLE = process.argv.includes('--single')
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
 const PORT = 4183
 
@@ -124,17 +122,11 @@ page.on('requestfailed', (r) => {
   problemySite.push(`${r.failure()?.errorText} ${r.url()}`)
 })
 
-let srv
-let adresa
-if (SINGLE) {
-  adresa = pathToFileURL(path.join(ROOT, 'dist-single', 'index.html')).href
-} else {
-  srv = server(path.join(ROOT, 'dist'))
-  await new Promise((r) => srv.listen(PORT, r))
-  adresa = `http://localhost:${PORT}/`
-}
+const srv = server(path.join(ROOT, 'dist'))
+await new Promise((r) => srv.listen(PORT, r))
+const adresa = `http://localhost:${PORT}/`
 
-console.log(`Testuji ${SINGLE ? 'single-file z disku' : 'hostovanou variantu'}\n  ${adresa}\n`)
+console.log(`Testuji\n  ${adresa}\n`)
 await page.goto(adresa, { waitUntil: 'load' })
 await page.waitForTimeout(1200)
 
@@ -511,32 +503,30 @@ await page.waitForTimeout(400)
 // se čte JEDNOU za běh a drží v paměti, takže pozdější zápis by neměl efekt.
 const REJSTRIK_CESTA = path.join(ROOT, 'dist', 'debug-stav.json')
 const REJSTRIK_PUVODNI = fs.existsSync(REJSTRIK_CESTA) ? fs.readFileSync(REJSTRIK_CESTA, 'utf8') : null
-if (!SINGLE) {
-  fs.writeFileSync(
-    REJSTRIK_CESTA,
-    JSON.stringify({
-      // Starší než odeslání záznamu níž, takže „odesláno, ale zatím nenasazeno"
-      // se nesmí hlásit jako „zmizelo z repozitáře".
-      vygenerovano: '2020-01-01T00:00:00.000Z',
-      zaznamy: [
-        {
-          id: 'anicka-003',
-          autor: 'anicka',
-          typ: 'bug',
-          nadpis: 'Cizí hlášení z repozitáře',
-          moduly: ['plan'],
-          priorita: 'stredni',
-          stav: 'resim',
-          soubor: '2026-08-20-0900-anicka.md',
-          popis: 'Tohle nahlásil někdo jiný.',
-          navrh: '',
-          zdroj: 'export',
-        },
-        { id: 'anicka-002', autor: 'anicka', stav: 'hotovo', vyresenoDne: '2026-08-21', poznamka: 'opraveno', zdroj: 'vyreseno' },
-      ],
-    })
-  )
-}
+fs.writeFileSync(
+  REJSTRIK_CESTA,
+  JSON.stringify({
+    // Starší než odeslání záznamu níž, takže „odesláno, ale zatím nenasazeno"
+    // se nesmí hlásit jako „zmizelo z repozitáře".
+    vygenerovano: '2020-01-01T00:00:00.000Z',
+    zaznamy: [
+      {
+        id: 'anicka-003',
+        autor: 'anicka',
+        typ: 'bug',
+        nadpis: 'Cizí hlášení z repozitáře',
+        moduly: ['plan'],
+        priorita: 'stredni',
+        stav: 'resim',
+        soubor: '2026-08-20-0900-anicka.md',
+        popis: 'Tohle nahlásil někdo jiný.',
+        navrh: '',
+        zdroj: 'export',
+      },
+      { id: 'anicka-002', autor: 'anicka', stav: 'hotovo', vyresenoDne: '2026-08-21', poznamka: 'opraveno', zdroj: 'vyreseno' },
+    ],
+  })
+)
 
 // Rychlý zápis. Otevírá se z hlavičky, tedy odkudkoli – tenhle průchod je
 // z Domů, protože se ověřuje i předvyplnění modulu podle otevřené záložky.
@@ -696,42 +686,36 @@ await kontrola('druhé ťuknutí zase sbalí', () => page.locator('.dzr.otevreny
 await kontrola('segment nabízí obě půlky', () => page.locator('#dzSeg button').count(), 2)
 await page.click('#dzSeg button[data-seg="cizi"]')
 await page.waitForTimeout(600)
-if (!SINGLE) {
-  await page.waitForSelector('.dzr.cizi', { timeout: 5000 })
-  // ODBYTÉ SE VE VÝCHOZÍM STAVU NEKRESLÍ. Zavřené záznamy nikdy nemizí, takže
-  // by z téhle půlky obrazovky byla za rok zeď hotových věcí. Fixture má dva,
-  // z toho jeden vyřešený – vidět má být jeden.
-  await kontrola('cizí otevřené jsou vidět', () => page.locator('.dzr.cizi').count(), 1)
-  await kontrola('a odbyté schované', () =>
-    page.locator('#dzCiziOdbyte').innerText().then((x) => /Uk[áa]zat i odbyt/.test(x)), true)
-  await kontrola('počet v segmentu je z otevřených', () =>
-    page.locator('#dzSeg button[data-seg="cizi"]').innerText().then((x) => x.includes('(1)')), true)
-  await kontrola('cizí záznam se needituje', () => page.locator('.dzr.cizi [data-upravit]').count(), 0)
-  await kontrola('z cizího vede tlačítko na plné znění', () => page.locator('.dzr.cizi [data-plne]').count(), 1)
-  await page.click('#dzCiziOdbyte')
-  await page.waitForTimeout(400)
-  await kontrola('po přepnutí jsou vidět i odbyté', () => page.locator('.dzr.cizi').count(), 2)
-  await kontrola('vyřešené cizí nese datum', () =>
-    page.locator('.dzr.cizi').nth(1).innerText().then((t) => /21\. 8\./.test(t)), true)
-  await page.click('#dzCiziOdbyte')
-  await page.waitForTimeout(400)
-  // Rozbalení ukáže popis; plné znění otevře TÝŽ plát jako úprava, jen zamčený.
-  await page.click('.dzr.cizi .dzr-telo')
-  await page.waitForTimeout(300)
-  await kontrola('cizí se taky rozbalí', () => page.locator('.dzr.cizi.otevreny .dz-id').innerText(), 'anicka-003')
-  await page.click('.dzr.cizi .dzr-kopie')
-  await page.waitForTimeout(600)
-  await kontrola('plné znění otevře plát', () => page.locator('#debugZapis.show').count(), 1)
-  await kontrola('a je jen ke čtení', () => page.locator('#debugZapis [data-pole]').count(), 0)
-  await kontrola('plát řekne, že víc appka neví', () =>
-    page.locator('#debugZapis .dz-kontext-vypis').innerText().then((t) => /nenasazuj/i.test(t)), true)
-  await page.click('#debugZapisZavri')
-  await page.waitForTimeout(400)
-} else {
-  await kontrola('bez rejstříku se cizí oddíl neukáže', () => page.locator('.dzr.cizi').count(), 0)
-  await kontrola('a neřekne, že tam nic není', () =>
-    page.locator('.dzr-prazdno').innerText().then((t) => /nepoda[řr]ilo/i.test(t)), true)
-}
+await page.waitForSelector('.dzr.cizi', { timeout: 5000 })
+// ODBYTÉ SE VE VÝCHOZÍM STAVU NEKRESLÍ. Zavřené záznamy nikdy nemizí, takže
+// by z téhle půlky obrazovky byla za rok zeď hotových věcí. Fixture má dva,
+// z toho jeden vyřešený – vidět má být jeden.
+await kontrola('cizí otevřené jsou vidět', () => page.locator('.dzr.cizi').count(), 1)
+await kontrola('a odbyté schované', () =>
+  page.locator('#dzCiziOdbyte').innerText().then((x) => /Uk[áa]zat i odbyt/.test(x)), true)
+await kontrola('počet v segmentu je z otevřených', () =>
+  page.locator('#dzSeg button[data-seg="cizi"]').innerText().then((x) => x.includes('(1)')), true)
+await kontrola('cizí záznam se needituje', () => page.locator('.dzr.cizi [data-upravit]').count(), 0)
+await kontrola('z cizího vede tlačítko na plné znění', () => page.locator('.dzr.cizi [data-plne]').count(), 1)
+await page.click('#dzCiziOdbyte')
+await page.waitForTimeout(400)
+await kontrola('po přepnutí jsou vidět i odbyté', () => page.locator('.dzr.cizi').count(), 2)
+await kontrola('vyřešené cizí nese datum', () =>
+  page.locator('.dzr.cizi').nth(1).innerText().then((t) => /21\. 8\./.test(t)), true)
+await page.click('#dzCiziOdbyte')
+await page.waitForTimeout(400)
+// Rozbalení ukáže popis; plné znění otevře TÝŽ plát jako úprava, jen zamčený.
+await page.click('.dzr.cizi .dzr-telo')
+await page.waitForTimeout(300)
+await kontrola('cizí se taky rozbalí', () => page.locator('.dzr.cizi.otevreny .dz-id').innerText(), 'anicka-003')
+await page.click('.dzr.cizi .dzr-kopie')
+await page.waitForTimeout(600)
+await kontrola('plné znění otevře plát', () => page.locator('#debugZapis.show').count(), 1)
+await kontrola('a je jen ke čtení', () => page.locator('#debugZapis [data-pole]').count(), 0)
+await kontrola('plát řekne, že víc appka neví', () =>
+  page.locator('#debugZapis .dz-kontext-vypis').innerText().then((t) => /nenasazuj/i.test(t)), true)
+await page.click('#debugZapisZavri')
+await page.waitForTimeout(400)
 await page.click('#dzSeg button[data-seg="moje"]')
 await page.waitForTimeout(400)
 
@@ -896,44 +880,42 @@ await kontrola('neodeslaný záznam je v rozsahu', () => page.locator('#dzMd').i
 // (není na seznamu povolených přípon), takže kód spadl do větve „stáhnout“,
 // a `.catch(() => {})` navíc polykal každou chybu.
 await kontrola('tlačítko Sdílet je pryč', () => page.locator('#dzSdilet').count(), 0)
-await kontrola('místo něj je Odeslat do repozitáře', () => page.locator('#dzOdeslat').count(), SINGLE ? 0 : 1)
+await kontrola('místo něj je Odeslat do repozitáře', () => page.locator('#dzOdeslat').count(), 1)
 // Stáhnout zůstává napořád jako záložní cesta a musí u sebe mít návod –
 // bez něj člověk neví, kam se stažený soubor dává.
 await kontrola('Stáhnout zůstalo', () => page.locator('#dzMd').count(), 1)
 await kontrola('a nese návod, kam soubor patří', () =>
   page.locator('.dz-export .sbalka-telo').innerText().then((x) => /slo\u017eky <?code>?debug|slo\u017eky .?debug/i.test(x) || /debug\//.test(x)), true)
 
-if (!SINGLE) {
-  // Bez hesla se odeslání musí zeptat – heslo není v balíčku aplikace, protože
-  // repozitář je veřejný a šlo by ho vyčíst.
-  await page.click('#dzOdeslat')
-  await page.waitForTimeout(500)
-  await kontrola('bez hesla se odeslání zeptá', () => page.locator('#dialog.show #dialogVstup').count(), 1)
-  // HESLO S DIAKRITIKOU SCHVÁLNĚ. Hodnota HTTP hlavičky smí jen znaky do 0xFF,
-  // takže kdyby se heslo vrátilo z těla do hlavičky, `fetch` by spadl ještě
-  // v prohlížeči a požadavek by vůbec neodešel. Poznalo by se to tím, že místo
-  // odpovědi serveru přijde „nepodařilo odeslat".
-  await page.fill('#dialogVstup', 'žluťoučké-heslíčko')
-  await page.click('#dialogAno')
-  await page.waitForTimeout(900)
+// Bez hesla se odeslání musí zeptat – heslo není v balíčku aplikace, protože
+// repozitář je veřejný a šlo by ho vyčíst.
+await page.click('#dzOdeslat')
+await page.waitForTimeout(500)
+await kontrola('bez hesla se odeslání zeptá', () => page.locator('#dialog.show #dialogVstup').count(), 1)
+// HESLO S DIAKRITIKOU SCHVÁLNĚ. Hodnota HTTP hlavičky smí jen znaky do 0xFF,
+// takže kdyby se heslo vrátilo z těla do hlavičky, `fetch` by spadl ještě
+// v prohlížeči a požadavek by vůbec neodešel. Poznalo by se to tím, že místo
+// odpovědi serveru přijde „nepodařilo odeslat".
+await page.fill('#dialogVstup', 'žluťoučké-heslíčko')
+await page.click('#dialogAno')
+await page.waitForTimeout(900)
 
-  // A TEĎ TO PODSTATNÉ: selhání se musí pojmenovat, ne spolknout. Přesně tím,
-  // že se nepojmenovalo, bylo staré tlačítko Sdílet k ničemu.
-  await kontrola('selhání se pojmenuje, ne spolkne', () =>
-    page.locator('#dialog.show').innerText().then((x) => /nepovedlo/i.test(x) && x.length > 40), true)
-  // A ROZLIŠIT, ČÍ CHYBA TO JE. Když se heslo pošle v HTTP hlavičce, `fetch`
-  // spadne kvůli diakritice ještě v prohlížeči a požadavek vůbec neodejde –
-  // appka pak hlásí selhání u serveru, kterého nikdo neoslovil. Heslo v testu
-  // má diakritiku schválně, aby se to tímhle poznalo.
-  await kontrola('a požadavek opravdu odešel', () =>
-    page.locator('#dialog.show').innerText().then((x) => !/nepodařilo odeslat/i.test(x)), true)
-  await page.click('#dialogNe').catch(() => page.click('#dialogAno'))
-  await page.waitForTimeout(400)
-  await kontrola('heslo se uložilo do předvoleb', () =>
-    page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs')).debugHeslo), 'žluťoučké-heslíčko')
-  await kontrola('a záznam zůstal neodeslaný', async () =>
-    (await debugZaznamy()).zaznamy[0].exportovanoDo, '')
-}
+// A TEĎ TO PODSTATNÉ: selhání se musí pojmenovat, ne spolknout. Přesně tím,
+// že se nepojmenovalo, bylo staré tlačítko Sdílet k ničemu.
+await kontrola('selhání se pojmenuje, ne spolkne', () =>
+  page.locator('#dialog.show').innerText().then((x) => /nepovedlo/i.test(x) && x.length > 40), true)
+// A ROZLIŠIT, ČÍ CHYBA TO JE. Když se heslo pošle v HTTP hlavičce, `fetch`
+// spadne kvůli diakritice ještě v prohlížeči a požadavek vůbec neodejde –
+// appka pak hlásí selhání u serveru, kterého nikdo neoslovil. Heslo v testu
+// má diakritiku schválně, aby se to tímhle poznalo.
+await kontrola('a požadavek opravdu odešel', () =>
+  page.locator('#dialog.show').innerText().then((x) => !/nepodařilo odeslat/i.test(x)), true)
+await page.click('#dialogNe').catch(() => page.click('#dialogAno'))
+await page.waitForTimeout(400)
+await kontrola('heslo se uložilo do předvoleb', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs')).debugHeslo), 'žluťoučké-heslíčko')
+await kontrola('a záznam zůstal neodeslaný', async () =>
+  (await debugZaznamy()).zaznamy[0].exportovanoDo, '')
 
 // Stažení .md. Playwright zachytí soubor a ověří se jeho obsah – formát je
 // zároveň vstupem pro scripts/debug-rejstrik.mjs, takže se nesmí rozejít.
@@ -1032,132 +1014,130 @@ fs.unlinkSync(zalohaCesta)
 // takže se u nich změna nedala poznat vůbec a barva rámečku lhala. Tahle sekce
 // hlídá druhou cestu: porovnání přímo s tím, co nese rejstřík, a dopočítání
 // otisku, jakmile obojí sedne.
-if (!SINGLE) {
-  const zaznam = (await debugZaznamy()).zaznamy[0]
+const zaznam = (await debugZaznamy()).zaznamy[0]
 
-  // Rejstřík ten záznam nově zná – přesně v podobě, jakou má appka.
-  const rejstrik = JSON.parse(fs.readFileSync(REJSTRIK_CESTA, 'utf8'))
-  rejstrik.vygenerovano = new Date(Date.now() + 60000).toISOString()
-  rejstrik.zaznamy.push({
-    id: zaznam.id,
-    autor: zaznam.autor,
-    typ: zaznam.typ,
-    nadpis: zaznam.nadpis,
-    moduly: zaznam.moduly,
-    priorita: zaznam.priorita,
-    stav: zaznam.stav,
-    soubor: zaznam.exportovanoDo,
-    popis: zaznam.text,
-    navrh: zaznam.navrh,
-    zdroj: 'export',
-  })
-  fs.writeFileSync(REJSTRIK_CESTA, JSON.stringify(rejstrik, null, 2))
+// Rejstřík ten záznam nově zná – přesně v podobě, jakou má appka.
+const rejstrik = JSON.parse(fs.readFileSync(REJSTRIK_CESTA, 'utf8'))
+rejstrik.vygenerovano = new Date(Date.now() + 60000).toISOString()
+rejstrik.zaznamy.push({
+  id: zaznam.id,
+  autor: zaznam.autor,
+  typ: zaznam.typ,
+  nadpis: zaznam.nadpis,
+  moduly: zaznam.moduly,
+  priorita: zaznam.priorita,
+  stav: zaznam.stav,
+  soubor: zaznam.exportovanoDo,
+  popis: zaznam.text,
+  navrh: zaznam.navrh,
+  zdroj: 'export',
+})
+fs.writeFileSync(REJSTRIK_CESTA, JSON.stringify(rejstrik, null, 2))
 
-  // A otisk se smaže, jako by záznam odešel ještě před srpnem 2026.
-  await page.evaluate(
-    () =>
-      new Promise((hotovo) => {
-        const r = indexedDB.open('vandrbuch-debug', 1)
-        r.onsuccess = () => {
-          const tr = r.result.transaction('debug', 'readwrite')
-          const sklad = tr.objectStore('debug')
-          const g = sklad.get('data')
-          g.onsuccess = () => {
-            const d = g.result
-            for (const z of d.zaznamy) delete z.otiskExportu
-            sklad.put(d, 'data')
-          }
-          tr.oncomplete = () => hotovo(true)
-          tr.onerror = () => hotovo(false)
+// A otisk se smaže, jako by záznam odešel ještě před srpnem 2026.
+await page.evaluate(
+  () =>
+    new Promise((hotovo) => {
+      const r = indexedDB.open('vandrbuch-debug', 1)
+      r.onsuccess = () => {
+        const tr = r.result.transaction('debug', 'readwrite')
+        const sklad = tr.objectStore('debug')
+        const g = sklad.get('data')
+        g.onsuccess = () => {
+          const d = g.result
+          for (const z of d.zaznamy) delete z.otiskExportu
+          sklad.put(d, 'data')
         }
-      })
-  )
+        tr.oncomplete = () => hotovo(true)
+        tr.onerror = () => hotovo(false)
+      }
+    })
+)
 
-  // SKUTEČNÝ RELOAD, ne `goto` na tutéž adresu s jiným fragmentem – ten dokument
-  // nepřenačte a rejstřík by zůstal v paměti ten starý (čte se jednou za běh).
-  await page.evaluate(() => {
-    location.hash = '#debug'
-  })
-  await page.reload({ waitUntil: 'load' })
-  await page.waitForTimeout(2000)
+// SKUTEČNÝ RELOAD, ne `goto` na tutéž adresu s jiným fragmentem – ten dokument
+// nepřenačte a rejstřík by zůstal v paměti ten starý (čte se jednou za běh).
+await page.evaluate(() => {
+  location.hash = '#debug'
+})
+await page.reload({ waitUntil: 'load' })
+await page.waitForTimeout(2000)
 
-  await kontrola('bez otisku, ale shodný, je na mainu', () => page.locator('.dzr.st-namainu').count(), 1)
-  // Dorovnání: jakmile rejstřík potvrdí shodu, otisk se dopočítá a od té chvíle
-  // rozhoduje přesné porovnání – to vidí i na kroky, které rejstřík nenese.
-  await kontrola('otisk se dopočítal', async () => !!(await debugZaznamy()).zaznamy[0].otiskExportu, true)
+await kontrola('bez otisku, ale shodný, je na mainu', () => page.locator('.dzr.st-namainu').count(), 1)
+// Dorovnání: jakmile rejstřík potvrdí shodu, otisk se dopočítá a od té chvíle
+// rozhoduje přesné porovnání – to vidí i na kroky, které rejstřík nenese.
+await kontrola('otisk se dopočítal', async () => !!(await debugZaznamy()).zaznamy[0].otiskExportu, true)
 
-  // A teď to, co dřív mlčelo: úprava záznamu, který je na mainu.
-  await page.click('.dzr:not(.cizi) .dzr-telo')
-  await page.waitForTimeout(300)
-  await page.click('.dzr.otevreny [data-upravit]')
-  await page.waitForTimeout(500)
-  await page.fill('#dz-nadpis', 'Upraveno po nasazení')
-  await page.click('#dzUloz')
-  await page.waitForTimeout(400)
-  await kontrola('úprava záznamu z mainu se ptá', () => page.locator('#dialog.show').count(), 1)
-  await page.click('#dialogAno')
-  await page.waitForTimeout(700)
-  await kontrola('a rámeček zčervená', () => page.locator('.dzr.st-zmeneno').count(), 1)
+// A teď to, co dřív mlčelo: úprava záznamu, který je na mainu.
+await page.click('.dzr:not(.cizi) .dzr-telo')
+await page.waitForTimeout(300)
+await page.click('.dzr.otevreny [data-upravit]')
+await page.waitForTimeout(500)
+await page.fill('#dz-nadpis', 'Upraveno po nasazení')
+await page.click('#dzUloz')
+await page.waitForTimeout(400)
+await kontrola('úprava záznamu z mainu se ptá', () => page.locator('#dialog.show').count(), 1)
+await page.click('#dialogAno')
+await page.waitForTimeout(700)
+await kontrola('a rámeček zčervená', () => page.locator('.dzr.st-zmeneno').count(), 1)
 
-  // Zpátky, ať mazání níž najde, co čeká.
-  await page.click('.dzr.otevreny [data-upravit]')
-  await page.waitForTimeout(500)
-  await page.fill('#dz-nadpis', 'Zkušební záznam ze smoke')
-  await page.click('#dzUloz')
-  await page.waitForTimeout(700)
-  await page.click('.dzr:not(.cizi) .dzr-telo')
-  await page.waitForTimeout(300)
+// Zpátky, ať mazání níž najde, co čeká.
+await page.click('.dzr.otevreny [data-upravit]')
+await page.waitForTimeout(500)
+await page.fill('#dz-nadpis', 'Zkušební záznam ze smoke')
+await page.click('#dzUloz')
+await page.waitForTimeout(700)
+await page.click('.dzr:not(.cizi) .dzr-telo')
+await page.waitForTimeout(300)
 
-  // ZAVŘENO V REPOZITÁŘI: štítek dostane datum a přibude řádek s důvodem.
-  // Datum jde jedině odsud – vlastní „hotovo" ve formuláři žádné nemá – takže
-  // se rejstřík podstrčí stejně jako výš a stránka se načte znovu.
-  const rejVyreseno = JSON.parse(fs.readFileSync(REJSTRIK_CESTA, 'utf8'))
-  rejVyreseno.zaznamy = rejVyreseno.zaznamy.filter((z) => z.id !== zaznam.id)
-  rejVyreseno.zaznamy.push({
-    id: zaznam.id,
-    autor: zaznam.autor,
-    stav: 'hotovo',
-    vyresenoDne: '2026-08-14',
-    poznamka: 'zavřeno kontrolním skriptem',
-    zdroj: 'vyreseno',
-  })
-  fs.writeFileSync(REJSTRIK_CESTA, JSON.stringify(rejVyreseno, null, 2))
-  await page.reload({ waitUntil: 'load' })
-  await page.waitForTimeout(2000)
+// ZAVŘENO V REPOZITÁŘI: štítek dostane datum a přibude řádek s důvodem.
+// Datum jde jedině odsud – vlastní „hotovo" ve formuláři žádné nemá – takže
+// se rejstřík podstrčí stejně jako výš a stránka se načte znovu.
+const rejVyreseno = JSON.parse(fs.readFileSync(REJSTRIK_CESTA, 'utf8'))
+rejVyreseno.zaznamy = rejVyreseno.zaznamy.filter((z) => z.id !== zaznam.id)
+rejVyreseno.zaznamy.push({
+  id: zaznam.id,
+  autor: zaznam.autor,
+  stav: 'hotovo',
+  vyresenoDne: '2026-08-14',
+  poznamka: 'zavřeno kontrolním skriptem',
+  zdroj: 'vyreseno',
+})
+fs.writeFileSync(REJSTRIK_CESTA, JSON.stringify(rejVyreseno, null, 2))
+await page.reload({ waitUntil: 'load' })
+await page.waitForTimeout(2000)
 
-  await kontrola('zavřený v repu má rámeček vyřešeného', () => page.locator('.dzr.st-vyreseno').count(), 1)
-  await kontrola('a štítek nese datum uzavření', () =>
-    page.locator('.dzr:not(.cizi) .dz-znacka.stav.hotovo').innerText().then((t) => t.includes('14. 8.')), true)
-  await kontrola('řádek je pořád smrsklý', () => page.locator('.dzr:not(.cizi) .dzr-text').count(), 0)
-  // Důvod zavření se do teď ukládal a ukazoval jedině v `title=`, tedy jako
-  // bublina, kterou na telefonu nikdo neuvidí.
-  await page.click('.dzr:not(.cizi) .dzr-telo')
-  await page.waitForTimeout(300)
-  await kontrola('a po rozbalení je vidět, proč se zavřel', () =>
-    page.locator('.dzr-zavreno').innerText().then((t) => t.includes('kontrolním skriptem')), true)
+await kontrola('zavřený v repu má rámeček vyřešeného', () => page.locator('.dzr.st-vyreseno').count(), 1)
+await kontrola('a štítek nese datum uzavření', () =>
+  page.locator('.dzr:not(.cizi) .dz-znacka.stav.hotovo').innerText().then((t) => t.includes('14. 8.')), true)
+await kontrola('řádek je pořád smrsklý', () => page.locator('.dzr:not(.cizi) .dzr-text').count(), 0)
+// Důvod zavření se do teď ukládal a ukazoval jedině v `title=`, tedy jako
+// bublina, kterou na telefonu nikdo neuvidí.
+await page.click('.dzr:not(.cizi) .dzr-telo')
+await page.waitForTimeout(300)
+await kontrola('a po rozbalení je vidět, proč se zavřel', () =>
+  page.locator('.dzr-zavreno').innerText().then((t) => t.includes('kontrolním skriptem')), true)
 
-  // A TEĎ TA PODSTATNÁ. Uzavřené záznamy z rejstříku po 180 dnech vypadnou.
-  // `stitekZRepa()` se do srpna 2026 ptala jen rejstříku, takže v ten okamžik
-  // začala o vyřešeném záznamu tvrdit „zmizelo z repozitáře" – zatímco rámeček
-  // řádku vedle dál říkal „vyřešené", protože `stadiumZaznamu()` se ptá
-  // vlastní paměti. Dvě místa o téže věci, dvě různé odpovědi.
-  const rejBezNej = JSON.parse(fs.readFileSync(REJSTRIK_CESTA, 'utf8'))
-  rejBezNej.zaznamy = rejBezNej.zaznamy.filter((z) => z.id !== zaznam.id)
-  fs.writeFileSync(REJSTRIK_CESTA, JSON.stringify(rejBezNej, null, 2))
-  await page.reload({ waitUntil: 'load' })
-  await page.waitForTimeout(2000)
+// A TEĎ TA PODSTATNÁ. Uzavřené záznamy z rejstříku po 180 dnech vypadnou.
+// `stitekZRepa()` se do srpna 2026 ptala jen rejstříku, takže v ten okamžik
+// začala o vyřešeném záznamu tvrdit „zmizelo z repozitáře" – zatímco rámeček
+// řádku vedle dál říkal „vyřešené", protože `stadiumZaznamu()` se ptá
+// vlastní paměti. Dvě místa o téže věci, dvě různé odpovědi.
+const rejBezNej = JSON.parse(fs.readFileSync(REJSTRIK_CESTA, 'utf8'))
+rejBezNej.zaznamy = rejBezNej.zaznamy.filter((z) => z.id !== zaznam.id)
+fs.writeFileSync(REJSTRIK_CESTA, JSON.stringify(rejBezNej, null, 2))
+await page.reload({ waitUntil: 'load' })
+await page.waitForTimeout(2000)
 
-  await kontrola('po vypadnutí z rejstříku zůstane vyřešený', () => page.locator('.dzr.st-vyreseno').count(), 1)
-  await kontrola('a datum si appka pamatuje sama', () =>
-    page.locator('.dzr:not(.cizi) .dz-znacka.stav.hotovo').innerText().then((t) => t.includes('14. 8.')), true)
-  await page.click('.dzr:not(.cizi) .dzr-telo')
-  await page.waitForTimeout(300)
-  await kontrola('a netvrdí, že zmizel z repozitáře', () => page.locator('.dz-znacka.repo.chybi').count(), 0)
-  await kontrola('ale že je vyřešený', () =>
-    page.locator('.dzr-detail .dz-znacka.repo.hotovo').innerText().then((t) => t.includes('vyřešeno')), true)
-  await page.click('.dzr:not(.cizi) .dzr-telo')
-  await page.waitForTimeout(300)
-}
+await kontrola('po vypadnutí z rejstříku zůstane vyřešený', () => page.locator('.dzr.st-vyreseno').count(), 1)
+await kontrola('a datum si appka pamatuje sama', () =>
+  page.locator('.dzr:not(.cizi) .dz-znacka.stav.hotovo').innerText().then((t) => t.includes('14. 8.')), true)
+await page.click('.dzr:not(.cizi) .dzr-telo')
+await page.waitForTimeout(300)
+await kontrola('a netvrdí, že zmizel z repozitáře', () => page.locator('.dz-znacka.repo.chybi').count(), 0)
+await kontrola('ale že je vyřešený', () =>
+  page.locator('.dzr-detail .dz-znacka.repo.hotovo').innerText().then((t) => t.includes('vyřešeno')), true)
+await page.click('.dzr:not(.cizi) .dzr-telo')
+await page.waitForTimeout(300)
 
 // Hromadný výběr a mazání. Úklid je zároveň příprava pro další sekce – smoke
 // nesmí nechat v úložišti záznam, o kterém další kontroly nevědí.
@@ -2181,135 +2161,133 @@ await page.evaluate(() => localStorage.removeItem('vandrbuch:draft'))
 
 /* ---------- offline (jen hostovaná varianta, service worker chce localhost) ---------- */
 
-if (!SINGLE) {
-  console.log('\n  offline zkouška:')
-  await page.evaluate(() => navigator.serviceWorker.ready.then(() => true))
-  await kontrola('service worker běží', () => page.evaluate(() => !!navigator.serviceWorker.controller || navigator.serviceWorker.ready.then(() => true)))
+console.log('\n  offline zkouška:')
+await page.evaluate(() => navigator.serviceWorker.ready.then(() => true))
+await kontrola('service worker běží', () => page.evaluate(() => !!navigator.serviceWorker.controller || navigator.serviceWorker.ready.then(() => true)))
 
-  /*
-   * Do předukládané cache nesmí spadnout nic kolem stažené malované mapy:
-   * MapLibre s workerem, čtečka balíku, sto dvacet kreseb a souřadnice lesů
-   * a hor. Je toho přes čtyři megabajty a jsou k ničemu každému, kdo si mapu
-   * nestáhne — uloží se až při prvním použití.
-   *
-   * Filtr ve `vite.config.js` pozná ty soubory podle jména, což je křehké:
-   * stačí přejmenovat chunk a instalace tiše naroste o čtyři megabajty.
-   * Odsud se to pozná hned.
-   */
-  await kontrola('do cache nejde nic kolem stažené mapy', () =>
-    page
-      .evaluate(async () => {
-        const text = await (await fetch('./sw.js')).text()
-        const seznam = JSON.parse(text.match(/const PRECACHE = (\[[\s\S]*?\n\])/)[1])
-        return seznam.filter((f) => /(kresba|kresby-|vektory|vbm|maplibre-|auta-)/.test(f))
-      })
-      .then((x) => x.length), 0)
+/*
+ * Do předukládané cache nesmí spadnout nic kolem stažené malované mapy:
+ * MapLibre s workerem, čtečka balíku, sto dvacet kreseb a souřadnice lesů
+ * a hor. Je toho přes čtyři megabajty a jsou k ničemu každému, kdo si mapu
+ * nestáhne — uloží se až při prvním použití.
+ *
+ * Filtr ve `vite.config.js` pozná ty soubory podle jména, což je křehké:
+ * stačí přejmenovat chunk a instalace tiše naroste o čtyři megabajty.
+ * Odsud se to pozná hned.
+ */
+await kontrola('do cache nejde nic kolem stažené mapy', () =>
+  page
+    .evaluate(async () => {
+      const text = await (await fetch('./sw.js')).text()
+      const seznam = JSON.parse(text.match(/const PRECACHE = (\[[\s\S]*?\n\])/)[1])
+      return seznam.filter((f) => /(kresba|kresby-|vektory|vbm|maplibre-|auta-)/.test(f))
+    })
+    .then((x) => x.length), 0)
 
-  await page.waitForTimeout(1500) // ať stihne naplnit cache
+await page.waitForTimeout(1500) // ať stihne naplnit cache
 
-  await page.context().setOffline(true)
-  await page.reload({ waitUntil: 'load' })
-  await page.waitForTimeout(1500)
+await page.context().setOffline(true)
+await page.reload({ waitUntil: 'load' })
+await page.waitForTimeout(1500)
 
-  await kontrola('offline: aplikace naběhla', () => page.locator('#totalN').innerText(), '580')
-  await kontrola('offline: špendlíky ve výřezu', () =>
-    page.locator('.badge-pin').count().then((n) => n > 0 && n <= 580)
-  )
-  await kontrola('offline: styly se načetly', () =>
-    page.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(250, 245, 236)')
-  )
-  await kontrola('offline: nadpisové písmo k dispozici', () =>
-    page.evaluate(() => document.fonts.check('700 1.5rem "Playfair Display"'))
-  )
+await kontrola('offline: aplikace naběhla', () => page.locator('#totalN').innerText(), '580')
+await kontrola('offline: špendlíky ve výřezu', () =>
+  page.locator('.badge-pin').count().then((n) => n > 0 && n <= 580)
+)
+await kontrola('offline: styly se načetly', () =>
+  page.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(250, 245, 236)')
+)
+await kontrola('offline: nadpisové písmo k dispozici', () =>
+  page.evaluate(() => document.fonts.check('700 1.5rem "Playfair Display"'))
+)
 
-  // Chování bez signálu má dvě části a obě se zkoušejí:
-  //
-  //   1. ONLINE REŽIM (výchozí). Dlaždice jsou z cizí domény, service worker
-  //      je neukládá a hromadně stahovat se nesmějí. Plochy zemí ale leží pod
-  //      nimi pořád, takže v mapě nevznikne díra, a rozsvítí se štítek.
-  //      Samotné vypnutí sítě nestačí: prohlížeč si dlaždice z prvního načtení
-  //      nechal ve své cache a beze změny výřezu je servíruje dál. Přiblížení
-  //      vyžádá dlaždice, které v cache nejsou.
-  //   2. OFFLINE MAPA, na kterou se přepíná pilulkou – malovaná krajina
-  //      s kresbami a názvy zemí, která žádnou síť nepotřebuje.
-  //
-  // Napřed na záložku Mapa – po znovunačtení je navrchu panel Domů. Přibližuje
-  // se kolečkem, ne tlačítkem: knoflíky +/− mapa nemá.
-  await page.click('#tabs button[data-tab="map"]')
+// Chování bez signálu má dvě části a obě se zkoušejí:
+//
+//   1. ONLINE REŽIM (výchozí). Dlaždice jsou z cizí domény, service worker
+//      je neukládá a hromadně stahovat se nesmějí. Plochy zemí ale leží pod
+//      nimi pořád, takže v mapě nevznikne díra, a rozsvítí se štítek.
+//      Samotné vypnutí sítě nestačí: prohlížeč si dlaždice z prvního načtení
+//      nechal ve své cache a beze změny výřezu je servíruje dál. Přiblížení
+//      vyžádá dlaždice, které v cache nejsou.
+//   2. OFFLINE MAPA, na kterou se přepíná pilulkou – malovaná krajina
+//      s kresbami a názvy zemí, která žádnou síť nepotřebuje.
+//
+// Napřed na záložku Mapa – po znovunačtení je navrchu panel Domů. Přibližuje
+// se kolečkem, ne tlačítkem: knoflíky +/− mapa nemá.
+await page.click('#tabs button[data-tab="map"]')
+await page.waitForTimeout(500)
+await page.mouse.move(195, 480)
+for (let i = 0; i < 3; i++) {
+  await page.mouse.wheel(0, -400)
   await page.waitForTimeout(500)
-  await page.mouse.move(195, 480)
-  for (let i = 0; i < 3; i++) {
-    await page.mouse.wheel(0, -400)
-    await page.waitForTimeout(500)
-  }
-  await page.waitForTimeout(3000) // ať stihnou selhat dlaždice a načíst se podklad
-
-  await kontrola('offline: štítek chybějících dlaždic', () => page.locator('#offlineStitek').isVisible(), true)
-  await kontrola('offline: podklad má vlastní vrstvu', () =>
-    page.locator('.leaflet-podklad-pane canvas').count().then((n) => n >= 1)
-  )
-  await kontrola('offline: podklad je opravdu nakreslený', () =>
-    page.evaluate(() => {
-      const cv = document.querySelector('.leaflet-podklad-pane canvas')
-      if (!cv) return false
-      const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data
-      // Stačí najít jediný neprůhledný bod – prázdné plátno je průhledné celé.
-      for (let i = 3; i < d.length; i += 4) if (d[i] > 0) return true
-      return false
-    })
-  )
-
-  // Přepnutí na malovanou offline mapu.
-  await page.click('#podkladBtn')
-  await page.waitForTimeout(1200)
-
-  await kontrola('offline mapa: přepínač hlásí stav', () => page.locator('#podkladBtn span').innerText(), 'Offline')
-  // Barva moře se dřív zapínala třídou `#map.offline`. Ta zanikla – moře je
-  // teď obyčejné pozadí mapy z tokenu `--mapa-more`. Hodnota se nepočítá ručně,
-  // nechá se přeložit prohlížečem přes pomocný prvek: zapsaný `#C6DAE1`
-  // a spočítaný `rgb(198, 218, 225)` jsou tatáž barva a porovnání řetězců
-  // by na tom padalo.
-  await kontrola('offline mapa: barva moře, ne šeď', () =>
-    page.evaluate(() => {
-      const sonda = document.createElement('div')
-      sonda.style.color = 'var(--mapa-more)'
-      document.body.appendChild(sonda)
-      const ocekavano = getComputedStyle(sonda).color
-      sonda.remove()
-      return getComputedStyle(document.getElementById('map')).backgroundColor === ocekavano
-    })
-  )
-  // Kresby stromů a hor už nejsou prvky stránky – kreslí je MapLibre na GPU
-  // a jen se staženým balíkem. Zjednodušená mapa má obrysy, města a reliéf,
-  // takže se kontroluje reliéf: je to jediná nová vrstva, kterou je vidět
-  // i bez stažení.
-  // MYŠ ZPÁTKY DOPROSTŘED MAPY. Kolečko zoomuje tam, kde kurzor stojí, a klik
-  // na pilulku podkladu ho odtáhl do levého horního rohu – oddálení odtamtud
-  // odsune výřez tak, že ve viditelné části nezůstane žádné město. Do září
-  // 2026 to bylo skryté tím, že se na pilulku klikalo přes `evaluate()`,
-  // které myší nehýbe (`BUGS.md` B7).
-  await page.mouse.move(195, 480)
-  await page.mouse.wheel(0, 400)
-  await page.waitForTimeout(400)
-  await page.mouse.wheel(0, 400)
-  await page.waitForTimeout(1500)
-  // Popisky měst se skládají jen pro to, co je ve výřezu, takže se kontrolují
-  // až po oddálení. Při přiblížení do Alp jich je ve výřezu klidně nula –
-  // a to není chyba, jen malý výřez.
-  await kontrola('offline mapa: názvy měst', () => page.locator('.mesto-popisek').count().then((n) => n > 0))
-  await kontrola('offline mapa: stínování terénu', () =>
-    page.locator('.leaflet-relief-pane img.relief').count().then((n) => n === 1)
-  )
-  await kontrola('offline mapa: reliéf je vidět', () =>
-    page.evaluate(() => {
-      const el = document.querySelector('img.relief')
-      return !!el && el.complete && el.naturalWidth > 1000 && Number(getComputedStyle(el).opacity) > 0.3
-    })
-  )
-
-  await page.click('#podkladBtn')
-  await page.context().setOffline(false)
 }
+await page.waitForTimeout(3000) // ať stihnou selhat dlaždice a načíst se podklad
+
+await kontrola('offline: štítek chybějících dlaždic', () => page.locator('#offlineStitek').isVisible(), true)
+await kontrola('offline: podklad má vlastní vrstvu', () =>
+  page.locator('.leaflet-podklad-pane canvas').count().then((n) => n >= 1)
+)
+await kontrola('offline: podklad je opravdu nakreslený', () =>
+  page.evaluate(() => {
+    const cv = document.querySelector('.leaflet-podklad-pane canvas')
+    if (!cv) return false
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data
+    // Stačí najít jediný neprůhledný bod – prázdné plátno je průhledné celé.
+    for (let i = 3; i < d.length; i += 4) if (d[i] > 0) return true
+    return false
+  })
+)
+
+// Přepnutí na malovanou offline mapu.
+await page.click('#podkladBtn')
+await page.waitForTimeout(1200)
+
+await kontrola('offline mapa: přepínač hlásí stav', () => page.locator('#podkladBtn span').innerText(), 'Offline')
+// Barva moře se dřív zapínala třídou `#map.offline`. Ta zanikla – moře je
+// teď obyčejné pozadí mapy z tokenu `--mapa-more`. Hodnota se nepočítá ručně,
+// nechá se přeložit prohlížečem přes pomocný prvek: zapsaný `#C6DAE1`
+// a spočítaný `rgb(198, 218, 225)` jsou tatáž barva a porovnání řetězců
+// by na tom padalo.
+await kontrola('offline mapa: barva moře, ne šeď', () =>
+  page.evaluate(() => {
+    const sonda = document.createElement('div')
+    sonda.style.color = 'var(--mapa-more)'
+    document.body.appendChild(sonda)
+    const ocekavano = getComputedStyle(sonda).color
+    sonda.remove()
+    return getComputedStyle(document.getElementById('map')).backgroundColor === ocekavano
+  })
+)
+// Kresby stromů a hor už nejsou prvky stránky – kreslí je MapLibre na GPU
+// a jen se staženým balíkem. Zjednodušená mapa má obrysy, města a reliéf,
+// takže se kontroluje reliéf: je to jediná nová vrstva, kterou je vidět
+// i bez stažení.
+// MYŠ ZPÁTKY DOPROSTŘED MAPY. Kolečko zoomuje tam, kde kurzor stojí, a klik
+// na pilulku podkladu ho odtáhl do levého horního rohu – oddálení odtamtud
+// odsune výřez tak, že ve viditelné části nezůstane žádné město. Do září
+// 2026 to bylo skryté tím, že se na pilulku klikalo přes `evaluate()`,
+// které myší nehýbe (`BUGS.md` B7).
+await page.mouse.move(195, 480)
+await page.mouse.wheel(0, 400)
+await page.waitForTimeout(400)
+await page.mouse.wheel(0, 400)
+await page.waitForTimeout(1500)
+// Popisky měst se skládají jen pro to, co je ve výřezu, takže se kontrolují
+// až po oddálení. Při přiblížení do Alp jich je ve výřezu klidně nula –
+// a to není chyba, jen malý výřez.
+await kontrola('offline mapa: názvy měst', () => page.locator('.mesto-popisek').count().then((n) => n > 0))
+await kontrola('offline mapa: stínování terénu', () =>
+  page.locator('.leaflet-relief-pane img.relief').count().then((n) => n === 1)
+)
+await kontrola('offline mapa: reliéf je vidět', () =>
+  page.evaluate(() => {
+    const el = document.querySelector('img.relief')
+    return !!el && el.complete && el.naturalWidth > 1000 && Number(getComputedStyle(el).opacity) > 0.3
+  })
+)
+
+await page.click('#podkladBtn')
+await page.context().setOffline(false)
 
 /* ---------- reset aplikace (jen hostovaná varianta) ---------- */
 
@@ -2319,48 +2297,46 @@ if (!SINGLE) {
 // Tohle je ta část, která se nesmí odbýt. Tlačítko, které maže cache, musí
 // mít doloženo, že NEMAŽE DATA. Kdo sem jednou připíše `localStorage.clear()`,
 // zahodí jediné, co v téhle appce nejde ničím nahradit.
-if (!SINGLE) {
-  console.log('')
-  console.log('  reset aplikace:')
+console.log('')
+console.log('  reset aplikace:')
 
-  // Značka se píše do `vandrbuch:draft`, ne do `vandrbuch:v1`. Ten totiž
-  // aplikace při odchodu ze stránky přepíše obsahem z paměti (pagehide →
-  // save()), takže by značka zmizela i bez resetu a kontrola by lhala.
-  // Přesně na tuhle past upozorňuje CLAUDE.md u úklidu ve smoke.
-  await page.evaluate(() => {
-    localStorage.setItem('vandrbuch:draft', JSON.stringify({ n: 'tohle nesmí reset smazat' }))
-    // Značka v okně: po skutečném načtení znovu tam být nesmí. Bez ní by
-    // kontrola prošla, i kdyby tlačítko neudělalo vůbec nic.
-    window.__predResetem = true
-  })
+// Značka se píše do `vandrbuch:draft`, ne do `vandrbuch:v1`. Ten totiž
+// aplikace při odchodu ze stránky přepíše obsahem z paměti (pagehide →
+// save()), takže by značka zmizela i bez resetu a kontrola by lhala.
+// Přesně na tuhle past upozorňuje CLAUDE.md u úklidu ve smoke.
+await page.evaluate(() => {
+  localStorage.setItem('vandrbuch:draft', JSON.stringify({ n: 'tohle nesmí reset smazat' }))
+  // Značka v okně: po skutečném načtení znovu tam být nesmí. Bez ní by
+  // kontrola prošla, i kdyby tlačítko neudělalo vůbec nic.
+  window.__predResetem = true
+})
 
-  await kontrola('před resetem cache existuje', () =>
-    page.evaluate(() => caches.keys().then((k) => k.some((x) => x.startsWith('vandrbuch-')))), true)
+await kontrola('před resetem cache existuje', () =>
+  page.evaluate(() => caches.keys().then((k) => k.some((x) => x.startsWith('vandrbuch-')))), true)
 
-  await page.click('#debugReset')
-  await page.waitForTimeout(4000)
+await page.click('#debugReset')
+await page.waitForTimeout(4000)
 
-  // Online se reset nesmí odmítnout – dialog by znamenal, že se neprovedl.
-  await kontrola('reset se online neodmítl', () => page.locator('#dialog.show').count(), 0)
-  await kontrola('stránka se opravdu načetla znovu', () =>
-    page.evaluate(() => !window.__predResetem), true)
-  await kontrola('aplikace po resetu naběhla', () => page.locator('#totalN').innerText(), '580')
+// Online se reset nesmí odmítnout – dialog by znamenal, že se neprovedl.
+await kontrola('reset se online neodmítl', () => page.locator('#dialog.show').count(), 0)
+await kontrola('stránka se opravdu načetla znovu', () =>
+  page.evaluate(() => !window.__predResetem), true)
+await kontrola('aplikace po resetu naběhla', () => page.locator('#totalN').innerText(), '580')
 
-  // A teď to podstatné. Service worker se mezitím zaregistroval znovu a cache
-  // si postavil taky – to je správně, appka má po resetu zase fungovat
-  // offline. Kontroluje se proto, co zůstat MUSÍ, ne co zmizelo.
-  await kontrola('DATA V localStorage RESET PŘEŽILA', () =>
-    page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:draft') || '{}').n),
-    'tohle nesmí reset smazat')
-  await kontrola('a předvolby taky', () =>
-    page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs')).debugRezim), true)
-  await kontrola('poznámky v úložišti zůstaly', () =>
-    page.evaluate(() => !!localStorage.getItem('vandrbuch:v1')), true)
-  await kontrola('databáze s fotkami zůstala', () =>
-    page.evaluate(() => indexedDB.databases().then((d) => d.some((x) => x.name === 'vandrbuch'))), true)
+// A teď to podstatné. Service worker se mezitím zaregistroval znovu a cache
+// si postavil taky – to je správně, appka má po resetu zase fungovat
+// offline. Kontroluje se proto, co zůstat MUSÍ, ne co zmizelo.
+await kontrola('DATA V localStorage RESET PŘEŽILA', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:draft') || '{}').n),
+  'tohle nesmí reset smazat')
+await kontrola('a předvolby taky', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:prefs')).debugRezim), true)
+await kontrola('poznámky v úložišti zůstaly', () =>
+  page.evaluate(() => !!localStorage.getItem('vandrbuch:v1')), true)
+await kontrola('databáze s fotkami zůstala', () =>
+  page.evaluate(() => indexedDB.databases().then((d) => d.some((x) => x.name === 'vandrbuch'))), true)
 
-  await page.evaluate(() => localStorage.removeItem('vandrbuch:draft'))
-}
+await page.evaluate(() => localStorage.removeItem('vandrbuch:draft'))
 
 /* ---------- vzhled: tmavý režim ---------- */
 

@@ -64,7 +64,7 @@ import { nactiMasky, poskladej, ROZTEC } from './kresby.js'
  * bral starý podklad), u sto dvaceti ne. Glob je `eager`, takže se přeloží
  * při buildu a jména se srovnají podle abecedy – pořadí je tedy dané, ne
  * náhodné. Do jednosouborové varianty se tenhle soubor nedostane vůbec
- * (`import.meta.env.SINGLE_FILE` v `podklad.js`), takže se tam nic neinlinuje.
+ * jen se staženým balíkem dlaždic.
  */
 const OBRAZKY = import.meta.glob('../assets/kresba/*.webp', { eager: true, query: '?url', import: 'default' })
 

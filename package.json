@@ -7,7 +7,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:single": "vite build --mode single",
     "preview": "vite preview",
     "validate": "node scripts/validate-data.mjs",
     "check-uloziste": "node scripts/check-uloziste.mjs",
@@ -20,7 +19,6 @@
     "check-projekce": "node scripts/check-projekce.mjs",
     "check-images": "node scripts/check-images.mjs",
     "smoke": "node scripts/smoke.mjs",
-    "smoke:single": "node scripts/smoke.mjs --single",
     "check-tokeny": "node scripts/check-tokeny.mjs",
     "check-filters": "node scripts/check-filtry.mjs",
     "check-regrese": "node scripts/check-regrese.mjs",
@@ -38,7 +36,6 @@
     "playwright-core": "^1.62.1",
     "pmtiles": "^4.5.0",
     "sharp": "^0.35.3",
-    "vite": "^7.1.12",
-    "vite-plugin-singlefile": "^2.3.0"
+    "vite": "^7.1.12"
   }
 }

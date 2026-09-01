@@ -15,7 +15,6 @@
 
 export function registrujServiceWorker() {
   if (import.meta.env.DEV) return
-  if (import.meta.env.SINGLE_FILE) return
   if (!('serviceWorker' in navigator)) return
   if (location.protocol !== 'https:' && location.hostname !== 'localhost') return
 

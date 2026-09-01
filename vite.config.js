@@ -4,16 +4,17 @@ import crypto from 'node:crypto'
 import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
-import { viteSingleFile } from 'vite-plugin-singlefile'
 
 /**
- * Dva build targety z jednoho zdroje:
+ * Jeden build target:
  *
- *   npm run build         → dist/         hostovaný web, plnohodnotná PWA se service workerem
- *   npm run build:single  → dist-single/  jeden self-contained index.html pro offline z disku
+ *   npm run build   → dist/   hostovaný web, plnohodnotná PWA se service workerem
  *
- * Rozdíl je jen v tom, co se inlinuje a jestli vzniká service worker.
- * Zdrojový kód je stejný; ptá se na variantu přes import.meta.env.SINGLE_FILE.
+ * Do září 2026 tu byla ještě jednosouborová varianta (`build:single`,
+ * `dist-single/`, konstanta `import.meta.env.SINGLE_FILE`). Zrušila se:
+ * nasazuje se jedině `dist/`, `dist-single/` nebylo v gitu nikdy a jediný
+ * důvod, proč vznikla — nosit appku na flashce a posílat mailem — nahradila
+ * veřejná beta a offline režim PWA.
  */
 
 // fileURLToPath, ne ruční ořezávání – cesta obsahuje diakritiku („Anička“)
@@ -170,36 +171,6 @@ function pluginDebugRejstrik() {
 }
 
 /**
- * V single-file variantě nahradí odkazy na manifest a ikonu za data URI.
- *
- * Soubor otevřený z disku nemá vedle sebe public/, takže by se ikona ani
- * manifest nenačetly a v konzoli by svítily dvě chyby. Ikony se vkládají
- * i dovnitř manifestu, jinak by odkazovaly na neexistující soubory.
- */
-function pluginSingleFilePwa() {
-  return {
-    name: 'vandrbuch-single-pwa',
-    apply: 'build',
-    transformIndexHtml(html) {
-      const pub = (f) => fs.readFileSync(path.join(ROOT, 'public', f))
-      const ikona192 = `data:image/png;base64,${pub('icon-192.png').toString('base64')}`
-      const ikona512 = `data:image/png;base64,${pub('icon-512.png').toString('base64')}`
-
-      const manifest = JSON.parse(pub('manifest.webmanifest').toString('utf8'))
-      manifest.icons = [
-        { src: ikona192, sizes: '192x192', type: 'image/png' },
-        { src: ikona512, sizes: '512x512', type: 'image/png' },
-      ]
-      const manifestUri = `data:application/manifest+json;base64,${Buffer.from(JSON.stringify(manifest)).toString('base64')}`
-
-      return html
-        .replace('href="./manifest.webmanifest"', `href="${manifestUri}"`)
-        .replace(/href="\.\/icon-192\.png"/g, `href="${ikona192}"`)
-    },
-  }
-}
-
-/**
  * Na Cloudflare projektu `traveler-app-beta` appka na ploše (PWA `short_name`)
  * ukazuje „Vandrbuch beta“ místo „Vandrbuch“, ať jde na telefonu poznat, které
  * PWA je která – appka je jinak bajtově stejná jako produkce, jen se sleduje
@@ -226,26 +197,19 @@ function pluginBetaManifest(outDir) {
   }
 }
 
-export default defineConfig(({ mode }) => {
-  const single = mode === 'single'
-
+export default defineConfig(() => {
   return {
     // Relativní cesty jsou nutné pro obě varianty: hosting v podadresáři i file://
     base: './',
 
-    plugins: single
-      ? [viteSingleFile(), pluginSingleFilePwa()]
-      : // Rejstřík PŘED service workerem: ten skládá seznam k předuložení
-        // z bundle a musí v něm `debug-stav.json` už najít.
-        [pluginDebugRejstrik(), pluginServiceWorker(), pluginBetaManifest('dist')],
+    // Rejstřík PŘED service workerem: ten skládá seznam k předuložení
+    // z bundle a musí v něm `debug-stav.json` už najít.
+    plugins: [pluginDebugRejstrik(), pluginServiceWorker(), pluginBetaManifest('dist')],
 
     define: {
-      'import.meta.env.SINGLE_FILE': JSON.stringify(single),
       // Zapečeno při buildu jako statická hodnota (ne runtime process.env,
-      // který v prohlížeči neexistuje) – stejný vzor jako SINGLE_FILE výš.
-      // Single-file appka nemá prostředí, ke kterému by se vztahovala, proto
-      // `false` bez ohledu na proměnnou.
-      'import.meta.env.VANDRBUCH_BETA': JSON.stringify(!single && !!process.env.VANDRBUCH_BETA),
+      // který v prohlížeči neexistuje).
+      'import.meta.env.VANDRBUCH_BETA': JSON.stringify(!!process.env.VANDRBUCH_BETA),
       // Označení sestavení do kontextu debug hlášení (`core/debugKontext.js`).
       // Platí i pro `npm run dev` – vyhodnotí se při startu dev serveru, takže
       // hlášení z vývoje nese datum a commit, na kterém se zrovna pracuje.
@@ -253,12 +217,10 @@ export default defineConfig(({ mode }) => {
     },
 
     build: {
-      outDir: single ? 'dist-single' : 'dist',
+      outDir: 'dist',
       emptyOutDir: true,
-      // V single-file variantě se musí do data URI vejít i ilustrace dodávky
-      // (22 kB) a fonty (254 kB). V hostované zůstává výchozí chování Vite.
-      assetsInlineLimit: single ? 100 * 1024 * 1024 : 4096,
-      cssCodeSplit: !single,
+      assetsInlineLimit: 4096,
+      cssCodeSplit: true,
       // Data míst jsou velká; varování u 500 kB by tu jen šumělo.
       chunkSizeWarningLimit: 1200,
       target: 'es2020',

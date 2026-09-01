@@ -146,13 +146,10 @@ function postavPlochy(mapa, data) {
  * dvou, a stojí to jeden `L.ImageOverlay`, který prohlížeč složí jako
  * kteroukoli jinou vrstvu.
  *
- * Do jednosouborové varianty se schválně nebalí: `assetsInlineLimit` je tam
- * bez omezení, takže by se megabajt reliéfu vložil do HTML jako base64
- * a soubor by narostl o polovinu. Konstanta je nahrazená při buildu, takže
- * se z něj celá větev i s importem vyhodí.
+ * Natahuje se dynamickým importem, takže megabajtový obrázek nezdrží start –
+ * mapa se nakreslí i bez něj a reliéf na ni doskočí.
  */
 async function postavRelief() {
-  if (import.meta.env.SINGLE_FILE) return null
   try {
     const [obrazek, meta] = await Promise.all([
       import('../assets/relief-evropa.webp?url'),
@@ -277,11 +274,6 @@ export function obnovKresbyVMape() {
  * @param {L.Map} mapa
  */
 async function zkusVektory(mapa) {
-  // V jednosouborové variantě se ani nezkouší. Balík dlaždic má několik
-  // megabajtů a do jednoho souboru se zabalit nedá, takže by se MapLibre
-  // (další megabajt) natáhl úplně zbytečně. Konstanta je nahrazená při
-  // buildu, takže se z něj celá větev i s importem vyhodí.
-  if (import.meta.env.SINGLE_FILE) return
   // Volba z Nastavení. Kdo chce mapu co nejrychlejší, nechá zjednodušenou.
   if (prefs.offlineMapa === 'zjednodusena') return
   try {

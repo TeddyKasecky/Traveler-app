@@ -21,24 +21,22 @@ import obrObjevuj from '../assets/onboarding/objevuj.webp'
 import obrPlan from '../assets/onboarding/plan.webp'
 import obrDenik from '../assets/onboarding/denik.webp'
 
-const JEDEN_SOUBOR = import.meta.env.SINGLE_FILE
-
-/** Kroky uvítání. `obr` je `null`, když se ilustrace nebalí. */
+/** Kroky uvítání. */
 const KROKY = [
   {
-    obr: JEDEN_SOUBOR ? null : obrObjevuj,
+    obr: obrObjevuj,
     ikona: 'i-compass',
     nadpis: 'Objevuj',
     text: 'Prší? Chcete se koupat? Máte dvě hodiny? Kolekce ti hned nabídnou, co má smysl.',
   },
   {
-    obr: JEDEN_SOUBOR ? null : obrPlan,
+    obr: obrPlan,
     ikona: 'i-route',
     nadpis: 'Plán na cestu',
     text: 'Přidej zastávky, rozděl je na dny a pošli trasu do navigace. Kilometry spočítám.',
   },
   {
-    obr: JEDEN_SOUBOR ? null : obrDenik,
+    obr: obrDenik,
     ikona: 'i-quill',
     nadpis: 'Poznámky a deník',
     text: 'U každého místa je zajímavost, co je poblíž a místo pro tvoje poznámky, fotky a hvězdičky.',

@@ -109,12 +109,7 @@ export function exportHtml(vybrane) {
           : 'Není nic k odeslání – zkus jiný rozsah.'
     }</div>
     <div class="btnrow" style="margin:0">
-      ${
-        // V jednosouborové variantě není kam poslat – běží z disku.
-        import.meta.env.SINGLE_FILE
-          ? ''
-          : `<button class="btn primary" id="dzOdeslat"${kolik ? '' : ' disabled'}>${IC('i-sdilet')}Odeslat do repozitáře</button>`
-      }
+      <button class="btn primary" id="dzOdeslat"${kolik ? '' : ' disabled'}>${IC('i-sdilet')}Odeslat do repozitáře</button>
       <button class="btn" id="dzMd"${kolik ? '' : ' disabled'}>${IC('i-save')}Stáhnout .md</button>
     </div>
     <div class="dz-napoveda">

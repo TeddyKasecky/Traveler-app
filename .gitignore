@@ -1,6 +1,5 @@
 node_modules/
 dist/
-dist-single/
 *.local
 # *.local výše nechytá tohle jméno (končí na .md, ne na .local) — osobní branch
 # prefix pro Git workflow, viz CLAUDE.md. Každý má svůj, negitovaný.

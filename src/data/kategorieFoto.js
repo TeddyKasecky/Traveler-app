@@ -40,30 +40,27 @@ const MALE = {
 }
 
 /**
- * Velká sada jen pro hostovanou variantu.
+ * Velká sada pro otevřený detail místa.
  *
- * Single-file varianta inlinuje všechno jako data URI, takže by ji 540 kB
- * velkých ilustrací nafouklo skoro o tři čtvrtě megabajtu – a ten soubor se
- * nosí na flashce a posílá mailem. `import.meta.env.SINGLE_FILE` je konstanta
- * dosazená při buildu, takže Rollup celou větev i s importy vyhodí.
+ * DVĚ SADY JSOU ZÁMĚR, ne pozůstatek: malá (320 px) se kreslí na kartách
+ * hned, velká (720 px) až v otevřeném detailu místa bez vlastní fotky.
+ * Proto velká sada vypadává z předukládané cache – viz `vite.config.js`.
  *
- * Ověřuje se to počtem `data:image/webp` v `dist-single/index.html`:
- * musí jich být deset, ne dvacet.
+ * Načítá se přes `new URL(...)`, ne `import`, aby si ji Rollup zařadil jako
+ * samostatný soubor a nezatáhl do hlavního balíku.
  */
-const VELKE = import.meta.env.SINGLE_FILE
-  ? null
-  : {
-      'Ferraty': new URL('../assets/kategorie/ferraty-720.webp', import.meta.url).href,
-      'Bikeparky': new URL('../assets/kategorie/bikeparky-720.webp', import.meta.url).href,
-      'Soutěsky': new URL('../assets/kategorie/soutesky-720.webp', import.meta.url).href,
-      'Vodopády': new URL('../assets/kategorie/vodopady-720.webp', import.meta.url).href,
-      'Hory a túry': new URL('../assets/kategorie/hory-720.webp', import.meta.url).href,
-      'Jezera': new URL('../assets/kategorie/jezera-720.webp', import.meta.url).href,
-      'Jeskyně a podzemí': new URL('../assets/kategorie/jeskyne-720.webp', import.meta.url).href,
-      'Města a památky': new URL('../assets/kategorie/mesta-720.webp', import.meta.url).href,
-      'Spaní': new URL('../assets/kategorie/spani-720.webp', import.meta.url).href,
-      'Ostatní zajímavosti': new URL('../assets/kategorie/ostatni-720.webp', import.meta.url).href,
-    }
+const VELKE = {
+  'Ferraty': new URL('../assets/kategorie/ferraty-720.webp', import.meta.url).href,
+  'Bikeparky': new URL('../assets/kategorie/bikeparky-720.webp', import.meta.url).href,
+  'Soutěsky': new URL('../assets/kategorie/soutesky-720.webp', import.meta.url).href,
+  'Vodopády': new URL('../assets/kategorie/vodopady-720.webp', import.meta.url).href,
+  'Hory a túry': new URL('../assets/kategorie/hory-720.webp', import.meta.url).href,
+  'Jezera': new URL('../assets/kategorie/jezera-720.webp', import.meta.url).href,
+  'Jeskyně a podzemí': new URL('../assets/kategorie/jeskyne-720.webp', import.meta.url).href,
+  'Města a památky': new URL('../assets/kategorie/mesta-720.webp', import.meta.url).href,
+  'Spaní': new URL('../assets/kategorie/spani-720.webp', import.meta.url).href,
+  'Ostatní zajímavosti': new URL('../assets/kategorie/ostatni-720.webp', import.meta.url).href,
+}
 
 /**
  * Adresa zástupné ilustrace, nebo `''` když pro kategorii žádná není.
@@ -72,7 +69,7 @@ const VELKE = import.meta.env.SINGLE_FILE
  * @returns {string}
  */
 export function fotoKategorie(p, velikost = 'male') {
-  const sada = velikost === 'velke' ? VELKE || MALE : MALE
+  const sada = velikost === 'velke' ? VELKE : MALE
   return sada[p.k] || ''
 }
 
