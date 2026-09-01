@@ -18,7 +18,7 @@
  * telefon, jestli je karta výpravy schovaná a zdroje dat.
  */
 
-import { emit, prefs, savePrefs, S } from '../../core/store.js'
+import { emit, prefs, savePrefs, vynulujPocitadla, S } from '../../core/store.js'
 import { zmerUloziste } from '../../core/storage.js'
 import { zjistiPolohuTise } from '../../core/geo.js'
 import { esc, sklonuj } from '../../core/html.js'
@@ -27,7 +27,7 @@ import { aktivujZalozku } from '../../core/router.js'
 import { IC } from '../../icons/sprite.js'
 import { napojSbalky, segment } from '../../components/vzory.js'
 import { toast } from '../../components/toast.js'
-import { vyberZeSeznamu, zadej } from '../../components/dialog.js'
+import { potvrd, vyberZeSeznamu, zadej } from '../../components/dialog.js'
 import { bodyNaVypravu } from '../plan/body.js'
 import { srovnejDebugTlacitko } from '../../components/debugZapis.js'
 import { pocetPocasi, zahodVsechnoPocasi } from '../../core/pocasiDb.js'
@@ -117,6 +117,58 @@ function bodyNaVypravuHtml() {
     ? `medián <b>${median.toLocaleString('cs')}</b> z ${sBodem} ${sklonuj(sBodem, 'výpravy', 'výprav', 'výprav')} s aspoň jedním bodem`
     : 'žádná výprava zatím bod nemá'
   return `${vypis}<br>${souhrn}`
+}
+
+/**
+ * Kudy se v appce chodí – čtení `prefs.pocitadla` a `prefs.moodUse`.
+ *
+ * PROČ TO TU JE: N21, N22 i N23 v `NAPADY.md` se ptají „jak často se tudy
+ * chodí" a bez čísla se rozhodnout nedají. N9 je ještě starší – `moodUse` se
+ * sbírá odjakživa a nikdo ho nikdy nepřečetl. Tohle je to místo, kde se to
+ * čte; **nic se tu nesbírá ani neukládá.**
+ *
+ * U detailu se vypisuje i poměr, protože o ten jde: `goTo()` je cesta se
+ * 450 ms čekání, špendlík je okamžitý. Když přes tu pomalou chodí většina,
+ * platí většina za animaci, o kterou nestála.
+ *
+ * U akcí Itineráře je podstatné číslo **kolik RŮZNÝCH se použilo**, ne které
+ * vede – N22 se ptá, jestli je osmnáct prvků na obrazovce zasloužená hustota,
+ * nebo nepřehlednost. Vypisuje se proto pět nejčastějších a k nim počet druhů.
+ */
+function pocitadlaHtml() {
+  const c = prefs.pocitadla || {}
+  const kartou = Number(c.detailPresGoTo) || 0
+  const spendlikem = Number(c.detailSpendlik) || 0
+  const radky = []
+
+  if (kartou + spendlikem) {
+    const podil = Math.round((kartou / (kartou + spendlikem)) * 100)
+    radky.push(
+      `Detail místa: <b>${kartou}×</b> pomalou cestou (450 ms) · <b>${spendlikem}×</b> špendlíkem` +
+        ` — <b>${podil} %</b> čeká`
+    )
+  }
+  if ((Number(c.itinerar) || 0) + (Number(c.kosik) || 0)) {
+    radky.push(`Itinerář <b>${Number(c.itinerar) || 0}×</b> · košík <b>${Number(c.kosik) || 0}×</b>`)
+  }
+
+  const akce = c.akce && typeof c.akce === 'object' ? c.akce : {}
+  const serazene = Object.entries(akce).sort((a, b) => b[1] - a[1])
+  if (serazene.length) {
+    const top = serazene.slice(0, 5).map(([k, n]) => `${esc(k)} <b>${n}</b>`).join(' · ')
+    const celkem = serazene.reduce((s, [, n]) => s + n, 0)
+    radky.push(
+      `Akce v Itineráři: ${top}${serazene.length > 5 ? ` a ${serazene.length - 5} ${sklonuj(serazene.length - 5, 'další', 'další', 'dalších')}` : ''}` +
+        `<br>použito <b>${serazene.length}</b> ${sklonuj(serazene.length, 'druh', 'druhy', 'druhů')} akce, celkem ${celkem}×`
+    )
+  }
+
+  const nalady = Object.entries(prefs.moodUse || {}).sort((a, b) => b[1] - a[1])
+  if (nalady.length) {
+    radky.push(`Nálady: ${nalady.map(([k, n]) => `${esc(k)} <b>${n}</b>`).join(' · ')}`)
+  }
+
+  return radky.length ? radky.join('<br>') : 'Zatím se nic nenaměřilo – appku je nejdřív potřeba chvíli používat.'
 }
 
 export async function renderNastaveni() {
@@ -306,7 +358,12 @@ export async function renderNastaveni() {
       <button class="btn small" id="debugOtevri">Otevřít poznámkovač${zaznamu ? ` (${zaznamu})` : ''}</button>
     </div>
     <div class="sechd">${IC('i-pinme')}Body na výpravu</div>
-    <div class="meta">${bodyNaVypravuHtml()}</div>`
+    <div class="meta">${bodyNaVypravuHtml()}</div>
+    <div class="sechd">${IC('i-compass')}Kudy se chodí</div>
+    <div class="meta">${pocitadlaHtml()}</div>
+    <div class="btnrow">
+      <button class="btn small" id="pocitadlaNula">Vynulovat čítače</button>
+    </div>`
   )
 
   doPrihradky(
@@ -554,6 +611,17 @@ export async function renderNastaveni() {
   }
 
   document.getElementById('debugOtevri').onclick = () => aktivujZalozku('debug')
+
+  // Měření bez možnosti začít znovu je k ničemu – po zásahu do navigace se
+  // musí dát srovnat „před" a „po". Ptá se, protože naměřené se vrátit nedá.
+  const nula = document.getElementById('pocitadlaNula')
+  if (nula)
+    nula.onclick = async () => {
+      if (!(await potvrd({ nadpis: 'Vynulovat čítače?', text: 'Naměřená čísla se smažou i s náladami. Vrátit to nejde.' }))) return
+      if (!vynulujPocitadla()) return toast('Nulování se neuložilo')
+      toast('Čítače na nule')
+      renderNastaveni()
+    }
 
   const m = await zmerUloziste()
   const el = document.getElementById('mistoInfo')
