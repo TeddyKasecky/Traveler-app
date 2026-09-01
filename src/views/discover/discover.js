@@ -27,7 +27,7 @@ import { nastavRazeni } from '../list/list.js'
 import { heroPas, sekce, dlazdice, pilulky, fotomrizka } from '../../components/vzory.js'
 import { toast } from '../../components/toast.js'
 import { goTo, draw, priblizNaFiltr } from '../../map/map.js'
-import { applyMood } from '../home/moods.js'
+import { applyMood, zapnuteNalady } from '../home/moods.js'
 import heroObr from '../../assets/hero/objevuj.webp'
 
 /**
@@ -101,16 +101,17 @@ const INSPIRACE = [
     },
   },
   {
-    id: 'mesta',
-    nadpis: 'Města a památky',
-    popis: 'Když prší nebo je chuť na kulturu',
-    // Táž ikona, jakou má kategorie v `data/categories.js`.
-    ikona: 'i-castle',
-    // MEZERA, KTEROU NÁLADY NEPOKRÝVAJÍ. Ty umí hory, vodu, kolo a ferraty
-    // s jeskyněmi; na devadesát devět měst a památek se přes ně nedá dostat.
+    id: 'nedojeli',
+    nadpis: 'Kam jsme nedojeli',
+    popis: 'Všechno kromě navštíveného',
+    ikona: 'i-boot',
+    // TADY BÝVALA „Města a památky". Byla to ale KATEGORIE, a od září 2026
+    // kategorie patří náladám (`tadeas-f32-011`) – inspirace odpovídá na
+    // „co teď dává smysl", ne na „jaké místo chci". Dvě mřížky na Objevuj
+    // dělající totéž pod jinými názvy jsou to, čemu se tou dělbou vyhýbáme.
     podminka: () => true,
     nastav: () => {
-      F.kat.add('Města a památky')
+      F.stav = 'wish'
     },
   },
   {
@@ -197,7 +198,12 @@ export function renderDisc() {
   })).filter((k) => !k.popisek.startsWith('0 '))
 
   /* ---- nálady ---- */
-  const nalady = HOME_MOODS.map((m) => ({
+  // JEN ZAPNUTÉ (`tadeas-f32-011`). Ze čtrnácti se vypisují ty, které si člověk
+  // nechal v Profilu; výchozí je dnešních šest, takže se nikomu nic nezmění,
+  // dokud si nesáhne. Pořadí drží `HOME_MOODS`, ne pořadí zapínání – jinak by
+  // se pilulky přeskládaly pokaždé, když se nějaká vypne a zase zapne.
+  const zapnute = new Set(zapnuteNalady())
+  const nalady = HOME_MOODS.filter((m) => zapnute.has(m.id)).map((m) => ({
     id: m.id,
     popisek: m.l,
     ikona: m.ic,
@@ -242,8 +248,10 @@ export function renderDisc() {
     `<div class="list">` +
     sekce('Oblíbené kolekce') +
     `<div id="discKolekce">${dlazdice(kolekce)}</div>` +
-    sekce('Jakou máte náladu?') +
-    pilulky(nalady, 'nalady') +
+    // ZHASNOUT JDE VŠECHNY a pak sekce zmizí celá – nezůstane po ní prázdný
+    // nadpis, stejně jako u vypnutého počasí na Domů. Kde se zapínají, řekne
+    // Profil; je to stav na dvě ťuknutí.
+    (nalady.length ? sekce('Jakou máte náladu?') + pilulky(nalady, 'nalady zalomene') : '') +
     sekce('Doporučené pro vás', { akce: 'Zobrazit vše', akceId: 'discVse' }) +
     fotomrizka(karty) +
     sekce('Rychlá inspirace') +

@@ -17,6 +17,7 @@ import { esc } from '../../core/html.js'
 import { IC } from '../../icons/sprite.js'
 import { KAT } from '../../data/categories.js'
 import { HOME_MOODS } from '../../data/moods.js'
+import { zapnuteNalady } from '../home/moods.js'
 import { obrazekMista } from '../../data/kategorieFoto.js'
 import { sekce } from '../../components/vzory.js'
 import { toast } from '../../components/toast.js'
@@ -473,11 +474,20 @@ async function pruvodceVlastnihoMista(prekresli) {
 /* ================= Co dál? ================= */
 
 /**
- * Nálady jako filtr tipů. Bere se z `HOME_MOODS`, aby „chuť na hory" znamenala
+ * Nálady jako filtr tipů. Bere se z `HOME_MOODS`, aby „chuť na hory“ znamenala
  * na Domů i na cestě totéž – dvě různé definice by se rozešly.
  * `near` a `tip` se vynechávají: nemají `kat` a chovají se jinak.
+ *
+ * JEN ZAPNUTÉ V PROFILU (`tadeas-f32-011`) a je to FUNKCE, ne konstanta –
+ * výběr se dá změnit za běhu. Když nálad přibylo ze šesti na čtrnáct, vzalo
+ * to tenhle filtr s sebou: změřeno 12 pilulek v pěti řádcích, 169 px, tedy
+ * pětina obrazovky nad samotnými tipy. Kdo si v Profilu nechal výchozí šestku,
+ * má tu čtyři pilulky právě jako předtím.
  */
-const CHUTE = HOME_MOODS.filter((m) => Array.isArray(m.kat) && m.kat.length)
+const chute = () => {
+  const zapnute = new Set(zapnuteNalady())
+  return HOME_MOODS.filter((m) => Array.isArray(m.kat) && m.kat.length && zapnute.has(m.id))
+}
 
 /** Která chuť je zrovna vybraná. Jen v paměti – je to rozhodnutí na pět minut. */
 let chut = ''
@@ -494,7 +504,11 @@ let chut = ''
  */
 export function tipyOdsud(odkud) {
   if (!odkud || !Number.isFinite(odkud.lat)) return []
-  const kategorie = chut ? new Set((CHUTE.find((c) => c.id === chut) || {}).kat || []) : null
+  // Vybraná chuť mohla mezitím v Profilu zhasnout – pak se filtr NEUPLATNÍ.
+  // Bez toho by `find()` vrátilo undefined, množina by byla prázdná a tipy by
+  // zmizely všechny, aniž by šlo poznat proč.
+  const vybrana = chut ? chute().find((c) => c.id === chut) : null
+  const kategorie = vybrana ? new Set(vybrana.kat) : null
   const vPlanu = new Set(store.plan)
 
   return (S.places || [])
@@ -576,7 +590,7 @@ function tipRadek({ p, km, vKosiku: vKos }) {
 export function coDalHtml(odkud, tipy) {
   if (!odkud) return ''
 
-  const pilulky = CHUTE.map(
+  const pilulky = chute().map(
     (c) => `<button class="chut-pill${chut === c.id ? ' on' : ''}" data-chut="${c.id}"
       style="--pc:${c.c}">${IC(c.ic)}${esc(c.l)}</button>`
   ).join('')

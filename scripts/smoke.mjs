@@ -303,10 +303,32 @@ await kontrola('Profil už nemá nastavení', () =>
 // SBALITELNÉ SKUPINY (hlášení tadeas-001). Jméno a čísla „Co máš za sebou"
 // zůstávají vidět – kvůli nim se Profil otevírá. Schovala se mřížka 96 aut,
 // dvacet achievementů a seznam pozic.
-await kontrola('Profil má tři skupiny', () => page.locator('#panelProfil .sbalka').count(), 3)
+// Čtvrtá skupina od září 2026: výběr nálad pro Objevuj (`tadeas-f32-011`).
+await kontrola('Profil má čtyři skupiny', () => page.locator('#panelProfil .sbalka').count(), 4)
 await kontrola('a všechny startují zavřené', () =>
-  page.locator('#panelProfil .sbalka-telo[hidden]').count(), 3)
+  page.locator('#panelProfil .sbalka-telo[hidden]').count(), 4)
 await kontrola('jméno je vidět bez rozbalování', () => page.locator('#profilJmeno').isVisible(), true)
+// Výběr nálad: čtrnáct pilulek, zapnutých výchozích šest. Zapnutí sedmé se
+// musí projevit na Objevuj – jinak by ta předvolba nic neznamenala.
+await page.click('[data-sbalka="nalady"]')
+await page.waitForTimeout(400)
+await kontrola('výběr nálad nabízí všech čtrnáct', () =>
+  page.locator('#profilNalady .pilulka').count(), 14)
+await kontrola('a šest jich svítí', () => page.locator('#profilNalady .pilulka.on').count(), 6)
+await page.click('#profilNalady .pilulka[data-id="mesta"]')
+await page.waitForTimeout(500)
+await kontrola('zapnutím jich svítí sedm', () => page.locator('#profilNalady .pilulka.on').count(), 7)
+await page.click('#tabs button[data-tab="disc"]')
+await page.waitForTimeout(600)
+await kontrola('a na Objevuj jich je taky sedm', () => page.locator('.nalady .pilulka').count(), 7)
+// Uklidit po sobě, ať další kontroly počítají se šesti.
+await page.click('#profilOpen')
+await page.waitForTimeout(500)
+await page.click('#profilNalady .pilulka[data-id="mesta"]')
+await page.waitForTimeout(500)
+await kontrola('a vypnutím zase šest', () => page.locator('#profilNalady .pilulka.on').count(), 6)
+await page.click('[data-sbalka="nalady"]')
+await page.waitForTimeout(300)
 await kontrola('čísla taky', () => page.locator('#panelProfil .pstat').first().isVisible(), true)
 await kontrola('mřížka aut naopak schovaná', () =>
   page.locator('#panelProfil .autovolba').first().isVisible(), false)
@@ -1172,7 +1194,31 @@ await page.waitForTimeout(300)
 // ZÚŽENO NA `#discKolekce`: od září 2026 jsou dlaždice i u rychlé inspirace,
 // takže by široký výběr sečetl obojí a číslo by nic neznamenalo.
 await kontrola('kolekce v Objevuj', () => page.locator('#discKolekce .dlazdice-kus').count(), 12)
+// NÁLAD JE OD ZÁŘÍ 2026 ČTRNÁCT, ale zapnutých je výchozích šest
+// (`tadeas-f32-011`) – rozšíření nesmí nikomu přeskládat Objevuj bez ptaní.
 await kontrola('nálady v Objevuj', () => page.locator('.nalady .pilulka').count(), 6)
+// Zalomení místo posouvání do strany: čtrnáct se do jedné řady nevejde
+// a poslední byly za okrajem, kde je nikdo nehledal.
+await kontrola('nálady nepřetékají do strany', () =>
+  page.locator('.nalady').evaluate((e) => e.scrollWidth <= e.clientWidth + 1), true)
+// NAHRAZUJE VÝBĚR, nepřičítá se k němu – stejně jako rychlá inspirace.
+{
+  await page.click('#tabs button[data-tab="list"]')
+  await page.waitForTimeout(400)
+  await page.click('#fZeme')
+  await page.waitForTimeout(500)
+  await page.click('#dialogVice .dialog-volba:has-text("Rakousko")')
+  await page.click('#dialogAno')
+  await page.waitForTimeout(600)
+  await page.click('#tabs button[data-tab="disc"]')
+  await page.waitForTimeout(500)
+  await page.click('.nalady .pilulka[data-id="hory"]')
+  await page.waitForTimeout(800)
+  await kontrola('nálada zruší cizí filtr, nepřičte se k němu', () =>
+    page.locator('#countN').innerText().then((x) => Number(x.replace(/[^0-9]/g, ''))), 138)
+  await page.click('#tabs button[data-tab="disc"]')
+  await page.waitForTimeout(500)
+}
 // Karusel má od přestavby Domů dvě obrazovky, takže se musí počítat jen ten
 // na Objevuj – bez `#discInner` by se sečetly oba a číslo by nic neznamenalo.
 await kontrola('mřížka doporučených', () => page.locator('#discInner .fotomrizka .fotokarta').count(), 9)
@@ -1222,9 +1268,12 @@ await page.click('#dialogAno')
 await page.waitForTimeout(700)
 await page.click('#tabs button[data-tab="disc"]')
 await page.waitForTimeout(500)
-await page.click('#discInspirace .dlazdice-kus[data-id="mesta"]')
+// „Města a památky" tu do září 2026 bývala, ale byla to KATEGORIE – ty
+// od `tadeas-f32-011` patří náladám. Zvolená je proto „Zadarmo": 402 míst,
+// nezávisle na tom, co má kdo navštíveného nebo uloženého.
+await page.click('#discInspirace .dlazdice-kus[data-id="zdarma"]')
 await page.waitForTimeout(800)
-await kontrola('inspirace zruší cizí filtr, nepřičte se k němu', () => nalezenoInsp(), 99)
+await kontrola('inspirace zruší cizí filtr, nepřičte se k němu', () => nalezenoInsp(), 402)
 
 // VADA B: „Uložená na potom" musí vrátit uložená, ne „všechno kromě
 // navštíveného". Kdyby se vrátilo `stav:'wish'`, vyšlo by 575 z 580.

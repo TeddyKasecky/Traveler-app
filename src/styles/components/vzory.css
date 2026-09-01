@@ -178,6 +178,10 @@
 /* ---------- pilulky ---------- */
 .pilulky{display:flex;gap:8px;overflow-x:auto;margin:0 -14px;padding:2px 14px 4px;scrollbar-width:none}
 .pilulky::-webkit-scrollbar{display:none}
+/* Zalomené pilulky místo posouvání do strany (`tadeas-f32-011`). Čtrnáct nálad
+   se do jedné řady nevejde a poslední byly za okrajem, kde je nikdo nehledal.
+   Posouvací pilulky jinde v appce zůstávají – proto vlastní třída. */
+.pilulky.zalomene{display:grid;grid-template-columns:repeat(3,1fr);overflow-x:visible;margin:0;padding:2px 0 4px}
 .pilulka{flex:0 0 auto;background:var(--plocha);border:var(--line);border-radius:var(--r-s);
   box-shadow:var(--stin-1);padding:9px 13px;display:flex;flex-direction:column;align-items:center;gap:4px;
   min-width:74px;transition:transform .16s var(--pop),background .18s,color .18s}

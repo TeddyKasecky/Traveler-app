@@ -286,6 +286,14 @@ export const prefs = nacti(PREFK, {
    * profilu spadl na `undefined[...]`.
    */
   moodUse: {},
+  /**
+   * Které nálady jsou na Objevuj zapnuté (`tadeas-f32-011`). Pole `id`
+   * z `data/moods.js`. **Chybí-li, platí výchozí šestka** – rozšíření na
+   * čtrnáct nesmí nikomu přeskládat obrazovku bez ptaní. Prázdné pole je
+   * platná odpověď („nechci žádné"), a proto se tu NEDEKLARUJE jako `[]`:
+   * to by se od „nikdy jsem si nevybral" nedalo odlišit.
+   */
+  nalady: undefined,
   /** Kdy se naposled stáhla záloha (ms). 0 = nikdy. */
   posledniZaloha: 0,
   /** Vzhled: 'system' (podle telefonu), 'svetly', 'tmavy'. Viz core/motiv.js. */

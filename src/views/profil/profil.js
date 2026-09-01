@@ -18,11 +18,13 @@ import { S, store, PHOTOS, prefs, savePrefs } from '../../core/store.js'
 import { esc } from '../../core/html.js'
 import { IC } from '../../icons/sprite.js'
 import { toast } from '../../components/toast.js'
-import { napojSbalky, sbalka } from '../../components/vzory.js'
+import { napojSbalky, pilulky, sbalka } from '../../components/vzory.js'
 import { vyberAutaHtml, napojVyberAuta } from '../../components/vyberAuta.js'
 import { zobrazPolohu, vyberBod } from '../../map/map.js'
 import { PROFILOVE, pripisProfilove } from '../plan/achievementy.js'
 import { pozicHtml, napojPozice } from './pozice.js'
+import { HOME_MOODS } from '../../data/moods.js'
+import { prepniNaladu, zapnuteNalady } from '../home/moods.js'
 
 /** Spočítá, co se dá říct o uživatelských datech. */
 function cisla() {
@@ -78,6 +80,31 @@ const dlazdice = (hodnota, popis) => `<div class="pstat"><b>${hodnota}</b><span>
  */
 const otevreneSkupiny = new Set()
 
+/**
+ * Výběr nálad pro Objevuj (`tadeas-f32-011`).
+ *
+ * PROČ V PROFILU A NE V NASTAVENÍ: Profil odpovídá na „kdo jsem a co mám za
+ * sebou", a na co má kdo náladu, je vkus, ne to, jak má appka fungovat.
+ * Hlášení to tak výslovně chtělo.
+ *
+ * Pilulky nesou stejnou ikonu i pořadí jako v Objevuj, aby se výběr dal
+ * s výsledkem porovnat očima. Zhasnout jde i všechny – sekce pak z Objevuj
+ * zmizí celá a tahle nápověda je jediné místo, kde se dá zase zapnout, takže
+ * musí říct, co se stalo.
+ */
+function naladyHtml() {
+  const zapnute = new Set(zapnuteNalady())
+  const kusy = HOME_MOODS.map((m) => ({ id: m.id, popisek: m.l, ikona: m.ic, on: zapnute.has(m.id) }))
+  const n = zapnute.size
+  const napoveda = n
+    ? `Na Objevuj se ukáže ${n} ${n === 1 ? 'nálada' : n < 5 ? 'nálady' : 'nálad'} ze ${HOME_MOODS.length}.`
+    : 'Všechny jsou zhasnuté, takže se na Objevuj sekce „Jakou máte náladu?" vůbec neukáže.'
+  return `<div class="sechd">${IC('i-sparkles')}Na co máte náladu</div>
+    <div class="meta">Vyber, které nálady chceš mít na Objevuj po ruce.</div>
+    <div id="profilNalady">${pilulky(kusy, 'zalomene')}</div>
+    <div class="meta" style="margin-top:8px">${napoveda}</div>`
+}
+
 export function renderProfil() {
   const wrap = document.getElementById('profilInner')
   if (!wrap) return
@@ -123,6 +150,10 @@ export function renderProfil() {
       { ikona: 'i-van' }
     )}
     ${sbalka('pozice', 'Místa', pozicHtml(), { ikona: 'i-dum' })}
+    ${/* OTEVŘENOST SE MUSÍ PŘEDAT. Ťuknutí na pilulku překresluje celý Profil
+         (mění se nápověda pod nimi), a bez tohohle by se skupina pod prstem
+         zase zavřela. Ostatní skupiny se nepřekreslují, tak to nepotřebují. */ ''}
+    ${sbalka('nalady', 'Nálady', naladyHtml(), { ikona: 'i-sparkles', otevreno: otevreneSkupiny.has('nalady') })}
   `
 
   // Jméno se ukládá při odchodu z políčka, ne při každém písmenu: savePrefs()
@@ -145,6 +176,15 @@ export function renderProfil() {
   })
 
   napojPozice(wrap, renderProfil, (cb) => vyberBod(cb))
+
+  // Překresluje se celý Profil, ne jen ta jedna pilulka: nápověda pod nimi
+  // se mění podle počtu zapnutých a sbalka si otevřenost pamatuje sama.
+  for (const b of wrap.querySelectorAll('#profilNalady .pilulka[data-id]')) {
+    b.onclick = () => {
+      if (!prepniNaladu(b.dataset.id)) return toast('Nastavení se neuložilo')
+      renderProfil()
+    }
+  }
 
   document.getElementById('profilJmeno').onblur = (e) => {
     const nove = e.target.value.trim()

@@ -689,6 +689,21 @@ v `prefs.domuPoradi` a `prefs.domuSkryte`, takže jdou do zálohy.
   `ulozenePozice` a `aktivniPrepocet`**. Staré zálohy tyhle klíče nemají
   a obnova je přeskočí; rozjetou cestu v telefonu obnova nepřepíše a archiv
   slučuje podle času vyjetí.
+- **Nálady jsou kategorie, rychlá inspirace je stav** (`tadeas-f32-011`, září
+  2026). Ta dělba je to hlavní: nálada odpovídá na „jaké místo chci" (čtrnáct
+  kusů, deset kategorií z `categories.js` plus dvě kombinace a dvě zvláštní),
+  inspirace na „co teď dává smysl". Bez ní by na Objevuj stály dvě velké
+  mřížky dělající totéž. **Barvy a ikony nálad se berou z `categories.js`**,
+  ne vymýšlejí znovu.
+  **Které se ukážou, řídí `prefs.nalady`** – výběr je v Profilu ve čtvrté
+  sbalitelné skupině. Výchozí je dnešních šest, takže rozšíření nikomu nic
+  nepřeskládá; čtení unese chybějící předvolbu, neznámé `id` i `id` dvakrát,
+  ale **novou náladu samo nezapíná**. Zhasnout jde všechny – sekce pak
+  z Objevuj **zmizí celá**, nezůstane prázdný nadpis. Pilulky jsou mřížka
+  o třech sloupcích, ne posouvací pás.
+  **Týž výběr řídí i filtr tipů „Co dál?"** na kartě Na cestě
+  (`kosikView.js`): se čtrnácti náladami tam bylo dvanáct pilulek v pěti
+  řádcích, tedy pětina obrazovky nad samotnými tipy.
 - **Rychlá inspirace v Objevuj je osm dlaždic ve mřížce 4×2** (`tadeas-f32-013`,
   září 2026). Dlaždice, na kterou nejsou data, **nezmizí – zašedne, řekne proč
   a je `disabled`**; schovaná by z mřížky udělala díru a na čerstvém profilu
