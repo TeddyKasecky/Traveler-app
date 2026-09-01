@@ -75,6 +75,6 @@ je psaný tak, aby šlo místo přidat bez čtení kódu.
 
 - 318 z 580 míst nemá `img` — záměr, kreslí se pohlednice generovaná z `id`.
 - `ps` (psi) je vyplněné jen u 8 míst, takže filtr „Se psem" vrací 5 výsledků (N6).
-- Pět míst má v `col` stejnou kolekci dvakrát → varování, ne chyba (N6b).
+- Pět míst má v `col` stejnou kolekci dvakrát → varování, ne chyba (N24).
 - Kolekce `psi` je v datech, ale nemá definici v `COLL`, takže dlaždici v Objevuj nemá (N5).
 - Všech 8 parkovišť má `transitStatus: "verified"`.

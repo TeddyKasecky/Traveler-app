@@ -13,7 +13,7 @@
  * Panel se chová jako `#addPlace`: stejné třídy, stejné otevírání, registruje
  * se jako overlay, takže ho tlačítko zpět zavře dřív, než přepne záložku.
  *
- * PO PŘIDÁNÍ SE NEZAVÍRÁ (srpen 2026, `NAVIGACE.md` Z02). Do té doby zmizel
+ * PO PŘIDÁNÍ SE NEZAVÍRÁ (srpen 2026). Do té doby zmizel
  * hned po prvním výběru, takže přidat pět zastávek znamenalo pětkrát projít
  * tutéž cestu – deset dotyků místo šesti. Zavírá se tlačítkem, které tu bylo
  * odjakživa (`vmClose`), nebo systémovým zpět.

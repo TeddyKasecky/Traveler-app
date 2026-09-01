@@ -899,7 +899,7 @@ async function pridejBodPruvodce(den = 0, po = null) {
   })
   if (druh === null) return
 
-  // NA JMÉNO SE PTÁ JEN U VLASTNÍHO BODU (srpen 2026, `NAVIGACE.md` Z03).
+  // NA JMÉNO SE PTÁ JEN U VLASTNÍHO BODU (srpen 2026).
   // U start/nocleh/cíl byla předvolba `DRUHY[druh].popisek` použitelné slovo
   // („Start", „Nocleh", „Cíl“), takže se dialog ptal na něco, co appka právě
   // dostala předchozím dotykem – jediný ze sedmi dotyků, který nezjišťoval
@@ -1723,7 +1723,7 @@ function prepniMenu() {
     // smazal: drobečky zůstaly, zastávek nula a prázdný stav se převlékl za
     // fantomovou „Náš plán" – vypadalo to, jako by se místo smazané objevila
     // jiná. Ze zdroje to poznat nešlo, odhalil to až pokus v prohlížeči
-    // (`NAVIGACE.md` Z01, `BUGS.md` B6).
+    // (`BUGS.md` B6).
     dil = 'vypravy'
     draw()
     toast('Výprava smazána')

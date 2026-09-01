@@ -1236,7 +1236,10 @@ await kontrola('a po Zrušit detail zůstal otevřený', () => page.locator('#sh
 
 await page.evaluate(() => document.getElementById('dKosik').click())
 await page.waitForTimeout(400)
-await page.evaluate(() => document.getElementById('backdrop').click())
+// DO ROHU, ne doprostřed: závěs je přes celou obrazovku (390×844), ale
+// karta dialogu na něm leží od y=289 do y=555, takže geometrický střed patří
+// kartě. Člověk ťuká vedle ní. Změřeno: v bodě 10,10 je navrchu `#backdrop`.
+await page.click('#backdrop', { position: { x: 10, y: 10 } })
 await page.waitForTimeout(400)
 await kontrola('ani klik na závěs detail nezavře', () => page.locator('#sheet.show').count(), 1)
 await kontrola('a dialog je pryč', () => page.locator('#dialog.show').count(), 0)
@@ -1281,7 +1284,14 @@ await page.click('#tabs button[data-tab="list"]')
 await page.waitForTimeout(400)
 await page.locator('#listInner .radek').first().click()
 await page.waitForTimeout(700)
-await page.evaluate(() => document.getElementById('dPorovnat').click())
+// PŘES NABÍDKU „…", ne rovnou na tlačítko: `#dPorovnat` bydlí v `#dViceMenu`,
+// které je zavřené, takže má 0×0 px a prstem se na něj nedá dosáhnout.
+// Klikat na něj napřímo znamenalo ověřovat obsluhu, ne že se k ní člověk
+// dostane – po otevření „…" má 336×40 px (`BUGS.md` B7).
+await page.click('#dVice')
+await page.waitForTimeout(300)
+await kontrola('nabídka „…" ukáže Porovnat', () => page.locator('#dPorovnat').isVisible())
+await page.click('#dPorovnat')
 await page.waitForTimeout(200)
 await kontrola('jedno místo porovnání neotevře', () => page.locator('#porovnani.show').count(), 0)
 // Detail leží nad spodní lištou (z-index 1300 vs 1200), takže se musí zavřít,
@@ -1292,7 +1302,9 @@ await page.click('#tabs button[data-tab="list"]')
 await page.waitForTimeout(400)
 await page.locator('#listInner .radek').nth(1).click()
 await page.waitForTimeout(700)
-await page.evaluate(() => document.getElementById('dPorovnat').click())
+await page.click('#dVice')
+await page.waitForTimeout(300)
+await page.click('#dPorovnat')
 await page.waitForTimeout(400)
 await kontrola('druhé místo otevře porovnání', () => page.locator('#porovnani.show').count(), 1)
 await kontrola('porovnání má obě hlavičky', () => page.locator('#porovnaniBody .pvhead').count(), 2)
@@ -1338,7 +1350,7 @@ await kontrola('zastávka přibyla do plánu', () =>
   page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).plan.length),
   1
 )
-// PLÁT SE PO PŘIDÁNÍ NEZAVÍRÁ (srpen 2026, `NAVIGACE.md` Z02). Do té doby
+// PLÁT SE PO PŘIDÁNÍ NEZAVÍRÁ (srpen 2026). Do té doby
 // zmizel hned, takže pět zastávek stálo pětkrát tutéž cestu. Přidané místo
 // ze seznamu nemizí – jen zšedne, aby se pod prstem neposunul zbytek.
 await kontrola('vybírátko po přidání zůstane otevřené', () =>
@@ -1705,7 +1717,7 @@ await page.waitForTimeout(400)
 await kontrola('průvodce nabízí čtyři druhy bodu', () => page.locator('#dialog .dialog-volba').count(), 4)
 await page.click('.dialog-volba[data-i="0"]') // start
 await page.waitForTimeout(400)
-// NA JMÉNO SE U START/NOCLEH/CÍL UŽ NEPTÁ (srpen 2026, `NAVIGACE.md` Z03).
+// NA JMÉNO SE U START/NOCLEH/CÍL UŽ NEPTÁ (srpen 2026).
 // Předvolba byla použitelné slovo („Start"), takže se dialog ptal na něco,
 // co appka právě dostala předchozím dotykem. Po druhu jde rovnou poloha.
 await kontrola('u startu se na jméno neptá', () => page.locator('#dialogVstup').count(), 0)

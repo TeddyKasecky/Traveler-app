@@ -230,7 +230,7 @@ Práce na desítky minut, žádná závislost na vás.
 ### b) Fáze 5 — čtyři zbylé rychlé opravy z `NAPADY.md`
 
 N3 (import CSV maže kolekce), N4 („Zrušit vše" nemaže hledání), N5 (kolekce
-„Se psem" nemá dlaždici), N6b (pět míst má kolekci dvakrát), N7 (hledání nezahrnuje
+„Se psem" nemá dlaždici), N24 (pět míst má kolekci dvakrát), N7 (hledání nezahrnuje
 krátký popis).
 
 N1 (odznak nepočítá „Musíme!") **zůstává schválně** — je to 1:1 s originálem.

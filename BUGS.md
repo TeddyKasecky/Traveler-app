@@ -289,7 +289,6 @@ Dvě sousední mazací akce ve stejné obrazovce se tedy chovají opačně.
 `dil = 'vypravy'` před `draw()`, tedy přesně to, co u ukončené cesty dělá
 `poSmazani`. Ověřeno v prohlížeči — drobečky po smazání zmizí a knihovna
 napíše „Zatím tu není žádná výprava". `smoke` 481/481, `check-dny` 203/203.
-Vedeno v `NAVIGACE.md` jako Z01.
 
 **Oprava odhalila B7**, který je o testech, ne o Plánu — viz níž.
 
@@ -381,8 +380,30 @@ Ne „testy jsou k ničemu" — 481 kontrol drží spoustu věcí. Plyne z toho 
   kliknutí, ne chování.
 - **`page.click()` je výchozí; `evaluate().click()` potřebuje důvod v komentáři.**
   Ve dvanácti z patnácti míst žádný důvod není a `page.click()` tam projde.
-  U `#dPorovnat` důvod je — jen je to důvod, který nález schovává.
+  U zbylých tří to vypadalo jako důvod — a při pokusu se ukázalo, že to byl
+  jen obchvat kolem kroku, který v testu chyběl.
 
-Neopravuju to teď: je to zásah do 15 míst testu a patří k němu rozhodnutí,
-jestli se u porovnání má napřed otevírat nabídka „…" (což by kontrola
-zpřísnila) nebo ne. Zapsáno, aby se na to nezapomnělo.
+### Jak ty tři dopadly (září 2026)
+
+Rozdělil jsem je napřed na dvě hromádky a teprve pak opravoval:
+
+- **(a) chyba testu** — prvek je pro člověka dosažitelný, jen si k němu test
+  neotevřel cestu: **3 ze 3**.
+- **(b) chyba appky** — appka prvek schovává, i když by neměla: **0 ze 3**.
+  Žádný `B8` proto nevzniká.
+
+Obojí rozhodnuto pokusem v prohlížeči, ne úvahou:
+
+| Co | Měření | Verdikt |
+|---|---|---|
+| `#dPorovnat` ×2 | zavřená „…": `0 × 0` px, `#dViceMenu` má `hidden` a `display:none`. **Po ťuknutí na „…": `336 × 40` px a poctivý klik projde** | (a) — člověk se k němu běžně dostane, test si jen neotevřel nabídku |
+| `#backdrop` ×1 | závěs je `390 × 844`, karta dialogu na něm leží od `y=289` do `y=555`. **V bodě `10,10` je navrchu `#backdrop`** a klik do rohu dialog zavře | (a) — střed patří kartě, člověk ťuká vedle ní |
+
+Opravené v `smoke.mjs`: u porovnání se napřed ťukne na „…" (plus nová kontrola,
+že se tím `#dPorovnat` opravdu zviditelní), u závěsu se klika trefí do rohu
+přes `{ position: { x: 10, y: 10 } }`. Obě jsou teď poctivé `page.click()`,
+takže od téhle chvíle **ověřují i to, že se k prvku dá dosáhnout**.
+
+Zbývá **12** míst s `evaluate().click()` proti **223** poctivým. U všech dvanácti
+je změřeno, že poctivý klik projde — je to tedy zbytečná forma, ne skrytý nález.
+Přepsat je jde kdykoli; samo o sobě to žádnou chybu neodhalí.

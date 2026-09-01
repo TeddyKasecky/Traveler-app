@@ -102,11 +102,15 @@ export const vsechnyBody = (nazev = null) => bloky(nazev).filter((b) => b.typ ==
 export function bodyNaVypravu() {
   const polozky = seznamVyprav().map((v) => ({ nazev: v.nazev, pocet: vsechnyBody(v.nazev).length }))
   const s = polozky.filter((p) => p.pocet > 0).map((p) => p.pocet).sort((a, b) => a - b)
+  // U SUDÉHO POČTU SE NEZAOKROUHLUJE. Do srpna 2026 tu bylo `Math.round()`,
+  // takže z hodnot 1 a 2 vycházely 2 – medián se posouval nahoru a tvrdil,
+  // že se bodů zakládá víc, než se zakládá. Půlka je platná odpověď a jiná
+  // než celé číslo z toho vyjít nemůže (vždycky .0 nebo .5).
   const median = !s.length
     ? 0
     : s.length % 2
       ? s[(s.length - 1) / 2]
-      : Math.round((s[s.length / 2 - 1] + s[s.length / 2]) / 2)
+      : (s[s.length / 2 - 1] + s[s.length / 2]) / 2
   return { polozky, median, sBodem: s.length }
 }
 

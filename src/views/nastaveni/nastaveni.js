@@ -98,10 +98,11 @@ function doPrihradky(id, html) {
 /**
  * Kolik bodů trasy má která výprava – jen se to vypíše.
  *
- * PROČ TO TU JE: `NAVIGACE.md` vede jako Z07 otázku, jestli je sedm dotyků
- * k založení vlastního bodu moc. Rozhodnout to jde jedině tím, kolik bodů
- * na výpravu vlastně vzniká, a to už `store.bloky` dávno ví – chybělo jen
- * místo, kde se to přečte. **Nic nového se proto nesbírá ani neukládá.**
+ * PROČ TO TU JE: založit vlastní bod trasy stojí sedm dotyků a bez čísla
+ * nešlo říct, jestli to vadí. Rozhodne to jedině to, kolik bodů na výpravu
+ * vlastně vzniká – a to už `store.bloky` dávno ví, chybělo jen místo, kde
+ * se to přečte. **Nic nového se proto nesbírá ani neukládá.** (Odpověď:
+ * medián 2, tedy jeden dva body na výpravu – sedm dotyků není to, co pálí.)
  *
  * Medián je jen z výprav, které aspoň jeden bod mají, a vedle něj stojí
  * jejich počet – bez toho by se nepoznalo, jestli „medián 1“ znamená jednu
@@ -112,7 +113,8 @@ function bodyNaVypravuHtml() {
   if (!polozky.length) return 'Zatím tu není žádná výprava.'
   const vypis = polozky.map((p) => `${esc(p.nazev)} <b>${p.pocet}</b>`).join(' · ')
   const souhrn = sBodem
-    ? `medián <b>${median}</b> z ${sBodem} ${sklonuj(sBodem, 'výpravy', 'výprav', 'výprav')} s aspoň jedním bodem`
+    // Sudý počet dá půlku (1 a 2 → 1,5) – proto česká desetinná čárka.
+    ? `medián <b>${median.toLocaleString('cs')}</b> z ${sBodem} ${sklonuj(sBodem, 'výpravy', 'výprav', 'výprav')} s aspoň jedním bodem`
     : 'žádná výprava zatím bod nemá'
   return `${vypis}<br>${souhrn}`
 }

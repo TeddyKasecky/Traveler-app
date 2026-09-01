@@ -497,14 +497,13 @@ protože se z košíku do nich tahá.
   vrací zastávky i body s typem a dnem; `serazenaTrasa()` je jen její
   mapování na souřadnice pro routing. Třetí parametr je **seznam bodů**, ne
   přepínač: karta Na cestě potřebuje bloky pod názvem cesty.
-- **Plát „Přidat zastávku" se po přidání NEZAVÍRÁ** (srpen 2026, `NAVIGACE.md`
-  Z02). Do té doby zmizel hned po prvním výběru, takže pět zastávek znamenalo
+- **Plát „Přidat zastávku" se po přidání NEZAVÍRÁ** (srpen 2026). Do té doby zmizel hned po prvním výběru, takže pět zastávek znamenalo
   pětkrát projít tutéž cestu. Přidané místo ze seznamu **nemizí, jen zšedne**
   a dostane pilulku „Přidáno" – kdyby se odfiltrovalo, seznam by se pod prstem
   posunul o řádek a druhé ťuknutí by trefilo něco jiného. Do počtu „míst mimo
   plán" se přidaná nepočítají a vedle stojí „2 přidaná". Druhé ťuknutí na
   přidané nedělá nic: pilulka říká „Přidáno", ne „Odebrat".
-- **Na jméno bodu se ptá jen u vlastního** (srpen 2026, `NAVIGACE.md` Z03).
+- **Na jméno bodu se ptá jen u vlastního** (srpen 2026).
   U start/nocleh/cíl byla předvolba použitelné slovo, takže se dialog ptal na
   něco, co appka právě dostala předchozím dotykem. U vlastního je předvolbou
   „Vlastní místo", což nikdo nenechá. Jméno jde kdykoli změnit v kartě bodu

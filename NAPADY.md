@@ -7,6 +7,11 @@ N1–N10 vznikly během přestavby, kdy byla cílem parita. Ta skončila (`PARIT
 takže se dnes smějí implementovat; pořád ale až po dohodě. N11 a dál jsou nápady
 k věcem, které v původní aplikaci vůbec nebyly.
 
+**N21–N23 jsou zbytek po auditu navigace** (srpen 2026). Zbylá zjištění z něj
+jsou hotová nebo vyvrácená, takže po auditu zůstaly jen tyhle tři — a všechny
+tři čekají na totéž: na číslo, jak často se kudy chodí. Bez něj je hloubka
+i hustota jen tvrzení. U každého proto stojí, jaké měření by ho rozhodlo.
+
 ---
 
 ## Vypadá to jako chyba v původní aplikaci
@@ -47,7 +52,7 @@ zobrazuje, žádný vykreslovací kód se měnit nemusel (`COLL.map()` je obecn�
 Pole `ps` je vyplněné jen u 8 z 580 míst (5× „Ano", 3× „Ne"). Filtr tedy vrací 5 míst,
 i když psi jsou vítaní na spoustě dalších. Doplnění je ruční práce nad daty.
 
-**N6b — Pět míst má v `col` stejnou kolekci dvakrát**
+**N24 — Pět míst má v `col` stejnou kolekci dvakrát** (dřív vedeno jako „N6b")
 `polle-di-malbacco-…-863`, `cascata-di-giumaglio-…-500`, `cascata-cai-d-alto-…-594`
 a `jettegrytene-nissedal-norsko-358` mají dvakrát `koupacka`,
 `leiternweide-suspension-bridge-trail-274` má dvakrát `zdarma`.
@@ -326,6 +331,49 @@ Kód byl v původní aplikaci na řádcích 1378–1494 včetně svých šesti a
 (`vanbob`, `roadmove`, `clouddrift`, `flick`, `smokeup`, `twk`). Předloha se v srpnu
 2026 smazala, ale zůstává v historii repozitáře — `git show 75d976c:reference/index-original.html`
 ji vypíše, kdyby se scéna někdy hodila jako alternativa k `VAN_IMG`.
+
+**N21 — Mezi ťuknutím na místo a jeho detailem je 450 ms**
+Ťuknutí na kartu místa na Domů, v Objevuj, v Seznamu ani v plátu uložených
+pod mapou detail neotevře. Přepne se na Mapu, `goTo()` k místu přiletí
+(`flyTo`, 0,8 s) a detail otevře až `setTimeout` na **450 ms**
+(`src/map/map.js:231`). Vedle toho existuje druhá cesta, okamžitá: ťuknutí
+na špendlík emituje `otevriDetail` rovnou (`src/map/map.js:207`).
+
+Jsou to tedy dvě různě rychlé cesty ke stejnému výsledku a ta pomalejší je
+ta, kterou nabízejí čtyři obrazovky z pěti. Detail místa je přitom nejspíš
+nejotevíranější věc v celé appce, takže se těch 450 ms nesčítá jednou,
+ale stokrát.
+
+**Jaké měření by to rozhodlo:** poměr otevření detailu přes kartu proti
+otevření přes špendlík. Když přes kartu chodí většina, platí většina daň za
+animaci, o kterou nestála. Nesbírá se to — nejlevnější je čítač v `goTo()`
+a v obsluze špendlíku, oba do `prefs` ve stejném tvaru jako `moodUse` (N9).
+
+**N22 — Itinerář má osmnáct různých ovládacích prvků naráz**
+Změřeno v prohlížeči na 390 × 844 na nerolovaném přehledu výpravy: **20 prvků
+viditelných současně, z toho 18 navzájem odlišných** (zbytek jsou opakující se
+položky seznamu). Stálý chrome — spodní lišta a hlavička — se do toho
+nepočítá. Je to nejhustší obraz v appce; remízu s ním má jen panel Filtry.
+Není to délkou seznamu, ale počtem různých věcí: `plan.js` sám nese 22 výskytů
+`data-act` v jedenácti různých akcích a `src/views/plan/` má 18 souborů.
+
+Otázka, na kterou zatím nemám odpověď: dělá Itinerář opravdu šestkrát víc
+práce než ostatní obrazovky, nebo je jen šestkrát nepřehlednější? Bez čísla
+je obojí stejně pravděpodobné.
+
+**Jaké měření by to rozhodlo:** kolik z těch osmnácti prvků se za jednu
+výpravu opravdu použije. Při pěti je zbylých třináct nepřehlednost, při
+patnácti je ta hustota zasloužená. Sebralo by se čítačem na `data-act`
+v `plan.js` — jedno místo, jeden objekt v `prefs`, opět tvar `moodUse`.
+
+**N23 — Košík se možná otevírá v každém úkolu, ne občas**
+Plát košíku je na dva dotyky (Plán → kolečko vpravo dole) a v přehledu to
+vypadá nenápadně. Jenže jestli se na cestě otvírá pokaždé, když se přidává
+zastávka, je to nejpoužívanější překryv v appce a druhý dotyk je o jeden moc.
+
+**Jaké měření by to rozhodlo:** kolikrát za jednu cestu se otevře plát košíku
+proti tomu, kolikrát se otevře Itinerář. Čítač patří do `otevriKosikPlat()`
+(`src/components/kosikFab.js:75`).
 
 **N9 — Nálady na Domů podle četnosti použití**
 `prefs.moodUse` počítá, kolikrát jsi kterou náladu použila. Nikdy se to nečte.
