@@ -187,6 +187,24 @@ async function nafot(adresa, pripona) {
     )
     await page.waitForTimeout(250)
 
+    // POČKAT NA OBRÁZKY A PÍSMO, ne jen na ustálený počet prvků výš.
+    // Bez toho se snímek občas pořídil o snímek dřív, než se dokreslil
+    // některý `<img>`, a porovnání hlásilo 12 rozdílných pixelů na obrazovce,
+    // se kterou nikdo nehnul – pokaždé na jiné. Změřeno: týž build, dva
+    // výstřely, 12 px. Falešný poplach je u vizuální kontroly to nejhorší,
+    // co se může stát – skutečnou drobnou změnu pak nikdo nerozezná od šumu.
+    await page.evaluate(async () => {
+      await Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 1000))])
+      // S ČASOVÝM STROPEM. `decode()` na obrázku s `loading="lazy"`, který se
+      // ještě nezačal stahovat, nedoběhne NIKDY – bez stropu se snímkování
+      // zaseklo napořád. Čeká se tedy nejvýš vteřinu; nedokreslený obrázek je
+      // pořád lepší než skript, který nikdy neskončí.
+      const strop = (p) => Promise.race([p, new Promise((r) => setTimeout(r, 1000))])
+      await strop(
+        Promise.all([...document.images].map((i) => (i.complete ? null : i.decode().catch(() => {}))))
+      )
+    })
+
     await page.screenshot({ path: path.join(OUT, `${o.nazev}-${pripona}.png`) })
     await ctx.close()
   }
