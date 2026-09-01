@@ -275,6 +275,18 @@ vyvolal, nebyl chyba v kódu — appka kreslila otisk aktivní cesty
 (`store.cesta.zastavky`) místo živého plánu, a bez vizuálního rozlišení to
 splynulo. Podrobně v `BUGS.md` B1.
 
+**N16 — Smazat ukončenou cestu — ~~HOTOVO~~**
+Archiv „Za námi" šel jen prohlížet. Dnes jde ukončenou cestu smazat, a **jen
+z Itineráře** — tlačítko vedle „Odemknout poznámky" v zamčené kartě,
+s potvrzením. Řádek v archivu nabídku nemá, stejně jako řádek výpravy
+v knihovně: akce patří dovnitř, ne do seznamu. Smazání nuluje
+`S.otevrenaCesta` a pouští `uklidTrasy()`; **získané achievementy zůstávají**
+– smazání cesty není popření, že se jela.
+
+> Tenhle záznam byl v srpnu 2026 z `NAPADY.md` **smazán** místo označení za
+> hotový (commit `0405ec4`), takže odkaz „N16" v `CLAUDE.md` půl roku visel do
+> prázdna. Proto se hotové položky **nemažou** — dostanou `~~HOTOVO~~`.
+
 **N14 — „Co dál?" na kartě Na cestě počítá jen vzdušnou vzdálenost**
 
 Tipy na pokračování (`src/views/plan/kosikView.js#tipyOdsud()`/`coDalHtml()`,
@@ -298,35 +310,23 @@ na síť).
 
 ---
 
-**N15 — Počasí v plánu: dnes a zítra na kartě Na cestě**
+**N15 — Počasí v plánu: dnes a zítra na kartě Na cestě — ~~SPLYNULO S N19~~**
 
-Předpověď z Open-Meteo se od srpna 2026 nikde nevykresluje. `nactiPocasi()`
-a `pocasiPodleKodu()` v `views/plan/termin.js:132-174` **zůstávají hotové
-a funkční** — jen je nikdo nevolá.
+Napsáno v době, kdy se předpověď nevykreslovala vůbec. **Ta premisa už
+neplatí:** `nactiPocasi()` volá `components/pocasi.js:75` a na Domů je celý
+pruh hodin i dnů. To, co z N15 zbývalo — počasí na kartě Na cestě — je
+doslova druhá odrážka N19, takže by to tu leželo dvakrát.
 
-*Proč to odešlo:* počasí bývalo v „Kostře cesty" nad itinerářem, kde měl
-každý den svou ikonu a teplotu. Kostra zanikla (dva seznamy dnů pod sebou
-nutily člověka spojovat obě půlky hlavou) a s ní i to počasí. Předpověď na
-desátý den výpravy je navíc informace, podle které se nikdo nerozhoduje —
-Open-Meteo dává 16 dní dopředu a poslední třetina je věštění.
-
-*Kam patří:* na kartu **Na cestě**, kde se člověk ptá „prší dneska?" a „bude
-zítra na tu ferratu počasí?". Tam je předpověď na dva až tři dny přesná
-a rozhoduje se podle ní opravdu.
-
-*Co je hotové a co ne:* volání i mapování kódů WMO na ikony (`i-sun`,
-`i-rain`, `i-snow`, `i-bolt`) jsou napsané a otestované v `check-dny.mjs`.
-Chybí jen vykreslení a rozhodnutí, pro který bod se předpověď tahá —
-u rozjeté cesty se nabízí další cíl, ne první zastávka plánu jako dřív.
-Pozor na cache: `pocasiDne` byla v `dashboard.js` jen v paměti, protože
-uložená předpověď by lhala. To pravidlo platí dál.
+Zůstává jediné, co N19 neneslo, a je to přeneseno k němu: **uložená předpověď
+u dne by lhala**, proto byla `pocasiDne` v `dashboard.js` jen v paměti.
 
 ---
 
 ## Vzhled a UX
 
-**N8 — Kreslená scéna s dodávkou (`vanScene`)**
-Ve fázi 3 zahozena — oživit ji nešlo, hero na Domů by vypadal jinak, a to je zakázané.
+**N8 — Kreslená scéna s dodávkou (`vanScene`) — ~~ZAHOZENO~~**
+Není to nápad, je to rozhodnutí: ve fázi 3 zahozena — oživit ji nešlo, hero na Domů
+by vypadal jinak, a to je zakázané.
 Kód byl v původní aplikaci na řádcích 1378–1494 včetně svých šesti animací
 (`vanbob`, `roadmove`, `clouddrift`, `flick`, `smokeup`, `twk`). Předloha se v srpnu
 2026 smazala, ale zůstává v historii repozitáře — `git show 75d976c:reference/index-original.html`
@@ -417,6 +417,12 @@ tiše hromadí. `debug-cerstvost.mjs` duplicitu **odhalí**, ale nezabrání jí
 a commity z Workeru navíc obcházejí pre-commit hook, takže se na ně
 `debug-uklid --kontrola` nikdy nespustí.
 
+**Pozor na past:** appka **schválně posílá znovu záznam, který se od odeslání
+změnil** (`views/debug/debugExportUI.js:71`). Pravidlo „id už ve složce je →
+odmítnout" by tenhle tok rozbilo. Porovnávat se proto musí **obsah sekcí**, ne
+`id`. Bajtové porovnání celého souboru nestačí taky — hlavička nese čas
+generování, takže dva odeslané exporty nikdy nejsou shodné.
+
 Dvě cesty, dají se i zkombinovat:
 - **Kontrola ve Workeru** — před zápisem se zeptat GitHubu, jestli některý soubor
   ve složce ten záznam nenese, a odpovědět „už tam je". Přesnější: duplicita
@@ -425,14 +431,18 @@ Dvě cesty, dají se i zkombinovat:
   commitnout. Pokryje i to, na co Worker nedosáhne (třeba ručně uložený export),
   ale uklízí až po sobě, ne před.
 
-**N18 — nepotvrzeno: ukládá se „odesláno" spolehlivě?**
-Tatáž poznámka odešla dvakrát během jedné minuty, což je pozorování za N17.
-Vysvětlení může být úplně obyčejné — nebylo vidět potvrzení, tak to člověk zkusil
-znovu. Kdyby se ale `otiskExportu` po úspěšném odeslání neuložil (zavřená appka,
-plná paměť, chyba v `ulozDebug`), hlásila by appka záznam pořád jako neodeslaný
-a člověk by ho posílal donekonečna. **Není to nález, je to podezření.** Kdyby se
-to opakovalo, začni u toho, jestli se po odeslání zapíše `otiskExportu`
-a `exportovanoDo` do IndexedDB, a jestli se výsledek toho zápisu nezahazuje.
+**N18 — nepotvrzeno: ukládá se „odesláno" spolehlivě? — ~~PROVĚŘENO~~**
+Podezření znělo: kdyby se `otiskExportu` po úspěšném odeslání neuložil (plná
+paměť, chyba v `ulozDebug`), hlásila by appka záznam pořád jako neodeslaný
+a člověk by ho posílal donekonečna.
+
+**Ten mechanismus je ošetřený.** `views/debug/debugExportUI.js:177` dělá
+`if (!(await ulozDebug())) return toast('Označení se neuložilo – v telefonu
+došlo místo')`. Výsledek zápisu se nezahazuje a člověk se to dozví, takže
+tichá varianta, které se podezření bálo, nastat nemůže.
+
+Zbývá tedy to obyčejné vysvětlení — nebylo vidět potvrzení, tak to člověk
+zkusil znovu. Aby z toho nevznikly dvě kopie, je N17.
 
 **N19 — Počasí i u dnů v Itineráři, u míst a na kartě Na cestě**
 Hlášení `pc-tadeas-001` chtělo počasí na čtyřech místech. První etapa (srpen
@@ -448,6 +458,10 @@ od dotazů:
 - **Karta Na cestě** — nejbližší hodiny u dalšího cíle („za dvě hodiny tam
   začne pršet").
 - **Detail místa** — předpověď pro jeho souřadnice.
+
+**Uložená předpověď u dne by lhala** (přeneseno z N15): `pocasiDne` byla
+v `dashboard.js` schválně jen v paměti. To pravidlo platí dál — v IndexedDB
+leží předpověď u *polohy*, ne u dne výpravy.
 
 **N20 — Klimatický normál za obzorem předpovědi**
 Předpověď dosahuje 16 dní dopředu, takže výprava plánovaná na příští léto
