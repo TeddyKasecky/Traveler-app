@@ -51,6 +51,12 @@ const { mdExport, zaznamNaMd, bezpecnyText, nazevExportu, nazevZalohy, jsonZaloh
 
 const { zapisChybu, posledniChyby, pocetChyb, zapomenChyby, STROP } = await import('../src/core/chyby.js')
 
+// Kontext filtrů. `debugKontext.js` jde v Nodu naimportovat, protože
+// `mapaDb.js` sahá na IndexedDB až uvnitř funkcí a `chyby.js` se bez `window`
+// tiše přeskočí.
+const { filtryNaText } = await import('../src/core/debugKontext.js')
+const { F } = await import('../src/core/store.js')
+
 // Kvůli kontrole čistoty zdrojáků na konci – jinak tenhle skript na disk nesahá.
 const fs = await import('node:fs')
 const os = await import('node:os')
@@ -239,6 +245,47 @@ const sChybami = zaznamNaMd({
   kontext: { ...bug.kontext, chyby: [{ cas: KDY, druh: 'chyba', zprava: 'null is not an object', zdroj: 'index.js:1:1' }] },
 })
 t('připnuté chyby se vypíšou', sChybami.includes('Zachycené chyby (1):') && sChybami.includes('null is not an object'))
+
+/* ================= kontext filtrů (`tadeas-f32-014`) =================
+ *
+ * `F.reg`, `F.zeme` a `F.typ` jsou od srpna 2026 množiny. Množina je VŽDYCKY
+ * pravdivá a `${Set}` dá „[object Set]", takže se do kontextu KAŽDÉHO hlášení
+ * skoro dostalo „země [object Set]" – a prázdný filtr by se vypisoval taky.
+ * Oprava v `debugKontext.js` je od té doby hotová, kontrola k ní chyběla.
+ */
+
+console.log('\nKontext filtrů\n')
+
+const bezFiltru = () => {
+  F.q = ''
+  for (const k of ['kat', 'reg', 'zeme', 'typ']) F[k].clear()
+  for (const k of ['coll', 'stav']) F[k] = ''
+  for (const k of ['free', 'kids', 'dogs', 'wow', 'fire', 'ulozene', 'vPlanu']) F[k] = false
+}
+
+bezFiltru()
+t('bez filtrů je kontext prázdný', filtryNaText() === '')
+
+bezFiltru()
+F.zeme.add('Rakousko')
+F.zeme.add('Itálie')
+const dveZeme = filtryNaText()
+t('množina se rozbalí do hodnot', dveZeme.includes('Rakousko+Itálie'))
+t('a nikde není [object', !dveZeme.includes('[object'))
+
+bezFiltru()
+for (const [k, hodnota] of [['kat', 'Jezera'], ['reg', 'Tyrolsko'], ['zeme', 'Rakousko'], ['typ', 'Vodopád']]) F[k].add(hodnota)
+const vsechnyMnoziny = filtryNaText()
+t('žádná ze čtyř množin nevypíše [object', !vsechnyMnoziny.includes('[object'))
+t('všechny čtyři jsou v textu', ['Jezera', 'Tyrolsko', 'Rakousko', 'Vodopád'].every((x) => vsechnyMnoziny.includes(x)))
+
+// DRUHÁ POLOVINA TÉŽE CHYBY: prázdná množina je pravdivá, takže by se bez
+// `.size` vypsala jako „země " s prázdnou hodnotou.
+bezFiltru()
+F.free = true
+t('prázdné množiny se nevypisují', filtryNaText() === 'zdarma')
+
+bezFiltru()
 
 /* ================= uživatelský text nerozbije soubor ================= */
 

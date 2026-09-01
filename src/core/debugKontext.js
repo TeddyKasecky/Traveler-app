@@ -43,8 +43,13 @@ const mb = (n) => `${(n / 1048576).toFixed(1)} MB`
  * seznam dvanácti „false" by v exportu jen šuměl.
  *
  * `F.kat` je Set, takže se musí rozbalit; `JSON.stringify` by z něj udělal `{}`.
+ *
+ * EXPORTOVANÁ KVŮLI `check-debug.mjs`. Jediná druhá cesta k ní vede přes
+ * `sberKontext()`, která je `async` a sahá na IndexedDB i na měření úložiště —
+ * testovat ji tudy by znamenalo stubovat půlku prohlížeče. Stejný důvod, proč
+ * je datová vrstva bloků oddělená od `bloky.js`.
  */
-function filtryNaText() {
+export function filtryNaText() {
   const kusy = []
   if (F.q) kusy.push(`hledání „${F.q}"`)
   if (F.kat.size) kusy.push(`kategorie ${[...F.kat].join('+')}`)
