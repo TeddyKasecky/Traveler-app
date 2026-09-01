@@ -1227,14 +1227,14 @@ await kontrola('detail má ikonovou řadu', () => page.locator('#sheet .ikonrada
 // Detail se zavírá klikem mimo panel a klik uvnitř dialogu je technicky „mimo“,
 // takže „Do košíku“ → Zrušit člověka vyhodilo na mapu. Dvakrát: tlačítkem
 // Zrušit a klikem na závěs – ten dialog zavírá taky a do `#dialog` nepatří.
-await page.evaluate(() => document.getElementById('dKosik').click())
+await page.click('#dKosik')
 await page.waitForTimeout(400)
 await kontrola('výběr výpravy se otevřel nad detailem', () => page.locator('#dialog.show').count(), 1)
 await page.click('#dialogNe')
 await page.waitForTimeout(400)
 await kontrola('a po Zrušit detail zůstal otevřený', () => page.locator('#sheet.show').count(), 1)
 
-await page.evaluate(() => document.getElementById('dKosik').click())
+await page.click('#dKosik')
 await page.waitForTimeout(400)
 // DO ROHU, ne doprostřed: závěs je přes celou obrazovku (390×844), ale
 // karta dialogu na něm leží od y=289 do y=555, takže geometrický střed patří
@@ -1243,12 +1243,12 @@ await page.click('#backdrop', { position: { x: 10, y: 10 } })
 await page.waitForTimeout(400)
 await kontrola('ani klik na závěs detail nezavře', () => page.locator('#sheet.show').count(), 1)
 await kontrola('a dialog je pryč', () => page.locator('#dialog.show').count(), 0)
-await page.evaluate(() => document.getElementById('dVice').click())
+await page.click('#dVice')
 await page.waitForTimeout(300)
 await kontrola('„…" nabízí vedlejší akce', () =>
   page.locator('#dViceMenu a, #dViceMenu button').count().then((n) => n === 4)
 )
-await page.evaluate(() => document.getElementById('dVice').click())
+await page.click('#dVice')
 
 // tlačítko zpět zavře detail
 await page.goBack()
@@ -1400,7 +1400,7 @@ await kontrola('detail má tlačítko košíku', () => page.locator('#dKosik').c
 // Tlačítko se od srpna 2026 ptá, DO KTERÉ výpravy – dřív sahalo rovnou na
 // otevřenou, takže „chci to na dvě výpravy" znamenalo přepínat sem a tam.
 // Otevřená výprava je zkratka na prvním řádku a dialog zavře.
-await page.evaluate(() => document.getElementById('dKosik').click())
+await page.click('#dKosik')
 await page.waitForTimeout(500)
 await kontrola('košík se ptá, do které výpravy', () => page.locator('#dialog.show #dialogHlavni').count(), 1)
 await page.click('#dialogHlavni')
@@ -2010,9 +2010,9 @@ await kontrola('z košíku vznikla nová výprava', () =>
   }))
 await kontrola('a skočilo se do Plánu', () => page.evaluate(() => location.hash), '#plan')
 // Vrátit se k jediné výpravě: smazat tu novou (aktivuje se odložená).
-await page.evaluate(() => document.getElementById('planVice').click())
+await page.click('#planVice')
 await page.waitForTimeout(300)
-await page.evaluate(() => document.getElementById('planSmaz').click())
+await page.click('#planSmaz')
 await page.waitForTimeout(300)
 await page.click('#dialogAno')
 await page.waitForTimeout(600)
@@ -2026,9 +2026,9 @@ await page.locator('#planWrap .radek, #planWrap [data-vyprava]').first().click()
 await page.waitForTimeout(700)
 
 // uklidit po sobě, ať další kontroly počítají s prázdným plánem
-await page.evaluate(() => document.getElementById('planVice').click())
+await page.click('#planVice')
 await page.waitForTimeout(300)
-await page.evaluate(() => document.getElementById('planClear').click())
+await page.click('#planClear')
 await page.waitForTimeout(300)
 await page.click('#dialogAno')
 await page.waitForTimeout(500)
@@ -2174,7 +2174,7 @@ await kontrola('původní klíče zůstaly nedotčené', () =>
 )
 
 // zavřít a uklidit po sobě
-await page.evaluate(() => document.getElementById('addClose').click())
+await page.click('#addClose')
 await page.waitForTimeout(500)
 await kontrola('formulář se zavřel', () => page.locator('#addPlace.show').count(), 0)
 await page.evaluate(() => localStorage.removeItem('vandrbuch:draft'))
@@ -2260,7 +2260,7 @@ if (!SINGLE) {
   )
 
   // Přepnutí na malovanou offline mapu.
-  await page.evaluate(() => document.getElementById('podkladBtn').click())
+  await page.click('#podkladBtn')
   await page.waitForTimeout(1200)
 
   await kontrola('offline mapa: přepínač hlásí stav', () => page.locator('#podkladBtn span').innerText(), 'Offline')
@@ -2283,6 +2283,12 @@ if (!SINGLE) {
   // a jen se staženým balíkem. Zjednodušená mapa má obrysy, města a reliéf,
   // takže se kontroluje reliéf: je to jediná nová vrstva, kterou je vidět
   // i bez stažení.
+  // MYŠ ZPÁTKY DOPROSTŘED MAPY. Kolečko zoomuje tam, kde kurzor stojí, a klik
+  // na pilulku podkladu ho odtáhl do levého horního rohu – oddálení odtamtud
+  // odsune výřez tak, že ve viditelné části nezůstane žádné město. Do září
+  // 2026 to bylo skryté tím, že se na pilulku klikalo přes `evaluate()`,
+  // které myší nehýbe (`BUGS.md` B7).
+  await page.mouse.move(195, 480)
   await page.mouse.wheel(0, 400)
   await page.waitForTimeout(400)
   await page.mouse.wheel(0, 400)
@@ -2301,7 +2307,7 @@ if (!SINGLE) {
     })
   )
 
-  await page.evaluate(() => document.getElementById('podkladBtn').click())
+  await page.click('#podkladBtn')
   await page.context().setOffline(false)
 }
 

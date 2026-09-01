@@ -394,6 +394,25 @@ Opravené v `smoke.mjs`: u porovnání se napřed ťukne na „…" (plus nová 
 přes `{ position: { x: 10, y: 10 } }`. Obě jsou teď poctivé `page.click()`,
 takže od téhle chvíle **ověřují i to, že se k prvku dá dosáhnout**.
 
-Zbývá **12** míst s `evaluate().click()` proti **223** poctivým. U všech dvanácti
-je změřeno, že poctivý klik projde — je to tedy zbytečná forma, ne skrytý nález.
-Přepsat je jde kdykoli; samo o sobě to žádnou chybu neodhalí.
+### Zbylých dvanáct (září 2026)
+
+Přepsané taky. **`smoke.mjs` má dnes nula `evaluate().click()` proti 235
+poctivým `page.click()`.**
+
+A hned to za sebou něco vytáhlo, přestože u všech dvanácti bylo změřeno, že
+poctivý klik projde: **kontrola „offline mapa: názvy měst" spadla.** Ne
+náhodou — před záměnou 493/493, po ní 492/493, ověřeno stashem.
+
+Příčina je poučná. Blok offline mapy si na ř. 2240 schválně přesune myš
+doprostřed mapy (`mouse.move(195, 480)`), protože kolečko zoomuje tam, kde
+kurzor stojí. `evaluate().click()` **myší nehýbe**, takže tam kurzor zůstal
+i přes klik na pilulku podkladu. Poctivý klik ho odtáhl na pilulku v levém
+horním rohu a následné oddálení odsunulo výřez tak, že ve viditelné části
+nezbylo jediné město.
+
+Test tedy tiše stál na tom, že se myš nehne — a `evaluate()` tu závislost
+schovával. Opraveno přesunem myši zpátky doprostřed mapy před oddálením,
+tedy tím, co blok o dvacet řádků výš už jednou dělá.
+
+**To je ta cena, kterou ta zkratka mlčky účtuje**: dvanáct klidných míst
+a jedna skrytá závislost, o které se neví, dokud se nevymění forma kliku.
