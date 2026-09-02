@@ -2815,6 +2815,100 @@ await page.waitForTimeout(800)
 await kontrola('rušítko vrátí všechna místa', nalezeno, vsechnaMista)
 await kontrola('a zase zšedne', () => page.locator('#listZrusFiltry').isDisabled(), true)
 
+/* ---------- přepočet trasy se propíše na hlavní mapu ---------- */
+
+// TOHLE JE KONTROLA, KTERÁ CHYBĚLA. `map/planLine.js` si opisoval
+// `otiskBodu()` z routingu, a když otisk přešel na hash, kopie zůstala
+// u dlouhého řetězce – porovnání nemohlo nikdy vyjít a přepočtená trasa se
+// na hlavní mapě NIKDY nenakreslila. Nic se přitom nerozbilo hlasitě: appka
+// tiše kreslila vzdušnou čáru.
+//
+// Pozná se to podle počtu vrcholů: vzdušná spojnice jich má tolik co bodů
+// plánu, skutečná trasa mnohem víc. Podvržená odpověď je proto CIKCAK –
+// rovnou čáru by Leaflet zjednodušil na dva vrcholy a počet by neměřil nic.
+const VRCHOLU_TRASY = 40
+await page.route('**/api.mapy.com/v1/routing/route**', async (route) => {
+  // CIKCAK PŘES PŮL EVROPY, ne drobný: měří se až po odzoomování a Leaflet
+  // zjednodušuje podle obrazovky – cikcak o desetinu stupně by se na malém
+  // měřítku smrskl na dva vrcholy a kontrola by neměřila nic.
+  const coords = Array.from({ length: VRCHOLU_TRASY }, (_, i) => [10 + i * 0.4, 45 + (i % 2) * 6])
+  await route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({ length: 123000, duration: 7200, geometry: { geometry: { coordinates: coords } } }),
+  })
+})
+
+await page.click('#tabs button[data-tab="plan"]')
+await page.waitForTimeout(500)
+await page.click('#planSegment button[data-seg="vypravy"]')
+await page.waitForTimeout(500)
+await page.locator('.vypravaradek').first().click()
+await page.waitForTimeout(700)
+await page.click('#planPridat')
+await page.waitForTimeout(600)
+await page.locator('#vmBody .radek').nth(0).click()
+await page.waitForTimeout(400)
+await page.locator('#vmBody .radek').nth(1).click()
+await page.waitForTimeout(400)
+await page.locator('#vmBody .radek').nth(2).click()
+await page.waitForTimeout(600)
+await page.click('#vmClose')
+await page.waitForTimeout(400)
+
+/**
+ * Nejvíc vrcholů, jaké má některá čára na hlavní mapě.
+ *
+ * NEJDŘÍV SE ODZOOMUJE. Leaflet čáry ořezává na výřez, takže mimo obraz má
+ * `d` čtyři znaky a měření by neměřilo trasu, ale to, kam se mapa zrovna
+ * dívá – po předchozích kontrolách kdekoli.
+ */
+const vrcholyNaMape = async () => {
+  const box = await page.locator('#map').boundingBox()
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  for (let i = 0; i < 3; i++) {
+    await page.mouse.wheel(0, 400)
+    await page.waitForTimeout(300)
+  }
+  await page.waitForTimeout(800)
+  return page.evaluate(() =>
+    [...document.querySelectorAll('#map .leaflet-overlay-pane path')]
+      .map((p) => (p.getAttribute('d') || '').split(/[ML]/).length - 1)
+      .sort((a, b) => b - a)[0] || 0)
+}
+
+await page.click('#tabs button[data-tab="map"]')
+await page.waitForTimeout(1200)
+// Vzdušná spojnice má vrcholů tolik co bodů plánu – tedy tři, ne nula.
+// Kdyby se čára nekreslila vůbec, projde „míň než deset" taky, takže se
+// hlídá i spodní hranice.
+await kontrola('bez přepočtu kreslí mapa vzdušnou čáru', async () => {
+  const v = await vrcholyNaMape()
+  return v >= 2 && v < 10
+}, true)
+
+await page.click('#tabs button[data-tab="plan"]')
+await page.waitForTimeout(600)
+await page.click('#planPrepocitat')
+await page.waitForTimeout(2000)
+await kontrola('přepočet se uloží', () =>
+  page.evaluate(() => !!JSON.parse(localStorage.getItem('vandrbuch:v1')).aktivniPrepocet), true)
+
+await page.click('#tabs button[data-tab="map"]')
+await page.waitForTimeout(1800)
+await kontrola('a propíše se na hlavní mapu', async () =>
+  (await vrcholyNaMape()) >= VRCHOLU_TRASY - 2, true)
+
+// Úklid, ať další kontroly nepočítají s plánem o třech zastávkách.
+await page.click('#tabs button[data-tab="plan"]')
+await page.waitForTimeout(500)
+await page.click('#planVice')
+await page.waitForTimeout(300)
+await page.click('#planClear')
+await page.waitForTimeout(300)
+await page.click('#dialogAno')
+await page.waitForTimeout(500)
+await page.unroute('**/api.mapy.com/v1/routing/route**')
+
 /* ---------- počasí na cestě ---------- */
 
 // STOJÍ TO AŽ TADY, protože to zakládá rozjetou cestu – kontroly výš měří

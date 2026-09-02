@@ -80,10 +80,11 @@ npm run check-worker     # že Worker nepustí dál, co nemá, 48 bodů
 npm run debug-uklid      # duplicity a zavřené záznamy ze složky debug/ ven
 npm run debug-zavri      # uzavře záznam: -- <id> <hotovo|zahozeno> "důvod"
 
-npm run smoke            # proklikání v prohlížeči, 546 kontrol
+npm run smoke            # proklikání v prohlížeči, 549 kontrol
 npm run check-regrese    # PWA, zálohy, fotky, poloha, service worker, 26 bodů
+npm run check-vrstvy     # že mapa neimportuje views a nikdo si neopisuje sdílené výpočty, 4 body
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
-npm run check-dny        # dny, výpravy, body trasy, okno dnů, úseky trasy, 250 bodů
+npm run check-dny        # dny, výpravy, body trasy, okno dnů, úseky trasy, 253 bodů
 npm run check-filters    # 134 kombinací filtrů
 npm run check-form       # že formulář vyrábí platná místa, 18/18
 npm run check-ikony      # jedna věc = jedno jméno = jedna ikona, 8 bodů
@@ -121,9 +122,10 @@ Runtime závislosti jsou **dvě** a obě vědomě:
 | Kde | Co |
 |---|---|
 | `src/main.js` | vstupní bod — jen poskládá díly a zaregistruje odběry událostí, žádná logika |
-| `src/core/` | čistá logika bez DOM: `store.js` (stav + pub/sub), `router.js`, `filters.js`, `search.js`, `geo.js`, `csv.js`, `storage.js` (localStorage), `fotoDb.js` (IndexedDB), `html.js`, `motiv.js` (světlý/tmavý), `barvy.js` (čtení tokenů do JS) |
+| `src/core/` | čistá logika bez DOM: `store.js` (stav + pub/sub), `router.js`, `filters.js`, `search.js`, `geo.js`, `csv.js`, `storage.js` (localStorage), `fotoDb.js` (IndexedDB), `html.js`, `motiv.js` (světlý/tmavý), `barvy.js` (čtení tokenů do JS), `trasy.js` (geometrie tras + `otiskBodu()`) |
+| `src/core/plan/` | **datová vrstva plánu**, ze které čtou views i mapa: `body.js` (body trasy, `DRUHY`, pořadí), `kosik.js`, `vypravy.js`, `dny.js`, `termin.js`, `cestaData.js`. Bez jediného dotyku DOM, testovatelné v čistém Node |
 | `src/data/` | `places.json` (580 míst), `places-nova.json` (přihrádka), číselníky `categories.js`/`collections.js`/`moods.js`, `validate.js`, `schema.md`, `basemap.json` (obrysy zemí), `mesta.json` (985 měst), `relief.json` (meze evropské mřížky) |
-| `src/views/` | obrazovky Domů, Mapa (spodní část), Objevuj, Seznam, Plán (`plan/` má i cestu, archiv, achievementy, čísla výpravy, bloky a `body.js` s daty bez `IC`), Detail, Profil, Nastavení, Porovnání + registr `index.js` |
+| `src/views/` | obrazovky Domů, Mapa (spodní část), Objevuj, Seznam, Plán (`plan/` má cestu, archiv, achievementy, čísla výpravy, bloky a routing — data plánu bydlí v `core/plan/`), Detail, Profil, Nastavení, Porovnání + registr `index.js` |
 | `src/components/` | díly použité na víc obrazovkách: `vzory.js` (11 stavebních dílů rozvržení), `dialog.js` (potvrzení/zadání/výběr místo prompt/confirm/alert), `vypravaKarta.js`, `vyberMista.js`, `plusMenu.js`, karta, filtry, sheet, wizard, formulář, toast |
 | `src/map/` | Leaflet: `map.js`, `markers.js`, `planLine.js`, `detailMap.js`, `podklad.js` (offline mapa), `vektory.js` (plochy a kresby v MapLibre), `kresby.js` (kde kresby stojí — z masky), `vbm.js` + `vbmWorker.js` (čtení staženého balíku) |
 | `src/styles/` | CSS po dílech, pořadí určuje `index.css`; barvy a rozměry jen z `tokens.css` |
@@ -131,8 +133,16 @@ Runtime závislosti jsou **dvě** a obě vědomě:
 | `scripts/` | 24 ověřovacích a přípravných skriptů, viz [.claude/rules/kontroly.md](.claude/rules/kontroly.md) |
 
 **Moduly se nevolají napřímo — oznamují si změny událostmi** přes `on()`/`emit()` ze
-`src/core/store.js`. Mapa nesmí volat views a naopak; bez toho by přidání obrazovky znamenalo
-sahat do mapy. Události dnes: `prekresleno`, `otevriDetail`, `skoc`, `poloha`, `fotkyNacteny`,
+`src/core/store.js`.
+
+**Vrstvy mají jeden směr a hlídá ho `npm run check-vrstvy`:** `map/` nesmí importovat
+z `views/` a `core/` ani z jednoho. Opačný směr (obrazovka ovládá mapu) je v pořádku a je
+ho sedmnáct. Do září 2026 tu stálo „mapa nesmí volat views a naopak" — ta druhá půlka
+nikdy neplatila a ta první se obcházela opisováním: `map/planLine.js` měl vlastní kopii
+`otiskBodu()`, a když otisk přešel na hash, kopie zůstala u dlouhého řetězce, takže se
+**přepočtená trasa na hlavní mapě rok nekreslila**. Data a výpočty, na které sahá mapa
+i obrazovka, proto patří do `core/` — a `check-vrstvy` hlídá i to, že se nikde jinde
+znovu nedefinují. Události dnes: `prekresleno`, `otevriDetail`, `skoc`, `poloha`, `fotkyNacteny`,
 `ulozeniSelhalo`, `motivZmenen`, `zalozkaZmenena` (přepnutí hlavní záložky, `core/router.js`),
 `zivaProjekce` (throttlovaně z `views/plan/cesta-zivot.js`).
 
@@ -465,6 +475,18 @@ protože se z košíku do nich tahá.
   jestli změny promítnout zpátky do plánu; archiv ukládá obojí. **`store.plan`
   se za jízdy nemění** – plán je „jak jsme to chtěli", cesta „jak to fakt
   bylo". Vynechaná zastávka se vrací do košíku.
+- **Otisk trasy je jeden a bydlí v `core/trasy.js`** vedle geometrie, kterou
+  klíčuje. Do září 2026 byl ve `views/plan/routing.js` a `map/planLine.js` si ho
+  opisoval, protože mapa nesměla importovat views; když otisk přešel na hash,
+  kopie zůstala u dlouhého řetězce a porovnání nemohlo nikdy vyjít — **přepočtená
+  trasa se na hlavní mapě nekreslila**, na mini-mapě ano, protože ta si `otiskBodu`
+  importovala. Duplicit z téhož důvodu bylo šest; vyřešil je přesun dat do
+  `core/plan/`, ne přepsání kopií.
+- **Otisk se počítá z ULOŽENÉHO zápisu bodů**, ne z toho, co jde do API. Bod
+  „moje poloha" (`zdroj.typ === 'gps'`) nahrazuje přepočet živou polohou, kdežto
+  mapa čte polohu zapsanou na bloku — z vyřešeného seznamu by se otisky u takového
+  plánu nikdy neshodly. Cena: dokud nepřepočítáš znovu, appka nepozná, že ses
+  přesunul. Vzdušná čára ostatně vede přes uložené souřadnice taky.
 - **Trasa cesty vede i přes vlastní body** – start, nocleh, cíl. Do srpna
   2026 je otisk vynechával na třech místech naráz (mapa, routing, mini-mapa),
   takže čára vedla mimo místa, přes která se jede. Viz `BUGS.md` B5. Bloky

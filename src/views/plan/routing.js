@@ -37,7 +37,7 @@ export function pocetOdkazuNaPozici(pozId) {
  * poloha uživatele v okamžiku přepočtu“, ne uložená hodnota z chvíle, kdy se
  * bod zakládal. Když se GPS nepodaří zjistit, bod se v tichosti přeskočí
  * (stejné pravidlo jako u bodu bez rozpoznatelné polohy) – appka kvůli tomu
- * nezastaví celý přepočet. Sdílené mezi `sberBoduProRouting()` (živý plán)
+ * nezastaví celý přepočet. Sdílené mezi přepočtem živého plánu
  * a `prepocitejOtiskCesty()` (otisk rozjeté cesty) – obojí potřebuje totéž.
  * @param {Array<{lat: number, lon: number, id: string, zdroj?: {typ:string}|null}>} body
  * @returns {Promise<Array<{lat: number, lon: number, id: string}>>}
@@ -57,14 +57,6 @@ async function sesbirejGpsBody(body) {
     vysledek.push({ lat: b.lat, lon: b.lon, id: b.id })
   }
   return vysledek
-}
-
-/**
- * Sesbírá body ŽIVÉHO plánu aktivní výpravy pro Routing API.
- * @returns {Promise<Array<{lat: number, lon: number, id: string}>>}
- */
-export async function sberBoduProRouting() {
-  return sesbirejGpsBody(serazenaTrasa())
 }
 
 /**
@@ -346,11 +338,18 @@ function zpracujOdpoved(data) {
  * @returns {Promise<{ok: true}|{ok: false, chyba: string}>}
  */
 export async function prepocitejTrasu({ prubeh = null } = {}) {
-  const body = await sberBoduProRouting()
+  // OTISK Z ULOŽENÉHO ZÁPISU, do API živá poloha. Bod se `zdroj.typ === 'gps'`
+  // nahradí `sesbirejGpsBody()` aktuální polohou, kdežto mapa čte polohu
+  // zapsanou na bloku – kdyby se otisk počítal z toho vyřešeného seznamu,
+  // u plánu s bodem „moje poloha" by se otisky nikdy neshodly a mapa by
+  // navždy kreslila vzdušnou čáru. Ta ostatně vede přes uložené souřadnice
+  // taky, takže je to konzistentní i vůči tomu, co je vidět.
+  const zapsane = serazenaTrasa()
+  const body = await sesbirejGpsBody(zapsane)
   if (body.length < 2) return { ok: false, chyba: 'Trasa nemá aspoň dva body s polohou' }
   try {
     const vysledek = await zavolejRouting(body, { prubeh })
-    const ulozeno = await ulozGeometrii(otiskBodu(body), vysledek)
+    const ulozeno = await ulozGeometrii(otiskBodu(zapsane), vysledek)
     if (!ulozeno.ok) return ulozeno
     // Předchozí geometrie už nemá k čemu patřit – slot je jen jeden.
     zahodNeplatny(store.aktivniPrepocet, ulozeno.prepocet.otisk)
@@ -413,11 +412,13 @@ export async function prepocitejOtiskCesty({ prubeh = null } = {}) {
   //
   // Bloky pod `c.nazev`, ne pod aktivní výpravou: za jízdy se dá výprava
   // přepnout a do trasy cesty by se připletly cizí body.
-  const body = await sesbirejGpsBody(serazenaTrasa(c.zastavky, c.dny, vsechnyBody(c.nazev)))
+  // Otisk z uloženého zápisu, do API živá poloha – viz `prepocitejTrasu()`.
+  const zapsane = serazenaTrasa(c.zastavky, c.dny, vsechnyBody(c.nazev))
+  const body = await sesbirejGpsBody(zapsane)
   if (body.length < 2) return { ok: false, chyba: 'Trasa nemá aspoň dva body s polohou' }
   try {
     const vysledek = await zavolejRouting(body, { prubeh })
-    const ulozeno = await ulozGeometrii(otiskBodu(body), vysledek)
+    const ulozeno = await ulozGeometrii(otiskBodu(zapsane), vysledek)
     if (!ulozeno.ok) return ulozeno
     zahodNeplatny(c.prepocet, ulozeno.prepocet.otisk)
     c.prepocet = ulozeno.prepocet

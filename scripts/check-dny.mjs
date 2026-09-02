@@ -1015,6 +1015,38 @@ pripravV(['a', 'b'], [], [{ nazev: 'Dolomity', plan: ['d'], planDny: [] }], 'Alp
   S.byId = {}
 }
 
+/* ---------- otisk se počítá z ULOŽENÉHO zápisu bodů ---------- */
+// Bod „moje poloha" (`zdroj.typ === 'gps'`) nahrazuje přepočet živou polohou,
+// kdežto mapa čte polohu zapsanou na bloku. Kdyby se otisk počítal z toho
+// vyřešeného seznamu, u plánu s takovým bodem by se otisky nikdy neshodly
+// a hlavní mapa by navždy kreslila vzdušnou čáru.
+{
+  const { serazenaTrasa, vsechnyBody, pridejBod } = await import('../src/core/plan/body.js')
+  const { otiskBodu } = await import('../src/core/trasy.js')
+
+  store.plan = ['a']
+  store.planDny = []
+  store.bloky = {}
+  store.vypravaNazev = 'Otisk'
+  S.byId = { a: { id: 'a', n: 'Alfa', lat: 47, lon: 8 } }
+
+  pridejBod({ druh: 'start', nazev: 'Odsud', lat: 50.032, lon: 15.422, den: 1, zdroj: { typ: 'gps' } })
+  const trasa = serazenaTrasa()
+  const gps = trasa.find((b) => b.zdroj && b.zdroj.typ === 'gps')
+  t('bod z GPS si v trase drží uloženou polohu', !!gps && gps.lat === 50.032)
+  t('otisk je pro tentýž zápis stejný', otiskBodu(serazenaTrasa()) === otiskBodu(serazenaTrasa()))
+
+  const pred = otiskBodu(serazenaTrasa())
+  const b = vsechnyBody()[0]
+  b.lat = 50.9
+  t('a změní se, když se bod opravdu posune', otiskBodu(serazenaTrasa()) !== pred)
+
+  store.plan = []
+  store.bloky = {}
+  store.vypravaNazev = ''
+  S.byId = {}
+}
+
 /* ---------- dlouhá trasa: úseky a zjednodušení čáry ---------- */
 // Routing API Mapy.com bere nejvýš patnáct waypointů, tedy sedmnáct bodů.
 // ZMĚŘENO NA ŽIVÉM API: sedmnáct projde, osmnáctý vrátí 422 s hláškou

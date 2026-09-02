@@ -19,6 +19,7 @@
     "check-projekce": "node scripts/check-projekce.mjs",
     "check-images": "node scripts/check-images.mjs",
     "smoke": "node scripts/smoke.mjs",
+    "check-vrstvy": "node scripts/check-vrstvy.mjs",
     "check-tokeny": "node scripts/check-tokeny.mjs",
     "check-filters": "node scripts/check-filtry.mjs",
     "check-regrese": "node scripts/check-regrese.mjs",

@@ -34,6 +34,7 @@ je to nejvýraznější konvence celého repozitáře.
 ```
 src/main.js       jen poskládá díly a zaregistruje odběry událostí – žádná logika
 src/core/         čistá logika, nesahá na DOM (výjimka: router.js přepíná panely)
+src/core/plan/    datová vrstva plánu – čtou z ní views i mapa
 src/data/         data + číselníky + kontrola  → viz database.md
 src/views/        obrazovky, jedna složka na obrazovku
 src/components/   díly použité na víc obrazovkách
@@ -44,8 +45,11 @@ src/pwa/          šablona service workeru + registrace  → viz nasazeni.md
 ```
 
 **Moduly se nevolají napřímo.** Oznamují si změny přes `on()`/`emit()` ze `src/core/store.js`.
-Mapa nesmí importovat views a naopak — jinak by přidání obrazovky znamenalo sáhnout do mapy.
 Události: `prekresleno`, `otevriDetail`, `skoc`, `poloha`. Pořadí volání = pořadí přihlášení.
+
+**Vrstvy mají jeden směr**, hlídá `npm run check-vrstvy`: `map/` nesmí importovat z `views/`
+a `core/` ani z jednoho; obrazovka mapu ovládat smí. Co potřebuje mapa i obrazovka, patří
+do `core/` — opsat si to je ta past, kvůli které se rok nekreslila přepočtená trasa.
 
 **Stav je jen v `src/core/store.js`**, nikde jinde nejsou globální proměnné:
 
