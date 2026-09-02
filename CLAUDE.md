@@ -80,7 +80,7 @@ npm run check-worker     # že Worker nepustí dál, co nemá, 48 bodů
 npm run debug-uklid      # duplicity a zavřené záznamy ze složky debug/ ven
 npm run debug-zavri      # uzavře záznam: -- <id> <hotovo|zahozeno> "důvod"
 
-npm run smoke            # proklikání v prohlížeči, 538 kontrol
+npm run smoke            # proklikání v prohlížeči, 546 kontrol
 npm run check-regrese    # PWA, zálohy, fotky, poloha, service worker, 26 bodů
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
 npm run check-dny        # dny, výpravy, body trasy, okno dnů výpravy, 229 bodů
@@ -153,7 +153,7 @@ _Odvozeno ze skutečného kódu — žádný linter to nevynucuje._
 - Parametry typované JSDoc anotacemi (`@param {Record<string, any>} p`), ne TypeScriptem.
 - CSS: barvy a rozměry výhradně přes proměnné z `tokens.css`, nikdy natvrdo. Nová barva
   patří do sémantické vrstvy **a do obou tmavých bloků** — viz [VZHLED.md](VZHLED.md).
-- Ikony jsou symboly v `src/icons/sprite.svg` (72 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
+- Ikony jsou symboly v `src/icons/sprite.svg` (74 kusů), jmenují se `i-neco`, vkládají se `IC('i-van')`.
 
 Podrobná pravidla podle oblasti (auto-scoped podle cesty):
 [.claude/rules/database.md](.claude/rules/database.md) ·
@@ -599,23 +599,34 @@ slibuje odchod jinam, kdežto tenhle knoflík přepne obsah na místě.
   napsal jako „není tam".
 - **Nejbližší město je pod pruhem hodin**, ne v nadpisu — tam sedí přepínač
   a město patří k hodinám, které popisuje.
-- **Den je skupina s hlavičkou.** Nahoře stojí jednou datum a číslo dne
-  výpravy („DNES · 2. DEN"), pod ním blok za každou zastávku. Popisek spojuje
-  obojí schválně: počasí mluvilo v datech a itinerář v číslech dnů, takže se ty
-  dvě obrazovky nedaly číst dohromady. **Dnešek má akcentní proužek** — ze všech
-  dnů je jediný, kvůli kterému se člověk dívá hned teď.
-- **Blok má dvě patra**: nahoře celý řádek počasí jako u tvé polohy (táž
-  `denRadekHtml()` — datum, ikona, popis, déšť, slunce, teploty), dole **celý
-  řádek jen pro název místa**. Vnitřek řádku skládá jedna funkce pro oba režimy;
-  dokud si ho trip-řádek psal sám, „stejný jako u tebe" byl slib, ne fakt.
-  Že se popis zkracoval na „zataže…", nezpůsobilo slunce, ale levý sloupec
-  s datem: po jeho přesunu do hlavičky se na 390 px vejde všech šest údajů.
-  Zkusmé přesunutí slunce dolů problém jen přehodilo — ořezávat se začal název.
-- **Procento srážek se kreslí i nulové**, stejné pravidlo jako u dlaždic hodin:
-  nula je platná odpověď na „kolik naprší", kdežto chybějící údaj vypadá jako
-  porucha a sloupec se tím zubatí. Řádek bez předpovědi **nemá ikonu počasí** —
-  do září 2026 tam svítila `i-mlha`, takže „bez předpovědi" vypadalo jako
-  předpověď na mlhu.
+- **Den je skupina s hlavičkou.** Nahoře stojí jednou datum, číslo dne výpravy
+  („DNES · 2. DEN") a vpravo východ se západem slunce; pod tím karta za každou
+  zastávku. Datum a číslo dne spolu schválně: počasí mluvilo v datech
+  a itinerář v číslech dnů, takže se ty dvě obrazovky nedaly číst dohromady.
+  **Dnešek má akcentní proužek** — ze všech dnů je jediný, kvůli kterému se
+  člověk dívá hned teď.
+- **Rámuje se jen skupina karet, ne hlavička** — datum je nadpis skupiny, ne
+  její součást — a plocha je táž (`--plocha`) jako u dne s jedinou zastávkou.
+  Že karty patří k sobě, drží společná plocha a vlasové linky mezi nimi, ne
+  jiná barva.
+- **Karta místa má tři sloupce**: vlevo ikona počasí přes obě řádky, uprostřed
+  název místa nad drobným řádkem s počasím, vpravo teploty pod sebou. Do září
+  2026 to byly dva široké řádky, z nichž horní byl z 93 % plný a spodní nesl
+  jen název — u „Nocleh 1" tedy pětinu šířky. Karta je díky tomu 48 px místo 67.
+- **Slunce je v hlavičce dne, ne v kartě.** Je to údaj o dni: tři body jednoho
+  dne se v časech liší o minuty a pod sebou to byl jen šum. Bere se **rozsah** —
+  nejdřívější východ a nejpozdější západ ze zastávek dne — takže pro jedinou
+  zastávku je to přesně její hodnota. Uvolněné místo dostaly milimetry a vítr.
+- **V kartě stojí i kolik naprší a jak fouká** (`precipitation_sum`,
+  `wind_speed_10m_max`) — **týmž dotazem**, žádné volání navíc. Do té doby
+  u dne stálo jen procento, tedy „jak pravděpodobně" bez „kolik", přesně ta
+  asymetrie, kvůli které se do pruhu hodin doplňovaly milimetry.
+  **Nula se kreslí** u obojího; chybějící údaj vypadá jako porucha a mizející
+  prvek by rozhoupal šířku. Předpovědi uložené dřív ta pole nemají, takže se
+  u nich prostě nenakreslí. **Jednotky nese odpověď** (`daily_units`), ne kód —
+  s předvolbou Fahrenheita chodí palce a míle.
+- **Řádek bez předpovědi nemá ikonu počasí** — do září 2026 tam svítila
+  `i-mlha`, takže „bez předpovědi" vypadalo jako předpověď na mlhu.
 - **Ukazují se jen dny, na které předpověď dosáhne** — dnešek až dnešek + 13.
   Dozadu proto, že `forecast_days` začíná dneškem: kdo vyjel včera, měl u prvního
   dne „Zatím bez předpovědi", což je lež (nepřijde nikdy), a po týdnu na cestě
@@ -636,9 +647,11 @@ slibuje odchod jinam, kdežto tenhle knoflík přepne obsah na místě.
   `pocasiProBod()` příznak `stare` nenastavovala, takže se včerejší data
   kreslila jako čerstvá. Utnutí stropem 60 bodů bylo do té doby tichý `break`
   a den nad stropem vypadal stejně jako den bez signálu.
-- **Přepínač je vyplněná pilulka**, ne text. Bez toho vypadal stejně jako
+- **Přepínač je vyplněná pilulka bez ikony.** Bez pilulky vypadal stejně jako
   „Zobrazit vše" a „Otevřít plán", což jsou odkazy **jinam** — kdežto tenhle
-  knoflík mění obsah pod sebou. Třídu dává `akceTrida` ve `vzory.js`.
+  knoflík mění obsah pod sebou. Ikonu nemá schválně: šipka slibuje odchod
+  jinam a kolečko načtení znovu. Třídu dává `akceTrida` ve `vzory.js`,
+  prázdná `akceIkona` znamená bez ikony.
 - **Den se kopíruje pod sebe za každou zastávku**: tři zastávky = tři bloky
   pod jednou hlavičkou, každý s počasím své oblasti. Blízké se **neslučují**;
   že patří k sobě, ukáže **společné podbarvení skupiny**. Den bez zastávek se

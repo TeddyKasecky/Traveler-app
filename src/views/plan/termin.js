@@ -280,7 +280,13 @@ export async function nactiPocasiProBody(body, { hodin = 24, dnu = 7, fahrenheit
     latitude: body.map((b) => b.lat.toFixed(3)).join(','),
     longitude: body.map((b) => b.lon.toFixed(3)).join(','),
     hourly: 'temperature_2m,precipitation,precipitation_probability,weather_code',
-    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset',
+    // `precipitation_sum` a `wind_speed_10m_max` přibyly v září 2026 do TÉHOŽ
+    // dotazu – žádné volání navíc. U dne stálo do té doby jen procento, tedy
+    // „jak pravděpodobně", bez „kolik" – přesně ta asymetrie, kvůli které se
+    // do pruhu hodin doplňovaly milimetry.
+    daily:
+      'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,' +
+      'precipitation_sum,wind_speed_10m_max,sunrise,sunset',
     timezone: 'auto',
     forecast_days: String(dnu),
     forecast_hours: String(hodin),
@@ -290,6 +296,9 @@ export async function nactiPocasiProBody(body, { hodin = 24, dnu = 7, fahrenheit
   if (fahrenheity) {
     params.set('temperature_unit', 'fahrenheit')
     params.set('precipitation_unit', 'inch')
+    // Kdo měří ve stupních Fahrenheita, čte rychlost v mílích. Bez tohohle
+    // by u palců srážek stály kilometry v hodině.
+    params.set('wind_speed_unit', 'mph')
   }
 
   const odpoved = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`)
@@ -312,7 +321,16 @@ function prelozKus(data) {
     throw new Error('Počasí přišlo v nečekaném tvaru')
   }
 
+  // JEDNOTKY Z ODPOVĚDI, ne natvrdo. S předvolbou Fahrenheita se posílá
+  // `precipitation_unit: inch` a `wind_speed_unit: mph`, takže napevno psané
+  // „mm" by u palců lhalo. Uložené předpovědi jednotku nemají – padá se
+  // zpátky na to, co API vrací bez přepínače.
+  const j = (data && data.daily_units) || {}
+  const jh = (data && data.hourly_units) || {}
+
   return {
+    srazkyJednotka: j.precipitation_sum || jh.precipitation || 'mm',
+    vitrJednotka: j.wind_speed_10m_max || 'km/h',
     hodiny: h.time.map((cas, i) => ({
       cas,
       kodPocasi: h.weather_code[i],
@@ -328,6 +346,10 @@ function prelozKus(data) {
       maxC: d.temperature_2m_max[i],
       minC: d.temperature_2m_min[i],
       destProcent: d.precipitation_probability_max ? d.precipitation_probability_max[i] : null,
+      // Přibylo v září 2026. Předpovědi uložené dřív pole nemají, takže se
+      // u nich údaj prostě nenakreslí – stejné opatrné čtení jako výš.
+      srazkyMm: d.precipitation_sum ? d.precipitation_sum[i] : null,
+      vitr: d.wind_speed_10m_max ? d.wind_speed_10m_max[i] : null,
       vychod: d.sunrise ? d.sunrise[i] : '',
       zapad: d.sunset ? d.sunset[i] : '',
     })),

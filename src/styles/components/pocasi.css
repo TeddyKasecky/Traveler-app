@@ -87,50 +87,67 @@
 
 /* ---------- dny výpravy ----------
  *
- * DEN JE SKUPINA S HLAVIČKOU. Nahoře jednou datum a číslo dne výpravy, pod ním
- * blok za každou zastávku. Do září 2026 neslo datum levý sloupec prvního řádku
- * a u dalších zastávek po něm zbývala prázdná díra.
+ * DEN JE SKUPINA S HLAVIČKOU, v ní karta za každou zastávku. Hlavička nese
+ * datum, číslo dne výpravy a rozsah slunce; RÁMUJÍ SE JEN KARTY, hlavička
+ * zůstává nad rámečkem – je to nadpis skupiny, ne její součást. Plocha je
+ * `--plocha`, tedy táž jako u dne s jedinou zastávkou: že karty patří k sobě,
+ * drží společná plocha a vlasové linky mezi nimi, ne jiná barva.
  *
- * Blok má dvě patra: nahoře celý řádek počasí jako u tvé polohy (týž
- * `denRadekHtml()` včetně slunce), dole CELÝ ŘÁDEK jen pro název místa.
- *
- * Slunce zůstalo nahoře po měření. Popis se do září 2026 zkracoval na
- * „zataže…", jenže to nezpůsobilo slunce, ale levý sloupec s datem – jakmile
- * se datum přestěhovalo do hlavičky skupiny, vejde se na 390 px všech šest
- * údajů. Zkusmé přesunutí slunce dolů problém jen přehodilo: ořezávat se
- * začal název („Highline 179 boží skywal…"), a ten má mít řádek celý. */
-.pocasi-cesta{display:flex;flex-direction:column;gap:10px}
-.pocasi-cesta-den{border-radius:var(--r-s);overflow:hidden}
-.pocasi-cesta-den.vic{background:var(--plocha2);border:var(--line)}
-/* Ve skupině se bloky slepí: uvnitř žádné vlastní pozadí ani rámeček, jen linka. */
-.pocasi-cesta-den.vic .pocasi-den{background:transparent;border:0;border-radius:0}
-.pocasi-cesta-den.vic .pocasi-den + .pocasi-den{border-top:var(--line)}
+ * KARTA MÍSTA MÁ TŘI SLOUPCE: vlevo ikona počasí přes obě řádky, uprostřed
+ * název místa nad drobným řádkem s počasím, vpravo teploty pod sebou. Do září
+ * 2026 to byly dva široké řádky, z nichž horní byl z 93 % plný a spodní nesl
+ * jen název – u „Nocleh 1" tedy pětinu šířky a zbytek zůstal prázdný. */
+.pocasi-cesta{display:flex;flex-direction:column;gap:14px}
 
 /* Hlavička dne. Malá a verzálkami jako popisek sekce – je to nadpis skupiny,
-   ne údaj. Číslo dne je za odrážkou tlumené: datum je to hlavní. */
-.pocasi-cesta-hlava{padding:0 2px 5px;font-size:.66rem;font-weight:800;
-  letter-spacing:1.2px;text-transform:uppercase;color:var(--text2)}
+   ne údaj. Číslo dne je za odrážkou tlumené: datum je to hlavní, slunce
+   odsazené doprava, kam se dřív nevešlo nic. */
+.pocasi-cesta-hlava{display:flex;align-items:center;gap:6px;padding:0 2px 6px;
+  font-size:.66rem;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--text2)}
 .pocasi-cesta-hlava span{font-weight:700;letter-spacing:.6px;color:var(--text3)}
+.pocasi-cesta-hlava .pocasi-slunce{margin-left:auto;letter-spacing:0;text-transform:none}
+
+/* Rámeček kolem karet dne. Jedna plocha, uvnitř jen linky. */
+.pocasi-cesta-karty{background:var(--plocha);border:var(--line);border-radius:var(--r-s);overflow:hidden}
+.pocasi-cesta-karty .pocasi-den{background:transparent;border:0;border-radius:0}
+.pocasi-cesta-karty .pocasi-den + .pocasi-den{border-top:var(--line)}
 /* DNEŠEK MÁ PROUŽEK. Ze všech dnů je jediný, kvůli kterému se člověk dívá
    hned teď, a bez zvýraznění vypadal stejně jako den za dvanáct dní. */
-.pocasi-cesta-den.dnes{border-left:3px solid var(--akcent);padding-left:8px}
+.pocasi-cesta-den.dnes .pocasi-cesta-karty{border-left:3px solid var(--akcent)}
 .pocasi-cesta-den.dnes .pocasi-cesta-hlava{color:var(--akcent)}
+.pocasi-cesta-den.dnes .pocasi-cesta-hlava span{color:var(--akcent)}
 
-/* Odsazení si berou obě patra sama, aby mezi nimi nebyla mezera navíc. Horní
-   má nahoře 12 px místo devíti – blok o dvou patrech má být vyšší, ne
-   namačkaný. */
-.pocasi-den-cesta{flex-direction:column;align-items:stretch;gap:0;padding:0}
-.pocasi-den-hlava{display:flex;align-items:center;gap:8px;padding:12px 11px 8px}
-.pocasi-kde-radek{display:flex;align-items:center;gap:5px;min-width:0;padding:0 11px 12px;
-  font-size:.72rem;font-weight:700;color:var(--text);line-height:1.3}
-/* `.pocasi-den svg.ic` je 18 px v akcentu – to je pravidlo pro ikonu počasí.
-   Špendlík (u vlastního bodu stan nebo vlajka) je popisek, ne hlavní údaj,
-   tak si bere velikost i barvu jako `.pocasi-dest`. */
-.pocasi-kde-radek > svg.ic{flex:0 0 auto;font-size:13px;color:var(--text3);stroke:var(--text3)}
-/* Jeden řádek s třemi tečkami. Přes celou šířku se „Gletscherschlucht
-   Rosenlaui" vejde v pohodě a jednořádkovost drží všechny bloky stejně vysoké. */
-.pocasi-kde-radek > span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pocasi-bez{font-size:.74rem;color:var(--text3)}
+/* Tři sloupce. Ikona počasí je tu velká schválně – čte se koutkem oka. */
+.pocasi-den-cesta{align-items:center;gap:10px;padding:9px 11px}
+.pocasi-den-cesta > svg.ic{font-size:24px}
+.pocasi-den-cesta > .pocasi-bez-ikona{flex:0 0 auto;width:24px}
+.pocasi-karta-stred{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+
+/* Název je předmět věty, počasí je o něm – proto tmavší a silnější. */
+.pocasi-karta-nazev{display:flex;align-items:center;gap:5px;min-width:0;
+  font-size:.74rem;font-weight:700;color:var(--text);line-height:1.25}
+.pocasi-karta-nazev svg.ic{flex:0 0 auto;font-size:13px;color:var(--text3);stroke:var(--text3)}
+/* Jeden řádek s třemi tečkami – jednořádkovost drží všechny karty stejně vysoké. */
+.pocasi-karta-nazev span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Drobný řádek s počasím. Odděluje se mezerou, ne čárkami – čárky by v něm
+   při čtyřech údajích udělaly větu, kterou nikdo nečte. */
+.pocasi-karta-meta{display:flex;align-items:center;gap:9px;min-width:0;
+  font-size:.66rem;font-weight:700;color:var(--text2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pocasi-karta-meta .pocasi-dest,
+.pocasi-karta-meta .pocasi-mm,
+.pocasi-karta-meta .pocasi-vitr{color:var(--text2)}
+.pocasi-mm,.pocasi-vitr{flex:0 0 auto;display:flex;align-items:center;gap:3px}
+.pocasi-vitr svg.ic{font-size:13px}
+
+/* Teploty pod sebou: užší než vedle sebe, takže prostřednímu sloupci zbyde
+   víc – a denní nad noční je čitelnější pořadí. */
+.pocasi-den-cesta .pocasi-den-teplota{display:flex;flex-direction:column;align-items:flex-end;
+  line-height:1.05;text-align:right}
+.pocasi-den-cesta .pocasi-den-teplota i{margin-left:0}
+
+.pocasi-bez{font-size:.7rem;color:var(--text3)}
 .pocasi-pozn{margin:8px 2px 0}
 
 /* Nejbližší město pod pruhem hodin, ne v nadpisu sekce – tam sedí přepínač

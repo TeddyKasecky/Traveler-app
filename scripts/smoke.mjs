@@ -186,8 +186,10 @@ const zavriDetail = async () => {
 // + `i-seznam` a `i-obnovit` (zkratka do poznámkovače a reset v hlavičce,
 //   srpen 2026 – brouk se znovu použít nedal, dvě sousední kolečka s toutéž
 //   ikonou by nešlo rozeznat).
+// + `i-vitr` (nejsilnější vítr dne u počasí na cestě, září 2026 – žádná
+//   z existujících ikon vítr neznamenala).
 // Číslo se mění jen s vědomým přidáním do sprite.svg.
-await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 73)
+await kontrola('sada ikon vložená', () => page.locator('svg symbol').count(), 74)
 await kontrola('počet míst v hlavičce', () => page.locator('#totalN').innerText(), '580')
 await kontrola('počítadlo na mapě', () => page.locator('#countN').innerText(), '580 míst')
 // Nad mapou jsou čtyři rychlé pilulky „moje věci" (Vše, Uložená, Musíme!,
@@ -2574,7 +2576,10 @@ if (REJSTRIK_PUVODNI !== null) fs.writeFileSync(REJSTRIK_CESTA, REJSTRIK_PUVODNI
 // nevadí; navíc tím zůstane nedotčené i počítadlo dotazů na počasí.
 await page.context().grantPermissions(['geolocation'])
 await page.context().setGeolocation({ latitude: 50.087, longitude: 14.421 })
-await page.route('**/api.open-meteo.com/**', async (route) => {
+// POJMENOVANÁ, protože se musí navěsit ZNOVU po `page.reload()`. Odchycení
+// požadavků reload nepřežije a bez opětovného navěšení šel dotaz na počasí
+// výpravy na skutečné Open-Meteo – kontroly pak měřily živá data, ne tahle.
+const odpovezPocasi = async (route) => {
   const cas = [], teplota = [], srazky = [], pravd = [], kod = []
   // ČASY MUSÍ BÝT OD TEĎ, ne pevné datum: `pocasiHtml()` zahazuje hodiny
   // starší než hodinu zpátky, takže by se předpověď s pevným datem celá
@@ -2598,25 +2603,38 @@ await page.route('**/api.open-meteo.com/**', async (route) => {
     kod.push(i >= 20 ? 61 : 0)
   }
   const den = [], maxT = [], minT = [], denKod = [], denPravd = [], vychod = [], zapad = []
+  const denMm = [], denVitr = []
   for (let i = 0; i < 7; i++) {
     const d = mistni(new Date(zacatek.getTime() + i * 86400000)).slice(0, 10)
     den.push(d); maxT.push(25 - i); minT.push(13 - i); denKod.push(3); denPravd.push(20 + i)
     vychod.push(`${d}T05:00`); zapad.push(`${d}T21:00`)
+    // Nula je platná hodnota a musí se kreslit – proto je hned první.
+    denMm.push(i === 0 ? 0 : Number((i * 1.4).toFixed(1)))
+    denVitr.push(i === 0 ? 0 : 9 + i * 6)
   }
-  const jeden = {
+  // `bezNovych` je předpověď, jakou vrací SCHRÁNKA Z DOBY PŘED zářím 2026 –
+  // denní milimetry ani vítr nemá. Druhý bod ji dostane schválně, aby se
+  // ověřilo, že se karta bez těch polí nerozbije.
+  const jeden = (bezNovych) => ({
     hourly_units: { precipitation: 'mm', precipitation_probability: '%' },
+    daily_units: { precipitation_sum: 'mm', wind_speed_10m_max: 'km/h' },
     hourly: { time: cas, temperature_2m: teplota, precipitation: srazky, precipitation_probability: pravd, weather_code: kod },
-    daily: { time: den, weather_code: denKod, temperature_2m_max: maxT, temperature_2m_min: minT, precipitation_probability_max: denPravd, sunrise: vychod, sunset: zapad },
-  }
+    daily: {
+      time: den, weather_code: denKod, temperature_2m_max: maxT, temperature_2m_min: minT,
+      precipitation_probability_max: denPravd, sunrise: vychod, sunset: zapad,
+      ...(bezNovych ? {} : { precipitation_sum: denMm, wind_speed_10m_max: denVitr }),
+    },
+  })
   // JEDEN BOD = OBJEKT, VÍC BODŮ = POLE, přesně jako Open-Meteo. Počasí na
   // cestě se ptá na všechny zastávky jedním dotazem a `nactiPocasiProBody()`
   // hodí chybu, když přijde jiný počet kusů, než kolik bodů poslalo.
   const kolik = (new URL(route.request().url()).searchParams.get('latitude') || '').split(',').length
   await route.fulfill({
     contentType: 'application/json',
-    body: JSON.stringify(kolik > 1 ? Array.from({ length: kolik }, () => jeden) : jeden),
+    body: JSON.stringify(kolik > 1 ? Array.from({ length: kolik }, (_, i) => jeden(i === 1)) : jeden(false)),
   })
-})
+}
+await page.route('**/api.open-meteo.com/**', odpovezPocasi)
 await page.click('#tabs button[data-tab="home"]')
 await page.waitForTimeout(500)
 const ukazPocasi = page.locator('#homePocasi button')
@@ -2858,6 +2876,9 @@ await page.addInitScript(() => {
 // zpátky u kontroly centrování mapy. Bez ní by nebyl pruh hodin odkud vzít.
 await page.context().grantPermissions(['geolocation'])
 await page.reload({ waitUntil: 'domcontentloaded' })
+// Odchycení počasí reload nepřežije – bez tohohle jde dotaz na výpravu ven
+// na skutečné API a kontroly měří živá data.
+await page.route('**/api.open-meteo.com/**', odpovezPocasi)
 await page.waitForTimeout(2500)
 // Po načtení nemusí být Domů vpředu – záložka se drží v adrese, ne v paměti.
 await page.click('#tabs button[data-tab="home"]')
@@ -2881,6 +2902,10 @@ await kontrola('s rozjetou cestou jde přepínač zmáčknout', () =>
 // vedle, což vede jinam – proto vyplněná pilulka.
 await kontrola('a vypadá jako knoflík, ne jako odkaz', () =>
   page.locator('#homePocasiRezim.prepinac').count(), 1)
+// BEZ IKONY: šipka slibuje odchod jinam, kolečko načtení znovu – tenhle
+// knoflík dělá ani jedno. Že je to knoflík, říká pilulka, ne symbol.
+await kontrola('a nemá u sebe žádný symbol', () =>
+  page.locator('#homePocasiRezim svg.ic').count(), 0)
 await page.click('#homePocasiRezim')
 await page.waitForTimeout(2200)
 await kontrola('přepne se na cestu', () =>
@@ -2911,37 +2936,70 @@ await kontrola('číslo dne na kartě sedí s počasím', async () => {
 
 // Vlastní body trasy počasí do září 2026 vůbec neznalo, přitom nocleh je
 // místo, kde se spí a ráno vstává.
-await kontrola('nocleh má vlastní blok', () =>
-  page.locator('.pocasi-kde-radek:has-text("Zkušební nocleh")').count(), 1)
+await kontrola('nocleh má vlastní kartu', () =>
+  page.locator('.pocasi-karta-nazev:has-text("Zkušební nocleh")').count(), 1)
 await kontrola('a vlastní ikonu, ne špendlík', () =>
-  page.locator('.pocasi-kde-radek:has-text("Zkušební nocleh") use[href="#i-stan"]').count(), 1)
+  page.locator('.pocasi-karta-nazev:has-text("Zkušební nocleh") use[href="#i-stan"]').count(), 1)
 
-// Blok má dvě patra a v horním je totéž co u tvé polohy – VČETNĚ SLUNCE.
-await kontrola('blok dne má obě patra', () =>
-  page.locator('.pocasi-den-cesta > .pocasi-den-hlava + .pocasi-kde-radek').count().then((n) => n > 0), true)
-await kontrola('v horním patře je totéž co u tebe', () =>
+// KARTA MÍSTA MÁ TŘI SLOUPCE (září 2026). Do té doby to byly dva široké
+// řádky, z nichž spodní nesl jen název – u „Nocleh 1" tedy pětinu šířky.
+await kontrola('karta má tři sloupce', () =>
+  page.locator('.pocasi-den-cesta > svg.ic + .pocasi-karta-stred + .pocasi-den-teplota').count()
+    .then((n) => n > 0), true)
+await kontrola('a uprostřed je název nad počasím', () =>
   page.evaluate(() => {
-    const h = document.querySelector('.pocasi-den-hlava')
-    return ['svg.ic', '.pocasi-den-popis', '.pocasi-dest', '.pocasi-slunce', '.pocasi-den-teplota']
-      .every((s) => !!h.querySelector(s))
+    const s = document.querySelector('.pocasi-karta-stred')
+    const n = s.querySelector('.pocasi-karta-nazev').getBoundingClientRect()
+    const m = s.querySelector('.pocasi-karta-meta').getBoundingClientRect()
+    return n.bottom <= m.top + 1
   }), true)
-// Datum je v hlavičce, ne v řádku – uvolněné místo je přesně to, díky čemu se
-// popis počasí přestal zkracovat na „zataže…".
-await kontrola('řádek počasí už nenese datum', () =>
+// TOHLE HLÍDÁ CELÝ NÁVRH: rozpočet šířek vychází těsně, takže se měří,
+// jestli se něco nezkracuje – ne odhaduje.
+await kontrola('název místa se nezkracuje', () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('.pocasi-karta-nazev span')]
+      .every((e) => e.scrollWidth <= e.clientWidth + 1)), true)
+await kontrola('ani řádek s počasím', () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('.pocasi-karta-meta')]
+      .every((e) => e.scrollWidth <= e.clientWidth + 1)), true)
+await kontrola('datum v kartě není, je v hlavičce', () =>
   page.locator('.pocasi-den-cesta .pocasi-den-kdy').count(), 0)
-await kontrola('a slovní popis se nezkracuje', () =>
-  page.evaluate(() =>
-    [...document.querySelectorAll('.pocasi-den-cesta .pocasi-den-popis')]
-      .every((e) => e.scrollWidth <= e.clientWidth + 1)), true)
-await kontrola('ani název místa', () =>
-  page.evaluate(() =>
-    [...document.querySelectorAll('.pocasi-kde-radek > span')]
-      .every((e) => e.scrollWidth <= e.clientWidth + 1)), true)
-// Nula je platná odpověď na „kolik naprší" – stejné pravidlo jako u dlaždic
-// hodin. Chybějící procento vypadalo jako porucha a sloupec se zubatil.
-await kontrola('procento srážek je na každém bloku', async () =>
+
+// SLUNCE JE ÚDAJ O DNI, ne o zastávce – tři body jednoho dne se liší
+// o minuty a pod sebou to byl jen šum.
+await kontrola('slunce je v hlavičce dne', () =>
+  page.locator('.pocasi-cesta-hlava .pocasi-slunce').count(), 1)
+await kontrola('a v kartě už ne', () => page.locator('.pocasi-den-cesta .pocasi-slunce').count(), 0)
+
+// Nula je platná odpověď na „kolik naprší" i „jak fouká" – stejné pravidlo
+// jako u dlaždic hodin. Chybějící údaj vypadá jako porucha.
+await kontrola('procento srážek je na každé kartě', async () =>
   (await page.locator('.pocasi-den-cesta .pocasi-dest').count()) ===
   (await page.locator('.pocasi-den-cesta').count()), true)
+await kontrola('milimetry se kreslí i nulové', () =>
+  page.locator('.pocasi-mm').first().innerText().then((x) => /^0\s/.test(x.trim())), true)
+await kontrola('vítr taky', () => page.locator('.pocasi-vitr').count().then((n) => n > 0), true)
+// Předpověď ze staré schránky denní milimetry ani vítr nemá. Karta se tím
+// nesmí rozbít – jen ty dva údaje vynechá.
+await kontrola('karta bez nových polí nespadne', () =>
+  page.evaluate(() => {
+    const karty = [...document.querySelectorAll('.pocasi-den-cesta')]
+    const bez = karty.filter((k) => !k.querySelector('.pocasi-mm'))
+    return bez.length > 0 && bez.every((k) =>
+      !!k.querySelector('.pocasi-karta-nazev span').textContent.trim() &&
+      !!k.querySelector('.pocasi-den-teplota'))
+  }), true)
+
+// RÁMUJÍ SE JEN KARTY, hlavička zůstává nad rámečkem – datum je nadpis
+// skupiny, ne její součást. A plocha je táž jako u ostatních karet, ne jiná.
+await kontrola('rámeček obepíná jen karty', () =>
+  page.evaluate(() => !document.querySelector('.pocasi-cesta-hlava').closest('.pocasi-cesta-karty')), true)
+await kontrola('a má tutéž plochu jako dlaždice hodin', () =>
+  page.evaluate(() => {
+    const b = (s) => getComputedStyle(document.querySelector(s)).backgroundColor
+    return b('.pocasi-cesta-karty') === b('.pocasi-hod')
+  }), true)
 
 /* ---------- shrnutí ---------- */
 

@@ -65,8 +65,9 @@ export function sekce(popisek, { akce = '', akceId = '', akceIkona = 'i-sipka', 
     // režimu počasí ji ale mít nesmí – šipka slibuje odchod jinam, kdežto
     // tenhle knoflík obsah přepne na místě (`tadeas-f32-010`).
     // `akceTrida` je tu kvůli přepínačům: bez ní vypadá knoflík, který mění
-    // obsah pod sebou, stejně jako odkaz jinam.
-    ? `<button class="sekce-akce${akceTrida ? ` ${akceTrida}` : ''}"${akceId ? ` id="${akceId}"` : ''}>${esc(akce)}${IC(akceIkona, 'font-size:12px')}</button>`
+    // obsah pod sebou, stejně jako odkaz jinam. Prázdná `akceIkona` znamená
+    // bez ikony – `IC('')` by vyrobilo `<use href="#">`.
+    ? `<button class="sekce-akce${akceTrida ? ` ${akceTrida}` : ''}"${akceId ? ` id="${akceId}"` : ''}>${esc(akce)}${akceIkona ? IC(akceIkona, 'font-size:12px') : ''}</button>`
     : pozn || poznId
       ? `<span class="sekce-pozn"${poznId ? ` id="${poznId}"` : ''}>${esc(pozn)}</span>`
       : ''

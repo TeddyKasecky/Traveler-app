@@ -193,12 +193,13 @@ export const SEKCE_DOMU = [
         ? // PŘEPÍNAČ REŽIMU je v pravém slotu nadpisu; nejbližší město se
           // přestěhovalo pod pruh hodin, které popisuje. Popisek tlačítka
           // pojmenovává BĚŽÍCÍ režim, ne ten, na který přepne – vedle nadpisu
-          // se to čte jako „Počasí · u tebe". Ikona proto není šipka doprava:
-          // ta slibuje odchod jinam, kdežto tenhle knoflík přepne obsah na
-          // místě. Text i stav doplní `naplnPocasi()`, protože závisí na tom,
-          // jestli je co ukázat.
+          // se to čte jako „Počasí · u tebe". BEZ IKONY: šipka doprava slibuje
+          // odchod jinam a kolečko obnovení zase načtení znovu, kdežto tenhle
+          // knoflík přepne obsah na místě. Že je to knoflík, říká vyplněná
+          // pilulka, ne symbol. Text i stav doplní `naplnPocasi()`, protože
+          // závisí na tom, jestli je co ukázat.
           sekce('Počasí', {
-            akce: 'u tebe', akceId: 'homePocasiRezim', akceIkona: 'i-obnovit', akceTrida: 'prepinac',
+            akce: 'u tebe', akceId: 'homePocasiRezim', akceIkona: '', akceTrida: 'prepinac',
           }) +
           '<div id="homePocasi"></div>'
         : '',
