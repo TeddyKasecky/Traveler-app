@@ -22,10 +22,10 @@ globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: 
 
 const { store, S } = await import('../src/core/store.js')
 const { dnyPlanu, pridejDen, presunDoDne, zrusDny, nastavDny, presunZastavku } =
-  await import('../src/views/plan/dny.js')
+  await import('../src/core/plan/dny.js')
 const { zalohaData, obnovZalohu } = await import('../src/core/csv.js')
 const { rozpoznejSouradnice, pridejBod, vsechnyBody, DRUHY } =
-  await import('../src/views/plan/body.js')
+  await import('../src/core/plan/body.js')
 
 const barvy = process.stdout.isTTY && !process.env.NO_COLOR
 const zeleny = (s) => (barvy ? `\x1b[32m${s}\x1b[0m` : s)
@@ -119,14 +119,15 @@ t('zrušení dnů zachová zastávky i pořadí', jako(store.plan) === jako(['a'
 console.log('\nVýpravy\n')
 
 const { seznamVyprav, prepniVypravu, novaVyprava, smazAktivniVypravu, BEZ_NAZVU } = await import(
-  '../src/views/plan/vypravy.js'
+  '../src/core/plan/vypravy.js'
 )
 const { pridejPozici } = await import('../src/core/pozice.js')
 const { souradniceBodu, maBod, pridejStartCil, serazenaTrasa, serazenePolozky, bodyVKosiku } =
-  await import('../src/views/plan/body.js')
-const { vyjed, pridejDoCesty, vynechZCesty, cestaZmenena, zaznamCesty } = await import('../src/views/plan/cestaData.js')
+  await import('../src/core/plan/body.js')
+const { vyjed, pridejDoCesty, vynechZCesty, cestaZmenena, zaznamCesty } = await import('../src/core/plan/cestaData.js')
 const { CESTY } = await import('../src/core/cesty.js')
-const { otiskBodu, pocetOdkazuNaPozici } = await import('../src/views/plan/routing.js')
+const { pocetOdkazuNaPozici } = await import('../src/views/plan/routing.js')
+const { otiskBodu } = await import('../src/core/trasy.js')
 
 /** Nastaví stav včetně odložených výprav. */
 function pripravV(plan, planDny, vypravy, nazev) {
@@ -204,7 +205,7 @@ t('stará záloha bez výprav je nesmaže', store.vypravy.length === 1 && jako(s
 console.log('\nSložky výprav\n')
 
 const { seznamSlozek, novaSlozka, prejmenujSlozku, smazSlozku, presunVypravu, prejmenuj, smaz, duplikuj } =
-  await import('../src/views/plan/vypravy.js')
+  await import('../src/core/plan/vypravy.js')
 const { prefs } = await import('../src/core/store.js')
 
 /** Nastaví stav včetně složek. */
@@ -786,7 +787,7 @@ pripravV(['a', 'b'], [], [{ nazev: 'Dolomity', plan: ['d'], planDny: [] }], 'Alp
   const {
     pridejDoKosiku, vyhodZKosiku, vKosiku, kosik, nastavKotvu, zrusKotvu,
     hlavniKotva, kotvaMista, zajizdka, kosikSeZajizdkou, KORIDOR_KM,
-  } = await import('../src/views/plan/kosik.js')
+  } = await import('../src/core/plan/kosik.js')
 
   store.vypravaNazev = 'Zkouška košíku'
   store.kosik = {}
@@ -848,7 +849,7 @@ pripravV(['a', 'b'], [], [{ nazev: 'Dolomity', plan: ['d'], planDny: [] }], 'Alp
 // Obojí je NEPOVINNÉ – prázdný termín je platný stav, ne nedodělek.
 {
   const { termin, nastavTermin, datumDne, kratkeDatum, denVTydnu, stihameTo, pocasiPodleKodu } =
-    await import('../src/views/plan/termin.js')
+    await import('../src/core/plan/termin.js')
 
   store.vypravaNazev = 'Zkouška termínu'
   nastavTermin('', 0)
@@ -908,8 +909,8 @@ pripravV(['a', 'b'], [], [{ nazev: 'Dolomity', plan: ['d'], planDny: [] }], 'Alp
 // PEVNÉ „TEĎ", ne `Date.now()` – jinak by kontrola plavala podle dne v roce.
 {
   const { dnyCesty, denOdData, mistniDatum, posunDatum, DNU_CESTY } =
-    await import('../src/views/plan/termin.js')
-  const { kolikatyDenCesty } = await import('../src/views/plan/cestaData.js')
+    await import('../src/core/plan/termin.js')
+  const { kolikatyDenCesty } = await import('../src/core/plan/cestaData.js')
 
   // Středa 2. 9. 2026 v 11:00 místního času, vyjeli jsme v úterý ve 21:07.
   const TED = new Date(2026, 8, 2, 11, 0).getTime()

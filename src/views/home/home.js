@@ -22,7 +22,7 @@ import { obsahDomu } from './sekce.js'
 import { zjistiPolohu } from '../../core/geo.js'
 import { aktivujZalozku } from '../../core/router.js'
 import { otevriItinerar, otevriNaCeste } from '../plan/plan.js'
-import { jedeSe } from '../plan/cestaData.js'
+import { jedeSe } from '../../core/plan/cestaData.js'
 import { IC } from '../../icons/sprite.js'
 import { openWizard } from '../../components/wizard.js'
 import { heroPas } from '../../components/vzory.js'
@@ -36,7 +36,7 @@ import {
   pocasiProBod,
   pocasiProCestu,
 } from '../../components/pocasi.js'
-import { dnyCesty } from '../plan/termin.js'
+import { dnyCesty } from '../../core/plan/termin.js'
 import { goTo } from '../../map/map.js'
 import heroObr from '../../assets/hero/domu.webp'
 

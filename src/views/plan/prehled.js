@@ -17,7 +17,7 @@ import { S, store } from '../../core/store.js'
 import { esc } from '../../core/html.js'
 import { IC } from '../../icons/sprite.js'
 import { dkm } from '../../core/geo.js'
-import { seznamVyprav, seznamSlozek, BEZ_NAZVU } from './vypravy.js'
+import { seznamVyprav, seznamSlozek, BEZ_NAZVU } from '../../core/plan/vypravy.js'
 import { planStats } from './plan.js'
 import { fmtKm } from '../../core/geo.js'
 

@@ -14,8 +14,8 @@
  * po přeletu hranice mohl stát 2. dnem.
  */
 
-import { store, save } from '../../core/store.js'
-import { dkm } from '../../core/geo.js'
+import { store, save } from '../store.js'
+import { dkm } from '../geo.js'
 import { DRUHY, serazenePolozky, vsechnyBody } from './body.js'
 
 /** Silnice bývá delší než vzdušná čára – týž koeficient jako v plan.js. */

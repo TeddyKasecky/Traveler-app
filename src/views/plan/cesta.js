@@ -16,17 +16,17 @@ import { dkm, fmtKm } from '../../core/geo.js'
 import { esc } from '../../core/html.js'
 import { IC } from '../../icons/sprite.js'
 import { sklonuj } from './plan.js'
-import { dnyPlanu } from './dny.js'
-import { BEZ_NAZVU } from './vypravy.js'
+import { dnyPlanu } from '../../core/plan/dny.js'
+import { BEZ_NAZVU } from '../../core/plan/vypravy.js'
 import { toast } from '../../components/toast.js'
 import { potvrd } from '../../components/dialog.js'
 import { draw } from '../../map/map.js'
 import { planoveAchievementy, pripisPlanove, pripisProfilove } from './achievementy.js'
 import { detailCestyHtml } from './archiv.js'
 import { bloky, blok } from './bloky.js'
-import { serazenePolozky, serazenaTrasa, vsechnyBody, souradniceBodu, DRUHY } from './body.js'
+import { serazenePolozky, serazenaTrasa, vsechnyBody, souradniceBodu, DRUHY } from '../../core/plan/body.js'
 import { posunZnackuPolohy, vykresliDashMapu, zavriDashMapu } from './dashMapa.js'
-import { kotvy, pridejDoKosiku } from './kosik.js'
+import { kotvy, pridejDoKosiku } from '../../core/plan/kosik.js'
 import { coDalHtml, napojCoDal, tipyOdsud } from './kosikView.js'
 import { spustSledovani, zastavSledovani, aktualniProjekce } from './cesta-zivot.js'
 import { prepocitejOtiskCesty } from './routing.js'
@@ -35,7 +35,7 @@ import { uklidTrasy } from '../../core/trasy.js'
 import {
   fmtDoba, cistyCas, jedeSe, vyjed, ukonciCestu, vychoziBod, odznaceneVPoradi,
   pridejDoCesty, vynechZCesty, kolikatyDenCesty, cestaZmenena, mojePoloha, posledniOdznacena,
-} from './cestaData.js'
+} from '../../core/plan/cestaData.js'
 
 // Reexport datové vrstvy: volající (plan.js, kosikView.js, map/planLine.js)
 // sahali sem odjakživa a rozdělení souboru není důvod je všechny přepsat.

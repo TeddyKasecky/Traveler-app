@@ -12,7 +12,7 @@ import { radek } from '../../components/vzory.js'
 import { zadej, potvrd, vyberZeSeznamu } from '../../components/dialog.js'
 import { toast } from '../../components/toast.js'
 import { ulozenePozice, pridejPozici, upravPozici, smazPozici } from '../../core/pozice.js'
-import { rozpoznejSouradnice } from '../plan/body.js'
+import { rozpoznejSouradnice } from '../../core/plan/body.js'
 import { pocetOdkazuNaPozici } from '../plan/routing.js'
 
 /** HTML sekce v Profilu. */

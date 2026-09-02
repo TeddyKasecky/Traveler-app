@@ -31,7 +31,7 @@ import {
   bloky, pridejBlok, smazBlok, blok, DRUHY, vsechnyBody, pridejBod,
   hledejAdresu, rozpoznejSouradnice, rozpocetCelkem, souradniceBodu,
   maBod, pridejStartCil,
-} from './body.js'
+} from '../../core/plan/body.js'
 
 // Znovu vyvezené – plan.js a check-dny.mjs je berou odsud/z body.js podle toho,
 // jestli potřebují jen data (body.js) nebo i vzhled (tady).

@@ -22,9 +22,9 @@
  * importem CSV a košík má odkazovat na místo, ne držet jeho otisk.
  */
 
-import { store, save } from '../../core/store.js'
-import { S } from '../../core/store.js'
-import { dkm } from '../../core/geo.js'
+import { store, save } from '../store.js'
+import { S } from '../store.js'
+import { dkm } from '../geo.js'
 import { BEZ_NAZVU } from './vypravy.js'
 import { bodyVKosiku, souradniceBodu, DRUHY } from './body.js'
 

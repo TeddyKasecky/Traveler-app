@@ -23,9 +23,9 @@ import { esc } from '../../core/html.js'
 import { fmtKm } from '../../core/geo.js'
 import { IC } from '../../icons/sprite.js'
 import { ikonBtn } from '../../components/vzory.js'
-import { BEZ_NAZVU } from './vypravy.js'
-import { kosik, kotvy } from './kosik.js'
-import { termin, datumDne, kratkeDatum, stihameTo } from './termin.js'
+import { BEZ_NAZVU } from '../../core/plan/vypravy.js'
+import { kosik, kotvy } from '../../core/plan/kosik.js'
+import { termin, datumDne, kratkeDatum, stihameTo } from '../../core/plan/termin.js'
 
 /**
  * Kostra cesty: pole dnů od jedničky, každý ví, jestli má kotvu a co v něm je.

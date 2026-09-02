@@ -28,7 +28,7 @@ import { IC } from '../../icons/sprite.js'
 import { napojSbalky, segment } from '../../components/vzory.js'
 import { toast } from '../../components/toast.js'
 import { potvrd, vyberZeSeznamu, zadej } from '../../components/dialog.js'
-import { bodyNaVypravu } from '../plan/body.js'
+import { bodyNaVypravu } from '../../core/plan/body.js'
 import { srovnejDebugTlacitko } from '../../components/debugZapis.js'
 import { pocetPocasi, zahodVsechnoPocasi } from '../../core/pocasiDb.js'
 import {

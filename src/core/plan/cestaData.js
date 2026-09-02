@@ -23,13 +23,13 @@
  * je „jak jsme to chtěli", cesta „jak to fakt bylo".
  */
 
-import { S, store, save } from '../../core/store.js'
+import { S, store, save } from '../store.js'
 import { denOdData, mistniDatum } from './termin.js'
-import { sklonuj } from '../../core/html.js'
+import { sklonuj } from '../html.js'
 import { dnyPlanu } from './dny.js'
 import { BEZ_NAZVU } from './vypravy.js'
 import { pridejDoKosiku } from './kosik.js'
-import { ulozCestu } from '../../core/cesty.js'
+import { ulozCestu } from '../cesty.js'
 
 /** Formát času cesty: dny a hodiny, pod hodinu minuty. */
 export function fmtDoba(ms) {

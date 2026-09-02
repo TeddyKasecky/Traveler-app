@@ -27,7 +27,7 @@
 import L from 'leaflet'
 import { esc } from '../core/html.js'
 import { token } from '../core/barvy.js'
-import { KORIDOR_KM } from '../views/plan/kosik.js'
+import { KORIDOR_KM } from '../core/plan/kosik.js'
 
 /** @type {L.LayerGroup|null} */
 let vrstva = null

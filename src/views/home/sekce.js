@@ -30,7 +30,7 @@ import { PHOTOS } from '../../core/store.js'
 import { sekce, fotomrizka, radek, cislaRada } from '../../components/vzory.js'
 import { vypravaKarta } from '../../components/vypravaKarta.js'
 import { prubehVypravy } from '../plan/plan.js'
-import { jedeSe } from '../plan/cestaData.js'
+import { jedeSe } from '../../core/plan/cestaData.js'
 
 /** Kolik karet je v mřížce „Možná dnes" – tři sloupce, dvě řady. */
 const TIPU = 6

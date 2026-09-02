@@ -18,9 +18,9 @@
  * konec plánu – tak se chovají historické bloky bez těchhle polí).
  */
 
-import { store, S, save } from '../../core/store.js'
+import { store, S, save } from '../store.js'
 import { BEZ_NAZVU, seznamVyprav } from './vypravy.js'
-import { pozice } from '../../core/pozice.js'
+import { pozice } from '../pozice.js'
 
 /** Klíč aktivní výpravy v `store.bloky`. */
 const klic = () => store.vypravaNazev || BEZ_NAZVU

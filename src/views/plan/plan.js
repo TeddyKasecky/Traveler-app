@@ -36,12 +36,12 @@ import { aktivujZalozku } from '../../core/router.js'
 import { stahniSoubor } from '../../core/csv.js'
 import {
   dnyPlanu, pridejDen, presunDoDne, zrusDny, nastavDny, presunZastavku, srovnejDny, zastavekNadDen,
-} from './dny.js'
+} from '../../core/plan/dny.js'
 import { gpxZPlanu, nazevSouboru } from './gpx.js'
 import {
   seznamVyprav, seznamSlozek, prepniVypravu, novaVyprava, novaSlozka, prejmenujSlozku,
   smazSlozku, presunVypravu, prejmenuj, smaz, duplikuj, BEZ_NAZVU,
-} from './vypravy.js'
+} from '../../core/plan/vypravy.js'
 import {
   cestaHtml, napojCestu, jedeSe, vyjed, zamcenaCestaHtml, napojZamcenouCestu, vychoziBod,
   zavriMapuCesty, obnovZiveUdaje,
@@ -54,15 +54,16 @@ import {
 } from './bloky.js'
 import { zjistiPolohuJednorazove } from '../../core/geo.js'
 import { ulozenePozice } from '../../core/pozice.js'
-import { prepocitejTrasu, otiskBodu } from './routing.js'
-import { serazenaTrasa } from './body.js'
+import { prepocitejTrasu } from './routing.js'
+import { otiskBodu } from '../../core/trasy.js'
+import { serazenaTrasa } from '../../core/plan/body.js'
 import { archivRadkyHtml, napojArchivRadky } from './archiv.js'
 import { cislaPlanuHtml, napojCislaPlanu } from './prehled.js'
-import { kosik, kotvy, pridejDoKosiku } from './kosik.js'
+import { kosik, kotvy, pridejDoKosiku } from '../../core/plan/kosik.js'
 import { kosikHtml, napojKosik, zavriMapuKosiku } from './kosikView.js'
 import { nastavKosikFab, otevriKosikPlat } from '../../components/kosikFab.js'
 import { dashboardHtml, kotvyPodleDnu } from './dashboard.js'
-import { termin, nastavTermin, datumDne, kratkeDatum, denVTydnu, kolikatyDenDnes } from './termin.js'
+import { termin, nastavTermin, datumDne, kratkeDatum, denVTydnu, kolikatyDenDnes } from '../../core/plan/termin.js'
 import { zahodKosikVrstvu } from '../../map/kosikVrstva.js'
 import { vykresliDashMapu, zavriDashMapu } from './dashMapa.js'
 import { CESTY } from '../../core/cesty.js'

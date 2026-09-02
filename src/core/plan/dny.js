@@ -23,7 +23,7 @@
  * nový build příště přiřkne poslednímu dni.
  */
 
-import { store, save } from '../../core/store.js'
+import { store, save } from '../store.js'
 
 /**
  * Plán rozdělený na dny, jako pole polí `id`.

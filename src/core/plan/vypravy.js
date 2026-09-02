@@ -32,8 +32,8 @@
  * existuje i prázdná.
  */
 
-import { store, save, prefs } from '../../core/store.js'
-import { zahodNeplatny } from '../../core/trasy.js'
+import { store, save, prefs } from '../store.js'
+import { zahodNeplatny } from '../trasy.js'
 
 /** Jak se jmenuje výprava bez jména. */
 export const BEZ_NAZVU = 'Náš plán'

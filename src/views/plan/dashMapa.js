@@ -24,7 +24,7 @@ import L from 'leaflet'
 import { token } from '../../core/barvy.js'
 import { geometrie, zajistiTrasu } from '../../core/trasy.js'
 import { IC } from '../../icons/sprite.js'
-import { otiskBodu } from './routing.js'
+import { otiskBodu } from '../../core/trasy.js'
 
 /** @type {WeakMap<HTMLElement, {mapa: L.Map|null, kolo: number, ja: L.Marker|null}>} */
 const instance = new WeakMap()

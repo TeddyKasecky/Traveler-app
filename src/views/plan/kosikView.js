@@ -25,15 +25,15 @@ import { potvrd } from '../../components/dialog.js'
 import {
   kosik, pridejDoKosiku, vyhodZKosiku, vKosiku,
   kosikSeZajizdkou, hlavniKotva, nastavKotvu, zrusKotvu, bodyBezPolohy,
-} from './kosik.js'
+} from '../../core/plan/kosik.js'
 import { zahodKosikVrstvu } from '../../map/kosikVrstva.js'
 import { zadej, vyberZeSeznamu } from '../../components/dialog.js'
 import {
   vychoziBod, jedeSe, pridejDoCesty, kolikatyDenCesty, mojePoloha, posledniOdznacena,
 } from './cesta.js'
 import { sklonuj } from './plan.js'
-import { dnyPlanu, nastavDny } from './dny.js'
-import { DRUHY, bodyVKosiku, prehodBod, pridejBod, rozpoznejSouradnice, hledejAdresu } from './body.js'
+import { dnyPlanu, nastavDny } from '../../core/plan/dny.js'
+import { DRUHY, bodyVKosiku, prehodBod, pridejBod, rozpoznejSouradnice, hledejAdresu } from '../../core/plan/body.js'
 import { vyberBod } from '../../map/map.js'
 
 /** Silnice bývá delší než vzdušná čára – týž koeficient jako v plan.js. */

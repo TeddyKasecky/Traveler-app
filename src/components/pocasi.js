@@ -22,7 +22,7 @@ import { IC } from '../icons/sprite.js'
 import { klicPocasi, nactiPocasiZeSchranky, ulozPocasi } from '../core/pocasiDb.js'
 import {
   DNU_CESTY, dnyCesty, nactiPocasi, nactiPocasiProBody, pocasiPodleKodu,
-} from '../views/plan/termin.js'
+} from '../core/plan/termin.js'
 
 /** Kolik hodin dopředu. Celý den včetně zítřejšího rána. */
 const HODIN = 24

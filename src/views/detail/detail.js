@@ -21,10 +21,10 @@ import { toast } from '../../components/toast.js'
 import { zadej, vyberVice } from '../../components/dialog.js'
 import { vytvorMiniMapu, zavriMiniMapu } from '../../map/detailMap.js'
 import { goTo, draw } from '../../map/map.js'
-import { vKosiku, nastavVKosikuVypravy, vypravySMistemVKosiku } from '../plan/kosik.js'
+import { vKosiku, nastavVKosikuVypravy, vypravySMistemVKosiku } from '../../core/plan/kosik.js'
 import {
   seznamVyprav, nastavZastavkuVeVyprave, vypravySMistem, BEZ_NAZVU,
-} from '../plan/vypravy.js'
+} from '../../core/plan/vypravy.js'
 import { renderHome } from '../home/home.js'
 
 /** Popisky stavu parkoviště pro Transit vysoký 2,6 m. */
