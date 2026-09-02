@@ -15,10 +15,15 @@ import { S, store } from '../core/store.js'
 import { esc } from '../core/html.js'
 import { dkm } from '../core/geo.js'
 import { token } from '../core/barvy.js'
-import { pozice } from '../core/pozice.js'
 import { projektujNaTrasu } from '../core/projekce.js'
-import { geometrie, zajistiTrasu } from '../core/trasy.js'
+import { geometrie, otiskBodu, zajistiTrasu } from '../core/trasy.js'
 import { CESTY } from '../core/cesty.js'
+// Data plánu bydlí od září 2026 v `core/plan/`, takže si je mapa smí prostě
+// naimportovat. Do té doby si tenhle soubor opisoval `otiskBodu`,
+// `souradniceBodu`, filtr bloků, skládání pořadí trasy i výčet druhů – a ta
+// kopie otisku se rozešla, takže se přepočtená trasa na hlavní mapě nikdy
+// nenakreslila.
+import { DRUHY, serazenePolozky, souradniceBodu, vsechnyBody } from '../core/plan/body.js'
 import vanObr from '../assets/van.webp'
 
 /** @type {L.Polyline|null} */
@@ -32,53 +37,6 @@ let vlastni = null
 /** @type {L.CircleMarker|null} živě sledovaná poloha promítnutá na trasu (views/plan/cesta-zivot.js) */
 let zivaZnacka = null
 
-/**
- * Aktuální souřadnice bodu trasy, nebo null.
- *
- * Duplikát views/plan/body.js#souradniceBodu – mapa nesmí importovat views
- * (viz vlastnipin níž, kde je ze stejného důvodu podruhé výčet druhů), ale
- * core/pozice.js smí, takže se dá dotáhnout živá hodnota uložené pozice, ne
- * jen zastaralá kopie v `b.lat`/`b.lon`.
- * @param {object} b  bod trasy (blok typu misto)
- */
-function souradniceBodu(b) {
-  if (b.zdroj && b.zdroj.typ === 'pozice') {
-    const p = pozice(b.zdroj.id)
-    return p ? { lat: p.lat, lon: p.lon } : null
-  }
-  return Number.isFinite(b.lat) && Number.isFinite(b.lon) ? { lat: b.lat, lon: b.lon } : null
-}
-
-/**
- * Otisk seznamu bodů – duplikát views/plan/routing.js#otiskBodu ze stejného
- * důvodu jako souradniceBodu výš (mapa nesmí importovat views). Používá se
- * jen na porovnání `===` s `store.aktivniPrepocet.otisk`, ne na zápis.
- * @param {Array<{lat: number, lon: number, id?: string}>} body
- */
-function otiskBodu(body) {
-  return body.map((b) => `${b.id || ''}:${b.lat.toFixed(5)},${b.lon.toFixed(5)}`).join('|')
-}
-
-/**
- * Vlastní místa aktivní výpravy (bloky typu `misto` s rozpoznatelnou polohou).
- *
- * Čtou se přímo ze `store.bloky` – jsou to data, ne view, takže mapa smí.
- * Vrací je v pořadí dnů, aby se daly vplést do trasy za zastávky svého dne;
- * `lat`/`lon` jsou dosazené aktuální (viz souradniceBodu výš), ne nutně to,
- * co má blok zapsané přímo na sobě.
- */
-function vlastniMista(nazev = null) {
-  const klic = nazev || store.vypravaNazev || 'Náš plán'
-  return ((store.bloky || {})[klic] || [])
-    // `vKosiku` je bod odložený do košíku – nápad, ne zastávka. Do trasy
-    // nepatří (views/plan/body.js#vsechnyBody), mapa nesmí importovat views.
-    .filter((b) => b.typ === 'misto' && !b.vKosiku)
-    .map((b) => {
-      const s = souradniceBodu(b)
-      return s ? { ...b, lat: s.lat, lon: s.lon } : null
-    })
-    .filter(Boolean)
-}
 
 /**
  * Bod na lomené čáře v polovině její délky.
@@ -150,30 +108,19 @@ export function drawPlanLine(mapa) {
   // nocleh, start ani cíl na ní nebyly, přitom právě přes ně se jede.
   // Bloky cesty se čtou pod JEJÍM názvem: po přepnutí výpravy za jízdy by
   // se jinak na trasu připletly body cizí výpravy.
-  const mista = vlastniMista(otisk ? otisk.nazev : null)
-  const poZastavce = (id) => mista.filter((m) => m.po === id)
-  const delky = otisk
-    ? otisk.dny && otisk.dny.length
-      ? otisk.dny
-      : [zastavky.length]
-    : (store.planDny || []).length
-      ? store.planDny
-      : [zastavky.length]
-  const body = []
-  let od = 0
-  delky.forEach((delka, i) => {
-    for (const m of mista) if (!m.po && m.den === i + 1) body.push(m)
-    for (const z of zastavky.slice(od, od + delka)) {
-      body.push(z)
-      body.push(...poZastavce(z.id))
-    }
-    od += delka
-  })
-  for (const z of zastavky.slice(od)) {
-    body.push(z)
-    body.push(...poZastavce(z.id))
-  }
-  for (const m of mista) if (!m.po && m.den == null) body.push(m)
+  const nazevVypravy = otisk ? otisk.nazev : null
+  const delky = otisk ? otisk.dny || [] : store.planDny || []
+  // Pořadí trasy se počítá NA JEDNOM MÍSTĚ. Do září 2026 tu stálo totéž
+  // opsané řádek po řádku – shodně, ale bez záruky, že to tak zůstane.
+  const polozky = serazenePolozky(zdrojIds, delky, vsechnyBody(nazevVypravy))
+  const mista = polozky.filter((x) => x.typ === 'bod').map((x) => x.b)
+  const body = polozky
+    .map((x) => {
+      if (x.typ === 'zastavka') return x.p
+      const s = souradniceBodu(x.b)
+      return s ? { ...x.b, lat: s.lat, lon: s.lon } : null
+    })
+    .filter(Boolean)
 
   if (vlastni) {
     vlastni.remove()
@@ -189,11 +136,10 @@ export function drawPlanLine(mapa) {
             className: '',
             iconSize: [22, 22],
             iconAnchor: [11, 20],
-            // Znak podle druhu bodu. Mapa nesmí importovat views, takže je
-            // výčet druhů podruhé tady – start/nocleh/cíl/vlastní.
-            html: `<div class="vlastnipin ${esc(m.druh || 'vlastni')}" title="${esc(m.nazev || 'Vlastní místo')}">${
-              { start: '▶', nocleh: '⌂', cil: '⚑' }[m.druh] || '★'
-            }</div>`,
+            // Znak i popisek z registru `DRUHY` – výčet druhů je jeden.
+            html: `<div class="vlastnipin ${esc(m.druh || 'vlastni')}" title="${esc(
+              m.nazev || DRUHY.vlastni.popisek
+            )}">${(DRUHY[m.druh] || DRUHY.vlastni).znak}</div>`,
           }),
         })
       )

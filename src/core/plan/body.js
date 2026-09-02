@@ -69,12 +69,18 @@ export function smazBlok(id) {
 /** Najde blok podle id. */
 export const blok = (id) => bloky().find((b) => b.id === id)
 
-/** Druhy bodů trasy. Id se NIKDY nemění – jsou v uložených blocích. */
+/**
+ * Druhy bodů trasy. Id se NIKDY nemění – jsou v uložených blocích.
+ *
+ * `znak` je pro mapu: špendlík vlastního bodu je `divIcon` s textem, ne
+ * ikona ze sprite, takže potřebuje písmenko. Bydlí tady, aby byl výčet druhů
+ * na jednom místě – do září 2026 si ho `map/planLine.js` opisovalo.
+ */
 export const DRUHY = {
-  start: { ikona: 'i-van', popisek: 'Start' },
-  nocleh: { ikona: 'i-stan', popisek: 'Nocleh' },
-  cil: { ikona: 'i-flag', popisek: 'Cíl' },
-  vlastni: { ikona: 'i-pinme', popisek: 'Vlastní místo' },
+  start: { ikona: 'i-van', popisek: 'Start', znak: '▶' },
+  nocleh: { ikona: 'i-stan', popisek: 'Nocleh', znak: '⌂' },
+  cil: { ikona: 'i-flag', popisek: 'Cíl', znak: '⚑' },
+  vlastni: { ikona: 'i-pinme', popisek: 'Vlastní místo', znak: '★' },
 }
 
 /**

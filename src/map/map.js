@@ -15,6 +15,9 @@ import { token } from '../core/barvy.js'
 import { drawPlanLine } from './planLine.js'
 import { vybraneAutoUrl } from '../components/vyberAuta.js'
 import { zajistiPodklad, nastavRezim, hlasStavDlazdic } from './podklad.js'
+// Košík je data, ne obrazovka – od září 2026 bydlí v `core/plan/`, takže si
+// ho mapa smí přečíst místo toho, aby si čtení opisovala.
+import { kosik } from '../core/plan/kosik.js'
 
 /** @type {L.Map} */
 export let mapa
@@ -41,18 +44,6 @@ const REZERVA_VYREZU = 0.4
 
 /** Místa, která prošla filtry. Drží se mezi překresleními kvůli posunu mapy. */
 let vFiltru = []
-
-/**
- * Id v košíku aktivní výpravy – duplikát čtecí logiky z
- * `views/plan/kosik.js#kosik()` (mapa nesmí importovat views, stejný důvod
- * jako `'Náš plán'` duplikované v `map/planLine.js#vlastniMista()` místo
- * importu `BEZ_NAZVU` z `views/plan/vypravy.js`). Používá se jen ke čtení
- * v `draw()`, aby košíková místa zůstala vidět i v módu „oko" (S.mistaSkryta).
- */
-function idVKosiku() {
-  const klic = store.vypravaNazev || 'Náš plán'
-  return (store.kosik || {})[klic] || []
-}
 
 /** @type {Map<string, L.Marker>} id místa → špendlík, který je právě na mapě */
 const naMape = new Map()
@@ -157,7 +148,7 @@ export function draw() {
   // na S.mapaMod, ten řídí jen ZDROJ trasy (viz
   // map/planLine.js#kresliOtiskCesty), ne viditelnost špendlíků.
   if (S.mistaSkryta) {
-    const navic = new Set([...store.plan, ...idVKosiku(), ...S.coDalId])
+    const navic = new Set([...store.plan, ...kosik(), ...S.coDalId])
     vFiltru = S.places.filter((p) => navic.has(p.id))
   } else {
     vFiltru = visible()
