@@ -2858,10 +2858,19 @@ await page.waitForTimeout(700)
 // `localStorage.setItem()` následovaný reloadem se stihne přepsat zpátky –
 // a kontroly níž pak procházejí naprázdno nad nezměněnou cestou. Init skript
 // běží až v novém dokumentu, tedy po tom doplachu.
-await page.addInitScript(() => {
-  const s = JSON.parse(localStorage.getItem('vandrbuch:v1') || 'null')
-  if (!s || !s.cesta) return
-  s.cesta.zacatek = Date.now() - 14 * 3600000
+// Store se upraví TADY, ne uvnitř init skriptu: ten se svého času uměl
+// tiše minout účinkem, když v tu chvíli `cesta` v úložišti nenašel, a
+// kontroly pak běžely nad cestou, která vyjela dnes. Init skript proto
+// jen zapíše hotový řetězec – nemá co rozhodovat.
+const storeProCestu = await page.evaluate(() => {
+  const s = JSON.parse(localStorage.getItem('vandrbuch:v1'))
+  // VČERA V POLEDNE, ne „před čtrnácti hodinami": odečtený počet hodin padne
+  // dopoledne na včerejšek, ale odpoledne pořád na dnešek, takže kontrola
+  // procházela jen půl dne. Kalendářní den se musí nastavit kalendářně.
+  const vcera = new Date()
+  vcera.setDate(vcera.getDate() - 1)
+  vcera.setHours(12, 0, 0, 0)
+  s.cesta.zacatek = vcera.getTime()
   s.cesta.dny = [1, 1]
   s.cesta.zastavky = s.cesta.zastavky.slice(0, 2)
   // Nocleh druhého dne – vlastní bod trasy, který do září 2026 počasí neznalo.
@@ -2870,8 +2879,9 @@ await page.addInitScript(() => {
     { id: 'smokeNocleh', typ: 'misto', den: 2, po: null, druh: 'nocleh',
       nazev: 'Zkušební nocleh', lat: 50.1, lon: 14.5, poznamka: '', hotovo: 0 },
   ]
-  localStorage.setItem('vandrbuch:v1', JSON.stringify(s))
+  return JSON.stringify(s)
 })
+await page.addInitScript((json) => localStorage.setItem('vandrbuch:v1', json), storeProCestu)
 // Poloha je jen v paměti, takže ji reload zahodí; povolení se navíc bralo
 // zpátky u kontroly centrování mapy. Bez ní by nebyl pruh hodin odkud vzít.
 await page.context().grantPermissions(['geolocation'])

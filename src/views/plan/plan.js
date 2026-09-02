@@ -1343,7 +1343,10 @@ function napoj(wrap, items) {
   if (prepocitat)
     prepocitat.onclick = async () => {
       toast('Počítám trasu…')
-      const v = await prepocitejTrasu()
+      const prubeh = (kolikaty, zCelkem) => {
+        if (zCelkem > 1) toast(`Počítám trasu… (${kolikaty}/${zCelkem})`)
+      }
+      const v = await prepocitejTrasu({ prubeh })
       // Chyba appku nesmí shodit – poslední známý store.aktivniPrepocet
       // (pokud existuje) zůstává beze změny jako fallback, appka jen
       // ohlásí, že se to nepovedlo.

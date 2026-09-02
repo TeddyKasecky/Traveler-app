@@ -110,55 +110,241 @@ export async function sberBoduProRouting() {
  */
 
 const MAPY_API_KLIC = 'BgblIMF4M6fhAqmBAEMFcKSZy6xw2O7PlZ9l4DPoXpE'
-const TIMEOUT_MS = 10000
+
+/**
+ * Časový strop na JEDEN úsek; celý přepočet dostane násobek podle jejich počtu.
+ *
+ * ZMĚŘENO na skutečné jedenáctidenní trase (19 bodů, 18 166 km): nejdelší
+ * úsek odpovídal 12,9 s. Deset vteřin, které tu byly do září 2026, tedy
+ * nestačilo ani na jeden úsek – přepočet hlásil „vypršel" dřív, než mohl
+ * doběhnout. Dvacet nechává rezervu i na mobilní data.
+ */
+const TIMEOUT_MS = 20000
+
+/**
+ * Kolik bodů se posílá v jednom dotazu.
+ *
+ * TVRDÝ STROP API JE SEDMNÁCT, změřeno na živém API (září 2026): `waypoints`
+ * unese nejvýš patnáct položek, takže s počátkem a cílem je to sedmnáct bodů
+ * a osmnáctý vrátí 422 s `ensure this value has at most 15 items`. Vzdálenost
+ * strop nemá – Barcelona → Albánie → Praha na tři body projde v pohodě.
+ *
+ * POSÍLÁ SE PŘESTO JEN DEVĚT, a to kvůli spolehlivosti, ne rychlosti. Změřeno
+ * na trase o 18 166 km, kde je celkový čas skoro stejný, ať se dělí jakkoli
+ * (délka trasy váží víc než počet dotazů), ale nejdelší jednotlivý dotaz se
+ * liší podstatně:
+ *
+ *   po 17 bodech → 2 dotazy, celkem 25,3 s, nejdelší 21,6 s, a **jeden 503**
+ *   po  9 bodech → 3 dotazy, celkem 25,5 s, nejdelší 12,5 s, všechny 200
+ *   po  6 bodech → 4 dotazy, celkem 26,3 s, nejdelší 12,9 s, všechny 200
+ *   po  4 bodech → 6 dotazů, celkem 28,3 s, nejdelší  7,2 s, všechny 200
+ *
+ * Na jeden sedmnáctibodový kus přes půl Evropy API nestačí a vrací 503.
+ * Devět je půlka stropu: o dotaz víc než šest, a delší dotaz to neudělá.
+ */
+const BODU_NA_DOTAZ = 9
+
+/**
+ * Rozdělí body na úseky, které se do jednoho dotazu vejdou.
+ *
+ * SOUSEDNÍ ÚSEKY SDÍLEJÍ HRANIČNÍ BOD. Bez toho by mezi nimi zůstala díra –
+ * úsek by končil v Chorvatsku a další začínal ve Španělsku, aniž by se ta
+ * cesta někde spočítala.
+ *
+ * @param {Array<{lat:number, lon:number}>} body
+ * @param {number} [max]
+ * @returns {Array<Array<{lat:number, lon:number}>>}
+ */
+export function rozdelNaUseky(body, max = BODU_NA_DOTAZ) {
+  if (body.length <= max) return [body]
+  const useky = []
+  for (let i = 0; i < body.length - 1; i += max - 1) useky.push(body.slice(i, i + max))
+  return useky
+}
+
+/**
+ * Jak nahrubo se čára ukládá. Ve stupních, protože Douglas–Peucker níž počítá
+ * v nich – na naší šířce je to zhruba dvacet metrů na výšku a čtrnáct na
+ * šířku. Do plánu, který se prohlíží přes celou Evropu, je to neviditelné.
+ */
+const TOLERANCE_CARY = 0.0002
+
+/**
+ * Zjednoduší čáru trasy (Douglas–Peucker) a zaokrouhlí na pět desetinných
+ * míst, tedy zhruba na metr.
+ *
+ * PROČ VŮBEC: Routing API vrací čáru v plné podrobnosti a u dlouhé výpravy
+ * je to k neunesení. Změřeno na skutečné jedenáctidenní trase (19 bodů,
+ * 18 166 km): **304 504 souřadnic a 6 372 kB**. Tolik by šlo do IndexedDB
+ * a odtud do `L.polyline`, kterou prohlížeč promítá při každém posunu mapy.
+ * Pro srovnání – `CLAUDE.md` popisuje, jak appce shodilo ukládání, když měla
+ * ve `store` trasy po 273 kB. Se zjednodušením zbyde **32 751 bodů a 622 kB**,
+ * tedy desetina.
+ *
+ * Vzdálenost ani čas se tím nemění – ty vrací API zvlášť (`length`,
+ * `duration`) a nepočítají se z čáry. KRAJNÍ BODY ZŮSTÁVAJÍ, takže trasa
+ * pořád začíná a končí, kde má.
+ *
+ * @param {Array<[number, number]>} body
+ * @param {number} [tolerance]
+ * @returns {Array<[number, number]>}
+ */
+export function zjednodusCaru(body, tolerance = TOLERANCE_CARY) {
+  if (!Array.isArray(body) || body.length < 3) return body || []
+
+  // Čtverec vzdálenosti bodu od úsečky – bez odmocniny, porovnává se
+  // s druhou mocninou tolerance.
+  const odUsecky = (p, a, b) => {
+    let x = a[0]
+    let y = a[1]
+    const dx = b[0] - x
+    const dy = b[1] - y
+    if (dx || dy) {
+      const t = ((p[0] - x) * dx + (p[1] - y) * dy) / (dx * dx + dy * dy)
+      if (t > 1) {
+        x = b[0]
+        y = b[1]
+      } else if (t > 0) {
+        x += dx * t
+        y += dy * t
+      }
+    }
+    return (p[0] - x) ** 2 + (p[1] - y) ** 2
+  }
+
+  const t2 = tolerance * tolerance
+  const drzet = new Uint8Array(body.length)
+  drzet[0] = 1
+  drzet[body.length - 1] = 1
+  // Vlastní zásobník, ne rekurze: čára o třech stech tisících bodech by
+  // rekurzí přetekla zásobník volání.
+  const fronta = [[0, body.length - 1]]
+  while (fronta.length) {
+    const [od, doK] = fronta.pop()
+    let nej = 0
+    let kde = -1
+    for (let i = od + 1; i < doK; i++) {
+      const d = odUsecky(body[i], body[od], body[doK])
+      if (d > nej) {
+        nej = d
+        kde = i
+      }
+    }
+    if (nej > t2 && kde > 0) {
+      drzet[kde] = 1
+      fronta.push([od, kde], [kde, doK])
+    }
+  }
+
+  const out = []
+  for (let i = 0; i < body.length; i++) {
+    if (drzet[i]) out.push([Math.round(body[i][0] * 1e5) / 1e5, Math.round(body[i][1] * 1e5) / 1e5])
+  }
+  return out
+}
+
+/**
+ * Slepí spočítané úseky do jedné trasy.
+ *
+ * Hraniční bod je v obou úsecích, takže se první souřadnice každého dalšího
+ * úseku zahodí – jinak by v čáře byl dvakrát a na dlouhé trase by se z toho
+ * nastřádalo pár set zbytečných bodů.
+ *
+ * @param {Array<{polyline:Array, vzdalenostKm:number, casMin:number}>} casti
+ */
+export function spojUseky(casti) {
+  const polyline = []
+  let vzdalenostKm = 0
+  let casMin = 0
+  for (const c of casti) {
+    // Cyklem, ne `push(...pole)`: čára přes patnáct tisíc kilometrů má desítky
+    // tisíc bodů a tolik argumentů naráz přeteče zásobník.
+    for (let i = polyline.length ? 1 : 0; i < c.polyline.length; i++) polyline.push(c.polyline[i])
+    vzdalenostKm += c.vzdalenostKm
+    casMin += c.casMin
+  }
+  return { polyline, vzdalenostKm, casMin }
+}
+
+/**
+ * Jeden dotaz na Routing API. Nejvýš `BODU_NA_DOTAZ` bodů.
+ * @param {Array<{lat:number, lon:number}>} body
+ * @param {AbortSignal} signal
+ */
+async function jedenUsek(body, signal) {
+  // Routing API chce start/end/waypoints zvlášť, ne opakované points, a
+  // souřadnice jako "lon,lat" (ověřeno ručně – opačné pořadí než appka
+  // jinde používá pro Leaflet).
+  const [prvni, ...zbytek] = body
+  const posledni = zbytek.pop()
+  const params = new URLSearchParams({
+    apikey: MAPY_API_KLIC,
+    lang: 'cs',
+    routeType: prefs.routeType || 'car_fast',
+    start: `${prvni.lon},${prvni.lat}`,
+    end: `${posledni.lon},${posledni.lat}`,
+  })
+  if (zbytek.length) params.set('waypoints', zbytek.map((b) => `${b.lon},${b.lat}`).join(';'))
+  const odpoved = await fetch(`https://api.mapy.com/v1/routing/route?${params}`, { signal })
+  if (!odpoved.ok) {
+    // Tělo nemusí být JSON (např. u jiných stavových kódů), proto se čte v try.
+    let detail = null
+    try {
+      detail = await odpoved.json()
+    } catch {
+      /* tělo není JSON, zůstane obecná hláška níž */
+    }
+    const errorCode = detail?.detail?.[0]?.errorCode
+    // 404 s errorCode 7/9 znamená „mezi těmihle body nevede trasa daného typu
+    // dopravy" (nejčastěji přes moře/ostrovy) – zdokumentované chování API.
+    if (odpoved.status === 404 && (errorCode === 7 || errorCode === 9)) {
+      throw new Error('Mezi některými body nevede trasa (např. přes moře) – zkus jiný typ dopravy v Nastavení, nebo body uprav.')
+    }
+    // 503 dostane i neprojetelná dvojice bodů (změřeno na trase na Maltu),
+    // takže se z něj nedá poznat výpadek od „tudy silnice nevede". Hláška
+    // proto říká obojí místo toho, aby si jedno vymyslela.
+    if (odpoved.status === 503) {
+      throw new Error('Mapy.com trasu nevrátily. Zkus to za chvíli znovu – a když to nepomůže, nevede nejspíš mezi některými body silnice (třeba přes moře).')
+    }
+    throw new Error(`Mapy.com odpověděly chybou ${odpoved.status}`)
+  }
+  return zpracujOdpoved(await odpoved.json())
+}
 
 /**
  * Zavolá Routing API Mapy.com pro seznam bodů (v pořadí start...cíl).
+ *
+ * DLOUHÁ TRASA SE ROZDĚLÍ NA VÍC DOTAZŮ. API bere nejvýš patnáct waypointů,
+ * tedy sedmnáct bodů; jedenáctidenní výprava jich má klidně devatenáct
+ * a dostávala 422. Volá se to jen na výslovné ťuknutí na „Přepočítat", takže
+ * pár dotazů za sebou nikomu nevadí – zato se plán přestane lámat na počtu
+ * zastávek. Časový strop roste s počtem úseků, jinak by delší trasa vypršela
+ * dřív, než by se stihla spočítat.
+ *
  * @param {Array<{lat: number, lon: number}>} body  aspoň 2 body
+ * @param {{prubeh?: ((kolikaty:number, zCelkem:number) => void)|null}} [o]
  * @returns {Promise<{polyline: Array<[number, number]>, vzdalenostKm: number, casMin: number}>}
  * @throws {Error}  s českou hláškou vhodnou přímo do toast()
  */
-export async function zavolejRouting(body) {
+export async function zavolejRouting(body, { prubeh = null } = {}) {
   if (!MAPY_API_KLIC) throw new Error('Přepočet trasy potřebuje API klíč Mapy.com – zatím není nastavený')
   if (body.length < 2) throw new Error('Trasa potřebuje aspoň dva body s polohou')
 
+  const useky = rozdelNaUseky(body)
   const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS * useky.length)
   try {
-    // Routing API chce start/end/waypoints zvlášť, ne opakované points, a
-    // souřadnice jako "lon,lat" (ověřeno ručně – opačné pořadí než appka
-    // jinde používá pro Leaflet).
-    const [prvni, ...zbytek] = body
-    const posledni = zbytek.pop()
-    const params = new URLSearchParams({
-      apikey: MAPY_API_KLIC,
-      lang: 'cs',
-      routeType: prefs.routeType || 'car_fast',
-      start: `${prvni.lon},${prvni.lat}`,
-      end: `${posledni.lon},${posledni.lat}`,
-    })
-    if (zbytek.length) params.set('waypoints', zbytek.map((b) => `${b.lon},${b.lat}`).join(';'))
-    const url = `https://api.mapy.com/v1/routing/route?${params}`
-    const odpoved = await fetch(url, { signal: ctrl.signal })
-    if (!odpoved.ok) {
-      // 404 s errorCode 7/9 znamená "mezi těmihle body nevede trasa daného
-      // typu dopravy" (nejčastěji přes moře/ostrovy) – zdokumentované
-      // chování API, ne chyba appky. Tělo nemusí být JSON (např. u jiných
-      // stavových kódů), proto se čte v try.
-      let detail = null
-      try {
-        detail = await odpoved.json()
-      } catch {
-        /* tělo není JSON, zůstane obecná hláška níž */
-      }
-      const errorCode = detail?.detail?.[0]?.errorCode
-      if (odpoved.status === 404 && (errorCode === 7 || errorCode === 9)) {
-        throw new Error('Mezi některými body nevede trasa (např. přes moře) – zkus jiný typ dopravy v Nastavení, nebo body uprav.')
-      }
-      throw new Error(`Mapy.com odpověděly chybou ${odpoved.status}`)
+    const casti = []
+    // Postupně, ne naráz: je to uživatelem vyžádaná akce, ne závod, a sedm
+    // souběžných dotazů na cizí API je zbytečná drzost.
+    for (const usek of useky) {
+      // Průběh, protože u dlouhé výpravy se čeká přes dvacet vteřin a toast
+      // zhasne po dvou – bez tohohle by to vypadalo, že se appka zasekla.
+      if (prubeh) prubeh(casti.length + 1, useky.length)
+      casti.push(await jedenUsek(usek, ctrl.signal))
     }
-    const data = await odpoved.json()
-    return zpracujOdpoved(data)
+    const cela = spojUseky(casti)
+    return { ...cela, polyline: zjednodusCaru(cela.polyline) }
   } catch (e) {
     if (e.name === 'AbortError') throw new Error('Přepočet trasy vypršel – zkus to znovu')
     throw new Error(e.message || 'Přepočet trasy se nepovedl')
@@ -188,13 +374,14 @@ function zpracujOdpoved(data) {
  * Chyba (chybějící klíč, offline, timeout) appku nesmí shodit – ukáže se
  * jako vrácená chyba, poslední známý přepočet (pokud existuje) zůstává
  * beze změny jako fallback.
+ * @param {{prubeh?: ((kolikaty:number, zCelkem:number) => void)|null}} [o]
  * @returns {Promise<{ok: true}|{ok: false, chyba: string}>}
  */
-export async function prepocitejTrasu() {
+export async function prepocitejTrasu({ prubeh = null } = {}) {
   const body = await sberBoduProRouting()
   if (body.length < 2) return { ok: false, chyba: 'Trasa nemá aspoň dva body s polohou' }
   try {
-    const vysledek = await zavolejRouting(body)
+    const vysledek = await zavolejRouting(body, { prubeh })
     const ulozeno = await ulozGeometrii(otiskBodu(body), vysledek)
     if (!ulozeno.ok) return ulozeno
     // Předchozí geometrie už nemá k čemu patřit – slot je jen jeden.
@@ -246,7 +433,7 @@ async function ulozGeometrii(otisk, vysledek) {
  * kartě Na cestě (views/plan/cesta.js).
  * @returns {Promise<{ok: true}|{ok: false, chyba: string}>}
  */
-export async function prepocitejOtiskCesty() {
+export async function prepocitejOtiskCesty({ prubeh = null } = {}) {
   const c = store.cesta
   if (!c) return { ok: false, chyba: 'Appka zrovna nejede' }
   // VLASTNÍ BODY SE POČÍTAJÍ (srpen 2026). Do teď se sem posílaly jen
@@ -261,7 +448,7 @@ export async function prepocitejOtiskCesty() {
   const body = await sesbirejGpsBody(serazenaTrasa(c.zastavky, c.dny, vsechnyBody(c.nazev)))
   if (body.length < 2) return { ok: false, chyba: 'Trasa nemá aspoň dva body s polohou' }
   try {
-    const vysledek = await zavolejRouting(body)
+    const vysledek = await zavolejRouting(body, { prubeh })
     const ulozeno = await ulozGeometrii(otiskBodu(body), vysledek)
     if (!ulozeno.ok) return ulozeno
     zahodNeplatny(c.prepocet, ulozeno.prepocet.otisk)

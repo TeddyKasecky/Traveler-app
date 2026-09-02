@@ -689,7 +689,10 @@ export function napojCestu(wrap, prekresli) {
     // (S.mapaMod), viz map/planLine.js.
     prepocitat.onclick = async () => {
       toast('Počítám trasu…')
-      const v = await prepocitejOtiskCesty()
+      const prubeh = (kolikaty, zCelkem) => {
+        if (zCelkem > 1) toast(`Počítám trasu… (${kolikaty}/${zCelkem})`)
+      }
+      const v = await prepocitejOtiskCesty({ prubeh })
       toast(v.ok ? 'Trasa přepočítána' : v.chyba)
       draw()
       prekresli()

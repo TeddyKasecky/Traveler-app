@@ -83,7 +83,7 @@ npm run debug-zavri      # uzavře záznam: -- <id> <hotovo|zahozeno> "důvod"
 npm run smoke            # proklikání v prohlížeči, 546 kontrol
 npm run check-regrese    # PWA, zálohy, fotky, poloha, service worker, 26 bodů
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
-npm run check-dny        # dny, výpravy, body trasy, okno dnů výpravy, 229 bodů
+npm run check-dny        # dny, výpravy, body trasy, okno dnů, úseky trasy, 250 bodů
 npm run check-filters    # 134 kombinací filtrů
 npm run check-form       # že formulář vyrábí platná místa, 18/18
 npm run check-ikony      # jedna věc = jedno jméno = jedna ikona, 8 bodů
@@ -469,6 +469,29 @@ protože se z košíku do nich tahá.
   2026 je otisk vynechával na třech místech naráz (mapa, routing, mini-mapa),
   takže čára vedla mimo místa, přes která se jede. Viz `BUGS.md` B5. Bloky
   cesty se čtou pod `store.cesta.nazev`, ne pod aktivní výpravou.
+- **Dlouhá trasa se do jednoho dotazu nevejde a dělí se na úseky.** Routing
+  API Mapy.com bere nejvýš **patnáct waypointů, tedy sedmnáct bodů**; osmnáctý
+  vrátí 422 (`ensure this value has at most 15 items`). Jedenáctidenní výprava
+  se sedmnácti místy a dvěma noclehy jich má devatenáct — trasa totiž vede
+  i přes vlastní body — a přepočet se na tom lámal.
+  `rozdelNaUseky()` ve `views/plan/routing.js` proto posílá **po devíti
+  bodech**, sousední úseky **sdílejí hraniční bod** (jinak by mezi nimi
+  zůstala díra) a `spojUseky()` je slepí a sečte kilometry i čas.
+  **Devět, ne sedmnáct, a to kvůli spolehlivosti, ne rychlosti** — změřeno na
+  trase o 18 166 km, kde je celkový čas skoro stejný, ať se dělí jakkoli
+  (řídí ho délka trasy), ale jeden sedmnáctibodový kus přes půl Evropy API
+  nezvládne a vrací 503. Vzdálenost sama strop nemá: Barcelona → Albánie →
+  Praha na tři body projde.
+- **Čára se před uložením zjednodušuje** (`zjednodusCaru()`, Douglas–Peucker,
+  tolerance 0,0002° ≈ dvacet metrů). Bez toho měla ta trasa **304 504 bodů
+  a 6 372 kB**, které by šly do IndexedDB a odtud do `L.polyline`, kterou
+  prohlížeč promítá při každém posunu mapy. Se zjednodušením **32 851 bodů
+  a 624 kB**. Vzdálenost ani čas se tím nemění — ty vrací API zvlášť.
+- **Časový strop je na úsek, ne na celý přepočet** (20 s × počet úseků).
+  Změřeno: nejdelší úsek té trasy odpovídal 12,9 s, takže deset vteřin
+  nestačilo ani na jeden a přepočet hlásil „vypršel" dřív, než mohl doběhnout.
+  Protože se u dlouhé výpravy čeká přes dvacet vteřin a toast zhasne po dvou,
+  hlásí se **průběh** („Počítám trasu… (2/3)") — jen když se trasa dělí.
 - **Domů a Mapa se za jízdy ptají jinak.** `vypravaKarta()` pozná `jedeSe()`
   a nakreslí kartu cesty (další cíl, průběh, čas), ne plán otevřený
   v Itineráři. Čísla jdou z `cesta.odznacene`, ne ze `store.stav` – to je

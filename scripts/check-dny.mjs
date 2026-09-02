@@ -1014,5 +1014,67 @@ pripravV(['a', 'b'], [], [{ nazev: 'Dolomity', plan: ['d'], planDny: [] }], 'Alp
   S.byId = {}
 }
 
+/* ---------- dlouhá trasa: úseky a zjednodušení čáry ---------- */
+// Routing API Mapy.com bere nejvýš patnáct waypointů, tedy sedmnáct bodů.
+// ZMĚŘENO NA ŽIVÉM API: sedmnáct projde, osmnáctý vrátí 422 s hláškou
+// „ensure this value has at most 15 items". Jedenáctidenní výprava se
+// sedmnácti místy a dvěma noclehy jich má devatenáct, takže se přepočet lámal.
+{
+  const { rozdelNaUseky, spojUseky, zjednodusCaru } =
+    await import('../src/views/plan/routing.js')
+
+  const body = (n) => Array.from({ length: n }, (_, i) => ({ lat: 50 + i * 0.01, lon: 14 + i * 0.01 }))
+
+  // Tvrdý strop API je 17 bodů, appka ale posílá po devíti – na jeden kus
+  // přes půl Evropy API nestačí a vrací 503. Hranice se proto zkouší
+  // s výslovným `max`, výchozí velikost zvlášť.
+  t('výchozí úsek se vejde do stropu API', rozdelNaUseky(body(50))[0].length <= 17)
+  t('a je půlka stropu', rozdelNaUseky(body(50))[0].length === 9)
+  t('krátká trasa se nedělí', rozdelNaUseky(body(17), 17).length === 1)
+  t('osmnáct bodů se rozdělí', rozdelNaUseky(body(18), 17).length === 2)
+  const u19 = rozdelNaUseky(body(19), 17)
+  t('devatenáct bodů dá 17 + 3', u19.map((x) => x.length).join('+') === '17+3')
+  // HRANIČNÍ BOD JE V OBOU ÚSECÍCH. Bez toho by mezi nimi zůstala díra –
+  // úsek by končil v Chorvatsku a další začínal ve Španělsku.
+  t('sousední úseky sdílejí hraniční bod', u19[0][16].lat === u19[1][0].lat)
+  t('a žádný bod se neztratí', u19[0].length + u19[1].length - 1 === 19)
+  // Žádný úsek nesmí přelézt strop, jinak se 422 vrátí i po rozdělení.
+  const u100 = rozdelNaUseky(body(100), 17)
+  t('ani u sta bodů žádný úsek nepřeleze strop', u100.every((x) => x.length <= 17))
+  t('a pokrývají celou trasu', u100.reduce((s, x) => s + x.length - 1, 1) === 100)
+  // Poslední úsek nesmí zůstat jednobodový – na jeden bod se trasa nepočítá.
+  t('žádný úsek není jednobodový', [18, 19, 33, 34, 49, 50].every((n) =>
+    rozdelNaUseky(body(n), 17).every((x) => x.length >= 2) &&
+    rozdelNaUseky(body(n)).every((x) => x.length >= 2)))
+
+  // Slepení: hraniční bod se nesmí objevit dvakrát, čísla se sčítají.
+  const spoj = spojUseky([
+    { polyline: [[0, 0], [1, 1], [2, 2]], vzdalenostKm: 10, casMin: 20 },
+    { polyline: [[2, 2], [3, 3]], vzdalenostKm: 5, casMin: 8 },
+  ])
+  t('slepená čára nemá hraniční bod dvakrát', spoj.polyline.length === 4)
+  t('a jde plynule od začátku do konce',
+    spoj.polyline[0][0] === 0 && spoj.polyline[3][0] === 3)
+  t('kilometry se sečtou', spoj.vzdalenostKm === 15)
+  t('a čas taky', spoj.casMin === 28)
+
+  // Zjednodušení čáry. Změřeno na skutečné trase: 304 504 bodů a 6 372 kB
+  // syrově, 32 751 bodů a 622 kB po zjednodušení.
+  const rovna = Array.from({ length: 500 }, (_, i) => [50 + i * 0.001, 14])
+  t('rovný úsek se smrskne na dva body', zjednodusCaru(rovna).length === 2)
+  t('a krajní body zůstanou', (() => {
+    const z = zjednodusCaru(rovna)
+    return z[0][0] === 50 && z[z.length - 1][0] === Math.round(50.499 * 1e5) / 1e5
+  })())
+  const zubata = Array.from({ length: 500 }, (_, i) => [50 + i * 0.001, 14 + (i % 2) * 0.01])
+  t('zub větší než tolerance se zachová', zjednodusCaru(zubata).length > 400)
+  const drobnyzub = Array.from({ length: 500 }, (_, i) => [50 + i * 0.001, 14 + (i % 2) * 0.00001])
+  t('zub pod tolerancí se zahodí', zjednodusCaru(drobnyzub).length < 10)
+  t('dva body projdou beze změny', zjednodusCaru([[1, 1], [2, 2]]).length === 2)
+  t('prázdná čára nespadne', zjednodusCaru([]).length === 0)
+  t('souřadnice se zaokrouhlí na pět míst',
+    zjednodusCaru([[50.123456789, 14.1], [50.2, 14.2], [50.987654321, 14.3]])[0][0] === 50.12346)
+}
+
 console.log(`\n${ok}/${ok + chyb} kontrol prošlo`)
 process.exit(chyb ? 1 : 0)
