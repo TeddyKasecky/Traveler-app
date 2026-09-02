@@ -32,6 +32,7 @@ import {
   napojPocasi,
   nejblizsiMesto,
   pocasiCestaHtml,
+  pocasiHodinyHtml,
   pocasiHtml,
   pocasiProBod,
   pocasiProCestu,
@@ -114,69 +115,72 @@ async function naplnPocasi() {
   const kam = document.getElementById('homePocasi')
   if (!kam) return
 
-  // PŘEPÍNAČ JE LOMÍTKO, ne segment: hlášení ho tak samo navrhlo („tam bude
-  // lomítko a na co kliknu, to se znázorní") a vejde se vedle nadpisu, kde
-  // ho segment přes celou šířku vytlačil.
+  // JEDNO TLAČÍTKO, které pojmenovává běžící režim (`tadeas-f32-010`). Sedí
+  // v pravém slotu nadpisu, který vykreslila `sekce()` – do září 2026 se sem
+  // vkládalo lomítko se dvěma tlačítky přes `insertAdjacentHTML`, což při
+  // dvojím průchodu téhle funkce vyrobilo přepínače dva.
   //
   // „Na cestě" potřebuje vědět, který den výpravy je které datum. Za jízdy se
-  // to počítá od vyjetí, jinak z termínu; bez obojího je půlka ZAŠEDLÁ a řekne
-  // proč – stejný vzor jako u dlaždic rychlé inspirace.
+  // to počítá od vyjetí, jinak z termínu; bez obojího je tlačítko NEAKTIVNÍ
+  // a řekne proč – stejný vzor jako u dlaždic rychlé inspirace.
   const jdeCesta = dnyCesty().length > 0
   const rezim = prefs.pocasiRezim === 'nacest' && jdeCesta ? 'nacest' : 'utebe'
-  kam.insertAdjacentHTML(
-    'beforebegin',
-    `<div class="pocasi-prepinac" id="homePocasiRezim">
-      <button class="${rezim === 'utebe' ? 'on' : ''}" data-rezim="utebe">u tebe</button>
-      <span>/</span>
-      <button class="${rezim === 'nacest' ? 'on' : ''}${jdeCesta ? '' : ' nejde'}" data-rezim="nacest"
-        ${jdeCesta ? '' : 'disabled title="Nevím, který den výpravy je které datum – chybí termín"'}>na cestě</button>
-    </div>`
-  )
-  for (const b of document.querySelectorAll('#homePocasiRezim button[data-rezim]')) {
-    b.onclick = () => {
-      prefs.pocasiRezim = b.dataset.rezim
+  const prepinac = document.getElementById('homePocasiRezim')
+  if (prepinac) {
+    prepinac.firstChild.textContent = rezim === 'nacest' ? 'na cestě' : 'u tebe'
+    prepinac.disabled = !jdeCesta && rezim === 'utebe'
+    prepinac.title = jdeCesta
+      ? 'Přepnout na počasí ' + (rezim === 'nacest' ? 'u tebe' : 'na cestě')
+      : 'Nevím, který den výpravy je které datum – chybí termín'
+    prepinac.onclick = () => {
+      prefs.pocasiRezim = rezim === 'nacest' ? 'utebe' : 'nacest'
       savePrefs()
       renderHome()
     }
   }
 
-  if (rezim === 'nacest') {
-    kam.innerHTML = `<div class="meta">Načítám předpověď…</div>`
-    const dny = await pocasiProCestu()
-    const porad = document.getElementById('homePocasi')
-    if (!porad || porad !== kam) return
-    kam.innerHTML = dny
-      ? pocasiCestaHtml(dny)
-      : `<div class="meta">Předpověď se nepodařilo načíst. Zkusím to zase, až bude signál.</div>`
-    return
-  }
-
+  // HODINY JSOU V OBOU REŽIMECH a vždycky z tvé polohy – odpovídají na „prší
+  // tady teď". Do září 2026 v režimu „na cestě" chyběly úplně: vykreslovaly
+  // se jen dny výpravy.
   if (!S.userPos) {
-    kam.innerHTML = `<div class="btnrow" style="margin:0">
-      <button class="btn" id="homePocasiPoloha">${IC('i-compass')}Ukázat počasí u mě</button>
-    </div>`
-    document.getElementById('homePocasiPoloha').onclick = () => zjistiPolohu()
-    return
+    // Bez polohy nejsou hodiny odkud vzít. Na cestě aspoň dny, jinak tlačítko.
+    if (rezim !== 'nacest') {
+      kam.innerHTML = `<div class="btnrow" style="margin:0">
+        <button class="btn" id="homePocasiPoloha">${IC('i-compass')}Ukázat počasí u mě</button>
+      </div>`
+      document.getElementById('homePocasiPoloha').onclick = () => zjistiPolohu()
+      return
+    }
   }
 
   kam.innerHTML = `<div class="meta">Načítám předpověď…</div>`
-  const p = await pocasiProBod(S.userPos)
+
+  const p = S.userPos ? await pocasiProBod(S.userPos) : null
+  const dnyVypravy = rezim === 'nacest' ? await pocasiProCestu() : null
 
   // Mezitím se mohlo překreslit (přišla poloha, přepnula se záložka). Zápis
   // do odpojeného prvku by zmizel do prázdna – a hůř, přepsal by novější.
   const porad = document.getElementById('homePocasi')
   if (!porad || porad !== kam) return
 
-  kam.innerHTML = p
-    ? pocasiHtml(p)
-    : `<div class="meta">Předpověď se nepodařilo načíst. Zkusím to zase, až bude signál.</div>`
+  const hodiny = p ? pocasiHodinyHtml(p, { kdeId: 'homePocasiKde' }) : ''
 
-  if (p) napojPocasi(kam)
+  if (rezim === 'nacest') {
+    kam.innerHTML =
+      hodiny + (dnyVypravy ? pocasiCestaHtml(dnyVypravy) : '<div class="meta">Předpověď výpravy se nepodařilo načíst.</div>')
+  } else {
+    kam.innerHTML = p
+      ? pocasiHtml(p, { kdeId: 'homePocasiKde' })
+      : `<div class="meta">Předpověď se nepodařilo načíst. Zkusím to zase, až bude signál.</div>`
+  }
 
-  // Odkud se předpověď bere. Počítá se z `mesta.json`, tedy BEZ DOTAZU NA SÍŤ –
-  // doplní se proto i tehdy, když se samotná předpověď načíst nepodařila.
+  // Posouvač pod pruhem hodin. Musí se navěsit v OBOU režimech – pruh je
+  // v obou a bez toho by lišta pod ním stála na místě.
+  if (hodiny) napojPocasi(kam)
+
+  // Odkud se předpověď bere. Počítá se z `mesta.json`, tedy BEZ DOTAZU NA SÍŤ.
   const kde = document.getElementById('homePocasiKde')
-  if (kde) {
+  if (kde && S.userPos) {
     const nazev = await nejblizsiMesto(S.userPos)
     if (nazev && document.getElementById('homePocasiKde') === kde) kde.textContent = nazev
   }

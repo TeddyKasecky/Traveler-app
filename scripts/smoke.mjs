@@ -257,18 +257,19 @@ await kontrola('mřížka „Možná dnes"', () => page.locator('#homeInner .fot
 await kontrola('Domů má sekci počasí', () => page.locator('#homePocasi').count(), 1)
 await kontrola('bez polohy nabídne tlačítko', () => page.locator('#homePocasiPoloha').count(), 1)
 await kontrola('a nic nestahuje', () => page.evaluate(() => window.__pocasiDotazu), 0)
-// PŘEPÍNAČ „u tebe / na cestě" (`tadeas-f32-010`). Bez rozjeté cesty i bez
-// termínu se neví, který den výpravy je které datum, takže je půlka zašedlá
-// a NEAKTIVNÍ – stejný vzor jako u dlaždic rychlé inspirace.
-await kontrola('počasí má přepínač u tebe / na cestě', () =>
-  page.locator('#homePocasiRezim button[data-rezim]').count(), 2)
-await kontrola('bez termínu je „na cestě" neaktivní', () =>
-  page.locator('#homePocasiRezim [data-rezim="nacest"]').isDisabled(), true)
-// Místo, odkud se předpověď bere, se doplňuje do pravého slotu nadpisu
-// (`poznId` v `sekce()`). Bez polohy zůstane prázdné, ale MUSÍ TAM BÝT –
-// kdyby `sekce()` slot nevykreslila, nemělo by se kam zapsat a lokace by
-// se nikdy neukázala, aniž by co spadlo.
-await kontrola('nadpis má slot na lokaci', () => page.locator('#homePocasiKde').count(), 1)
+// PŘEPÍNAČ REŽIMU je od září 2026 JEDEN a nese popisek běžícího režimu
+// (`tadeas-f32-010`). Do té doby to bylo lomítko se dvěma tlačítky.
+// Bez rozjeté cesty i bez termínu se neví, který den výpravy je které datum,
+// takže je NEAKTIVNÍ – stejný vzor jako u dlaždic rychlé inspirace.
+await kontrola('počasí má jeden přepínač režimu', () =>
+  page.locator('#homePocasiRezim').count(), 1)
+await kontrola('a nese běžící režim', () =>
+  page.locator('#homePocasiRezim').innerText().then((x) => x.trim()), 'u tebe')
+await kontrola('bez termínu je přepínač neaktivní', () =>
+  page.locator('#homePocasiRezim').isDisabled(), true)
+// Nejbližší město se od září 2026 doplňuje POD PRUH HODIN, ne do nadpisu –
+// tam sedí přepínač a město patří k hodinám, které popisuje. Bez polohy se
+// pruh nekreslí, takže tu slot ještě není; ověřuje se níž, až poloha přijde.
 await kontrola('statistika míst', () => page.locator('#homeInner .cislo b').first().innerText(), '580')
 // Přehled 32 bikeparků odešel do kolekce „Na kolo". Ceny se ale ztratit
 // nesměly – kontrola „ceny bikeparku v detailu" níž ověřuje, že jsou v detailu.
@@ -1322,7 +1323,21 @@ for (let i = 0; i < 6; i++) {
   await page.mouse.wheel(0, 400)
   await page.waitForTimeout(250)
 }
-await page.waitForTimeout(1000)
+// POČKAT, AŽ SE POČET USTALÍ, ne pevně vteřinu. Oddálení kolečkem je
+// animované a `srovnejVyrez()` doplňuje špendíky průběžně, takže při pevném
+// čekání občas chyběly dva krajní – změřeno 578 místo 580, a při dalším
+// běhu už ne. Kontrola, která jednou z deseti spadne, je horší než žádná:
+// naučí člověka přebírat červené výpisy. Čeká se proto na dvě shodné hodnoty
+// za sebou; samotné tvrzení žádné číslo nepředjímá.
+{
+  let posledni = -1
+  for (let i = 0; i < 20; i++) {
+    const n = await page.locator('.badge-pin').count()
+    if (n === posledni) break
+    posledni = n
+    await page.waitForTimeout(250)
+  }
+}
 await kontrola('po oddálení jsou vidět všechna místa', () => page.locator('.badge-pin').count(), 580)
 
 // detail místa
@@ -2662,6 +2677,15 @@ await kontrola('a dodávka je v mapě', () => page.locator('#map .poloha').count
 await page.click('#tabs button[data-tab="home"]')
 await page.waitForTimeout(700)
 await kontrola('a Domů už o polohu neprosí', () => page.locator('#homePocasiPoloha').count(), 0)
+// S polohou se vykreslí pruh hodin a POD NÍM nejbližší město. Do září 2026
+// bylo město v pravém slotu nadpisu, kde dnes sedí přepínač režimu.
+await page.waitForTimeout(1200)
+await kontrola('počasí u tebe kreslí pruh hodin', () => page.locator('.pocasi-pruh').count(), 1)
+await kontrola('a město je pod ním, ne v nadpisu', () =>
+  page.evaluate(() => {
+    const k = document.getElementById('homePocasiKde')
+    return !!k && !k.closest('.sekce') && !!k.closest('#homePocasi')
+  }), true)
 
 // MAPA SE VYCENTRUJE, ALE JEN JEDNOU ZA SPUŠTĚNÍ. Měří se vzdáleností dodávky
 // od středu výřezu: vycentrovaná mapa ji má uprostřed.

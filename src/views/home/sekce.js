@@ -190,7 +190,15 @@ export const SEKCE_DOMU = [
     // Obsah se doplní až po načtení – tohle je synchronní, předpověď je síť.
     html: () =>
       prefs.pocasi
-        ? sekce('Počasí', { poznId: 'homePocasiKde' }) + '<div id="homePocasi"></div>'
+        ? // PŘEPÍNAČ REŽIMU je v pravém slotu nadpisu; nejbližší město se
+          // přestěhovalo pod pruh hodin, které popisuje. Popisek tlačítka
+          // pojmenovává BĚŽÍCÍ režim, ne ten, na který přepne – vedle nadpisu
+          // se to čte jako „Počasí · u tebe". Ikona proto není šipka doprava:
+          // ta slibuje odchod jinam, kdežto tenhle knoflík přepne obsah na
+          // místě. Text i stav doplní `naplnPocasi()`, protože závisí na tom,
+          // jestli je co ukázat.
+          sekce('Počasí', { akce: 'u tebe', akceId: 'homePocasiRezim', akceIkona: 'i-obnovit' }) +
+          '<div id="homePocasi"></div>'
         : '',
   },
   {

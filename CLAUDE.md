@@ -587,10 +587,23 @@ trasy přes Mapy.com.
   a `i-sun`, aby seděly do sady.
 
 **Počasí „na cestě" je od září 2026** (`tadeas-f32-010`). Vedle nadpisu je
-lomítko „u tebe / na cestě" (`prefs.pocasiRezim`).
+**jedno tlačítko** (`prefs.pocasiRezim`) a nese popisek **běžícího** režimu —
+vedle nadpisu se to čte jako „Počasí · u tebe". Ikona není šipka doprava: ta
+slibuje odchod jinam, kdežto tenhle knoflík přepne obsah na místě.
 
-- **Hodinový pruh se režimem NEMĚNÍ** — je vždycky u tvé polohy. Odpovídá na
-  „prší tady teď", což je otázka o tom, kde stojíš, ne kde budeš.
+- **Hodinový pruh je v OBOU režimech** a je vždycky u tvé polohy. Odpovídá na
+  „prší tady teď", což je otázka o tom, kde stojíš, ne kde budeš. Kreslí ho
+  `pocasiHodinyHtml()` — vytažená z `pocasiHtml()` právě proto, aby ji volaly
+  oba režimy a markup s předělem dne existoval jednou. **Při vydání v září
+  2026 v režimu „na cestě" chyběl úplně**: „nemění se s režimem" jsem
+  napsal jako „není tam".
+- **Nejbližší město je pod pruhem hodin**, ne v nadpisu — tam sedí přepínač
+  a město patří k hodinám, které popisuje.
+- **Řádky dnů výpravy jsou tytéž `.pocasi-den`** jako u tvé polohy, jen mají
+  dvouřádkový levý sloupec: datum a pod ním ikona místa s názvem lokace.
+  Název smí na dva řádky a pak se ořízne; pevná výška řádku drží všechny
+  stejné. Východ a západ slunce se sem nedávají — na 390 px se to k širšímu
+  levému sloupci nevejde.
 - **Den se kopíruje pod sebe za každou zastávku**: tři zastávky = tři řádky
   se stejným datem, každý s počasím své oblasti. Blízké se **neslučují**;
   že patří k sobě, ukáže **společné podbarvení skupiny**, a datum se píše jen

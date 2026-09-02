@@ -56,12 +56,15 @@ export function heroPas({ obrazek, nadpis, podtitulek = '', vpravo = '' }) {
  * @param {string} [o.akceId]  id, na které se věší obsluha
  * @param {string} [o.pozn]  místo akce jen šedý text (např. „Přetáhni pro změnu pořadí“)
  */
-export function sekce(popisek, { akce = '', akceId = '', pozn = '', poznId = '' } = {}) {
+export function sekce(popisek, { akce = '', akceId = '', akceIkona = 'i-sipka', pozn = '', poznId = '' } = {}) {
   // `poznId` je tu kvůli údajům, které se dopočítají až po vykreslení –
   // třeba nejbližší město u počasí, které čeká na dotažení `mesta.json`.
   // Prázdná poznámka se pak vykreslí taky, aby bylo kam zapsat.
   const vpravo = akce
-    ? `<button class="sekce-akce"${akceId ? ` id="${akceId}"` : ''}>${esc(akce)}${IC('i-sipka', 'font-size:12px')}</button>`
+    // `akceIkona` je nepovinná a výchozí zůstává šipka doprava. Přepínač
+    // režimu počasí ji ale mít nesmí – šipka slibuje odchod jinam, kdežto
+    // tenhle knoflík obsah přepne na místě (`tadeas-f32-010`).
+    ? `<button class="sekce-akce"${akceId ? ` id="${akceId}"` : ''}>${esc(akce)}${IC(akceIkona, 'font-size:12px')}</button>`
     : pozn || poznId
       ? `<span class="sekce-pozn"${poznId ? ` id="${poznId}"` : ''}>${esc(pozn)}</span>`
       : ''
