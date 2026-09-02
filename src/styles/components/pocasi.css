@@ -87,37 +87,40 @@
 
 /* ---------- dny výpravy ----------
  *
- * Řádky jsou TYTÉŽ `.pocasi-den` jako u počasí u tvé polohy – ikona, popis,
- * déšť a teploty ve stejném pořadí i typografii. Liší se jen levým sloupcem:
- * ten je tu dvouřádkový (datum a pod ním místo), a tím jsou řádky vyšší.
+ * DVĚ PATRA. Horní je doslova řádek počasí u tvé polohy – týž `denRadekHtml()`,
+ * tedy datum, ikona, popis, déšť, VÝCHOD A ZÁPAD SLUNCE i teploty. Dolní nese
+ * název místa přes CELOU ŠÍŘKU.
  *
- * Den se kopíruje pod sebe za každou zastávku, takže dva řádky mohou nést
+ * Do září 2026 stálo jméno v levém sloupci vedle data: sloupec musel být
+ * 9,4 rem široký, na zbytek řádku zbyla polovina, a aby se tam čtyři údaje
+ * vešly, vypadlo z nich slunce. Celý řádek dole nebere nikomu nic.
+ *
+ * Den se kopíruje pod sebe za každou zastávku, takže dva bloky mohou nést
  * totéž datum. Že patří k sobě, drží SPOLEČNÉ PODBARVENÍ přes celou skupinu –
- * rámeček kolem každého řádku by je naopak roztrhl. Datum se proto píše jen
+ * rámeček kolem každého by je naopak roztrhl. Datum se proto píše jen
  * u prvního řádku dne, u dalších zůstává prázdné místo, aby sloupce seděly. */
 .pocasi-cesta{display:flex;flex-direction:column;gap:6px}
 .pocasi-cesta-den{border-radius:var(--r-s);overflow:hidden}
 .pocasi-cesta-den.vic{background:var(--plocha2);border:var(--line)}
-/* Ve skupině se řádky slepí: uvnitř žádné vlastní pozadí ani rámeček, jen linka. */
+/* Ve skupině se bloky slepí: uvnitř žádné vlastní pozadí ani rámeček, jen linka. */
 .pocasi-cesta-den.vic .pocasi-den{background:transparent;border:0;border-radius:0}
 .pocasi-cesta-den.vic .pocasi-den + .pocasi-den{border-top:var(--line)}
 
-/* Levý sloupec nese datum i místo pod sebou. Šířka je pevná, aby ikony
-   počasí lícovaly ve sloupci; název místa se ořízne, protože „Gletscherschlucht
-   Rosenlaui" se do žádné rozumné šířky nevejde celý. */
-.pocasi-den-cesta{min-height:64px}
-.pocasi-den-cesta .pocasi-den-kdy{flex:0 0 9.4rem;min-width:0;display:flex;flex-direction:column;gap:2px}
-.pocasi-den-cesta .pocasi-den-kdy b{font-size:.74rem;font-weight:800;color:var(--text2);min-height:1em}
-/* Ikona nahoře, ne na střed: u dvouřádkového názvu by jinak plavala uprostřed. */
-.pocasi-kde-radek{display:flex;align-items:flex-start;gap:4px;min-width:0;
-  font-size:.72rem;font-weight:700;color:var(--text);line-height:1.25}
-.pocasi-kde-radek svg.ic{flex:0 0 auto;font-size:12px;margin-top:1px;color:var(--text3);stroke:var(--text3)}
-/* JMÉNO MÍSTA SMÍ NA DVA ŘÁDKY, dál se ořízne. Na jeden řádek se
-   „Gletscherschlucht Rosenlaui" nevejde a zkratka „Gletscherschlucht Ro…"
-   místo neidentifikuje. Dva řádky plus pevná výška řádku drží všechny stejně
-   vysoké – bez toho měly 61, 62 a 64 px podle délky názvu. */
-.pocasi-kde-radek span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
-  overflow:hidden;min-width:0}
+/* Odsazení si berou obě patra sama, aby mezi nimi nebyla mezera navíc. Horní
+   má nahoře 12 px místo devíti – blok o dvou patrech má být vyšší, ne
+   namačkaný. */
+.pocasi-den-cesta{flex-direction:column;align-items:stretch;gap:0;padding:0}
+.pocasi-den-hlava{display:flex;align-items:center;gap:8px;padding:12px 11px 8px}
+.pocasi-kde-radek{display:flex;align-items:center;gap:5px;min-width:0;padding:0 11px 12px;
+  font-size:.72rem;font-weight:700;color:var(--text);line-height:1.3}
+/* `.pocasi-den svg.ic` je 18 px v akcentu – to je pravidlo pro ikonu počasí.
+   Špendlík je popisek, ne hlavní údaj, tak si bere velikost i barvu
+   jako `.pocasi-dest`. */
+.pocasi-kde-radek svg.ic{flex:0 0 auto;font-size:13px;color:var(--text3);stroke:var(--text3)}
+/* Jeden řádek s třemi tečkami. Přes celou šířku se „Gletscherschlucht
+   Rosenlaui" vejde v pohodě a jednořádkovost drží všechny bloky stejně vysoké
+   – dvouřádkový název je měl 61, 62 a 64 px podle délky. */
+.pocasi-kde-radek span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pocasi-bez{font-size:.74rem;color:var(--text3)}
 
 /* Nejbližší město pod pruhem hodin, ne v nadpisu sekce – tam sedí přepínač

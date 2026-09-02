@@ -599,21 +599,25 @@ slibuje odchod jinam, kdežto tenhle knoflík přepne obsah na místě.
   napsal jako „není tam".
 - **Nejbližší město je pod pruhem hodin**, ne v nadpisu — tam sedí přepínač
   a město patří k hodinám, které popisuje.
-- **Řádky dnů výpravy jsou tytéž `.pocasi-den`** jako u tvé polohy, jen mají
-  dvouřádkový levý sloupec: datum a pod ním ikona místa s názvem lokace.
-  Název smí na dva řádky a pak se ořízne; pevná výška řádku drží všechny
-  stejné. Východ a západ slunce se sem nedávají — na 390 px se to k širšímu
-  levému sloupci nevejde.
-- **Den se kopíruje pod sebe za každou zastávku**: tři zastávky = tři řádky
+- **Blok dne výpravy má dvě patra.** Horní je DOSLOVA řádek počasí u tvé
+  polohy — táž `denRadekHtml()` v `components/pocasi.js`, tedy datum, ikona,
+  popis, déšť, východ a západ slunce i teploty. Dolní nese ikonu místa
+  s názvem lokace **přes celou šířku**. Při vydání v září 2026 stálo jméno
+  v levém sloupci vedle data: sloupec musel být 9,4 rem široký, na zbytek
+  řádku zbyla polovina, a aby se tam čtyři údaje vešly, vypadlo z nich
+  slunce. Celý řádek dole nebere nikomu nic. **Vnitřek řádku proto skládá
+  jedna funkce pro oba režimy** — dokud si ho trip-řádek psal sám, „stejný
+  jako u tebe" byl slib, ne fakt.
+- **Den se kopíruje pod sebe za každou zastávku**: tři zastávky = tři bloky
   se stejným datem, každý s počasím své oblasti. Blízké se **neslučují**;
   že patří k sobě, ukáže **společné podbarvení skupiny**, a datum se píše jen
-  u prvního řádku. Den bez zastávek se řídí tvojí polohou.
+  u prvního. Den bez zastávek se řídí tvojí polohou.
 - **Za jízdy se bere rozjetá cesta** (`store.cesta.zastavky`), jinak plán.
   Ty dvě věci se záměrně liší a počasí má odpovídat na „bude tam, kam
   opravdu mířím, pršet".
 - **Který den je dnes**: za jízdy `kolikatyDenCesty()` (počítá se od vyjetí,
   takže termín není potřeba), jinak `kolikatyDenDnes()` z termínu. Bez obojího
-  je půlka přepínače zašedlá a řekne proč.
+  je přepínač zašedlý a řekne proč.
 - **Jeden dotaz na celou výpravu.** `nactiPocasiProBody()` posílá
   `latitude=a,b,c` a dostane pole odpovědí; změřeno proti živému API, že
   40 bodů na 14 dní je 29,7 kB a 196 ms. Body, které schránka zná a jsou

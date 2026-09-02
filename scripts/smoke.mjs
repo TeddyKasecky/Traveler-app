@@ -2603,13 +2603,18 @@ await page.route('**/api.open-meteo.com/**', async (route) => {
     den.push(d); maxT.push(25 - i); minT.push(13 - i); denKod.push(3); denPravd.push(20 + i)
     vychod.push(`${d}T05:00`); zapad.push(`${d}T21:00`)
   }
+  const jeden = {
+    hourly_units: { precipitation: 'mm', precipitation_probability: '%' },
+    hourly: { time: cas, temperature_2m: teplota, precipitation: srazky, precipitation_probability: pravd, weather_code: kod },
+    daily: { time: den, weather_code: denKod, temperature_2m_max: maxT, temperature_2m_min: minT, precipitation_probability_max: denPravd, sunrise: vychod, sunset: zapad },
+  }
+  // JEDEN BOD = OBJEKT, VÍC BODŮ = POLE, přesně jako Open-Meteo. Počasí na
+  // cestě se ptá na všechny zastávky jedním dotazem a `nactiPocasiProBody()`
+  // hodí chybu, když přijde jiný počet kusů, než kolik bodů poslalo.
+  const kolik = (new URL(route.request().url()).searchParams.get('latitude') || '').split(',').length
   await route.fulfill({
     contentType: 'application/json',
-    body: JSON.stringify({
-      hourly_units: { precipitation: 'mm', precipitation_probability: '%' },
-      hourly: { time: cas, temperature_2m: teplota, precipitation: srazky, precipitation_probability: pravd, weather_code: kod },
-      daily: { time: den, weather_code: denKod, temperature_2m_max: maxT, temperature_2m_min: minT, precipitation_probability_max: denPravd, sunrise: vychod, sunset: zapad },
-    }),
+    body: JSON.stringify(kolik > 1 ? Array.from({ length: kolik }, () => jeden) : jeden),
   })
 })
 await page.click('#tabs button[data-tab="home"]')
@@ -2791,6 +2796,85 @@ await page.click('#listZrusFiltry')
 await page.waitForTimeout(800)
 await kontrola('rušítko vrátí všechna místa', nalezeno, vsechnaMista)
 await kontrola('a zase zšedne', () => page.locator('#listZrusFiltry').isDisabled(), true)
+
+/* ---------- počasí na cestě ---------- */
+
+// STOJÍ TO AŽ TADY, protože to zakládá rozjetou cestu – kontroly výš měří
+// stav bez ní. Poloha je z předchozího bloku pořád v `S.userPos`, i když se
+// povolení mezitím vzalo zpátky: to řídí jen budoucí dotazy.
+//
+// NA STRUKTURU ŘÁDKU DNE NEBYLA DO ZÁŘÍ 2026 JEDINÁ KONTROLA, a právě proto
+// se dal rozbít, aniž by cokoli spadlo: řádek dostal 9,4rem široký levý
+// sloupec s názvem místa a při tom z něj vypadl východ se západem slunce.
+// Dnes je dvoupatrový – nahoře DOSLOVA řádek počasí u tvé polohy (týž
+// `denRadekHtml()`), dole celý řádek s názvem místa.
+await page.click('#tabs button[data-tab="plan"]')
+await page.waitForTimeout(500)
+await page.click('#planSegment button[data-seg="vypravy"]')
+await page.waitForTimeout(500)
+await page.locator('.vypravaradek').first().click()
+await page.waitForTimeout(700)
+// DVĚ ZASTÁVKY, obě v prvním dni: jen tak jde ověřit, že se den kopíruje pod
+// sebe a datum se píše u prvního bloku, ne u obou.
+await page.click('#planPridat')
+await page.waitForTimeout(600)
+await page.locator('#vmBody .radek').nth(0).click()
+await page.waitForTimeout(500)
+await page.locator('#vmBody .radek').nth(1).click()
+await page.waitForTimeout(700)
+await kontrola('plán má dvě zastávky pro cestu', () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('vandrbuch:v1')).plan.length), 2)
+// Plát se po přidání schválně nezavírá, takže se zavře ručně – jeho zástěna
+// by jinak spolkla ťuknutí do segmentu.
+await page.click('#vmClose')
+await page.waitForTimeout(500)
+await page.click('#planSegment button[data-seg="cesta"]')
+await page.waitForTimeout(500)
+await page.click('#cestaVyjed')
+await page.waitForTimeout(700)
+
+await page.click('#tabs button[data-tab="home"]')
+await page.waitForTimeout(700)
+await kontrola('s rozjetou cestou jde přepínač zmáčknout', () =>
+  page.locator('#homePocasiRezim').isDisabled(), false)
+await page.click('#homePocasiRezim')
+await page.waitForTimeout(2000)
+await kontrola('a přepne se na cestu', () =>
+  page.locator('#homePocasiRezim').innerText().then((x) => x.trim()), 'na cestě')
+// TOHLE JE TA VADA Z VYDÁNÍ: v režimu „na cestě" pruh hodin chyběl úplně.
+await kontrola('pruh hodin je i na cestě', () => page.locator('.pocasi-pruh').count(), 1)
+await kontrola('a den má za každou zastávku svůj blok', () =>
+  page.locator('.pocasi-den-cesta').count(), 2)
+await kontrola('obě zastávky drží jedno podbarvení dne', () =>
+  page.locator('.pocasi-cesta-den.vic').count(), 1)
+// OBĚ PATRA. Název místa je vlastní řádek POD řádkem počasí, ne sloupec v něm.
+await kontrola('blok dne má obě patra', () =>
+  page.locator('.pocasi-den-cesta > .pocasi-den-hlava + .pocasi-kde-radek').count(), 2)
+await kontrola('a v horním patře je totéž co u tebe', () =>
+  page.evaluate(() => {
+    const h = document.querySelector('.pocasi-den-hlava')
+    return ['.pocasi-den-kdy', 'svg.ic', '.pocasi-den-popis', '.pocasi-slunce', '.pocasi-den-teplota']
+      .every((s) => !!h.querySelector(s))
+  }), true)
+// Celý řádek, ne čtvrtina šířky vlevo – měřeno, protože právě šířka byla to,
+// co si vynutilo vyhazovat údaje.
+await kontrola('název místa je celý řádek', () =>
+  page.evaluate(() => {
+    const b = document.querySelector('.pocasi-den-cesta')
+    return b.querySelector('.pocasi-kde-radek').getBoundingClientRect().width /
+      b.getBoundingClientRect().width > 0.8
+  }), true)
+await kontrola('a je vypsaný celý', () =>
+  page.evaluate(() => {
+    const e = document.querySelector('.pocasi-kde-radek span')
+    return !!e.textContent.trim() && e.scrollWidth <= e.clientWidth + 1
+  }), true)
+// DATUM JEN U PRVNÍHO BLOKU DNE – u druhé zastávky by se jen opakovalo.
+await kontrola('datum nese jen první blok dne', () =>
+  page.evaluate(() => {
+    const k = [...document.querySelectorAll('.pocasi-den-cesta .pocasi-den-kdy')]
+    return !!k[0].textContent.trim() && !k[1].textContent.trim()
+  }), true)
 
 /* ---------- shrnutí ---------- */
 

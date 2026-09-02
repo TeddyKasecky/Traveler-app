@@ -392,6 +392,40 @@ export function pocasiHodinyHtml(p, { ted = Date.now(), kdeId = '' } = {}) {
 }
 
 /**
+ * Vnitřek řádku jednoho dne: datum, ikona počasí, popis, déšť, slunce, teploty.
+ *
+ * JEDEN ZDROJ PRO OBA REŽIMY (září 2026). U tvé polohy je to celý řádek, na
+ * cestě je to jeho horní patro a pod ním stojí název místa. Do té doby si
+ * trip-řádek skládal obsah vlastním kódem – a právě proto se rozešel: dostal
+ * široký dvouřádkový levý sloupec, na který se muselo vyhodit slunce a nakonec
+ * i slovní popis. „Stejný jako u tebe" je teď fakt, ne slib.
+ *
+ * @param {Record<string, any>|null} d  den z `pocasiProBod()`; `null` = na tenhle
+ *   den předpověď nedosáhne (čtrnáctidenní strop)
+ * @param {string} kdy  co stojí v levém sloupci; prázdné u druhé a další
+ *   zastávky téhož dne, ale sloupec zůstává, aby ikony pod sebou lícovaly
+ */
+function denRadekHtml(d, kdy) {
+  if (!d) {
+    return `<span class="pocasi-den-kdy">${esc(kdy)}</span>
+      ${IC('i-mlha')}
+      <span class="pocasi-den-popis pocasi-bez">Zatím bez předpovědi</span>`
+  }
+  const { ikona, popis } = pocasiPodleKodu(d.kodPocasi)
+  const dest = Number.isFinite(d.destProcent) && d.destProcent > 0
+    ? `<span class="pocasi-dest">${IC('i-rain')}${d.destProcent} %</span>`
+    : ''
+  const slunce = d.vychod && d.zapad
+    ? `<span class="pocasi-slunce">${IC('i-sun')}${esc(hodina(d.vychod))} – ${esc(hodina(d.zapad))}</span>`
+    : ''
+  return `<span class="pocasi-den-kdy">${esc(kdy)}</span>
+    ${IC(ikona)}
+    <span class="pocasi-den-popis">${esc(popis)}</span>
+    ${dest}${slunce}
+    <b class="pocasi-den-teplota">${stupne(d.maxC)}<i>${stupne(d.minC)}</i></b>`
+}
+
+/**
  * Celá předpověď u tvé polohy: pruh hodin a pod ním dny.
  *
  * @param {Record<string, any>} p
@@ -402,22 +436,7 @@ export function pocasiHtml(p, { ted = Date.now(), kdeId = '' } = {}) {
   if (!hodiny) return ''
 
   const dny = (p.dny || [])
-    .map((d) => {
-      const { ikona, popis } = pocasiPodleKodu(d.kodPocasi)
-      const dest = Number.isFinite(d.destProcent) && d.destProcent > 0
-        ? `<span class="pocasi-dest">${IC('i-rain')}${d.destProcent} %</span>`
-        : ''
-      const slunce = d.vychod && d.zapad
-        ? `<span class="pocasi-slunce">${IC('i-sun')}${esc(hodina(d.vychod))} – ${esc(hodina(d.zapad))}</span>`
-        : ''
-      return `<div class="pocasi-den">
-        <span class="pocasi-den-kdy">${esc(kratkyDen(d.datum, ted))}</span>
-        ${IC(ikona)}
-        <span class="pocasi-den-popis">${esc(popis)}</span>
-        ${dest}${slunce}
-        <b class="pocasi-den-teplota">${stupne(d.maxC)}<i>${stupne(d.minC)}</i></b>
-      </div>`
-    })
+    .map((d) => `<div class="pocasi-den">${denRadekHtml(d, kratkyDen(d.datum, ted))}</div>`)
     .join('')
 
   return `${hodiny}<div class="pocasi-dny">${dny}</div>`
@@ -432,6 +451,11 @@ export function pocasiHtml(p, { ted = Date.now(), kdeId = '' } = {}) {
  * ukáže **společné podbarvení přes celou skupinu**, ne rámeček kolem každého;
  * datum se proto píše jen u prvního řádku dne.
  *
+ * ŘÁDEK JE DVOUPATROVÝ: nahoře DOSLOVA řádek počasí u tvé polohy (tentýž
+ * `denRadekHtml()`, nic ubraného), dole **celý řádek** s názvem místa. Do září
+ * 2026 stálo jméno v levém sloupci vedle data, kde bralo šířku popisu i slunci
+ * a dlouhý název se stejně lámal – čtyři údaje se tlačily do zbytku řádku.
+ *
  * @param {Array<{den:number, datum:string, radky:Array<{nazev:string, den:Record<string,any>|null}>}>} dny
  */
 export function pocasiCestaHtml(dny, { ted = Date.now() } = {}) {
@@ -440,34 +464,16 @@ export function pocasiCestaHtml(dny, { ted = Date.now() } = {}) {
   return `<div class="pocasi-cesta">${dny
     .map((d) => {
       const radky = d.radky
-        .map((r, i) => {
-          const p = r.den
-          const { ikona, popis } = p ? pocasiPodleKodu(p.kodPocasi) : { ikona: 'i-mlha', popis: '' }
-          // Déšť ANO, východ a západ slunce NE. V řádcích u tvé polohy jsou
-          // obojí, jenže tam je levý sloupec jednořádkový; tady nese datum
-          // i název místa, takže by se to na 390 px nevešlo – `pocasi.css`
-          // ostatně slunce pod 380 px schovává už dnes.
-          const dest = p && Number.isFinite(p.destProcent) && p.destProcent > 0
-            ? `<span class="pocasi-dest">${IC('i-rain')}${p.destProcent} %</span>`
-            : ''
-          // Předpověď dosahuje čtrnáct dní; na vzdálenější den prostě není.
-          // Řekne se to, místo aby řádek mlčel nebo zmizel.
-          const udaje = p
-            ? `<span class="pocasi-den-popis">${esc(popis)}</span>${dest}
-               <b class="pocasi-den-teplota">${stupne(p.maxC)}<i>${stupne(p.minC)}</i></b>`
-            : '<span class="pocasi-den-popis pocasi-bez">Zatím bez předpovědi</span>'
-
-          // DATUM JEN U PRVNÍHO ŘÁDKU DNE. Je společné celému dni a u dalších
-          // zastávek by se jen opakovalo; že řádky patří k sobě, drží
-          // podbarvení skupiny. Název místa má naopak každý řádek vlastní.
-          return `<div class="pocasi-den pocasi-den-cesta">
-            <span class="pocasi-den-kdy">
-              <b>${i === 0 ? esc(kratkyDen(d.datum, ted)) : ''}</b>
-              <span class="pocasi-kde-radek">${IC('i-pinme')}<span>${esc(r.nazev)}</span></span>
-            </span>
-            ${IC(ikona)}${udaje}
-          </div>`
-        })
+        .map(
+          (r, i) =>
+            // DATUM JEN U PRVNÍHO ŘÁDKU DNE. Je společné celému dni a u dalších
+            // zastávek by se jen opakovalo; že řádky patří k sobě, drží
+            // podbarvení skupiny. Název místa má naopak každý řádek vlastní.
+            `<div class="pocasi-den pocasi-den-cesta">
+              <div class="pocasi-den-hlava">${denRadekHtml(r.den, i === 0 ? kratkyDen(d.datum, ted) : '')}</div>
+              <div class="pocasi-kde-radek">${IC('i-pinme')}<span>${esc(r.nazev)}</span></div>
+            </div>`
+        )
         .join('')
       return `<div class="pocasi-cesta-den${d.radky.length > 1 ? ' vic' : ''}">${radky}</div>`
     })
