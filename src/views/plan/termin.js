@@ -16,6 +16,7 @@
 
 import { store, save } from '../../core/store.js'
 import { dkm } from '../../core/geo.js'
+import { DRUHY, serazenePolozky, vsechnyBody } from './body.js'
 
 /** Silnice bývá delší než vzdušná čára – týž koeficient jako v plan.js. */
 const KLIKATOST = 1.35
@@ -75,15 +76,132 @@ export function denVTydnu(iso) {
   return ['ne', 'po', 'út', 'st', 'čt', 'pá', 'so'][new Date(Date.UTC(r, m - 1, d)).getUTCDay()]
 }
 
+/**
+ * Datum okamžiku v MÍSTNÍM čase jako 'YYYY-MM-DD'.
+ *
+ * `toISOString().slice(0,10)` sem nepatří, i když je kratší: převádí do UTC,
+ * takže odjezd po půlnoci u nás spadne na předchozí den a s ním se posune
+ * celá výprava. Den výpravy je kalendářní údaj, ne okamžik.
+ *
+ * @param {number} ms
+ */
+export function mistniDatum(ms) {
+  const d = new Date(ms)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** Datum o `dni` dní dál. Přes UTC půlnoc, ať letní čas nepřeskočí den. */
+export function posunDatum(iso, dni) {
+  const [r, m, d] = iso.split('-').map(Number)
+  const p = new Date(Date.UTC(r, m - 1, d) + dni * 86400000)
+  return `${p.getUTCFullYear()}-${String(p.getUTCMonth() + 1).padStart(2, '0')}-${String(p.getUTCDate()).padStart(2, '0')}`
+}
+
+/**
+ * Kolikátý KALENDÁŘNÍ den je `ted` ode dne `od`, počítáno od jedničky.
+ *
+ * JEDINÉ MÍSTO, KDE SE TO POČÍTÁ. Do září 2026 existovaly tři různé odpovědi
+ * na tutéž otázku: `kolikatyDenDnes()` počítal kalendářně, kdežto
+ * `kolikatyDenCesty()` v `cestaData.js` a ještě jednou opsaný výpočet
+ * v `cesta.js` dělily uplynulý čas 24 hodinami. Na jedné obrazovce se pak
+ * potkal štítek „NA CESTĚ · 1. DEN" s počasím, které psalo „dnes" až u druhého
+ * dne (hlášení k `tadeas-f32-010`). Kalendář vyhrál, protože den výpravy má
+ * mít jedno datum – jinak se nedá navázat předpověď ani kostra dnů.
+ *
+ * @param {string} od  'YYYY-MM-DD'
+ * @param {number} [ted]  okamžik, ke kterému se ptáme
+ * @returns {number} může být i 0 a záporné, když se ptáme před začátkem
+ */
+export function denOdData(od, ted = Date.now()) {
+  if (!od) return 0
+  const [r, m, d] = od.split('-').map(Number)
+  const t = new Date(ted)
+  const dnesUtc = Date.UTC(t.getFullYear(), t.getMonth(), t.getDate())
+  return Math.round((dnesUtc - Date.UTC(r, m - 1, d)) / 86400000) + 1
+}
+
 /** Kolikátý den cesty je dnes? 0 = cesta neběží nebo není termín. */
 export function kolikatyDenDnes() {
   const { od, dnu } = termin()
   if (!od) return 0
-  const dnes = new Date()
-  const dnesUtc = Date.UTC(dnes.getFullYear(), dnes.getMonth(), dnes.getDate())
-  const [r, m, d] = od.split('-').map(Number)
-  const rozdil = Math.round((dnesUtc - Date.UTC(r, m - 1, d)) / 86400000) + 1
+  const rozdil = denOdData(od)
   return rozdil >= 1 && (!dnu || rozdil <= dnu) ? rozdil : 0
+}
+
+/** Kolik dní dopředu má smysl se ptát. Open-Meteo umí 16, poslední třetina je věštění. */
+export const DNU_CESTY = 14
+
+/**
+ * Dny výpravy, na které předpověď dosáhne, i s důvodem, když žádný nezbyde.
+ *
+ * OKNO JE DNEŠEK AŽ DNEŠEK + 13. Obojí omezení má svůj důvod:
+ *
+ * - **Dozadu**, protože `forecast_days` u Open-Meteo začíná dneškem. Vyjel-li
+ *   někdo včera, na první den výpravy předpověď není a nikdy nebude – řádek
+ *   přesto psal „Zatím bez předpovědi", což je lež, a po týdnu na cestě se
+ *   jich nad dneškem nakupilo dvacet.
+ * - **Dopředu**, protože dál API nedohlédne. Čtrnáct prázdných řádků u výpravy
+ *   plánované na příští měsíc neřekne nic; že se ptáš moc brzy, patří do jedné
+ *   věty u přepínače.
+ *
+ * ČÍSLO DNE ZŮSTÁVÁ PŮVODNÍ – po odfiltrování včerejška je dnešek pořád
+ * „2. den", ne „1. den", aby to sedělo s itinerářem.
+ *
+ * DO DNE PATŘÍ I VLASTNÍ BODY (nocleh, start, cíl). Nocleh je místo, kde budeš
+ * spát a ráno vstávat, takže je z celého dne nejužitečnější. Pořadí se bere
+ * ze `serazenePolozky()`, aby se trasa dál řadila na jednom místě.
+ *
+ * @param {number} [ted]
+ * @returns {{dny:Array<{den:number, datum:string, mista:Array<Record<string,any>>}>,
+ *   duvod:string, zaHorizontem:number}}
+ */
+export function dnyCesty(ted = Date.now()) {
+  const prazdno = (duvod) => ({ dny: [], duvod, zaHorizontem: 0 })
+  const c = store.cesta
+  const zastavky = c ? c.zastavky || [] : store.plan || []
+  const delky = ((c ? c.dny : store.planDny) || []).map(Number).filter((x) => Number.isFinite(x) && x >= 0)
+
+  // Datum prvního dne. U cesty z okamžiku vyjetí, u plánu z termínu.
+  const prvni = c ? mistniDatum(c.zacatek) : termin().od
+  if (!prvni) return prazdno('Nevím, který den výpravy je které datum – chybí termín')
+  if (!zastavky.length) return prazdno('Výprava zatím nemá zastávky')
+
+  // Místa a body dne. Bod se srovná na týž tvar jako místo z databáze, aby
+  // se dál nikde nemuselo rozlišovat, odkud řádek pochází.
+  const naMisto = (x) =>
+    x.typ === 'zastavka'
+      ? { lat: x.p.lat, lon: x.p.lon, n: x.p.n, ikona: 'i-pinme' }
+      : {
+          lat: x.b.lat,
+          lon: x.b.lon,
+          n: x.b.nazev || (DRUHY[x.b.druh] || DRUHY.vlastni).popisek,
+          ikona: (DRUHY[x.b.druh] || DRUHY.vlastni).ikona,
+        }
+
+  const podleDne = new Map()
+  for (const x of serazenePolozky(zastavky, delky, vsechnyBody(c ? c.nazev : null))) {
+    const m = naMisto(x)
+    if (!Number.isFinite(m.lat) || !Number.isFinite(m.lon)) continue
+    if (!podleDne.has(x.den)) podleDne.set(x.den, [])
+    podleDne.get(x.den).push(m)
+  }
+
+  // Den bez zastávek se řídí tvojí polohou, proto se skupiny berou z počtu
+  // dnů, ne z toho, co `serazenePolozky()` vrátilo.
+  const dnes = mistniDatum(ted)
+  const posledni = posunDatum(dnes, DNU_CESTY - 1)
+  const vsechny = []
+  for (let k = 0; k < (delky.length || 1); k++) {
+    vsechny.push({ den: k + 1, datum: posunDatum(prvni, k), mista: podleDne.get(k + 1) || [] })
+  }
+
+  const dny = vsechny.filter((d) => d.datum >= dnes && d.datum <= posledni)
+  if (dny.length) return { dny, duvod: '', zaHorizontem: vsechny.filter((d) => d.datum > posledni).length }
+  return prazdno(
+    vsechny.every((d) => d.datum < dnes)
+      ? 'Naplánované dny má výprava za sebou'
+      : `Předpověď dohlédne ${DNU_CESTY} dní dopředu, výprava začíná později`
+  )
 }
 
 /**

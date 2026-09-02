@@ -20,7 +20,9 @@ import { esc } from '../core/html.js'
 import { dkm } from '../core/geo.js'
 import { IC } from '../icons/sprite.js'
 import { klicPocasi, nactiPocasiZeSchranky, ulozPocasi } from '../core/pocasiDb.js'
-import { nactiPocasi, nactiPocasiProBody, pocasiPodleKodu, termin } from '../views/plan/termin.js'
+import {
+  DNU_CESTY, dnyCesty, nactiPocasi, nactiPocasiProBody, pocasiPodleKodu,
+} from '../views/plan/termin.js'
 
 /** Kolik hodin dopředu. Celý den včetně zítřejšího rána. */
 const HODIN = 24
@@ -169,14 +171,6 @@ function kdyStazeno(ms, ted = Date.now()) {
  * @returns {string}
  */
 /**
- * Kolik dní výpravy se ukáže v režimu „na cestě".
- *
- * Open-Meteo umí šestnáct, ale poslední třetina je věštění, po kterém se nikdo
- * nerozhoduje. Čtrnáct pokryje běžnou dovolenou celou.
- */
-const DNU_CESTY = 14
-
-/**
  * Strop na počet různých bodů v jednom dotazu.
  *
  * Není to výkonnostní obava – změřeno, že 40 bodů na 14 dní je 29,7 kB
@@ -186,53 +180,6 @@ const DNU_CESTY = 14
  */
 const STROP_BODU = 60
 
-/**
- * Zastávky výpravy rozdělené po dnech, s datem každého dne.
- *
- * ZA JÍZDY Z ROZJETÉ CESTY, jinak z plánu. `CLAUDE.md` ty dvě věci záměrně
- * rozlišuje: cesta je „jak to fakt je" a večer se v ní něco přidá z košíku,
- * plán zůstává „jak jsme to chtěli". Počasí má odpovídat na „bude tam, kam
- * opravdu mířím, pršet".
- *
- * DEN JEDNA JE DATUM ZAČÁTKU. U rozjeté cesty se počítá od vyjetí
- * (`cesta.zacatek`), takže termín není potřeba; u plánu z `vypravaOd`.
- * Bez obojího se vrací prázdno – nedá se říct, který den je které datum.
- *
- * @returns {Array<{den:number, datum:string, mista:Array<Record<string,any>>}>}
- */
-export function dnyCesty() {
-  const c = store.cesta
-  const zastavky = c ? c.zastavky || [] : store.plan || []
-  const delky = ((c ? c.dny : store.planDny) || []).map(Number).filter((x) => Number.isFinite(x) && x >= 0)
-
-  // Datum prvního dne. U cesty z okamžiku vyjetí, u plánu z termínu.
-  const prvni = c
-    ? new Date(c.zacatek).toISOString().slice(0, 10)
-    : termin().od
-  if (!prvni || !zastavky.length) return []
-
-  // Rozdělení na dny stejným pravidlem jako `dnyPlanu()`: co se do délek
-  // nevejde, padá do posledního dne.
-  const skupiny = []
-  let i = 0
-  for (const d of delky) {
-    if (i > zastavky.length || (i === zastavky.length && d > 0)) break
-    skupiny.push(zastavky.slice(i, i + d))
-    i += d
-  }
-  if (i < zastavky.length || !skupiny.length) skupiny.push(zastavky.slice(i))
-
-  const [r, m, dd] = prvni.split('-').map(Number)
-  const zaklad = Date.UTC(r, m - 1, dd)
-  return skupiny.slice(0, DNU_CESTY).map((ids, k) => {
-    const den = new Date(zaklad + k * 86400000)
-    return {
-      den: k + 1,
-      datum: `${den.getUTCFullYear()}-${String(den.getUTCMonth() + 1).padStart(2, '0')}-${String(den.getUTCDate()).padStart(2, '0')}`,
-      mista: ids.map((id) => S.byId[id]).filter((p) => p && Number.isFinite(p.lat)),
-    }
-  })
-}
 
 /**
  * Předpověď pro celou výpravu: každý den, každá jeho zastávka.
@@ -246,12 +193,16 @@ export function dnyCesty() {
  * JEDEN DOTAZ NA CELOU VÝPRAVU. Body, které schránka zná a jsou čerstvé, se
  * do něj vůbec nedávají – druhé otevření tedy nestojí nic.
  *
+ * VRACÍ I TO, CO SE NEPOVEDLO. Kolik dní je za horizontem předpovědi, jestli
+ * se nějaký bod nevešel do stropu a jak stará je nejstarší použitá předpověď –
+ * bez toho by tichý výpadek vypadal úplně stejně jako čerstvá data.
+ *
  * @param {{ted?:number}} [o]
- * @returns {Promise<Array<{den:number, datum:string, radky:Array<{nazev:string, den:Record<string,any>|null}>}>|null>}
+ * @returns {Promise<{dny:Array, zaHorizontem:number, nevesloSe:boolean, stazeno:number}|null>}
  */
 export async function pocasiProCestu({ ted = Date.now() } = {}) {
   if (!prefs.pocasi) return null
-  const dny = dnyCesty()
+  const { dny, zaHorizontem } = dnyCesty(ted)
   if (!dny.length) return null
 
   const fahrenheity = prefs.pocasiJednotky === 'fahrenheit'
@@ -273,8 +224,15 @@ export async function pocasiProCestu({ ted = Date.now() } = {}) {
   /** @type {Map<string, Record<string, any>>} */
   const predpovedi = new Map()
   const chybejici = []
+  // Utnutí stropem se musí dát poznat. Do září 2026 to byl tichý `break`,
+  // takže den nad stropem vypadal úplně stejně jako den, který se nestáhl
+  // kvůli signálu – a s vlastními body se strop přiblížil.
+  let nevesloSe = false
   for (const [k, b] of potreba) {
-    if (chybejici.length + predpovedi.size >= STROP_BODU) break
+    if (chybejici.length + predpovedi.size >= STROP_BODU) {
+      nevesloSe = true
+      break
+    }
     const ulozene = await nactiPocasiZeSchranky(klicPocasi(b, znacka))
     if (ulozene && ted - ulozene.stazeno < platnost) predpovedi.set(k, ulozene)
     else if (ulozene && jenZeSchranky) predpovedi.set(k, ulozene)
@@ -298,20 +256,34 @@ export async function pocasiProCestu({ ted = Date.now() } = {}) {
     }
   }
 
-  return dny.map((d) => {
-    const body = d.mista.length ? d.mista : S.userPos ? [{ ...S.userPos, n: 'u tebe' }] : []
-    return {
-      den: d.den,
-      datum: d.datum,
-      radky: body.map((b) => {
-        const p = predpovedi.get(klic(b))
-        return {
-          nazev: b.n || 'u tebe',
-          den: p ? (p.dny || []).find((x) => x.datum === d.datum) || null : null,
-        }
-      }),
-    }
-  })
+  // NEJSTARŠÍ POUŽITÁ PŘEDPOVĚĎ. `pocasiProBod()` má na totéž příznak `stare`,
+  // jenže tudy nechodí – a bez toho se včerejší data kreslila, jako by byla
+  // čerstvá. `CLAUDE.md` přitom slibuje, že se ukáže i to, kdy se stáhla.
+  let stazeno = 0
+  for (const p of predpovedi.values()) {
+    if (p.stazeno && (!stazeno || p.stazeno < stazeno)) stazeno = p.stazeno
+  }
+
+  return {
+    zaHorizontem,
+    nevesloSe,
+    stazeno: ted - stazeno > platnost ? stazeno : 0,
+    dny: dny.map((d) => {
+      const body = d.mista.length ? d.mista : S.userPos ? [{ ...S.userPos, n: 'u tebe', ikona: 'i-compass' }] : []
+      return {
+        den: d.den,
+        datum: d.datum,
+        radky: body.map((b) => {
+          const p = predpovedi.get(klic(b))
+          return {
+            nazev: b.n || 'u tebe',
+            ikona: b.ikona || 'i-pinme',
+            den: p ? (p.dny || []).find((x) => x.datum === d.datum) || null : null,
+          }
+        }),
+      }
+    }),
+  }
 }
 
 /**
@@ -405,20 +377,27 @@ export function pocasiHodinyHtml(p, { ted = Date.now(), kdeId = '' } = {}) {
  * @param {string} kdy  co stojí v levém sloupci; prázdné u druhé a další
  *   zastávky téhož dne, ale sloupec zůstává, aby ikony pod sebou lícovaly
  */
-function denRadekHtml(d, kdy) {
+function denRadekHtml(d, { kdy = '' } = {}) {
+  // Levá buňka jen tam, kde je co napsat. U tvé polohy nese datum, na cestě
+  // ho drží hlavička skupiny – prázdná buňka by tam byla jen odsazení.
+  const cely = kdy || !d ? `<span class="pocasi-den-kdy">${esc(kdy)}</span>` : ''
   if (!d) {
-    return `<span class="pocasi-den-kdy">${esc(kdy)}</span>
-      ${IC('i-mlha')}
-      <span class="pocasi-den-popis pocasi-bez">Zatím bez předpovědi</span>`
+    // ŽÁDNÁ IKONA POČASÍ. Do září 2026 tu svítila `i-mlha`, takže „bez
+    // předpovědi" vypadalo jako předpověď na mlhu. Od zavedení okna dnů
+    // znamená tenhle řádek jedinou věc: nestáhlo se to.
+    return `${cely}<span class="pocasi-den-popis pocasi-bez">Zatím bez předpovědi</span>`
   }
   const { ikona, popis } = pocasiPodleKodu(d.kodPocasi)
-  const dest = Number.isFinite(d.destProcent) && d.destProcent > 0
+  // PROCENTO I NULOVÉ, stejné pravidlo jako na dlaždicích hodin: nula je
+  // platná odpověď na „kolik naprší", kdežto chybějící údaj vypadá jako
+  // porucha. Sloupec se tím navíc přestane zubatit.
+  const dest = Number.isFinite(d.destProcent)
     ? `<span class="pocasi-dest">${IC('i-rain')}${d.destProcent} %</span>`
     : ''
   const slunce = d.vychod && d.zapad
     ? `<span class="pocasi-slunce">${IC('i-sun')}${esc(hodina(d.vychod))} – ${esc(hodina(d.zapad))}</span>`
     : ''
-  return `<span class="pocasi-den-kdy">${esc(kdy)}</span>
+  return `${cely}
     ${IC(ikona)}
     <span class="pocasi-den-popis">${esc(popis)}</span>
     ${dest}${slunce}
@@ -436,7 +415,7 @@ export function pocasiHtml(p, { ted = Date.now(), kdeId = '' } = {}) {
   if (!hodiny) return ''
 
   const dny = (p.dny || [])
-    .map((d) => `<div class="pocasi-den">${denRadekHtml(d, kratkyDen(d.datum, ted))}</div>`)
+    .map((d) => `<div class="pocasi-den">${denRadekHtml(d, { kdy: kratkyDen(d.datum, ted) })}</div>`)
     .join('')
 
   return `${hodiny}<div class="pocasi-dny">${dny}</div>`
@@ -445,39 +424,65 @@ export function pocasiHtml(p, { ted = Date.now(), kdeId = '' } = {}) {
 /**
  * Dny výpravy s počasím tam, kde ten den máš být (`tadeas-f32-010`).
  *
- * DEN SE KOPÍRUJE POD SEBE ZA KAŽDOU ZASTÁVKU: tři zastávky = tři řádky se
- * stejným datem, každý s počasím své oblasti. Blízké se neslučují – dva body
- * v jednom údolí dají dva řádky, i když řeknou skoro totéž. Že patří k sobě,
- * ukáže **společné podbarvení přes celou skupinu**, ne rámeček kolem každého;
- * datum se proto píše jen u prvního řádku dne.
+ * DEN JE SKUPINA S HLAVIČKOU. Nahoře stojí jednou datum a číslo dne výpravy
+ * („dnes · 2. den"), pod ním blok za každou zastávku toho dne. Do září 2026
+ * nesla datum levá buňka prvního řádku a u dalších zastávek po ní zbývala
+ * prázdná díra; navíc se do jednoho řádku tlačilo šest údajů, takže se popis
+ * počasí zkracoval na „zataže…", zatímco řádek s názvem byl z poloviny prázdný.
  *
- * ŘÁDEK JE DVOUPATROVÝ: nahoře DOSLOVA řádek počasí u tvé polohy (tentýž
- * `denRadekHtml()`, nic ubraného), dole **celý řádek** s názvem místa. Do září
- * 2026 stálo jméno v levém sloupci vedle data, kde bralo šířku popisu i slunci
- * a dlouhý název se stejně lámal – čtyři údaje se tlačily do zbytku řádku.
+ * Popisek spojuje DATUM A ČÍSLO DNE schválně: počasí do teď mluvilo v datech
+ * a itinerář v číslech dnů, takže se ty dvě obrazovky nedaly číst dohromady.
  *
- * @param {Array<{den:number, datum:string, radky:Array<{nazev:string, den:Record<string,any>|null}>}>} dny
+ * Blok samotný má dvě patra – nahoře celý řádek počasí jako u tvé polohy (týž
+ * `denRadekHtml()`), dole CELÝ ŘÁDEK jen pro název místa. Že se popis počasí
+ * zkracoval, nezpůsobilo slunce, ale levý sloupec s datem; po jeho přesunu do
+ * hlavičky se na 390 px vejde všech šest údajů a název má řádek pro sebe.
+ * Změřeno: se sluncem dole se místo popisu začal ořezávat název.
+ *
+ * @param {{dny:Array, zaHorizontem?:number, nevesloSe?:boolean, stazeno?:number}} vysledek
  */
-export function pocasiCestaHtml(dny, { ted = Date.now() } = {}) {
-  if (!Array.isArray(dny) || !dny.length) return ''
+export function pocasiCestaHtml(vysledek, { ted = Date.now() } = {}) {
+  const dny = vysledek && Array.isArray(vysledek.dny) ? vysledek.dny : []
+  if (!dny.length) return ''
 
-  return `<div class="pocasi-cesta">${dny
+  const skupiny = dny
     .map((d) => {
+      const kdy = kratkyDen(d.datum, ted)
       const radky = d.radky
         .map(
-          (r, i) =>
-            // DATUM JEN U PRVNÍHO ŘÁDKU DNE. Je společné celému dni a u dalších
-            // zastávek by se jen opakovalo; že řádky patří k sobě, drží
-            // podbarvení skupiny. Název místa má naopak každý řádek vlastní.
+          (r) =>
             `<div class="pocasi-den pocasi-den-cesta">
-              <div class="pocasi-den-hlava">${denRadekHtml(r.den, i === 0 ? kratkyDen(d.datum, ted) : '')}</div>
-              <div class="pocasi-kde-radek">${IC('i-pinme')}<span>${esc(r.nazev)}</span></div>
+              <div class="pocasi-den-hlava">${denRadekHtml(r.den)}</div>
+              <div class="pocasi-kde-radek">
+                ${IC(r.ikona || 'i-pinme')}<span>${esc(r.nazev)}</span>
+              </div>
             </div>`
         )
         .join('')
-      return `<div class="pocasi-cesta-den${d.radky.length > 1 ? ' vic' : ''}">${radky}</div>`
+      // Dnešek dostane akcentní proužek – ze všech dnů je jediný, kvůli
+      // kterému se člověk dívá hned teď.
+      return `<div class="pocasi-cesta-den${d.radky.length > 1 ? ' vic' : ''}${kdy === 'dnes' ? ' dnes' : ''}">
+        <div class="pocasi-cesta-hlava">${esc(kdy)} <span>· ${d.den}. den</span></div>
+        ${radky}
+      </div>`
     })
-    .join('')}</div>`
+    .join('')
+
+  // Co se nepovedlo, se řekne. Tiché ticho vypadá stejně jako čerstvá data.
+  const stari = vysledek.stazeno
+    ? `<div class="meta pocasi-stari">Staženo ${esc(kdyStazeno(vysledek.stazeno, ted))} – novější se nepodařilo načíst.</div>`
+    : ''
+  const pozn = []
+  if (vysledek.zaHorizontem) {
+    pozn.push(
+      `Na dalších ${vysledek.zaHorizontem} ${vysledek.zaHorizontem === 1 ? 'den' : vysledek.zaHorizontem < 5 ? 'dny' : 'dní'} výpravy předpověď nedohlédne.`
+    )
+  }
+  if (vysledek.nevesloSe) pozn.push('Zbytek výpravy se nevešel do jednoho dotazu.')
+
+  return `${stari}<div class="pocasi-cesta">${skupiny}</div>${
+    pozn.length ? `<div class="meta pocasi-pozn">${esc(pozn.join(' '))}</div>` : ''
+  }`
 }
 
 /**

@@ -80,10 +80,10 @@ npm run check-worker     # že Worker nepustí dál, co nemá, 48 bodů
 npm run debug-uklid      # duplicity a zavřené záznamy ze složky debug/ ven
 npm run debug-zavri      # uzavře záznam: -- <id> <hotovo|zahozeno> "důvod"
 
-npm run smoke            # proklikání v prohlížeči, 493 kontrol
+npm run smoke            # proklikání v prohlížeči, 538 kontrol
 npm run check-regrese    # PWA, zálohy, fotky, poloha, service worker, 26 bodů
 npm run check-tokeny     # barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů
-npm run check-dny        # dny, výpravy, body trasy, tažení a úpravy cesty, 203 bodů
+npm run check-dny        # dny, výpravy, body trasy, okno dnů výpravy, 229 bodů
 npm run check-filters    # 134 kombinací filtrů
 npm run check-form       # že formulář vyrábí platná místa, 18/18
 npm run check-ikony      # jedna věc = jedno jméno = jedna ikona, 8 bodů
@@ -599,25 +599,65 @@ slibuje odchod jinam, kdežto tenhle knoflík přepne obsah na místě.
   napsal jako „není tam".
 - **Nejbližší město je pod pruhem hodin**, ne v nadpisu — tam sedí přepínač
   a město patří k hodinám, které popisuje.
-- **Blok dne výpravy má dvě patra.** Horní je DOSLOVA řádek počasí u tvé
-  polohy — táž `denRadekHtml()` v `components/pocasi.js`, tedy datum, ikona,
-  popis, déšť, východ a západ slunce i teploty. Dolní nese ikonu místa
-  s názvem lokace **přes celou šířku**. Při vydání v září 2026 stálo jméno
-  v levém sloupci vedle data: sloupec musel být 9,4 rem široký, na zbytek
-  řádku zbyla polovina, a aby se tam čtyři údaje vešly, vypadlo z nich
-  slunce. Celý řádek dole nebere nikomu nic. **Vnitřek řádku proto skládá
-  jedna funkce pro oba režimy** — dokud si ho trip-řádek psal sám, „stejný
-  jako u tebe" byl slib, ne fakt.
+- **Den je skupina s hlavičkou.** Nahoře stojí jednou datum a číslo dne
+  výpravy („DNES · 2. DEN"), pod ním blok za každou zastávku. Popisek spojuje
+  obojí schválně: počasí mluvilo v datech a itinerář v číslech dnů, takže se ty
+  dvě obrazovky nedaly číst dohromady. **Dnešek má akcentní proužek** — ze všech
+  dnů je jediný, kvůli kterému se člověk dívá hned teď.
+- **Blok má dvě patra**: nahoře celý řádek počasí jako u tvé polohy (táž
+  `denRadekHtml()` — datum, ikona, popis, déšť, slunce, teploty), dole **celý
+  řádek jen pro název místa**. Vnitřek řádku skládá jedna funkce pro oba režimy;
+  dokud si ho trip-řádek psal sám, „stejný jako u tebe" byl slib, ne fakt.
+  Že se popis zkracoval na „zataže…", nezpůsobilo slunce, ale levý sloupec
+  s datem: po jeho přesunu do hlavičky se na 390 px vejde všech šest údajů.
+  Zkusmé přesunutí slunce dolů problém jen přehodilo — ořezávat se začal název.
+- **Procento srážek se kreslí i nulové**, stejné pravidlo jako u dlaždic hodin:
+  nula je platná odpověď na „kolik naprší", kdežto chybějící údaj vypadá jako
+  porucha a sloupec se tím zubatí. Řádek bez předpovědi **nemá ikonu počasí** —
+  do září 2026 tam svítila `i-mlha`, takže „bez předpovědi" vypadalo jako
+  předpověď na mlhu.
+- **Ukazují se jen dny, na které předpověď dosáhne** — dnešek až dnešek + 13.
+  Dozadu proto, že `forecast_days` začíná dneškem: kdo vyjel včera, měl u prvního
+  dne „Zatím bez předpovědi", což je lež (nepřijde nikdy), a po týdnu na cestě
+  se jich nad dneškem nakupilo dvacet. Dopředu proto, že dál API nedohlédne
+  a čtrnáct prázdných řádků nic neřekne. **Číslo dne zůstává původní**, takže
+  z „3. DEN" se nestane „1. DEN". Kolik dnů zbylo za horizontem, stojí v jedné
+  větě pod seznamem.
+- **Do dne patří i vlastní body trasy** (nocleh, start, cíl) — nocleh je místo,
+  kde budeš spát a ráno vstávat, takže je z celého dne nejužitečnější. Pořadí
+  se bere ze `serazenePolozky()`, aby se trasa dál řadila na jednom místě;
+  bod si veze ikonu svého druhu z registru `DRUHY`.
+- **Prázdný seznam má čtyři různé příčiny a každá svou větu** v `title`
+  přepínače: chybí termín · výprava nemá zastávky · dny už jsou za námi ·
+  výprava začíná dál, než předpověď dohlédne. Jedna věta natvrdo („chybí
+  termín") ve třech z nich lhala.
+- **Co se nepovedlo, se řekne.** Stará předpověď ze schránky nese nad seznamem
+  „Staženo …" stejně jako u tvé polohy — `pocasiProCestu()` na rozdíl od
+  `pocasiProBod()` příznak `stare` nenastavovala, takže se včerejší data
+  kreslila jako čerstvá. Utnutí stropem 60 bodů bylo do té doby tichý `break`
+  a den nad stropem vypadal stejně jako den bez signálu.
+- **Přepínač je vyplněná pilulka**, ne text. Bez toho vypadal stejně jako
+  „Zobrazit vše" a „Otevřít plán", což jsou odkazy **jinam** — kdežto tenhle
+  knoflík mění obsah pod sebou. Třídu dává `akceTrida` ve `vzory.js`.
 - **Den se kopíruje pod sebe za každou zastávku**: tři zastávky = tři bloky
-  se stejným datem, každý s počasím své oblasti. Blízké se **neslučují**;
-  že patří k sobě, ukáže **společné podbarvení skupiny**, a datum se píše jen
-  u prvního. Den bez zastávek se řídí tvojí polohou.
+  pod jednou hlavičkou, každý s počasím své oblasti. Blízké se **neslučují**;
+  že patří k sobě, ukáže **společné podbarvení skupiny**. Den bez zastávek se
+  řídí tvojí polohou.
 - **Za jízdy se bere rozjetá cesta** (`store.cesta.zastavky`), jinak plán.
   Ty dvě věci se záměrně liší a počasí má odpovídat na „bude tam, kam
   opravdu mířím, pršet".
-- **Který den je dnes**: za jízdy `kolikatyDenCesty()` (počítá se od vyjetí,
-  takže termín není potřeba), jinak `kolikatyDenDnes()` z termínu. Bez obojího
-  je přepínač zašedlý a řekne proč.
+- **Den výpravy se počítá KALENDÁŘNĚ a na jednom místě** — `denOdData()`
+  v `views/plan/termin.js`. Do září 2026 na tutéž otázku odpovídaly tři různé
+  kódy: `kolikatyDenDnes()` kalendářně, kdežto `kolikatyDenCesty()`
+  v `cestaData.js` a ještě jednou ručně opsaný výpočet v `cesta.js` dělily
+  uplynulý čas 24 hodinami. Kdo vyjel v devět večer, měl druhý den v poledne
+  na kartě „NA CESTĚ · 1. DEN", zatímco počasí psalo „dnes" u druhého dne.
+  Kalendář vyhrál, protože den výpravy má mít jedno datum — jinak se na něj
+  nedá navázat předpověď ani kostra dnů. Opravilo to i „přidat na konec
+  dnešního dne" a přehození bodu z košíku.
+  **Datum vyjetí se bere z místního času** (`mistniDatum()`), ne přes
+  `toISOString()` — ten převádí do UTC, takže odjezd po půlnoci u nás spadl
+  na předchozí den a s ním celá výprava.
 - **Jeden dotaz na celou výpravu.** `nactiPocasiProBody()` posílá
   `latitude=a,b,c` a dostane pole odpovědí; změřeno proti živému API, že
   40 bodů na 14 dní je 29,7 kB a 196 ms. Body, které schránka zná a jsou

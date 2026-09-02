@@ -28,7 +28,6 @@ import { openWizard } from '../../components/wizard.js'
 import { heroPas } from '../../components/vzory.js'
 import { napojVypravu } from '../../components/vypravaKarta.js'
 import {
-  dnyCesty,
   napojPocasi,
   nejblizsiMesto,
   pocasiCestaHtml,
@@ -37,6 +36,7 @@ import {
   pocasiProBod,
   pocasiProCestu,
 } from '../../components/pocasi.js'
+import { dnyCesty } from '../plan/termin.js'
 import { goTo } from '../../map/map.js'
 import heroObr from '../../assets/hero/domu.webp'
 
@@ -123,7 +123,11 @@ async function naplnPocasi() {
   // „Na cestě" potřebuje vědět, který den výpravy je které datum. Za jízdy se
   // to počítá od vyjetí, jinak z termínu; bez obojího je tlačítko NEAKTIVNÍ
   // a řekne proč – stejný vzor jako u dlaždic rychlé inspirace.
-  const jdeCesta = dnyCesty().length > 0
+  // DŮVOD SI NESE `dnyCesty()` S SEBOU. Prázdný seznam má čtyři různé příčiny
+  // – chybí termín, výprava nemá zastávky, dny už jsou za námi, nebo začíná
+  // dál, než předpověď dohlédne. Jedna věta natvrdo by ve třech z nich lhala.
+  const okno = dnyCesty()
+  const jdeCesta = okno.dny.length > 0
   const rezim = prefs.pocasiRezim === 'nacest' && jdeCesta ? 'nacest' : 'utebe'
   const prepinac = document.getElementById('homePocasiRezim')
   if (prepinac) {
@@ -131,7 +135,7 @@ async function naplnPocasi() {
     prepinac.disabled = !jdeCesta && rezim === 'utebe'
     prepinac.title = jdeCesta
       ? 'Přepnout na počasí ' + (rezim === 'nacest' ? 'u tebe' : 'na cestě')
-      : 'Nevím, který den výpravy je které datum – chybí termín'
+      : okno.duvod
     prepinac.onclick = () => {
       prefs.pocasiRezim = rezim === 'nacest' ? 'utebe' : 'nacest'
       savePrefs()
@@ -156,7 +160,7 @@ async function naplnPocasi() {
   kam.innerHTML = `<div class="meta">Načítám předpověď…</div>`
 
   const p = S.userPos ? await pocasiProBod(S.userPos) : null
-  const dnyVypravy = rezim === 'nacest' ? await pocasiProCestu() : null
+  const cesta = rezim === 'nacest' ? await pocasiProCestu() : null
 
   // Mezitím se mohlo překreslit (přišla poloha, přepnula se záložka). Zápis
   // do odpojeného prvku by zmizel do prázdna – a hůř, přepsal by novější.
@@ -167,7 +171,7 @@ async function naplnPocasi() {
 
   if (rezim === 'nacest') {
     kam.innerHTML =
-      hodiny + (dnyVypravy ? pocasiCestaHtml(dnyVypravy) : '<div class="meta">Předpověď výpravy se nepodařilo načíst.</div>')
+      hodiny + (cesta ? pocasiCestaHtml(cesta) : '<div class="meta">Předpověď výpravy se nepodařilo načíst.</div>')
   } else {
     kam.innerHTML = p
       ? pocasiHtml(p, { kdeId: 'homePocasiKde' })

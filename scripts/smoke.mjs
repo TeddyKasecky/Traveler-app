@@ -2803,19 +2803,17 @@ await kontrola('a zase zšedne', () => page.locator('#listZrusFiltry').isDisable
 // stav bez ní. Poloha je z předchozího bloku pořád v `S.userPos`, i když se
 // povolení mezitím vzalo zpátky: to řídí jen budoucí dotazy.
 //
-// NA STRUKTURU ŘÁDKU DNE NEBYLA DO ZÁŘÍ 2026 JEDINÁ KONTROLA, a právě proto
-// se dal rozbít, aniž by cokoli spadlo: řádek dostal 9,4rem široký levý
-// sloupec s názvem místa a při tom z něj vypadl východ se západem slunce.
-// Dnes je dvoupatrový – nahoře DOSLOVA řádek počasí u tvé polohy (týž
-// `denRadekHtml()`), dole celý řádek s názvem místa.
+// NA STRUKTURU DNE NEBYLA DO ZÁŘÍ 2026 JEDINÁ KONTROLA, a právě proto se dala
+// rozbít, aniž by cokoli spadlo. Dnes je den SKUPINA S HLAVIČKOU („dnes ·
+// 2. den") a v ní blok za každou zastávku; blok má dvě patra – nahoře celý
+// řádek počasí jako u tvé polohy, dole celý řádek jen pro název místa.
 await page.click('#tabs button[data-tab="plan"]')
 await page.waitForTimeout(500)
 await page.click('#planSegment button[data-seg="vypravy"]')
 await page.waitForTimeout(500)
 await page.locator('.vypravaradek').first().click()
 await page.waitForTimeout(700)
-// DVĚ ZASTÁVKY, obě v prvním dni: jen tak jde ověřit, že se den kopíruje pod
-// sebe a datum se píše u prvního bloku, ne u obou.
+// DVĚ ZASTÁVKY, aby měl den víc bloků pod jednou hlavičkou.
 await page.click('#planPridat')
 await page.waitForTimeout(600)
 await page.locator('#vmBody .radek').nth(0).click()
@@ -2833,48 +2831,117 @@ await page.waitForTimeout(500)
 await page.click('#cestaVyjed')
 await page.waitForTimeout(700)
 
+// VYJETÍ SE POSUNE NA VČEREJŠEK. Přes UI to nejde – `zacatek` se bere z hodin
+// – a přesně tenhle stav byl v hlášení: první den výpravy je podle kalendáře
+// včerejšek, na který Open-Meteo předpověď nemá a nikdy mít nebude.
+//
+// ZÁPIS PATŘÍ DO `addInitScript`, NE PŘED RELOAD. Aplikace při odchodu ze
+// stránky dopisuje store z paměti (`pagehide` → `save()`), takže obyčejný
+// `localStorage.setItem()` následovaný reloadem se stihne přepsat zpátky –
+// a kontroly níž pak procházejí naprázdno nad nezměněnou cestou. Init skript
+// běží až v novém dokumentu, tedy po tom doplachu.
+await page.addInitScript(() => {
+  const s = JSON.parse(localStorage.getItem('vandrbuch:v1') || 'null')
+  if (!s || !s.cesta) return
+  s.cesta.zacatek = Date.now() - 14 * 3600000
+  s.cesta.dny = [1, 1]
+  s.cesta.zastavky = s.cesta.zastavky.slice(0, 2)
+  // Nocleh druhého dne – vlastní bod trasy, který do září 2026 počasí neznalo.
+  s.bloky = s.bloky || {}
+  s.bloky[s.cesta.nazev] = [
+    { id: 'smokeNocleh', typ: 'misto', den: 2, po: null, druh: 'nocleh',
+      nazev: 'Zkušební nocleh', lat: 50.1, lon: 14.5, poznamka: '', hotovo: 0 },
+  ]
+  localStorage.setItem('vandrbuch:v1', JSON.stringify(s))
+})
+// Poloha je jen v paměti, takže ji reload zahodí; povolení se navíc bralo
+// zpátky u kontroly centrování mapy. Bez ní by nebyl pruh hodin odkud vzít.
+await page.context().grantPermissions(['geolocation'])
+await page.reload({ waitUntil: 'domcontentloaded' })
+await page.waitForTimeout(2500)
+// Po načtení nemusí být Domů vpředu – záložka se drží v adrese, ne v paměti.
 await page.click('#tabs button[data-tab="home"]')
 await page.waitForTimeout(700)
+const ukazPocasi2 = page.locator('#homePocasi button:not(#homePocasiRezim)')
+if (await ukazPocasi2.count()) await ukazPocasi2.first().click()
+await page.waitForTimeout(1800)
+
+// Že se posun opravdu povedl. Bez téhle kontroly by celý blok níž mohl projít
+// nad cestou, která vyjela dnes – a nic by neověřil.
+await kontrola('cesta opravdu vyjela včera', () =>
+  page.evaluate(() => {
+    const c = JSON.parse(localStorage.getItem('vandrbuch:v1')).cesta
+    const den = (ms) => new Date(ms).toDateString()
+    return den(c.zacatek) !== den(Date.now()) && !!(c.zastavky || []).length
+  }), true)
+
 await kontrola('s rozjetou cestou jde přepínač zmáčknout', () =>
   page.locator('#homePocasiRezim').isDisabled(), false)
+// PŘEPÍNAČ NENÍ ODKAZ. Bez vlastní třídy vypadá stejně jako „Otevřít plán“
+// vedle, což vede jinam – proto vyplněná pilulka.
+await kontrola('a vypadá jako knoflík, ne jako odkaz', () =>
+  page.locator('#homePocasiRezim.prepinac').count(), 1)
 await page.click('#homePocasiRezim')
-await page.waitForTimeout(2000)
-await kontrola('a přepne se na cestu', () =>
+await page.waitForTimeout(2200)
+await kontrola('přepne se na cestu', () =>
   page.locator('#homePocasiRezim').innerText().then((x) => x.trim()), 'na cestě')
-// TOHLE JE TA VADA Z VYDÁNÍ: v režimu „na cestě" pruh hodin chyběl úplně.
 await kontrola('pruh hodin je i na cestě', () => page.locator('.pocasi-pruh').count(), 1)
-await kontrola('a den má za každou zastávku svůj blok', () =>
-  page.locator('.pocasi-den-cesta').count(), 2)
-await kontrola('obě zastávky drží jedno podbarvení dne', () =>
-  page.locator('.pocasi-cesta-den.vic').count(), 1)
-// OBĚ PATRA. Název místa je vlastní řádek POD řádkem počasí, ne sloupec v něm.
+
+// TOHLE JE JÁDRO HLÁŠENÍ: včerejší den výpravy se nesmí ukázat, protože na
+// něj předpověď není a „Zatím bez předpovědi" u něj byla lež.
+await kontrola('včerejší den výpravy se nekreslí', () =>
+  page.locator('.pocasi-cesta-hlava').first().innerText().then((x) => /^DNES/i.test(x.trim())), true)
+await kontrola('a nikde nechybí předpověď', () => page.locator('.pocasi-bez').count(), 0)
+// Hlavička nese datum i číslo dne – počasí mluvilo v datech, itinerář
+// v číslech dnů a nedaly se číst dohromady.
+await kontrola('hlavička nese i den výpravy', () =>
+  page.locator('.pocasi-cesta-hlava').first().innerText().then((x) => /\d+\. DEN/i.test(x)), true)
+await kontrola('dnešek je zvýrazněný', () => page.locator('.pocasi-cesta-den.dnes').count(), 1)
+// Štítek karty a hlavička počasí musely říkat totéž – do září 2026 si
+// odporovaly, protože každý počítal den výpravy jinak.
+await kontrola('číslo dne na kartě sedí s počasím', async () => {
+  const hlavicka = await page.locator('.pocasi-cesta-den.dnes .pocasi-cesta-hlava').innerText()
+  await page.click('#tabs button[data-tab="plan"]')
+  await page.waitForTimeout(600)
+  const stitek = await page.locator('.cesta-stitek').innerText()
+  await page.click('#tabs button[data-tab="home"]')
+  await page.waitForTimeout(900)
+  return hlavicka.match(/(\d+)\. DEN/i)[1] === stitek.match(/(\d+)\. DEN/i)[1]
+}, true)
+
+// Vlastní body trasy počasí do září 2026 vůbec neznalo, přitom nocleh je
+// místo, kde se spí a ráno vstává.
+await kontrola('nocleh má vlastní blok', () =>
+  page.locator('.pocasi-kde-radek:has-text("Zkušební nocleh")').count(), 1)
+await kontrola('a vlastní ikonu, ne špendlík', () =>
+  page.locator('.pocasi-kde-radek:has-text("Zkušební nocleh") use[href="#i-stan"]').count(), 1)
+
+// Blok má dvě patra a v horním je totéž co u tvé polohy – VČETNĚ SLUNCE.
 await kontrola('blok dne má obě patra', () =>
-  page.locator('.pocasi-den-cesta > .pocasi-den-hlava + .pocasi-kde-radek').count(), 2)
-await kontrola('a v horním patře je totéž co u tebe', () =>
+  page.locator('.pocasi-den-cesta > .pocasi-den-hlava + .pocasi-kde-radek').count().then((n) => n > 0), true)
+await kontrola('v horním patře je totéž co u tebe', () =>
   page.evaluate(() => {
     const h = document.querySelector('.pocasi-den-hlava')
-    return ['.pocasi-den-kdy', 'svg.ic', '.pocasi-den-popis', '.pocasi-slunce', '.pocasi-den-teplota']
+    return ['svg.ic', '.pocasi-den-popis', '.pocasi-dest', '.pocasi-slunce', '.pocasi-den-teplota']
       .every((s) => !!h.querySelector(s))
   }), true)
-// Celý řádek, ne čtvrtina šířky vlevo – měřeno, protože právě šířka byla to,
-// co si vynutilo vyhazovat údaje.
-await kontrola('název místa je celý řádek', () =>
-  page.evaluate(() => {
-    const b = document.querySelector('.pocasi-den-cesta')
-    return b.querySelector('.pocasi-kde-radek').getBoundingClientRect().width /
-      b.getBoundingClientRect().width > 0.8
-  }), true)
-await kontrola('a je vypsaný celý', () =>
-  page.evaluate(() => {
-    const e = document.querySelector('.pocasi-kde-radek span')
-    return !!e.textContent.trim() && e.scrollWidth <= e.clientWidth + 1
-  }), true)
-// DATUM JEN U PRVNÍHO BLOKU DNE – u druhé zastávky by se jen opakovalo.
-await kontrola('datum nese jen první blok dne', () =>
-  page.evaluate(() => {
-    const k = [...document.querySelectorAll('.pocasi-den-cesta .pocasi-den-kdy')]
-    return !!k[0].textContent.trim() && !k[1].textContent.trim()
-  }), true)
+// Datum je v hlavičce, ne v řádku – uvolněné místo je přesně to, díky čemu se
+// popis počasí přestal zkracovat na „zataže…".
+await kontrola('řádek počasí už nenese datum', () =>
+  page.locator('.pocasi-den-cesta .pocasi-den-kdy').count(), 0)
+await kontrola('a slovní popis se nezkracuje', () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('.pocasi-den-cesta .pocasi-den-popis')]
+      .every((e) => e.scrollWidth <= e.clientWidth + 1)), true)
+await kontrola('ani název místa', () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('.pocasi-kde-radek > span')]
+      .every((e) => e.scrollWidth <= e.clientWidth + 1)), true)
+// Nula je platná odpověď na „kolik naprší" – stejné pravidlo jako u dlaždic
+// hodin. Chybějící procento vypadalo jako porucha a sloupec se zubatil.
+await kontrola('procento srážek je na každém bloku', async () =>
+  (await page.locator('.pocasi-den-cesta .pocasi-dest').count()) ===
+  (await page.locator('.pocasi-den-cesta').count()), true)
 
 /* ---------- shrnutí ---------- */
 

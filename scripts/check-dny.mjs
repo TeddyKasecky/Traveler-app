@@ -899,5 +899,120 @@ pripravV(['a', 'b'], [], [{ nazev: 'Dolomity', plan: ['d'], planDny: [] }], 'Alp
   t('každý kód má ikonu', [0, 3, 45, 61, 71, 80, 85, 95].every((k) => !!pocasiPodleKodu(k).ikona))
 }
 
+/* ---------- okno dnů výpravy pro počasí ---------- */
+// Kořen hlášení k `tadeas-f32-010`: den výpravy se počítal třemi různými kódy
+// a dva z nich dělily uplynulý čas 24 hodinami. Kdo vyjel v devět večer, měl
+// druhý den v poledne na kartě „1. DEN", zatímco počasí psalo „dnes" u druhého
+// dne. Předpověď navíc dostávala i včerejšek, na který nikdy nepřijde.
+//
+// PEVNÉ „TEĎ", ne `Date.now()` – jinak by kontrola plavala podle dne v roce.
+{
+  const { dnyCesty, denOdData, mistniDatum, posunDatum, DNU_CESTY } =
+    await import('../src/views/plan/termin.js')
+  const { kolikatyDenCesty } = await import('../src/views/plan/cestaData.js')
+
+  // Středa 2. 9. 2026 v 11:00 místního času, vyjeli jsme v úterý ve 21:07.
+  const TED = new Date(2026, 8, 2, 11, 0).getTime()
+  const VYJELI = new Date(2026, 8, 1, 21, 7).getTime()
+  const dnesIso = mistniDatum(TED)
+
+  const cista = () => {
+    store.plan = []
+    store.planDny = []
+    store.bloky = {}
+    store.cesta = null
+    store.vypravaOd = ''
+    store.vypravaDnu = 0
+  }
+
+  S.byId = {
+    a: { id: 'a', n: 'Alfa', lat: 47, lon: 8 },
+    b: { id: 'b', n: 'Beta', lat: 46, lon: 9 },
+    c: { id: 'c', n: 'Gama', lat: 45, lon: 10 },
+  }
+
+  cista()
+  t('bez cesty i bez termínu je důvodem chybějící termín', /termín/.test(dnyCesty(TED).duvod))
+  store.vypravaOd = dnesIso
+  t('výprava bez zastávek to řekne', /zastávky/.test(dnyCesty(TED).duvod))
+
+  // --- ta vada ze snímku: tři počítadla, tři odpovědi ---
+  cista()
+  store.cesta = { nazev: 'Cesta', zacatek: VYJELI, zastavky: ['a', 'b', 'c'], dny: [2, 1] }
+  t('kalendářně je dnes 2. den cesty', denOdData(mistniDatum(VYJELI), TED) === 2)
+  t('a stejné číslo dá i počítadlo karty', kolikatyDenCesty({ zacatek: VYJELI }) === 2)
+  t('po 24hodinovkách by vyšel 1. den', Math.floor((TED - VYJELI) / 86400000) + 1 === 1)
+
+  // --- okno: včerejšek ven, číslo dne zůstává ---
+  const okno = dnyCesty(TED)
+  t('včerejší první den v seznamu není', !okno.dny.some((d) => d.datum < dnesIso))
+  t('a dnešek si drží číslo 2', okno.dny[0].den === 2 && okno.dny[0].datum === dnesIso)
+  t('zbyl jediný den', okno.dny.length === 1)
+  t('nic nezbylo za horizontem', okno.zaHorizontem === 0)
+
+  // --- odjezd po půlnoci: UTC by ubralo den ---
+  const PONOCI = new Date(2026, 8, 2, 1, 30).getTime()
+  t('odjezd po půlnoci má správné datum', mistniDatum(PONOCI) === dnesIso)
+  t('a `toISOString()` by ho posunul zpátky', new Date(PONOCI).toISOString().slice(0, 10) !== dnesIso)
+  // A TOTÉŽ CELOU CESTOU. Kontrola nad tímhle měří jen `mistniDatum()` samu;
+  // kdyby si `dnyCesty()` datum vyjetí dál brala přes `toISOString()`, prošla
+  // by – a první den výpravy by přitom spadl na včerejšek a vypadl z okna.
+  cista()
+  store.cesta = { nazev: 'Po půlnoci', zacatek: PONOCI, zastavky: ['a', 'b'], dny: [1, 1] }
+  const ponoci = dnyCesty(TED)
+  t('cesta z půlnoci začíná dnešním prvním dnem', ponoci.dny[0].den === 1 && ponoci.dny[0].datum === dnesIso)
+  t('a žádný její den se neztratil', ponoci.dny.length === 2)
+
+  // --- horizont dopředu ---
+  cista()
+  store.plan = ['a']
+  store.planDny = [1]
+  store.vypravaOd = posunDatum(dnesIso, DNU_CESTY + 6)
+  t('výprava za horizontem nemá co ukázat', dnyCesty(TED).dny.length === 0)
+  t('a řekne, že začíná moc pozdě', /dohlédne/.test(dnyCesty(TED).duvod))
+
+  store.vypravaOd = posunDatum(dnesIso, -10)
+  t('výprava celá za námi to taky řekne', /za sebou/.test(dnyCesty(TED).duvod))
+
+  // Dlouhá výprava: ukáže se čtrnáct dní a zbytek se spočítá do poznámky.
+  cista()
+  store.plan = ['a', 'b', 'c']
+  store.planDny = Array(20).fill(0)
+  store.planDny[0] = 3
+  store.vypravaOd = dnesIso
+  const dlouha = dnyCesty(TED)
+  t('dopředu se ukáže nejvýš čtrnáct dní', dlouha.dny.length === DNU_CESTY)
+  t('a zbytek se spočítá pro poznámku', dlouha.zaHorizontem === 6)
+
+  // --- vlastní body patří do dne, a na správné místo v pořadí ---
+  cista()
+  store.cesta = { nazev: 'Cesta', zacatek: TED, zastavky: ['a', 'b'], dny: [2] }
+  store.bloky = {
+    Cesta: [
+      { id: 'x', typ: 'misto', den: 1, po: 'a', druh: 'nocleh', nazev: 'Nocleh 1', lat: 46.5, lon: 8.5 },
+      { id: 'y', typ: 'misto', den: 1, po: null, druh: 'vlastni', nazev: 'Bez GPS', lat: null, lon: null },
+      { id: 'z', typ: 'misto', den: 1, po: null, druh: 'vlastni', nazev: 'V košíku', lat: 44, lon: 7, vKosiku: 1 },
+      { id: 'p', typ: 'poznamka', den: 1, text: 'nic' },
+    ],
+  }
+  const sBody = dnyCesty(TED).dny[0].mista
+  t('vlastní bod je mezi místy dne', sBody.some((m) => m.n === 'Nocleh 1'))
+  t('a stojí hned za svou kotvou', sBody.map((m) => m.n).join() === 'Alfa,Nocleh 1,Beta')
+  t('bod bez souřadnic se nepočítá', !sBody.some((m) => m.n === 'Bez GPS'))
+  t('bod v košíku taky ne', !sBody.some((m) => m.n === 'V košíku'))
+  t('nocleh si veze svou ikonu', sBody.find((m) => m.n === 'Nocleh 1').ikona === DRUHY.nocleh.ikona)
+  t('zastávka z databáze má špendlík', sBody.find((m) => m.n === 'Alfa').ikona === 'i-pinme')
+
+  // --- stará cesta bez `dny` se nesmí rozsypat ---
+  cista()
+  store.cesta = { nazev: 'Stará', zacatek: TED, zastavky: ['a', 'b', 'c'] }
+  const bezDnu = dnyCesty(TED)
+  t('cesta bez rozdělení na dny dá jeden den', bezDnu.dny.length === 1)
+  t('a nikoho neztratí', bezDnu.dny[0].mista.length === 3)
+
+  cista()
+  S.byId = {}
+}
+
 console.log(`\n${ok}/${ok + chyb} kontrol prošlo`)
 process.exit(chyb ? 1 : 0)

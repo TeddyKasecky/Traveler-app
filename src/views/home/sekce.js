@@ -197,7 +197,9 @@ export const SEKCE_DOMU = [
           // ta slibuje odchod jinam, kdežto tenhle knoflík přepne obsah na
           // místě. Text i stav doplní `naplnPocasi()`, protože závisí na tom,
           // jestli je co ukázat.
-          sekce('Počasí', { akce: 'u tebe', akceId: 'homePocasiRezim', akceIkona: 'i-obnovit' }) +
+          sekce('Počasí', {
+            akce: 'u tebe', akceId: 'homePocasiRezim', akceIkona: 'i-obnovit', akceTrida: 'prepinac',
+          }) +
           '<div id="homePocasi"></div>'
         : '',
   },

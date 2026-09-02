@@ -87,24 +87,34 @@
 
 /* ---------- dny výpravy ----------
  *
- * DVĚ PATRA. Horní je doslova řádek počasí u tvé polohy – týž `denRadekHtml()`,
- * tedy datum, ikona, popis, déšť, VÝCHOD A ZÁPAD SLUNCE i teploty. Dolní nese
- * název místa přes CELOU ŠÍŘKU.
+ * DEN JE SKUPINA S HLAVIČKOU. Nahoře jednou datum a číslo dne výpravy, pod ním
+ * blok za každou zastávku. Do září 2026 neslo datum levý sloupec prvního řádku
+ * a u dalších zastávek po něm zbývala prázdná díra.
  *
- * Do září 2026 stálo jméno v levém sloupci vedle data: sloupec musel být
- * 9,4 rem široký, na zbytek řádku zbyla polovina, a aby se tam čtyři údaje
- * vešly, vypadlo z nich slunce. Celý řádek dole nebere nikomu nic.
+ * Blok má dvě patra: nahoře celý řádek počasí jako u tvé polohy (týž
+ * `denRadekHtml()` včetně slunce), dole CELÝ ŘÁDEK jen pro název místa.
  *
- * Den se kopíruje pod sebe za každou zastávku, takže dva bloky mohou nést
- * totéž datum. Že patří k sobě, drží SPOLEČNÉ PODBARVENÍ přes celou skupinu –
- * rámeček kolem každého by je naopak roztrhl. Datum se proto píše jen
- * u prvního řádku dne, u dalších zůstává prázdné místo, aby sloupce seděly. */
-.pocasi-cesta{display:flex;flex-direction:column;gap:6px}
+ * Slunce zůstalo nahoře po měření. Popis se do září 2026 zkracoval na
+ * „zataže…", jenže to nezpůsobilo slunce, ale levý sloupec s datem – jakmile
+ * se datum přestěhovalo do hlavičky skupiny, vejde se na 390 px všech šest
+ * údajů. Zkusmé přesunutí slunce dolů problém jen přehodilo: ořezávat se
+ * začal název („Highline 179 boží skywal…"), a ten má mít řádek celý. */
+.pocasi-cesta{display:flex;flex-direction:column;gap:10px}
 .pocasi-cesta-den{border-radius:var(--r-s);overflow:hidden}
 .pocasi-cesta-den.vic{background:var(--plocha2);border:var(--line)}
 /* Ve skupině se bloky slepí: uvnitř žádné vlastní pozadí ani rámeček, jen linka. */
 .pocasi-cesta-den.vic .pocasi-den{background:transparent;border:0;border-radius:0}
 .pocasi-cesta-den.vic .pocasi-den + .pocasi-den{border-top:var(--line)}
+
+/* Hlavička dne. Malá a verzálkami jako popisek sekce – je to nadpis skupiny,
+   ne údaj. Číslo dne je za odrážkou tlumené: datum je to hlavní. */
+.pocasi-cesta-hlava{padding:0 2px 5px;font-size:.66rem;font-weight:800;
+  letter-spacing:1.2px;text-transform:uppercase;color:var(--text2)}
+.pocasi-cesta-hlava span{font-weight:700;letter-spacing:.6px;color:var(--text3)}
+/* DNEŠEK MÁ PROUŽEK. Ze všech dnů je jediný, kvůli kterému se člověk dívá
+   hned teď, a bez zvýraznění vypadal stejně jako den za dvanáct dní. */
+.pocasi-cesta-den.dnes{border-left:3px solid var(--akcent);padding-left:8px}
+.pocasi-cesta-den.dnes .pocasi-cesta-hlava{color:var(--akcent)}
 
 /* Odsazení si berou obě patra sama, aby mezi nimi nebyla mezera navíc. Horní
    má nahoře 12 px místo devíti – blok o dvou patrech má být vyšší, ne
@@ -114,14 +124,14 @@
 .pocasi-kde-radek{display:flex;align-items:center;gap:5px;min-width:0;padding:0 11px 12px;
   font-size:.72rem;font-weight:700;color:var(--text);line-height:1.3}
 /* `.pocasi-den svg.ic` je 18 px v akcentu – to je pravidlo pro ikonu počasí.
-   Špendlík je popisek, ne hlavní údaj, tak si bere velikost i barvu
-   jako `.pocasi-dest`. */
-.pocasi-kde-radek svg.ic{flex:0 0 auto;font-size:13px;color:var(--text3);stroke:var(--text3)}
+   Špendlík (u vlastního bodu stan nebo vlajka) je popisek, ne hlavní údaj,
+   tak si bere velikost i barvu jako `.pocasi-dest`. */
+.pocasi-kde-radek > svg.ic{flex:0 0 auto;font-size:13px;color:var(--text3);stroke:var(--text3)}
 /* Jeden řádek s třemi tečkami. Přes celou šířku se „Gletscherschlucht
-   Rosenlaui" vejde v pohodě a jednořádkovost drží všechny bloky stejně vysoké
-   – dvouřádkový název je měl 61, 62 a 64 px podle délky. */
-.pocasi-kde-radek span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+   Rosenlaui" vejde v pohodě a jednořádkovost drží všechny bloky stejně vysoké. */
+.pocasi-kde-radek > span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pocasi-bez{font-size:.74rem;color:var(--text3)}
+.pocasi-pozn{margin:8px 2px 0}
 
 /* Nejbližší město pod pruhem hodin, ne v nadpisu sekce – tam sedí přepínač
    režimu a město patří k hodinám, které popisuje. */

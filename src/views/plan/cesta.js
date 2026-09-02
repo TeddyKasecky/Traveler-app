@@ -116,7 +116,12 @@ export function cestaHtml() {
   // Kolikátý den cesty je dnes – počítá se z okamžiku vyjetí, ne z termínu
   // výpravy: cesta může vyjet jindy, než se plánovalo, a „3. den" má být
   // pravda o cestě, ne o plánu.
-  const denCesty = Math.floor((Date.now() - c.zacatek) / 86400000) + 1
+  //
+  // VOLÁ SE FUNKCE, NEPOČÍTÁ SE TO ZNOVU. Do září 2026 tu stál týž vzoreček
+  // opsaný ručně, a ještě bez `Math.max(1, …)` – při posunutých hodinách uměl
+  // napsat „0. den". Přepočet na kalendářní dny by ho navíc minul a štítek by
+  // dál odporoval počasí, kvůli kterému se to opravovalo.
+  const denCesty = kolikatyDenCesty(c)
 
   return `
     <div class="cesta-hlava${c.pauzaOd ? ' pauza' : ''}">

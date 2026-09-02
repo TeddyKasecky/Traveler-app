@@ -20,13 +20,13 @@ bez vyžádání. Místo nich je 36 samostatných spustitelných `.mjs` skriptů
 | `check-worker.mjs` | `npm run check-worker` | že Cloudflare Worker nepustí dál, co nemá — název souboru, obsah, kolize, heslo, 48 bodů |
 | `check-debug.mjs` | `npm run check-debug` | debug poznámkovač: identita záznamu, podpis zařízení, přejmenování autora, otisk a změna od exportu, `.md` export, záloha, čtení rejstříku zpátky, porovnání s rejstříkem, složka `debug/`, úklid a zavírání, čerstvost proti mainu, čistota zdrojáků, 199 bodů |
 | `check-tokeny.mjs` | `npm run check-tokeny` | barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů |
-| `check-dny.mjs` | `npm run check-dny` | dny, výpravy, složky, záloha, body trasy, přesun tažením a úpravy cesty, 203 bodů |
+| `check-dny.mjs` | `npm run check-dny` | dny, výpravy, složky, záloha, body trasy, přesun tažením, úpravy cesty a okno dnů pro počasí, 229 bodů |
 | `check-projekce.mjs` | `npm run check-projekce` | throttle a projekce polohy na trasu (živé sledování, srpen 2026), 13 bodů |
 | `check-filtry.mjs` | `npm run check-filters` | 134 kombinací filtrů proti druhé implementaci |
 | `check-form.mjs` | `npm run check-form` | že formulář vyrábí platná místa, 18/18 |
 | `check-ikony.mjs` | `npm run check-ikony` | jedna věc = jedno jméno = jedna ikona, 8 bodů |
 | `check-images.mjs` | `npm run check-images` | existenci odkazů na fotky — **chodí na síť** |
-| `smoke.mjs` | `npm run smoke` | proklikání v prohlížeči, 493 kontrol |
+| `smoke.mjs` | `npm run smoke` | proklikání v prohlížeči, 538 kontrol |
 | `check-regrese.mjs` | `npm run check-regrese` | PWA, zálohy, fotky, poloha, service worker — 26 bodů v prohlížeči |
 | `perf.mjs` | `npm run perf` | rychlost startu při zpomaleném procesoru |
 | `perf-mapa.mjs` | ručně | plynulost posunu a přiblížení **stažené** malované mapy |

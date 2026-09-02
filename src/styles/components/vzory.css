@@ -91,6 +91,17 @@
 .sekce:first-child{margin-top:4px}
 .sekce-akce{margin-left:auto;background:none;border:0;padding:0;display:flex;gap:4px;align-items:center;
   font:inherit;font-size:.66rem;letter-spacing:.6px;text-transform:none;font-weight:700;color:var(--akcent)}
+/* PŘEPÍNAČ NENÍ ODKAZ. Bez téhle třídy vypadá knoflík, který mění obsah pod
+ * sebou, úplně stejně jako „Zobrazit vše" a „Otevřít plán“, což jsou odkazy
+ * jinam – a na počasí se to pletlo (`tadeas-f32-010`). Vyplněná pilulka je
+ * týž jazyk jako rozsvícená pilulka nálady, ne nový vzhled. */
+.sekce-akce.prepinac{padding:6px 11px;border-radius:var(--r-pill);
+  background:var(--akcent);color:var(--na-akcentu);font-size:.68rem;letter-spacing:.2px}
+.sekce-akce.prepinac svg.ic{color:var(--na-akcentu);stroke:var(--na-akcentu)}
+.sekce-akce.prepinac:active{transform:var(--stisk)}
+/* Zašedlý stav musí být poznat i na výplni, ne jen na textu. */
+.sekce-akce.prepinac:disabled{background:var(--plocha2);color:var(--text3);border:var(--line)}
+.sekce-akce.prepinac:disabled svg.ic{color:var(--text3);stroke:var(--text3)}
 .sekce-pozn{margin-left:auto;font-weight:600;letter-spacing:.2px;text-transform:none;color:var(--text3)}
 
 /* ---------- pruh průběhu ---------- */

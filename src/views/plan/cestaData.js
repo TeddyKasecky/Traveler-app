@@ -24,6 +24,7 @@
  */
 
 import { S, store, save } from '../../core/store.js'
+import { denOdData, mistniDatum } from './termin.js'
 import { sklonuj } from '../../core/html.js'
 import { dnyPlanu } from './dny.js'
 import { BEZ_NAZVU } from './vypravy.js'
@@ -313,10 +314,17 @@ export function vynechZCesty(id) {
   return save()
 }
 
-/** Kolikátý den cesty je dnes, od jedničky. Počítá se od vyjetí. */
+/**
+ * Kolikátý den cesty je dnes, od jedničky.
+ *
+ * KALENDÁŘNĚ, ne po 24 hodinách (září 2026). Do té doby se tu dělil uplynulý
+ * čas 86400000, takže kdo vyjel v devět večer, měl druhý den v poledne pořád
+ * „1. den" – a počasí vedle toho kreslilo „dnes" u druhého dne, protože si
+ * dny mapovalo na data. Výpočet je teď v `termin.js` a je jediný.
+ */
 export function kolikatyDenCesty(c) {
   if (!c) return 1
-  return Math.max(1, Math.floor((Date.now() - c.zacatek) / 86400000) + 1)
+  return Math.max(1, denOdData(mistniDatum(c.zacatek)))
 }
 
 /** Liší se rozjetá cesta od toho, jak byla naplánovaná? */
