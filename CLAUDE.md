@@ -504,6 +504,14 @@ protože se z košíku do nich tahá.
   (řídí ho délka trasy), ale jeden sedmnáctibodový kus přes půl Evropy API
   nezvládne a vrací 503. Vzdálenost sama strop nemá: Barcelona → Albánie →
   Praha na tři body projde.
+- **Úseky se ptají SOUBĚŽNĚ, nejvýš tři naráz.** Původně to jelo za sebou
+  s odůvodněním, že to není závod — jenže změřeno na trase z hlášení, že to
+  stojí dvě třetiny čekání: tři úseky za sebou 25,5 s (8,7 + 10,7 + 3,2 s),
+  souběžně 9,7 s, všechny 200. Celý přepočet od ťuknutí po trasu na mapě spadl
+  z 23,5 s na 13,4 s; **vykreslení na mapě je z toho půl vteřiny**, zbytek je
+  čekání na cizí server. Strop tří je proto, že výprava o sto bodech by jinak
+  poslala třináct dotazů naráz a API na rychlé opakování odpovídá
+  „upstream connect error".
 - **Čára se před uložením zjednodušuje** (`zjednodusCaru()`, Douglas–Peucker,
   tolerance 0,0002° ≈ dvacet metrů). Bez toho měla ta trasa **304 504 bodů
   a 6 372 kB**, které by šly do IndexedDB a odtud do `L.polyline`, kterou

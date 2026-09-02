@@ -104,6 +104,9 @@ const TIMEOUT_MS = 20000
  */
 const BODU_NA_DOTAZ = 9
 
+/** Kolik úseků se ptá naráz. Tři stačí na běžnou výpravu a API to unese. */
+const SOUBEZNE = 3
+
 /**
  * Rozdělí body na úseky, které se do jednoho dotazu vejdou.
  *
@@ -294,15 +297,28 @@ export async function zavolejRouting(body, { prubeh = null } = {}) {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS * useky.length)
   try {
-    const casti = []
-    // Postupně, ne naráz: je to uživatelem vyžádaná akce, ne závod, a sedm
-    // souběžných dotazů na cizí API je zbytečná drzost.
-    for (const usek of useky) {
-      // Průběh, protože u dlouhé výpravy se čeká přes dvacet vteřin a toast
-      // zhasne po dvou – bez tohohle by to vypadalo, že se appka zasekla.
-      if (prubeh) prubeh(casti.length + 1, useky.length)
-      casti.push(await jedenUsek(usek, ctrl.signal))
+    // SOUBĚŽNĚ, ale nejvýš po třech. Původně to jelo za sebou s odůvodněním,
+    // že to není závod – jenže měření na trase z hlášení ukázalo, že to stojí
+    // dvě třetiny čekání: tři úseky za sebou 25,5 s (8,7 + 10,7 + 3,2),
+    // souběžně 9,7 s, všechny 200. Čeká se totiž na cizí server, ne na nás.
+    //
+    // Strop je tam proto, že výprava o sto bodech by jinak poslala třináct
+    // dotazů naráz; při rychlém opakování API vrací „upstream connect error",
+    // takže drzost se trestá.
+    const casti = new Array(useky.length)
+    let dalsi = 0
+    let hotovo = 0
+    const delnik = async () => {
+      while (dalsi < useky.length) {
+        const i = dalsi++
+        casti[i] = await jedenUsek(useky[i], ctrl.signal)
+        // Průběh se hlásí po DOKONČENÍ. U dlouhé výpravy se čeká přes deset
+        // vteřin a toast zhasne po dvou – bez tohohle by to vypadalo, že se
+        // appka zasekla.
+        if (prubeh) prubeh(++hotovo, useky.length)
+      }
     }
+    await Promise.all(Array.from({ length: Math.min(SOUBEZNE, useky.length) }, delnik))
     const cela = spojUseky(casti)
     return { ...cela, polyline: zjednodusCaru(cela.polyline) }
   } catch (e) {
