@@ -308,6 +308,9 @@ Přegenerovat je jde skripty `make-basemap.mjs`, `make-mapa.mjs` a
   Commons je citlivé a chyba se pozná až tím, že se obrázek tiše nenačte.
 - `id` místa se **nikdy nemění**. Jsou na něj navázané poznámky, hodnocení i plán.
 
+Co se změnilo mezi ostrou appkou a betou, vypráví [`ANICKA.md`](ANICKA.md) —
+je to psané pro designérku a jde po obrazovkách, ne po commitech.
+
 Odložené nápady a známé drobnosti jsou v [`NAPADY.md`](NAPADY.md), nedodělky
 a závady v [`BUGS.md`](BUGS.md). Kde se skončilo a co je na řadě, shrnuje
 [`STAV.md`](STAV.md). [`PARITA.md`](PARITA.md) je **uzavřený záznam** přestavby

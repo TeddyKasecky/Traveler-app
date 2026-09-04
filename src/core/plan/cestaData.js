@@ -322,9 +322,9 @@ export function vynechZCesty(id) {
  * „1. den" – a počasí vedle toho kreslilo „dnes" u druhého dne, protože si
  * dny mapovalo na data. Výpočet je teď v `termin.js` a je jediný.
  */
-export function kolikatyDenCesty(c) {
+export function kolikatyDenCesty(c, ted = Date.now()) {
   if (!c) return 1
-  return Math.max(1, denOdData(mistniDatum(c.zacatek)))
+  return Math.max(1, denOdData(mistniDatum(c.zacatek), ted))
 }
 
 /** Liší se rozjetá cesta od toho, jak byla naplánovaná? */

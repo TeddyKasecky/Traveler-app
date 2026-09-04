@@ -76,7 +76,7 @@ npm run validate         # kontrola dat míst; běží i sama v pre-commit hooku
 npm run slouc            # vysype places-nova.json do places.json a přepočítá okolí
 npm run check-uloziste   # že se poznámky neztratí, když dojde místo, 36 kontrol
 npm run check-debug      # debug poznámkovač: identita, otisk, rejstřík, složka debug/, 199 bodů
-npm run check-worker     # že Worker nepustí dál, co nemá, 48 bodů
+npm run check-worker     # že Worker nepustí dál, co nemá, 64 bodů
 npm run debug-uklid      # duplicity a zavřené záznamy ze složky debug/ ven
 npm run debug-zavri      # uzavře záznam: -- <id> <hotovo|zahozeno> "důvod"
 
@@ -130,7 +130,7 @@ Runtime závislosti jsou **dvě** a obě vědomě:
 | `src/map/` | Leaflet: `map.js`, `markers.js`, `planLine.js`, `detailMap.js`, `podklad.js` (offline mapa), `vektory.js` (plochy a kresby v MapLibre), `kresby.js` (kde kresby stojí — z masky), `vbm.js` + `vbmWorker.js` (čtení staženého balíku) |
 | `src/styles/` | CSS po dílech, pořadí určuje `index.css`; barvy a rozměry jen z `tokens.css` |
 | `src/pwa/` | `sw.js` (šablona service workeru) a `register.js` |
-| `scripts/` | 24 ověřovacích a přípravných skriptů, viz [.claude/rules/kontroly.md](.claude/rules/kontroly.md) |
+| `scripts/` | 37 skriptů, z toho 12 kontrolních, viz [.claude/rules/kontroly.md](.claude/rules/kontroly.md) |
 
 **Moduly se nevolají napřímo — oznamují si změny událostmi** přes `on()`/`emit()` ze
 `src/core/store.js`.
@@ -310,7 +310,8 @@ sítí napřed při každém startu a nesmí růst donekonečna. Celý postup pr
 v [.claude/rules/debug.md](.claude/rules/debug.md).
 
 Návody pro člověka: [README.md](README.md), schéma dat [src/data/schema.md](src/data/schema.md),
-výklad vzhledu [VZHLED.md](VZHLED.md).
+výklad vzhledu [VZHLED.md](VZHLED.md). [ANICKA.md](ANICKA.md) je průvodce vším, co
+se změnilo mezi produkcí a betou — psaný pro designérku, ne pro AI.
 
 ## Git workflow (autonomní, bez PR)
 

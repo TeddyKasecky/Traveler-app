@@ -8,7 +8,7 @@ paths:
 _Zjištěno auditem: `scripts/`, `package.json`, `.githooks/pre-commit`._
 
 **Není tu žádný test framework** — chybí Jest, Vitest, `tests/` i `npm test`. Nezaváděj je
-bez vyžádání. Místo nich je 36 samostatných spustitelných `.mjs` skriptů; každý vypíše
+bez vyžádání. Místo nich je 37 samostatných spustitelných `.mjs` skriptů; každý vypíše
 `X / Y` a skončí kódem 1 při chybě.
 
 ## Co který skript ověřuje
@@ -17,7 +17,7 @@ bez vyžádání. Místo nich je 36 samostatných spustitelných `.mjs` skriptů
 |---|---|---|
 | `validate-data.mjs` | `npm run validate` | schéma dat; obal nad `src/data/validate.js` |
 | `check-uloziste.mjs` | `npm run check-uloziste` | stěhování dat mezi úložišti (fotky, CSV, geometrie tras, archiv cest, debug záznamy), chování při plné paměti, odložený zápis poznámky, 36 kontrol |
-| `check-worker.mjs` | `npm run check-worker` | že Cloudflare Worker nepustí dál, co nemá — název souboru, obsah, kolize, heslo, 48 bodů |
+| `check-worker.mjs` | `npm run check-worker` | že Cloudflare Worker nepustí dál, co nemá — název souboru, obsah, kolize, heslo, 64 bodů |
 | `check-debug.mjs` | `npm run check-debug` | debug poznámkovač: identita záznamu, podpis zařízení, přejmenování autora, otisk a změna od exportu, `.md` export, záloha, čtení rejstříku zpátky, porovnání s rejstříkem, složka `debug/`, úklid a zavírání, čerstvost proti mainu, čistota zdrojáků, 199 bodů |
 | `check-vrstvy.mjs` | `npm run check-vrstvy` | že `map/` neimportuje z `views/`, `core/` ani z jednoho, a že si nikdo neopisuje sdílené výpočty, 4 body |
 | `check-tokeny.mjs` | `npm run check-tokeny` | barvy natvrdo, párování světlý/tmavý, kontrast, 7 bodů |

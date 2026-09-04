@@ -941,7 +941,7 @@ pripravV(['a', 'b'], [], [{ nazev: 'Dolomity', plan: ['d'], planDny: [] }], 'Alp
   cista()
   store.cesta = { nazev: 'Cesta', zacatek: VYJELI, zastavky: ['a', 'b', 'c'], dny: [2, 1] }
   t('kalendářně je dnes 2. den cesty', denOdData(mistniDatum(VYJELI), TED) === 2)
-  t('a stejné číslo dá i počítadlo karty', kolikatyDenCesty({ zacatek: VYJELI }) === 2)
+  t('a stejné číslo dá i počítadlo karty', kolikatyDenCesty({ zacatek: VYJELI }, TED) === 2)
   t('po 24hodinovkách by vyšel 1. den', Math.floor((TED - VYJELI) / 86400000) + 1 === 1)
 
   // --- okno: včerejšek ven, číslo dne zůstává ---
